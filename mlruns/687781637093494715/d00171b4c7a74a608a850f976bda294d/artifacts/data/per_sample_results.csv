@@ -1,0 +1,400 @@
+question,ground_truth,answer,ttft_seconds,total_seconds,token_count,tokens_per_second,ragas_faithfulness,ragas_answer_relevancy,ragas_context_precision,ragas_context_recall
+What was the change in compensation and benefits liability for Goldman Sachs in millions from December 2013 to December 2014?,494.0,"<think>
+Okay, let's see. The user is asking about the change in compensation and benefits liability for Goldman Sachs from December 2013 to December 2014.
+
+First, I need to look at the provided context. There's a table mentioned with data as of December 2014 and 2013. In the first table, row 0 shows compensation and benefits as $8368 million for December 2014 and $7874 million for December 2013. 
+
+So, the change would be the difference between these two numbers. Let me calculate that: 8368 minus 7874. Let me do the subtraction. 8368 - 7874 equals 494. So the increase is $494 million. 
+
+Wait, but I should check if there's any other information in the context that might affect this. The other parts mention compensation expense recognized in different years, like $9 million in 2015, etc., but those are expenses recognized in those years, not directly the liability balances. The tables provided specifically under ""as of December 2014 and 2013",4.65061939799989,4.65061939799989,256,55.046431043163615,1.0,0.9614544316913136,0.249999999975,1.0
+"What is the cumulative total return of an initial $100 investment in The Goldman Sachs Group, Inc. common stock over the five-year period from December 26, 2008, to December 31, 2013, with dividends reinvested?",148.36,"<think>
+Okay, let's see. The user is asking about the cumulative total return for a $100 investment in Goldman Sachs Group, Inc. common stock from December 26, 2008, to December 31, 2013, with dividends reinvested.
+
+Looking at the context provided, there's a section that mentions a performance graph comparing the investment in the firm's common stock over that exact period. The context states: ""the following graph compares the performance of an investment in the firm’s common stock from December 26, 2008 (the last trading day before the firm’s 2009 fiscal year) through December 31, 2013, with the S&P 500 index and the S&P 500 Financials index. The graph assumes $100 was invested on December 26, 2008..."" and mentions reinvestment of dividends.
+
+However, the problem is that the context doesn't actually provide the specific numerical result of that $100 investment. It only describes the setup of the graph and the indices it's compared against. The user is asking for the actual return value, but the context doesn't",4.490911809000181,4.490911809000181,256,57.004014081718005,0.8,0.0,0.19999999998,0.0
+What was the percentage reduction in second generation tenant improvements for Duke Realty Corporation in 2012 compared to 2011?,-0.4679805906667465,"<think>
+Okay, let's see. The user is asking for the percentage reduction in second generation tenant improvements for Duke Realty Corporation in 2012 compared to 2011.
+
+First, I need to look at the context provided. There's a table with data for 2012, 2011, and 2010. The first row is ""second generation tenant improvements"" with values $26,643 for 2012 and $50,079 for 2011. 
+
+So, the formula for percentage reduction is ((Old Value - New Value)/Old Value) * 100. Here, the old value is 2011's $50,079 and the new value is 2012's $26,643. 
+
+Calculating the difference: 50,079 - 26,643 = 23,436. Then divide that by 50,079: 23,436 / 50,079 ≈ 0.468. Multiply by 100 to get the percentage:",4.3260973450001075,4.3260973450001075,256,59.175737294925256,0.8333333333333334,1.0000000000000002,0.9999999999,1.0
+"Did Abiomed's cumulative total stockholder return surpass that of the NASDAQ Composite Index over the five-year period ending March 31, 2012?",1,"<think>
+Okay, let's try to figure out if Abiomed's cumulative total stockholder return surpassed the NASDAQ Composite Index over the five-year period ending March 31, 2012. 
+
+First, I need to look at the context provided. There are a few sections here. The user mentioned two different performance graphs. The first one compares the cumulative total shareholder return for series A, B, C common stocks against the S&P 500 and a peer group from 2008 to 2011. The second graph is about the yearly change in cumulative total stockholder return for the last five fiscal years, comparing to the NASDAQ Composite Index and a medical equipment peer group. The second graph assumes an investment date of March 31, 2007, and tracks through to March 31, 2012, since it's a five-year period.
+
+The question is about whether Abiomed's return surpassed the NASDAQ Composite. The context mentions that the second performance graph does compare against the NASDAQ Composite (U.S. companies) and a medical equipment index. However, the actual data points or the graph itself aren't provided here. The context doesn't include specific numbers for",4.35237555599997,4.35237555599997,256,58.81845367114312,0.625,0.0,0.0,0.0
+"What percentage of the $22,258 million in total debt scheduled to mature as of December 31, 2001, is due in 2002 for AES Corporation?",0.12004672477311529,"<think>
+Okay, let's see. The user is asking about the percentage of the $22,258 million total debt for AES Corporation that's due in 2002, based on data from December 31, 2001.
+
+Looking at the context provided, there's a table that lists the amounts for different years. The first entry under the table mentions ""the roars are senior notes"" which might be a typo, but the key part is the data. The table shows for 2002, the amount is $2,672 million. The total is $22,258 million.
+
+So to find the percentage for 2002, I need to take the 2002 amount divided by the total. That would be 2,672 / 22,258. Let me calculate that. 
+
+First, check if the numbers are correct. The table lists 2002 as $2,672, and the total is $22,258. The user mentioned AES Corporation, but the context refers to ""the company"" which might be AES. Assuming that's correct.
+
+Calculating 2,67",4.3217151000001195,4.3217151000001195,256,59.235741847025714,0.5,0.9246389539300575,0.249999999975,1.0
+"What was the percentage change in net sales for Ball Corporation's discontinued operations, specifically the plastics packaging business, between 2009 and 2010, as reflected in the operating results table for the years ended December 31?",-0.49834619625137816,"<think>
+Okay, let's see. The user is asking for the percentage change in net sales for Ball Corporation's discontinued plastics packaging business between 2009 and 2010.
+
+First, I need to find the relevant data in the provided context. The context mentions that the plastics packaging business was sold in August 2010, and it includes some financial figures. The user specifically refers to the operating results table for the years ended December 31. Let me check the table provided.
+
+Looking at the table, there are rows labeled ""net change for the year,"" ""beginning of year,"" ""end of year,"" and ""net change for the year from discontinued operations."" However, the numbers here might not directly represent the net sales of the plastics business. The context also states that the plastics business had sales of $635 million in 2009. But where is the 2010 data?
+
+Wait, the sale was completed in August 2010, so the 2010 sales would only be up until the sale date. The context mentions that the company received $280 million in gross proceeds from the sale, but that's the sale price, not the sales revenue. The",4.430792257000121,4.430792257000121,256,57.77747751444466,,0.0,0.0,0.0
+What amount of interest expense was avoided per year by switching the 4.50% convertible senior notes due 2023 with the 4.25% convertible senior notes due 2023?,100000000.0,"<think>
+Okay, let's see. The user is asking about the amount of interest expense avoided per year by switching from 4.50% convertible senior notes to 4.25% ones. Both have the same principal amount of $400 million.
+
+First, I need to calculate the difference in interest rates. The old rate is 4.50%, the new is 4.25%. The difference is 0.25%. So, the annual interest savings would be 0.25% of $400 million. Let me check that calculation: 400 million times 0.0025 equals 1 million. So, $1 million per year in interest expense saved.
+
+Wait, but the context mentions some other numbers. For example, there's a non-cash charge of $77.0 related to the difference in fair value, and a $3.8 charge for extinguishing debt issuance costs. But those seem to be one-time charges, not annual. The question is about annual interest expense avoided, so those one-time costs probably aren't relevant here.
+
+Also, the answer should be straightforward based on the interest rate difference. The principal is the same, so the annual savings",4.5020842270000685,4.5020842270000685,256,56.86255234069305,0.8571428571428571,0.92138792314363,0.9999999999,0.0
+What percentage of the total potential impact on revenues from a 10% move in average exchange rates for major currencies would the Euro account for in 2017?,0.2692307692307692,"<think>
+Okay, let's see. The user is asking what percentage of the total potential impact on revenues from a 10% move in exchange rates for major currencies would the Euro account for in 2017.
+
+First, I need to look at the data provided. The context mentions that a 10% change in exchange rates for the major currencies (Brazilian real, euro, British pound, Indian rupee) would result in certain changes in revenues. The table shows the numbers for each currency in 2017. The total increase or decrease is $130 million, and the Euro is listed as $35 million.
+
+So, the question is asking for the percentage that the Euro contributes to the total. That would be (Euro's impact / Total impact) * 100. 
+
+Looking at the 2017 row in the table: Euro is 35, total is 130. So 35 divided by 130. Let me calculate that. 35/130 equals approximately 0.2692. Multiply by 100 gives 26.92%. 
+
+I need to check if there are any other currencies, but the",4.422556966999991,4.422556966999991,256,57.885065565058326,1.0,0.993256535185251,0.3333333333,1.0
+By how much did Entergy Gulf States Louisiana's receivables from the money pool as of December 31 differ between 2009 and 2010?,12872.0,"<think>
+Okay, let's see. The user is asking about the difference in Entergy Gulf States Louisiana's receivables from the money pool between 2009 and 2010. I need to check the provided context for any data related to those years.
+
+Looking at the context, there's a table with years and amounts. The years listed are 2007, 2008, 2009, 2010, 2011, and ""later years"". The amounts are in dollars. The numbers for 2009 and 2010 are $39,904,000 and $33,329,000 respectively. 
+
+Wait, the question is about the difference between 2009 and 2010. So subtract the 2010 amount from the 2009 amount. Let me calculate that: 39,904,000 minus 33,329,000 equals 6,575,000. So the difference is $6,575,000. 
+
+But I need to",4.32592207599987,4.32592207599987,256,59.17813485829598,,0.9536001561328336,0.9999999999,1.0
+"What was the total percentage growth of Loews Corporation's common stock value from its initial $100 investment value on December 31, 2004, to its value on December 31, 2009, considering all dividends were reinvested?",1.6062,"<think>
+Okay, let's see. The user is asking about the total percentage growth of Loews Corporation's common stock from December 31, 2004, to December 31, 2009, with dividends reinvested. 
+
+Looking at the provided context, there's a table that shows the values for Loews common stock, S&P 500 index, and the peer group over the years 2004 to 2009. The table starts with $100 in 2004 and shows the values each subsequent year.
+
+For Loews common stock, the value in 2004 is 100, and by 2009, it's 160.62. The question is about the total growth from the initial $100. So, the calculation would be (Final Value - Initial Value) / Initial Value * 100 to get the percentage.
+
+So, 160.62 - 100 = 60.62. Then, 60.62 / 100 = 0.6062, which is 60.62%.",4.526289700999769,4.526289700999769,256,56.55846552275578,1.0,0.9619515079115525,0.249999999975,1.0
+"In the 2007 report of Motorola Solutions, what were the net sales to the top five customers of the segment in 2006, which included notable companies such as Sprint Nextel, Comcast Corporation, Verizon, KDDI, and China Mobile?",2430.0,"<think>
+Okay, let's see. The user is asking about the net sales to the top five customers of the segment in 2006 for Motorola Solutions' 2007 report. The context provided has some repeated information, so I need to parse through it carefully.
+
+First, looking at the context, there's a mention that in 2006, net sales to the top five customers (which include Sprint Nextel, Comcast, Verizon, KDDI, and China Mobile) represented 45% of the segment's total net sales. The user is asking for the actual dollar amount of these net sales. 
+
+But wait, the context doesn't directly state the total net sales for the segment in 2006. However, later in the text, it says that in 2007, the segment's net sales were $7.7 billion, which was a 43% increase from 2006's $5.4 billion. So, if 2007 is a 43% increase over 2006, then 2006's total net sales would be $5.4 billion. 
+
+Given that, if 45% of the ",4.42532574400002,4.42532574400002,256,57.84884883267451,1.0,0.888477437285549,0.0,0.0
+"What was the average segment net sales for Motorola Solutions from 2005 to 2007, in millions of dollars, as reported in the 2007 financial report?",6055.666666666667,"<think>
+Okay, let's see. The user is asking for the average segment net sales for Motorola Solutions from 2005 to 2007, based on the 2007 financial report. 
+
+First, I need to find the net sales figures for each of those years. The context mentions that in 2007, the segment's net sales were $7.7 billion. For 2006, it says the net sales were $5.4 billion. But wait, there's also a part where it talks about 2005. Let me check again.
+
+Looking at the context, there's a line that says ""net sales in north america... accounting for approximately 56% of the segment's total net sales in 2006, compared to approximately 55% in 2005."" But that doesn't directly give the total net sales for 2005. Hmm. Wait, maybe there's another part. The segment results mention that in 2007 compared to 2006, the net sales increased to $7.7B from $5.4B. But what about 2005?
+
+Wait, there's",4.358197002999987,4.358197002999987,256,58.73988711932506,0.8571428571428571,0.0,0.0,0.0
+"What was the percentage change in commercial mortgage loans held for sale designated at fair value from 2008 to 2009, as reported by PNC Financial Services in their 2013 Form 10-K?",-0.08422301304863583,"<think>
+Okay, let's see. The user is asking for the percentage change in commercial mortgage loans held for sale designated at fair value from 2008 to 2009, as reported by PNC in their 2013 Form 10-K.
+
+First, I need to check the provided context for any data related to 2008 and 2009. The context mentions that they stopped originating these loans in 2008. The next data points are for 2011 and 2012. The balance at December 31, 2012, was $772 million, compared to $843 million at December 31, 2011. They also mention selling $32 million in 2012 and $25 million in 2011. 
+
+Wait, but the question is about 2008 to 2009. The context doesn't provide specific numbers for 2008 or 2009. It only mentions that they stopped originating in 2008. The data given starts from 2011 and 2012. There",4.290920049999841,4.290920049999841,256,59.66086457378984,1.0,0.9980309545345719,0.0,0.0
+What was the average total assets for Goldman Sachs in millions for the years 2012 and 2013?,925031.0,"<think>
+Okay, let's see. The user is asking for the average total assets for Goldman Sachs in millions for the years 2012 and 2013.
+
+First, I need to look at the provided context. There are several tables here, so I need to find the one that has the total assets for those years. 
+
+Looking at the first table, the first row under ""as of december 2013"" and ""as of december 2012"" shows total assets. For 2013, it's $911,507 million and for 2012, it's $938,555 million. 
+
+To find the average, I need to add these two numbers together and divide by 2. Let me check the numbers again to make sure I have them right. Yes, 911,507 and 938,555. 
+
+Adding them: 911,507 + 938,555 = 1,850,062. Then divide by 2: 1,850,062 / 2 = 925,",4.392594117000044,4.392594117000044,256,58.279912320885494,0.8,1.0000000000000002,0.99999999995,1.0
+"What percentage of American Water Works' gross liabilities, as reported in the consolidated balance sheets for the year 2012, are specifically categorized as other long-term liabilities?",0.41084461830015523,"<think>
+Okay, let's see. The user is asking for the percentage of American Water Works' gross liabilities in 2012 that are categorized as other long-term liabilities.
+
+First, I need to look through the provided context to find the relevant numbers. The context mentions that the liability balance includes amounts reflected as other long-term liabilities in the consolidated balance sheets. For 2012, that amount is $74,360. The total liabilities for 2012 are mentioned in the later part of the context. Wait, looking at the section under ""management 2019s discussion..."", it says that as of December 2013, total liabilities were $833.04 billion, a decrease of $29.80 billion from December 2012. So, to find the 2012 total liabilities, I need to add the decrease back to the 2013 amount. 
+
+So, 2012 total liabilities would be $833.04 billion + $29.80 billion = $862.84 billion. Wait, but the question is about 2012, so maybe the total liabilities for",4.462503105999986,4.462503105999986,256,57.36690685005897,0.5714285714285714,0.9648066345483644,0.0,
+"What is the percentage change in the total impairment charges and net losses on long-lived assets for American Tower from 2003 to 2004, as reflected in the company's 2005 consolidated financial statements?",-0.07329842931937183,"<think>
+Okay, let's see. The user is asking for the percentage change in total impairment charges and net losses on long-lived assets from 2003 to 2004, as reflected in the 2005 consolidated financial statements.
+
+First, I need to find the numbers for 2003 and 2004. From the context, the company recorded impairment charges and net losses of $19.1 million for 2003, $17.7 million for 2004, and $16.8 million for 2005. Wait, but the question is about the change from 2003 to 2004. So the values are 2003: $19.1M and 2004: $17.7M.
+
+Percentage change formula is ((New - Old)/Old) * 100. Here, New is 2004's value and Old is 2003's. So plugging in the numbers: (17.7 - 19.1)/19.1 * 100. That gives (-1.4)/19.",4.432497901999795,4.432497901999795,256,57.755244482913646,0.0,0.9789477883257898,,
+"What percentage of the total future minimum lease payments due in 2019, as of December 31, 2016, for LKQ Corporation's operating leases, including those for corporate office space, warehouse and distribution facilities, trucks, and equipment?",0.11519727434040693,"<think>
+Okay, let's see. The user is asking for the percentage of the total future minimum lease payments due in 2019 as of December 31, 2016, for LKQ Corporation's operating leases.
+
+First, I need to check the context provided. The context has a table with future minimum lease payments. The table lists the years 2017 through 2021 and ""thereafter,"" with corresponding amounts in thousands. The total future minimum lease payments are $1,184,594 (in thousands).
+
+Looking at the 2019 row, the amount is $136,462 (in thousands). The question is asking what percentage this 2019 amount is of the total. 
+
+So the formula would be (2019 amount / total) * 100. Plugging in the numbers: (136,462 / 1,184,594) * 100. Let me calculate that. 
+
+First, divide 136,462 by 1,184,594. Let me do that division. Let me approximate. ",4.3155875659999765,4.3155875659999765,256,59.31984836013437,0.4444444444444444,0.9358930184079067,0.3333333333,1.0
+"As of December 31, 2006, what percentage of the total route miles operated by Union Pacific Corporation was accounted for by the main line?",0.5294596480347313,"<think>
+Okay, let's see. The user is asking for the percentage of total route miles accounted for by the main line as of December 31, 2006.
+
+Looking at the context provided, there's a table with data for 2006 and 2005. The rows are main line, branch line, yards sidings, and total. For 2006, the main line is 27,318 miles and the total is 51,596 miles. 
+
+So the calculation would be (27,318 / 51,596) * 100. Let me check that division. 27,318 divided by 51,596. Let me compute that. 
+
+First, approximate: 27,318 ÷ 51,596 ≈ 0.5295. Multiply by 100 gives about 52.95%. Rounding to one decimal place, that's 53.0%. Wait, but let me verify the exact numbers. 
+
+Yes, 27,318 divided by 51,59",4.331541116000153,4.331541116000153,256,59.10136672935392,0.3333333333333333,0.9627558168680891,0.49999999995,1.0
+"In the context of Aon's Employee Share Purchase Plan for U.S. employees, what was the average share price at which the company's ordinary shares were purchased in 2015, considering the plan's provision to purchase shares at 85% of the lower of the fair market value on the first or last day of each 6-month period?",21.863976911640382,"<think>
+Okay, let's see. The user is asking about the average share price for Aon's U.S. Employee Share Purchase Plan in 2015. The context mentions that shares are purchased at 85% of the lower of the fair market value on the first or last day of each 6-month period.
+
+First, I need to find the relevant information about 2015. The context states that in 2015, 411,636 shares were issued under the U.S. plan. The key part is the pricing mechanism: 85% of the lower fair market value between the first or last day of each 6-month period. However, the context doesn't provide the actual fair market values for those periods in 2015. 
+
+Wait, the answer might not require specific numbers because the question is about the average share price based on the plan's provision. Since the plan specifies 85% of the lower fair market value, the average share price would be 85% of that lower value. But without the actual market values from the first or last days of the periods, we can't compute a numerical average price. The answer should explain that the average price is",4.5247704110001905,4.5247704110001905,256,56.5774562567058,1.0,0.8470213825426569,0.0,0.0
+"What was the percentage change in total rental expense under operating leases for Sysco from July 1, 2006 to July 2, 2007, given that the total rental expense under operating leases was $100,690,000 in fiscal 2006 and $110,310,000 is not provided but can be calculated based on the 9% increase?",0.086074857081221,"<think>
+Okay, let's see. The user is asking for the percentage change in total rental expense under operating leases for Sysco from July 1, 2006, to July 2, 2007. They mentioned that the total rental expense in fiscal 2006 was $100,690,000 and that the 2007 amount isn't provided but can be calculated based on a 9% increase.
+
+First, I need to confirm the numbers from the context. The context states that total rental expense under operating leases was $100,690,000 in fiscal 2006. The user says that 2007's expense can be calculated with a 9% increase. Wait, but where does the 9% come from? Let me check the context again.
+
+Looking at the context, there's a mention of ""aggregate minimum lease payments by fiscal year under existing non-capitalized long-term leases are as follows:"" but the actual numbers for the years aren't provided here. However, the user is indicating that the 2007 value can be calculated using a 9% increase. Maybe the 9% is derived from",4.324139058000128,4.324139058000128,256,59.202536404645016,0.2,0.0,0.249999999975,0.0
+"What is the difference in the excess of current cost over LIFO cost between the fiscal years ending February 3, 2006, and January 28, 2005, for Dollar General?",12.1,"<think>
+Okay, let's see. The user is asking about the difference in the excess of current cost over LIFO cost between two fiscal years for Dollar General. The context provided has a lot of information, but I need to check if it's there.
+
+Looking through the data tables and text. The first table has amounts for 2007 to 2011 and later years, but those are in the future relative to 2006. The second table mentions annual maturities as of December 31, 2006. There's another table with years 2002 to 2006 and ""thereafter,"" but nothing about LIFO or current costs. The rest of the text talks about net sales, gross margin, SG&A, R&D, operating margin decreases in 2006 compared to 2005. It mentions backlog, customers like Sprint Nextel, Comcast, etc., and market factors for digital entertainment devices.
+
+Wait, the question is about Dollar General, but the context doesn't mention Dollar General at all. The data here seems to be about a different company, possibly in the digital entertainment devices segment. There's no mention of LIFO or current cost methods in",4.527957694000179,4.527957694000179,256,56.537630715767435,0.9166666666666666,0.0,0.0,0.0
+"What percentage of Citigroup's total principal transactions revenue in 2018 was attributed to interest rate risks, as outlined in the company's 2018 financial report?",0.5722798499227544,"<think>
+Okay, let's see. The user is asking for the percentage of Citigroup's total principal transactions revenue in 2018 that came from interest rate risks.
+
+Looking at the context provided, there's a table with different risk categories and their corresponding revenues for 2018. The total principal transactions revenue for 2018 is listed as $9,062 million. The interest rate risks line item for 2018 is $5,186 million.
+
+To find the percentage, I need to divide the interest rate risks amount by the total revenue and then multiply by 100. So that's (5186 / 9062) * 100. Let me do that calculation. 
+
+First, divide 5186 by 9062. Let me check that. 5186 divided by 9062 equals approximately 0.5723. Multiplying by 100 gives 57.23%. 
+
+I should check if there are any other factors mentioned. The context says that the table doesn't include net interest revenue related to trading activities, but the question is about the percentage attributed to interest rate",4.41484332500022,4.41484332500022,256,57.986202715356214,,0.9657677953715526,0.49999999995,1.0
+"What percentage of the present value of lease obligations for Arista Networks, as of December 31, 2015, is classified as the current portion?",0.03140130682085272,"<think>
+Okay, let's see. The user is asking about the percentage of the present value of lease obligations for Arista Networks as of December 31, 2015, that's classified as the current portion. 
+
+First, I need to look at the context provided. The context mentions that as of December 31, 2015, the future minimum payments under the lease financing obligation are detailed. The table shows line 9 as the present value of the obligation, which is $42,546 thousand. Then line 10 is the current portion, listed as -1336 (1336). The negative sign might be a formatting error, but the absolute value is 1,336 thousand.
+
+So the current portion is $1,336 thousand. The total present value is $42,546 thousand. To find the percentage, I need to divide the current portion by the total present value and multiply by 100. 
+
+Calculating that: 1,336 / 42,546 = approximately 0.0314, which is 3.14%. 
+
+Wait, but the numbers are in thousands",4.332613308999953,4.332613308999953,256,59.08674089797539,0.5,0.996317436318049,0.49999999995,1.0
+"As of December 31, 2018, what percentage of Republic Services' restricted cash and marketable securities was dedicated to supporting insurance programs for workers' compensation, commercial general liability, and commercial auto liability?",0.727104532839963,"<think>
+Okay, let's see. The user is asking for the percentage of restricted cash and marketable securities as of December 31, 2018, that was dedicated to insurance programs for workers' compensation, commercial general liability, and commercial auto liability.
+
+Looking at the context provided, the first paragraph mentions that as of December 31, 2018, they had $108.1 million in restricted cash and marketable securities. Out of that, $78.6 million supports their insurance programs for those specific areas. 
+
+So, to find the percentage, I need to divide the $78.6 million by the total $108.1 million and then multiply by 100 to get the percentage. Let me check the numbers again to make sure I have them right. The total is 108.1, and the portion for insurance is 78.6. 
+
+Calculating that: 78.6 / 108.1 = approximately 0.727. Multiplying by 100 gives 72.7%. 
+
+I should verify if there are any other details that might affect this calculation. The context also mentions other restricted funds",4.322790585999883,4.322790585999883,256,59.221004327413176,0.5,0.9755662082865482,0.9999999999,1.0
+"What was the ratio of the pre-tax gain on the securities transferred from held-to-maturity securities to available-for-sale securities to their carrying value during the year ended December 31, 2018, for E*TRADE Financial Corporation?",1.4893617021276595,"<think>
+Okay, let's see. The user is asking for the ratio of the pre-tax gain on the transferred securities to their carrying value during the year ended December 31, 2018.
+
+First, I need to find the relevant information in the provided context. The context mentions that during the year ended December 31, 2018, there was a transfer of securities from held-to-maturity to available-for-sale. 
+
+Looking at the context, it states: ""securities with a carrying value of $4.7 billion and related unrealized pre-tax gain of $7 million... were transferred."" So the carrying value is $4.7 billion, and the pre-tax gain is $7 million.
+
+The question is asking for the ratio of the pre-tax gain to the carrying value. So that would be $7 million divided by $4.7 billion. 
+
+Let me check if there are any other numbers that might be relevant. The context also mentions an unamortized unrealized pre-tax loss of $22 million, but that seems related to a different part (transfer to held-to-maturity). The $7 million and $4.7 billion are specifically about the transfer from held-to-maturity to available-for",4.4275507760003165,4.4275507760003165,256,57.81977733325078,0.8,0.9693817334170736,0.9999999999,1.0
+"What was the average residential mortgage loan balance for the years 2007 and 2006 at PNC Financial Services, as reported in the 'Note 5: Loans, Commitments to Extend Credit and Concentrations of Credit Risk' section of the 2007 financial report?",7947.0,"<think>
+Okay, let's see. The user is asking for the average residential mortgage loan balance for 2007 and 2006 at PNC Financial Services, based on the provided context.
+
+First, I need to locate the relevant section. The context mentions ""Note 5: Loans, Commitments to Extend Credit and Concentrations of Credit Risk"" which includes a table with data for 2007 and 2006. 
+
+Looking at the table, row 3 shows residential mortgage for December 31, 2007, as $9,557 million and for 2006 as $6,337 million. The question is about the average balance for these two years. 
+
+To find the average, I should add the two values and divide by 2. So, 9,557 + 6,337 equals 15,894. Then divide by 2 to get 7,947. So the average residential mortgage loan balance is $7,947 million. 
+
+Wait, but I need to make sure these numbers are correct. Let me double-check the table. Yes, row 3 for residential mortgage",4.450674964999962,4.450674964999962,256,57.519365492465745,1.0,0.9495879973527838,0.3333333333,1.0
+"What percentage of Packaging Corporation of America's total purchase commitments for energy, as outlined in the notes to consolidated financial statements for the year 2005, is allocated to the year 2007?",0.3616118769883351,"<think>
+Okay, let's see. The user is asking about the percentage of Packaging Corporation of America's total purchase commitments for energy in 2005 that's allocated to 2007.
+
+First, I need to look at the context provided. The relevant part mentions purchase commitments for energy with fixed prices over one to two years. The table shows for 2006: $2408 thousand and 2007: $1364 thousand, with a total of $3772 thousand.
+
+Wait, the question refers to the year 2005 notes, but the data given is for commitments over the next two years from 2005, which would be 2006 and 2007. The total is 2408 + 1364 = 3772. The amount for 2007 is 1364. So to find the percentage, it's (1364 / 3772) * 100. Let me calculate that. 
+
+1364 divided by 3772 equals approximately 0.3616, so 36.16",4.296911094999814,4.296911094999814,256,59.577681348329385,0.8571428571428571,0.9606460740144542,0.9999999999,1.0
+"What was the change in the total net derivative receivables reported on the consolidated balance sheets of JPMorgan Chase from 2014 to 2015, considering the fair value of derivative contracts and the effect of legally enforceable master netting agreements and cash collateral held by the firm?",-19.299999999999997,"<think>
+Okay, let's see. The user is asking about the change in total net derivative receivables for JPMorgan Chase from 2014 to 2015. The context provided mentions that the derivative receivables were $59.7 billion at December 31, 2015, and $79.0 billion at December 31, 2014. These amounts already consider the fair value of the derivatives, master netting agreements, and cash collateral held by the firm.
+
+So, to find the change, I need to subtract the 2015 amount from the 2014 amount. That would be $79.0 billion minus $59.7 billion. Let me do the math: 79.0 - 59.7 equals 19.3. So the change is a decrease of $19.3 billion. The context also mentions that the decrease was mainly due to declines in various derivative types because of market movements, maturities, and settlements. 
+
+I should make sure that the answer reflects the net amounts after considering the master netting agreements and cash collateral, as the question specifically asks for that. The additional info",4.425890502000129,4.425890502000129,256,57.84146713171272,1.0,0.8907365274433413,0.9999999999,1.0
+What percentage of System Energy's receivables from the money pool in 2004 was utilized by money pool activity in terms of operating cash flows?,0.6900246785296792,"<think>
+Okay, let's see. The user is asking what percentage of System Energy's receivables from the money pool in 2004 was utilized by money pool activity in terms of operating cash flows.
+
+First, I need to look at the context provided. The context mentions that in 2004, money pool activity used $42.5 million of System Energy's operating cash flows. It also states that in 2004, the cash flow from operations increased by $232.1 million, partly offset by the money pool activity. However, the question is about the percentage of receivables from the money pool that was used.
+
+Wait, the context doesn't explicitly mention the total receivables from the money pool in 2004. The user is asking for a percentage, which requires knowing both the amount used and the total receivables. The context provides the amount used ($42.5 million) but doesn't give the total receivables figure for 2004. 
+
+Looking through the context again, there's a mention of ""System Energy's receivables from the money pool were as follows as of December 31 for each of the following years:"" but the actual",4.321980193999934,4.321980193999934,256,59.23210854954785,0.6666666666666666,0.9999999999999997,0.0,0.0
+"What was the combined total of unpaid principal balance of unresolved home equity indemnification and repurchase claims from private investors at PNC Financial Services for the years 2011 and 2012, in millions, as reported in the 2013 Form 10-K?",184.0,"<think>
+Okay, let's see. The user is asking for the combined total of unpaid principal balance of unresolved home equity indemnification and repurchase claims from private investors at PNC Financial Services for 2011 and 2012. They mentioned it's from the 2013 Form 10-K.
+
+Looking at the context provided, there's a table labeled Table 31 which details the unpaid principal balance for those claims. The table shows, for December 31, 2012, the amount is $74 million, and for December 31, 2011, it's $110 million under private investors.
+
+So the question is asking for the sum of these two figures. Let me double-check the numbers. The 2011 figure is $110 million and 2012 is $74 million. Adding them together would be 110 + 74 = 184. The answer should be $184 million. I need to make sure there's no other data in the other tables that might relate to this, but the other tables talk about total assets, borrowings, equity, etc., which don't seem relevant",4.427689180000016,4.427689180000016,256,57.81796995967072,1.0,0.97846458075214,0.49999999995,1.0
+"What was the decline in commercial paper issued by conduits during 2003, in billions, as reported in JPMorgan Chase's 2003 Annual Report?",5.800000000000001,"<think>
+Okay, let's see. The user is asking about the decline in commercial paper issued by conduits during 2003, according to JPMorgan Chase's 2003 Annual Report.
+
+First, I need to look at the context provided. There's a section mentioning conduits. The relevant sentence says: ""commercial paper issued by conduits for which the firm acts as administrator aggregated $11.7 billion at December 31, 2003, and $17.5 billion at December 31, 2002.""
+
+So, the question is about the decline from 2002 to 2003. To find the decline, I subtract the 2003 amount from the 2002 amount. 
+
+2002 amount was $17.5 billion, and 2003 was $11.7 billion. So 17.5 minus 11.7 equals 5.8. Therefore, the decline is $5.8 billion.
+
+I need to check if there's any other information that might affect this answer, but the question specifically refers to conduits and the annual report's figures. The other parts about",4.428151310999965,4.428151310999965,256,57.81193595712747,,0.969538301159476,0.499999999975,1.0
+"What was the percentage change in risk-weighted assets at GS Bank USA, a subsidiary of Goldman Sachs, between December 2011 and December 2012, as reflected in the table presenting regulatory capital ratios under Basel 1?",-0.02796390838828618,"<think>
+Okay, let's see. The user is asking for the percentage change in risk-weighted assets at GS Bank USA between December 2011 and December 2012 according to the table provided.
+
+First, I need to locate the relevant data in the table. The table has columns for December 2012 and December 2011. Looking at the rows, row 3 is labeled ""risk-weighted assets."" For December 2012, the value is $109,669 million, and for December 2011, it's $112,824 million.
+
+To calculate the percentage change, the formula is [(New Value - Old Value) / Old Value] * 100. Here, the new value is 2012's risk-weighted assets, and the old value is 2011's. 
+
+So subtracting 112,824 from 109,669 gives a difference of -3,155. Dividing that by 112,824 gives approximately -0.02798. Multiplying by 100 gives about -2",4.345767695999712,4.345767695999712,256,58.907888757065535,,0.8993007904057668,0.3333333333,1.0
+"In the 2012 financial report of Snap-on, what was the percentage change in the number of non-vested performance awards from the beginning to the end of the year?",-905.0,"<think>
+Okay, let's see. The user is asking about the percentage change in the number of non-vested performance awards from the beginning to the end of 2012 in Snap-on's financial report.
+
+First, I need to find the numbers related to non-vested performance awards at the start and end of 2012. The context mentions ""non-vested performance awards in 2012"" and provides some data. Let me scan through the context again.
+
+Looking at the context, there's a part that says: ""the changes to the company’s non-vested performance awards in 2012 are as follows: shares (in thousands) fair value price per share*."" But it doesn't directly give the numbers for beginning and end of the year. Hmm.
+
+Wait, there's another part that says: ""vested performance share units approximated 213000 shares as of 2012 year end and 54208 shares as of 2011 year end; there were no vested performance share units as of 2010 year end."" But this is about vested units, not non-vested. The question is about non-",4.505935399000009,4.505935399000009,256,56.81395256061892,0.5714285714285714,0.0,0.0,0.0
+"What was the ratio of Devon Energy's debt maturities scheduled for 2013 to those scheduled for 2014 as of December 31, 2012?",6.378,"<think>
+Okay, let's see. The user is asking for the ratio of Devon Energy's debt maturities scheduled for 2013 to those for 2014 as of December 31, 2012.
+
+First, I need to find the relevant numbers from the context provided. Looking at the context, there's a section about Devon Energy Corporation and subsidiaries' debt maturities as of December 31, 2012. The table lists the amounts for each year. 
+
+In the first row under 2013, the amount is $3189 million. Then for 2014, it's $500 million. The question is asking for the ratio of 2013 to 2014, so that would be 3189 divided by 500. 
+
+Let me double-check to make sure I'm looking at the right numbers. The table entries are:
+
+2013: $3189
+2014: 500
+2015: 2014
+2016: 500
+2017: 750
+20",4.295380498999748,4.295380498999748,256,59.59891098346559,0.5,0.9974302623363762,0.49999999995,1.0
+"What is the average value of settlements, as reflected in the reconciliation of unrecognized tax benefits for Merck & Co. from 2011 to 2013?",-309.6666666666667,"<think>
+Okay, let's see. The user is asking for the average value of settlements for Merck & Co. from 2011 to 2013, based on the provided context.
+
+First, I need to locate the information about settlements in the context. The context mentions a table with data for 2008 and 2007. The table has a row labeled ""settlements"" with values for 2008 and 2007. The numbers are -21 (21) million for 2008 and -1 (1) million for 2007. The negative sign might indicate a reduction in the unrecognized tax benefits. However, the question is about 2011 to 2013, but the table only shows 2008 and 2007. 
+
+Wait, the context also mentions that in 2013, the IRS finalized the examination of Schering-Plough's 2007-2009 tax years, leading to a $165 million tax provision benefit. Also, in 2010, the IRS finalized the examination of 2003-2",4.456759997000063,4.456759997000063,256,57.440831494699935,0.7142857142857143,0.0,0.249999999975,0.0
+"What was the percentage change in the account balance at the end of 2011 for SL Green Realty Corp?'s restricted stock, considering the balance at the beginning and end of the year as presented in the notes to the consolidated financial statements of the 2011 annual report?",0.9367660833331044,"<think>
+Okay, let's see. The user is asking for the percentage change in the account balance at the end of 2011 for SL Green Realty Corp's restricted stock. They want it based on the beginning and end balances from the 2011 annual report notes.
+
+Looking at the context provided, there's a table mentioned. The first table shows the balance at January 1, 2011, as $118,314 and the balance at December 31, 2011, as $158,578. Then there's another entry for December 31, 2012, but that's probably not needed here since the question is about 2011.
+
+So, the formula for percentage change is [(Ending Balance - Beginning Balance) / Beginning Balance] * 100. Plugging in the numbers: (158,578 - 118,314) / 118,314 * 100. Let me calculate that. 
+
+First, subtract: 158,578 minus 118,314 equals 40,264",4.323136814999998,4.323136814999998,256,59.21626146823672,0.8571428571428571,0.9758204022685488,0.49999999995,1.0
+"What was the total compensation expense for restricted stock recognized by Global Payments from 2008 to 2010, as disclosed in the Notes to Consolidated Financial Statements for the year 2010?",26.8,"<think>
+Okay, let's see. The user is asking for the total compensation expense for restricted stock recognized by Global Payments from 2008 to 2010, as disclosed in the 2010 Notes to Consolidated Financial Statements.
+
+First, I need to look through the provided context to find the relevant numbers. The context has a lot of financial data, so I need to focus on the compensation expenses related to restricted stock for those years.
+
+Looking at the text, there's a section that says: ""we recognized compensation expense for restricted stock of $12.1 million, $9.0 million, and $5.7 million in the years ended May 31, 2010, 2009 and 2008."" That seems directly relevant. The years mentioned here are 2010, 2009, and 2008, which aligns with the user's question. 
+
+The numbers are for each year: 2010 is $12.1M, 2009 is $9.0M, and 2008 is $5.7M. The user wants the total from 200",4.521949635000055,4.521949635000055,256,56.61274907145154,1.0,0.9823380308653727,0.3333333333,1.0
+"What are the total operating expenses for Lockheed Martin's fiscal year 2016, as indicated in the provided financial table?",5590.0,"<think>
+Okay, let's see. The user is asking for the total operating expenses for Lockheed Martin's fiscal year 2016 based on the provided financial table.
+
+First, I need to look at the context given. The user mentioned a table with columns for 2018, 2017, and 2016. The rows are labeled 0 to 3 with descriptions. The row labeled ""additions charged to expense"" might be relevant here. But wait, the question is about operating expenses. 
+
+Looking at the context, there's a statement: ""operating expenses were $4.80 billion for 2017, 3% higher than 2016..."" So that's a direct mention of operating expenses for 2017 and a percentage increase from 2016. To find 2016's operating expenses, I can use this information. If 2017 is 3% higher than 2016, then 2016's operating expenses would be 4.80 / 1.03. Let me calculate that. 4.80 divided by 1.03 is approximately 4.",4.350420019000012,4.350420019000012,256,58.84489287975559,0.75,0.9417357121070186,0.0,0.0
+"What was the change in millions of total shareholders' equity for Goldman Sachs from December 2012 to December 2013, as reflected in the table presenting information on assets, unsecured long-term borrowings, shareholders' equity, and leverage ratios within the 2013 annual report?",2751.0,"<think>
+Okay, let's see. The user is asking for the change in total shareholders' equity for Goldman Sachs from December 2012 to December 2013. They mentioned the table in the 2013 annual report.
+
+Looking at the table provided, there's a row labeled ""total shareholders 2019 equity"". Wait, that might be a typo. Since the data is from the 2013 annual report, it's probably ""total shareholders' equity for 2013"" and ""2012"". The numbers given are $78,467 million for 2013 and $75,716 million for 2012. 
+
+So, to find the change, I need to subtract the 2012 value from the 2013 value. Let me check the numbers again to make sure. The 2013 value is higher than 2012. 
+
+Calculating the difference: 78,467 minus 75,716. Let me do that math. 78,467 minus 75,716 equals 2,751.",4.441659095999967,4.441659095999967,256,57.63612075283905,1.0,0.912945460189619,0.8666666666377778,1.0
+What was the percentage decrease in development costs incurred by Marathon Oil during 2004 compared to the previous year?,0.11346633416458853,"<think>
+Okay, let's see. The user is asking for the percentage decrease in development costs incurred by Marathon Oil in 2004 compared to the previous year. Hmm, first I need to check the provided context for any data related to development costs for 2004 and 2003.
+
+Looking through the context, there's a section with a table that includes ""development costs incurred during the period"" for different years. The table lists values for 2007, 2006, 2005, but wait, the user is asking about 2004. The table here only goes up to 2007, 2006, 2005. Wait, the first line of the context mentions 2007, 2006, 2005, but the user is asking about 2004. There's also a part mentioning 2003 in the cash flow section. Let me check again.
+
+The table provided has rows with data for ""development costs incurred during the period"" with values 711, 802, 499 for the years 2007, ",4.5128217619999305,4.5128217619999305,256,56.727257024782084,0.8333333333333334,0.0,0.249999999975,0.0
+"What were the net revenues in investment management for Goldman Sachs in 2016, in billions?",5.813084112149532,"<think>
+Okay, let's see. The user is asking for the net revenues in investment management for Goldman Sachs in 2016. I need to find this number from the provided context.
+
+First, I'll scan through the text for mentions of 2016. There's a section that says: ""net revenues in investment management were $6.22 billion for 2017, 7% higher than 2016..."" So, 2017's revenue is given as $6.22 billion, which is a 7% increase from 2016. That means 2016's revenue can be calculated by reversing the 7% increase.
+
+To calculate the 2016 revenue, I can use the formula: 
+
+2016 Revenue = 2017 Revenue / (1 + 0.07)
+
+Plugging in the numbers: 
+
+6.22 / 1.07 = ?
+
+Let me do that division. 6.22 divided by 1.07. Let's see, 1.07 times 5.8 is 6.206. That's very close to 6.2",4.482164893999652,4.482164893999652,256,57.1152570363289,0.5,0.9729065644128577,0.3333333333,1.0
+"By what percentage did American Water Works' gross liability for unrecognized tax benefits, excluding interest and penalties, increase from the balance at December 31, 2011, to the balance at December 31, 2012, as reported in the 2012 financial report?",0.5297682438257518,"<think>
+Okay, let's see. The user is asking for the percentage increase in American Water Works' gross liability for unrecognized tax benefits from December 31, 2011, to December 31, 2012, excluding interest and penalties.
+
+First, I need to find the relevant numbers from the context provided. The context mentions that the liability balance includes amounts as other long-term liabilities: $74,360 and $46,961 for 2012 and 2011, respectively. Wait, but those numbers seem really high. Let me check again. Oh, the numbers are actually $74,360 and $46,961. But wait, the units might be in thousands or something? Because $74 million would make more sense in a company's balance sheet. But the question is about the percentage increase. 
+
+So, the formula for percentage increase is ((New Value - Old Value)/Old Value) * 100. Here, the new value is 2012's balance, which is $74,360, and the old value is 2011's $46,961.",4.421670460999849,4.421670460999849,256,57.89667101109839,0.16666666666666666,0.0,0.49999999995,
+"What was the percentage cumulative total shareholder return on Discovery, Inc.'s Series A common stock (DISCA) from the first trading day, September 18, 2008, to the end of the year 2011, assuming a $100 initial investment and reinvestment of dividends?",1.9667000000000001,"<think>
+Okay, let's see. The user is asking about the percentage cumulative total shareholder return on Discovery, Inc.'s Series A common stock (DISCA) from September 18, 2008, to the end of 2011. They mention a $100 initial investment with reinvestment of dividends.
+
+Looking at the context provided, there's a section that talks about a stock performance graph. The first paragraph says the graph shows the cumulative total shareholder return for Series A, B, and C common stocks compared to the S&P 500 and a peer group. The time period is from September 18, 2008 (the first trading day) through December 31, 2008, and the years ending 2009, 2010, and 2011. The graph assumes $100 invested on that date with reinvestment of dividends.
+
+However, the context doesn't actually provide the specific numbers or the graph itself. It just describes what the graph includes. The user is asking for the percentage return, but the context doesn't list the actual returns for each series. There's a mention of share repurchases and dividends in 2",4.424581858000238,4.424581858000238,256,57.858574711894555,,0.0,0.0,0.0
+"What was the profit margin of International Paper's printing papers segment in 2005, given that the operating profit was $473 million and the net sales were $7,170 million?",0.06596931659693166,"<think>
+Okay, let's see. The user is asking for the profit margin of International Paper's printing papers segment in 2005. They provided the operating profit as $473 million and net sales as $7,170 million.
+
+First, I need to recall the formula for profit margin. Profit margin is typically calculated by dividing operating profit by net sales, then multiplying by 100 to get a percentage. So the formula would be (Operating Profit / Net Sales) * 100.
+
+Plugging in the numbers: $473 million divided by $7,170 million. Let me do that calculation. 473 divided by 7170 equals approximately 0.06596. Multiplying by 100 gives about 6.596%. Rounding to two decimal places, that's 6.60%.
+
+Now, I need to check if the context provided supports this calculation. The context mentions that in 2006, operating profits were 43% higher than 2005. If the 2006 operating profit was $787 million, then the 2005 profit would be $7",4.5304262340000605,4.5304262340000605,256,56.50682447465198,0.25,0.9850084068418731,0.0,0.0
+"By what percentage did the potential maximum exposure under the loss share arrangements for commercial mortgage loan recourse obligations decrease from December 31, 2011, to December 31, 2012, for PNC Financial Services?",2.500000000000002,"<think>
+Okay, let's see. The user is asking for the percentage decrease in the potential maximum exposure under the loss share arrangements from December 31, 2011, to December 31, 2012.
+
+First, I need to find the numbers for those two dates. From the context, it says that at December 31, 2012, the potential maximum exposure was $3.9 billion, and at December 31, 2011, it was $4.0 billion. 
+
+So the decrease in absolute terms is $4.0 billion minus $3.9 billion, which equals $0.1 billion. To find the percentage decrease, I take the decrease divided by the original amount (2011's value) and multiply by 100. That would be ($0.1 billion / $4.0 billion) * 100. 
+
+Calculating that gives 0.025 * 100 = 2.5%. So the percentage decrease is 2.5%. 
+
+I need to make sure I didn't mix up the years and that I used the correct values. The context clearly states the 201",4.335581603000264,4.335581603000264,256,59.04628800501541,0.0,0.9134939642014395,0.49999999995,1.0
+"What was the percentage increase in asset retirement obligations for the closure of assets used in the chemicals manufacturing process at PPG Industries from 2004 to 2005, and then from 2005 to 2006?",1.1111111111111112,"<think>
+Okay, let's see. The user is asking about the percentage increase in asset retirement obligations for PPG Industries related to the closure of chemicals manufacturing assets from 2004 to 2005 and then 2005 to 2006.
+
+First, I need to find the relevant numbers from the context. The context mentions that as of Dec 31, 2006 and 2005, the accrued asset retirement obligation was $10 million. For 2004, it was $9 million. So, the values are 2004: $9M, 2005: $10M, 2006: $10M.
+
+Wait, but the user is asking about the closure of assets used in chemicals manufacturing. The context says that PPG's asset retirement obligations are primarily associated with the closure of certain assets in chemicals manufacturing. So the numbers provided for the accrued obligation are for that purpose. 
+
+So from 2004 to 2005: $9M to $10M. The increase is $1M. The percentage increase is (1/9)*100 ≈ 11",4.370203542000127,4.370203542000127,256,58.57850727996883,1.0,0.9659912345933171,0.9999999999,1.0
+"What is the total value, in millions, of securities issued and approved by security holders under Global Payments' equity compensation plans as of May 31, 2014, according to the company's consolidated financial statements for 2014?",31.32382085,"<think>
+Okay, let's see. The user is asking for the total value, in millions, of securities issued and approved by security holders under Global Payments' equity compensation plans as of May 31, 2014.
+
+Looking at the context provided, there's a table mentioned. The first row is about equity compensation plans approved by security holders. The columns are number of securities to be issued upon exercise, weighted-average exercise price, and remaining available for future issuance. The numbers given are 766,801 for the number of securities, $40.85 as the weighted average price, and 8,945,694 remaining. 
+
+The question is about the total value of the securities issued. So, I think that would be the number of securities (766,801) multiplied by the weighted-average exercise price ($40.85). Let me check if there's any other information that might affect this calculation. The other row is for plans not approved, but the question specifies ""approved by security holders,"" so we can ignore that row.
+
+Calculating 766,801 * 40.85. Let me do that. First, 70",4.475232872000106,4.475232872000106,256,57.20372711813463,0.6363636363636364,0.0,0.99999999995,1.0
+"What was the percentage increase in Under Armour, Inc.'s working capital from December 31, 2015, to December 31, 2016, as reflected in the company's consolidated financial statements for the year 2016?",0.25430975741039047,"<think>
+Okay, let's see. The user is asking about the percentage increase in Under Armour, Inc.'s working capital from December 31, 2015, to December 31, 2016. But looking at the provided context, I need to check if there's any information related to working capital changes during that period.
+
+First, the context mentions ""working capital is defined as current assets minus current liabilities."" But then, the rest of the information talks about various financial figures from 2016 to 2018, like assets under supervision, operating expenses, net revenues, etc. However, there's no specific data about working capital for 2015 or 2016. The context does mention adjustments to consolidated financial statements, but those relate to gross profit, income from operations, and net income reductions in 2016. 
+
+The user is asking for a percentage increase in working capital, which requires knowing the working capital values for both 2015 and 2016. The provided context doesn't give those numbers. There's a mention of total assets under supervision increasing by $115 billion in 2017, but that's not working",4.323504328999661,4.323504328999661,256,59.21122786506641,0.6666666666666666,0.0,0.49999999995,0.0
+"As of December 31, 2011, what percentage of PNC Financial Services' total loans held for sale did commercial mortgage loans held for sale designated at fair value represent, according to Table 15 in the company's 2012 financial report?",0.28712534059945505,"<think>
+Okay, let's see. The user is asking for the percentage of PNC Financial Services' total loans held for sale that commercial mortgage loans held for sale designated at fair value represented as of December 31, 2011. They mention Table 15 in the 2012 financial report, but the provided context doesn't include that table. Hmm.
+
+Looking at the context given, there are a few relevant pieces of information. The company stopped originating these commercial mortgage loans in 2008 and was working to reduce them. At December 31, 2012, the balance was $772 million, down from $843 million in 2011. They also sold $32 million in 2012 and $25 million in 2011. 
+
+But the question is about the percentage in 2011. The problem is that the context doesn't provide the total loans held for sale figure for 2011. The user is referring to Table 15, which isn't included here. Without knowing the total loans held for sale, I can't calculate the percentage. The context only gives the balance of commercial mortgage loans held",4.321803698000167,4.321803698000167,256,59.23452750027938,0.7857142857142857,0.0,0.0,0.0
+"What was the percentage decrease in the accrued liability for unrecognized tax benefits for PPG Industries from the beginning of 2007 to the beginning of 2008, as reflected in the notes to the consolidated financial statements of the 2008 annual report?",-0.1,"<think>
+Okay, let's see. The user is asking for the percentage decrease in the accrued liability for unrecognized tax benefits for PPG Industries from the beginning of 2007 to the beginning of 2008.
+
+First, I need to find the beginning balances for both years. The context mentions a table with ""balance at january 1"" for 2008 and 2007. Looking at the table, the balance at January 1 for 2008 is $110 million, and for 2007 it's $77 million. Wait, but the question is about the beginning of 2007 to the beginning of 2008. Wait, the beginning of 2007 would be the balance at January 1, 2007. But in the table, the 2007 column's ""balance at january 1"" is $77 million. Then for 2008, the ""balance at january 1"" is $110 million. Wait, but the question is from the beginning of 2007 to the beginning of 2008. So that's from ",4.425872178000191,4.425872178000191,256,57.84170660700653,0.6666666666666666,0.0,0.4499999999775,1.0
