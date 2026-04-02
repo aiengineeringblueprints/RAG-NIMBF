@@ -13,7 +13,7 @@ from ragas.llms import LangchainLLMWrapper
 from ragas.embeddings import LangchainEmbeddingsWrapper
 from langchain_ollama import OllamaEmbeddings
 
-from benchmark.providers import parse_model_id, get_chat_model
+from benchmark.providers import parse_model_id, get_chat_model, wrap_for_ragas
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +88,7 @@ def evaluate_results(
             max_tokens=critic_max_tokens,
             temperature=0.0,
         )
-        critic_llm = LangchainLLMWrapper(critic_chat)
+        critic_llm = LangchainLLMWrapper(wrap_for_ragas(critic_chat))
 
         # Embeddings are Ollama-only
         emb_kwargs: dict = {"model": effective_critic_embedding, "base_url": ollama_base_url}

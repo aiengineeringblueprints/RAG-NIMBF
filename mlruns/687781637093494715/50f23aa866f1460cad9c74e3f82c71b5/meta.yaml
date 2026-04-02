@@ -1,0 +1,14 @@
+artifact_uri: /home/niclas/Schreibtisch/Projects/Benchmarking-Framework/mlruns/687781637093494715/50f23aa866f1460cad9c74e3f82c71b5/artifacts
+end_time: 1775119686016
+entry_point_name: ''
+experiment_id: '687781637093494715'
+lifecycle_stage: active
+run_id: 50f23aa866f1460cad9c74e3f82c71b5
+run_name: recursive_cs1000_co200_nomic-embed-text:latest_gemma3:4b
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1775119685993
+status: 3
+tags: []
+user_id: niclas

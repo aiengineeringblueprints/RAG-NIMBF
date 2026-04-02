@@ -1,0 +1,25 @@
+{
+  "timestamp": "20260327_091251",
+  "num_configs": 1,
+  "results": [
+    {
+      "config_name": "recursive_cs1000_co200_nomic-embed-text:latest_gemma3:4b",
+      "llm_model": "gemma3:4b",
+      "embedding_model": "nomic-embed-text:latest",
+      "chunking_strategy": "recursive",
+      "chunk_size": 1000,
+      "chunk_overlap": 200,
+      "num_chunks": 24,
+      "num_questions": 5,
+      "avg_ttft_seconds": 3.5884104497999942,
+      "avg_tokens_per_second": 2.567236256334813,
+      "avg_gpu_utilization_pct": 56.2,
+      "avg_gpu_memory_used_mb": 3104.0,
+      "ragas_faithfulness": 0.7466666666666667,
+      "ragas_answer_relevancy": 0.354251983253295,
+      "ragas_context_precision": 0.59999999994,
+      "ragas_context_recall": 0.0,
+      "total_time_seconds": 321.2492041780006
+    }
+  ]
+}
