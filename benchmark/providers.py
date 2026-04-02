@@ -1,6 +1,14 @@
 """Provider factory — routes model creation to Ollama or OpenAI-compatible backends."""
 
+from __future__ import annotations
+
+import json
+from typing import Any
+
+from langchain_core.callbacks import CallbackManagerForLLMRun
 from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.messages import AIMessage, BaseMessage
+from langchain_core.outputs import ChatGeneration, ChatResult
 
 
 def parse_model_id(model_string: str) -> tuple[str, str]:
@@ -80,6 +88,7 @@ def get_chat_model(
             api_key=api_key or "not-needed",
             max_tokens=max_tokens,
             temperature=temperature,
+            strict_tool_calling=False,
         )
 
     raise ValueError(

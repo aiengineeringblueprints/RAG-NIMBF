@@ -196,6 +196,22 @@ def run_single_benchmark(
         cleanup_collection(collection_name)
 
 
+def _next_run_dir(base: Path = Path("results")) -> Path:
+    """Return the next available runN subdirectory (e.g. results/run3)."""
+    base.mkdir(parents=True, exist_ok=True)
+    max_run = 0
+    for child in base.iterdir():
+        if child.is_dir() and child.name.startswith("run"):
+            try:
+                n = int(child.name[3:])
+                max_run = max(max_run, n)
+            except ValueError:
+                pass
+    run_dir = base / f"run{max_run + 1}"
+    run_dir.mkdir(parents=True, exist_ok=True)
+    return run_dir
+
+
 def run_all_benchmarks() -> list[BenchmarkResultExtended]:
     configs = get_all_combinations()
     console.print(f"[bold]Running {len(configs)} benchmark configuration(s)[/bold]")
@@ -223,9 +239,12 @@ def run_all_benchmarks() -> list[BenchmarkResultExtended]:
     wall_time = time.perf_counter() - wall_start
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
+    run_dir = _next_run_dir()
+    console.print(f"[dim]Saving results to {run_dir}[/dim]")
+
     generate_report(
         results,
-        results_dir=Path("results"),
+        results_dir=run_dir,
         timestamp=timestamp,
         dataset_subset=configs[0].dataset_subset,
         dataset_sample_size=configs[0].dataset_sample_size,
