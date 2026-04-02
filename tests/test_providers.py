@@ -31,6 +31,16 @@ class TestParseModelId:
         """Colons from model names like 'gemma3:4b' should not be misread."""
         assert parse_model_id("gemma3:4b") == ("ollama", "gemma3:4b")
 
+    def test_huggingface_prefix(self):
+        assert parse_model_id("huggingface:BAAI/bge-small-en-v1.5") == (
+            "huggingface", "BAAI/bge-small-en-v1.5",
+        )
+
+    def test_huggingface_cross_encoder(self):
+        assert parse_model_id("huggingface:cross-encoder/ms-marco-MiniLM-L-6-v2") == (
+            "huggingface", "cross-encoder/ms-marco-MiniLM-L-6-v2",
+        )
+
 
 # ---------------------------------------------------------------------------
 # get_chat_model

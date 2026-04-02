@@ -58,13 +58,24 @@ class BenchmarkConfig:
     dataset_sample_size: int
     eval_critic_llm: str
     eval_critic_embedding: str
+    # Reranker
+    reranker_model: str | None = None
+    reranker_top_k: int = 3
 
     @property
     def name(self) -> str:
-        return (
+        parts = (
             f"{self.chunking_strategy}_cs{self.chunk_size}_co{self.chunk_overlap}"
             f"_{self.embedding_model}_{self.llm_model}"
         )
+        if self.reranker_model:
+            parts += f"_rerank-{self.reranker_model}"
+        return parts
+
+    @property
+    def embedding_provider(self) -> str:
+        """Provider for the embedding model (parsed from prefix)."""
+        return parse_model_id(self.embedding_model)[0]
 
     def llm_base_url(self) -> str:
         """Return the base URL for the generator LLM's provider."""
@@ -146,6 +157,11 @@ def get_all_combinations() -> list[BenchmarkConfig]:
     embedding_ollama_api_key = os.getenv("EMBEDDING_OLLAMA_API_KEY") or None
     eval_critic_max_tokens = int(os.getenv("EVAL_CRITIC_MAX_TOKENS", "4096"))
 
+    # Reranker config
+    reranker_models_raw = _parse_list(os.getenv("RERANKER_MODELS", ""))
+    reranker_models: list[str | None] = reranker_models_raw if reranker_models_raw else [None]
+    reranker_top_k = int(os.getenv("RERANKER_TOP_K", "3"))
+
     # Validate integer values
     for cs in chunk_sizes:
         _validate_positive_int(cs, "CHUNK_SIZES value")
@@ -167,7 +183,8 @@ def get_all_combinations() -> list[BenchmarkConfig]:
     llm_parsed = [parse_model_id(m) for m in llm_models]
 
     combos = list(product(
-        llm_parsed, embedding_models, chunk_sizes, chunk_overlaps, chunking_strategies
+        llm_parsed, embedding_models, chunk_sizes, chunk_overlaps, chunking_strategies,
+        reranker_models,
     ))
 
     return [
@@ -199,6 +216,8 @@ def get_all_combinations() -> list[BenchmarkConfig]:
             dataset_sample_size=dataset_sample_size,
             eval_critic_llm=eval_critic_llm,
             eval_critic_embedding=eval_critic_embedding,
+            reranker_model=reranker,
+            reranker_top_k=reranker_top_k,
         )
-        for (provider, model_name), emb, cs, co, strat in combos
+        for (provider, model_name), emb, cs, co, strat, reranker in combos
     ]

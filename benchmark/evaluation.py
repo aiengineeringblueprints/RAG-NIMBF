@@ -11,9 +11,9 @@ from ragas.metrics._context_recall import context_recall
 from ragas.metrics._faithfulness import faithfulness
 from ragas.llms import LangchainLLMWrapper
 from ragas.embeddings import LangchainEmbeddingsWrapper
-from langchain_ollama import OllamaEmbeddings
 
 from benchmark.providers import parse_model_id, get_chat_model, wrap_for_ragas
+from benchmark.embedding import get_embedding_model
 
 logger = logging.getLogger(__name__)
 
@@ -90,11 +90,15 @@ def evaluate_results(
         )
         critic_llm = LangchainLLMWrapper(wrap_for_ragas(critic_chat))
 
-        # Embeddings are Ollama-only
-        emb_kwargs: dict = {"model": effective_critic_embedding, "base_url": ollama_base_url}
-        if ollama_api_key:
-            emb_kwargs["client_kwargs"] = {"headers": {"Authorization": f"Bearer {ollama_api_key}"}}
-        critic_embeddings = LangchainEmbeddingsWrapper(OllamaEmbeddings(**emb_kwargs))
+        # Resolve critic embeddings via factory
+        emb_provider, emb_model_name = parse_model_id(effective_critic_embedding)
+        critic_emb = get_embedding_model(
+            emb_model_name,
+            ollama_base_url,
+            ollama_api_key,
+            provider=emb_provider,
+        )
+        critic_embeddings = LangchainEmbeddingsWrapper(critic_emb)
     except (ConnectionError, TimeoutError) as exc:
         error_msg = f"Failed to connect to provider: {exc}"
         logger.error(error_msg)

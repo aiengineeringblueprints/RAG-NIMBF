@@ -45,6 +45,8 @@ def build_vector_store(
     ollama_base_url: str = "http://localhost:11434",
     ollama_api_key: str | None = None,
     cache_key: str | None = None,
+    *,
+    embedding_provider: str = "ollama",
 ) -> Chroma:
     """Build (or retrieve from cache) a Chroma vector store.
 
@@ -60,7 +62,10 @@ def build_vector_store(
                 return cached
 
     client = _get_client()
-    embedding_model = get_embedding_model(embedding_model_name, ollama_base_url, ollama_api_key)
+    embedding_model = get_embedding_model(
+        embedding_model_name, ollama_base_url, ollama_api_key,
+        provider=embedding_provider,
+    )
 
     # The lock must cover the entire build sequence (delete + create + add)
     # so that concurrent threads never race on the same collection.

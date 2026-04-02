@@ -61,6 +61,8 @@ class BenchmarkResultExtended:
     ragas_context_recall_stats: StatSummary | None
     evaluation_error: str | None = None
     ragas_valid_sample_counts: dict[str, int] | None = None
+    reranker_model: str | None = None
+    reranker_top_k: int | None = None
 
 
 @dataclass(frozen=True)

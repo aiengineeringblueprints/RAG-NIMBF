@@ -67,6 +67,8 @@ def log_benchmark_run(result: BenchmarkResultExtended) -> None:
         "embedding_model": result.embedding_model,
         "chunking_strategy": result.chunking_strategy,
     }
+    if result.reranker_model:
+        tags["reranker_model"] = result.reranker_model
 
     params: dict[str, Any] = {
         "chunk_size": result.chunk_size,
@@ -74,6 +76,8 @@ def log_benchmark_run(result: BenchmarkResultExtended) -> None:
         "num_chunks": result.num_chunks,
         "num_questions": result.num_questions,
     }
+    if result.reranker_top_k is not None:
+        params["reranker_top_k"] = result.reranker_top_k
 
     metrics: dict[str, float] = {
         "avg_ttft_seconds": result.avg_ttft_seconds,
