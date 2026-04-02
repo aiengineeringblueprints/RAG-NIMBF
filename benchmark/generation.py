@@ -1,3 +1,4 @@
+import re
 import time
 from dataclasses import dataclass
 
@@ -5,6 +6,20 @@ from langchain_core.language_models.chat_models import BaseChatModel
 
 from benchmark.metrics import get_gpu_usage
 from benchmark.providers import get_chat_model
+
+# Matches <think ...>...</think > blocks (attributes + multiline content)
+_THINK_PATTERN = re.compile(r"<think[^>]*>.*?</think\s*>", re.DOTALL | re.IGNORECASE)
+
+
+def strip_thinking(text: str) -> str:
+    """Remove reasoning/thinking tags from LLM output.
+
+    Models like Qwen3 and DeepSeek-R1 wrap internal reasoning in
+    ``<think ...>...</think >`` tags.  These inflate RAGAS scores
+    (especially answer_relevancy) because the evaluator sees the
+    reasoning text instead of just the actual answer.
+    """
+    return _THINK_PATTERN.sub("", text).strip()
 
 
 @dataclass
@@ -49,7 +64,7 @@ def generate_answer(llm: BaseChatModel, question: str, contexts: list[str]) -> G
     response = llm.invoke(messages)
     total = time.perf_counter() - start
 
-    answer = response.content
+    answer = strip_thinking(str(response.content))
 
     # Use actual token counts from usage metadata when available
     usage = getattr(response, "usage_metadata", None)

@@ -17,6 +17,7 @@ from benchmark.retrieval import (
 )
 from benchmark.generation import get_llm, generate_answer, GenerationResult
 from benchmark.evaluation import evaluate_results
+from benchmark.reranker import get_reranker
 from benchmark.reporting import generate_report
 from benchmark.tracking import setup_mlflow, log_benchmark_run
 from benchmark.reporting.models import (
@@ -56,6 +57,7 @@ def run_single_benchmark(
             ollama_base_url=config.embedding_base_url(),
             ollama_api_key=config.embedding_api_key(),
             cache_key=cache_k,
+            embedding_provider=config.embedding_provider,
         )
         console.print(f"  [dim]Vector store built[/dim]")
 
@@ -67,6 +69,7 @@ def run_single_benchmark(
             api_key=config.llm_api_key(),
             max_new_tokens=config.max_new_tokens,
         )
+        reranker = get_reranker(config.reranker_model)
         questions: list[str] = []
         ground_truths: list[str] = []
         all_contexts: list[list[str]] = []
@@ -76,6 +79,12 @@ def run_single_benchmark(
             console.print(f"  [cyan]({i + 1}/{len(data)})[/cyan] {sample['question'][:80]}{'...' if len(sample['question']) > 80 else ''}")
 
             retrieved_docs = retrieve(vector_store, sample["question"], config.retrieval_top_k)
+
+            if reranker is not None:
+                retrieved_docs = reranker.rerank(
+                    sample["question"], retrieved_docs, config.reranker_top_k,
+                )
+
             context_texts = [doc.page_content for doc in retrieved_docs]
 
             result = generate_answer(llm, sample["question"], context_texts)
@@ -189,6 +198,8 @@ def run_single_benchmark(
             ragas_context_recall_stats=compute_stats(_ragas_stat_samples("context_recall")),
             evaluation_error=eval_result.error,
             ragas_valid_sample_counts=eval_result.samples_with_valid_scores or None,
+            reranker_model=config.reranker_model,
+            reranker_top_k=config.reranker_top_k if config.reranker_model else None,
         )
 
     finally:

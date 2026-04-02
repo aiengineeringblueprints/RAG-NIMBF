@@ -23,6 +23,8 @@ def parse_model_id(model_string: str) -> tuple[str, str]:
         ('ollama', 'gemma3:4b')
         >>> parse_model_id("openai:Qwen/Qwen3-32B-AWQ")
         ('openai', 'Qwen/Qwen3-32B-AWQ')
+        >>> parse_model_id("huggingface:BAAI/bge-small-en-v1.5")
+        ('huggingface', 'BAAI/bge-small-en-v1.5')
         >>> parse_model_id("nomic-embed-text:latest")
         ('ollama', 'nomic-embed-text:latest')
     """
@@ -30,7 +32,7 @@ def parse_model_id(model_string: str) -> tuple[str, str]:
         return ("ollama", model_string)
 
     prefix, _, rest = model_string.partition(":")
-    if prefix in ("ollama", "openai"):
+    if prefix in ("ollama", "openai", "huggingface"):
         return (prefix, rest)
 
     # Colons in the model name itself (e.g. "gemma3:4b") → treat as ollama

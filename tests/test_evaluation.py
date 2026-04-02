@@ -26,17 +26,16 @@ class TestEvaluateResultsModelInit:
     """Test that provider routing works during critic model initialization."""
 
     @patch("benchmark.evaluation.LangchainEmbeddingsWrapper")
-    @patch("benchmark.evaluation.OllamaEmbeddings")
+    @patch("benchmark.evaluation.get_embedding_model")
     @patch("benchmark.evaluation.LangchainLLMWrapper")
     @patch("benchmark.evaluation.get_chat_model")
     @patch("benchmark.evaluation.evaluate")
-    def test_ollama_critic_routes_correctly(self, mock_evaluate, mock_get_chat, mock_llm_wrap, mock_emb, mock_emb_wrap):
+    def test_ollama_critic_routes_correctly(self, mock_evaluate, mock_get_chat, mock_llm_wrap, mock_get_emb, mock_emb_wrap):
         mock_get_chat.return_value = MagicMock()
         mock_llm_wrap.return_value = MagicMock()
-        mock_emb.return_value = MagicMock()
+        mock_get_emb.return_value = MagicMock()
         mock_emb_wrap.return_value = MagicMock()
 
-        # Mock RAGAS evaluate to return a result with scores
         mock_result = MagicMock()
         mock_result.scores = [{"faithfulness": 0.9, "answer_relevancy": 0.8}]
         mock_evaluate.return_value = mock_result
@@ -51,21 +50,20 @@ class TestEvaluateResultsModelInit:
             ollama_api_key="mykey",
         )
 
-        # Verify get_chat_model was called with ollama provider
         call_kwargs = mock_get_chat.call_args[1]
         assert call_kwargs["provider"] == "ollama"
         assert call_kwargs["base_url"] == "http://server:11434"
         assert call_kwargs["api_key"] == "mykey"
 
     @patch("benchmark.evaluation.LangchainEmbeddingsWrapper")
-    @patch("benchmark.evaluation.OllamaEmbeddings")
+    @patch("benchmark.evaluation.get_embedding_model")
     @patch("benchmark.evaluation.LangchainLLMWrapper")
     @patch("benchmark.evaluation.get_chat_model")
     @patch("benchmark.evaluation.evaluate")
-    def test_openai_critic_routes_correctly(self, mock_evaluate, mock_get_chat, mock_llm_wrap, mock_emb, mock_emb_wrap):
+    def test_openai_critic_routes_correctly(self, mock_evaluate, mock_get_chat, mock_llm_wrap, mock_get_emb, mock_emb_wrap):
         mock_get_chat.return_value = MagicMock()
         mock_llm_wrap.return_value = MagicMock()
-        mock_emb.return_value = MagicMock()
+        mock_get_emb.return_value = MagicMock()
         mock_emb_wrap.return_value = MagicMock()
 
         mock_result = MagicMock()
@@ -89,14 +87,14 @@ class TestEvaluateResultsModelInit:
         assert call_kwargs["api_key"] == "sk-test"
 
     @patch("benchmark.evaluation.LangchainEmbeddingsWrapper")
-    @patch("benchmark.evaluation.OllamaEmbeddings")
+    @patch("benchmark.evaluation.get_embedding_model")
     @patch("benchmark.evaluation.LangchainLLMWrapper")
     @patch("benchmark.evaluation.get_chat_model")
     @patch("benchmark.evaluation.evaluate")
-    def test_ollama_api_key_passed_to_embeddings(self, mock_evaluate, mock_get_chat, mock_llm_wrap, mock_emb, mock_emb_wrap):
+    def test_embedding_factory_called_with_provider(self, mock_evaluate, mock_get_chat, mock_llm_wrap, mock_get_emb, mock_emb_wrap):
         mock_get_chat.return_value = MagicMock()
         mock_llm_wrap.return_value = MagicMock()
-        mock_emb.return_value = MagicMock()
+        mock_get_emb.return_value = MagicMock()
         mock_emb_wrap.return_value = MagicMock()
 
         mock_result = MagicMock()
@@ -108,24 +106,26 @@ class TestEvaluateResultsModelInit:
             ground_truths=["gt1"],
             answers=["a1"],
             contexts=[["ctx1"]],
+            embedding_model="huggingface:BAAI/bge-small-en-v1.5",
             ollama_base_url="http://server:11434",
             ollama_api_key="bearer-token",
         )
 
-        # Verify OllamaEmbeddings was called with the auth header
-        emb_call_kwargs = mock_emb.call_args[1]
-        assert emb_call_kwargs["client_kwargs"] == {"headers": {"Authorization": "Bearer bearer-token"}}
+        # Verify get_embedding_model was called with huggingface provider
+        emb_call_kwargs = mock_get_emb.call_args[1]
+        assert emb_call_kwargs["provider"] == "huggingface"
+        assert mock_get_emb.call_args[0][0] == "BAAI/bge-small-en-v1.5"
 
     @patch("benchmark.evaluation.LangchainEmbeddingsWrapper")
-    @patch("benchmark.evaluation.OllamaEmbeddings")
+    @patch("benchmark.evaluation.get_embedding_model")
     @patch("benchmark.evaluation.LangchainLLMWrapper")
     @patch("benchmark.evaluation.get_chat_model")
     @patch("benchmark.evaluation.evaluate")
-    def test_fallback_to_generator_model(self, mock_evaluate, mock_get_chat, mock_llm_wrap, mock_emb, mock_emb_wrap):
+    def test_fallback_to_generator_model(self, mock_evaluate, mock_get_chat, mock_llm_wrap, mock_get_emb, mock_emb_wrap):
         """When critic_llm_model is None, it should fall back to llm_model."""
         mock_get_chat.return_value = MagicMock()
         mock_llm_wrap.return_value = MagicMock()
-        mock_emb.return_value = MagicMock()
+        mock_get_emb.return_value = MagicMock()
         mock_emb_wrap.return_value = MagicMock()
 
         mock_result = MagicMock()
@@ -149,14 +149,14 @@ class TestEvaluateResultsModelInit:
 
 class TestEvaluateResultsScoreParsing:
     @patch("benchmark.evaluation.LangchainEmbeddingsWrapper")
-    @patch("benchmark.evaluation.OllamaEmbeddings")
+    @patch("benchmark.evaluation.get_embedding_model")
     @patch("benchmark.evaluation.LangchainLLMWrapper")
     @patch("benchmark.evaluation.get_chat_model")
     @patch("benchmark.evaluation.evaluate")
-    def test_nan_scores_filtered(self, mock_evaluate, mock_get_chat, mock_llm_wrap, mock_emb, mock_emb_wrap):
+    def test_nan_scores_filtered(self, mock_evaluate, mock_get_chat, mock_llm_wrap, mock_get_emb, mock_emb_wrap):
         mock_get_chat.return_value = MagicMock()
         mock_llm_wrap.return_value = MagicMock()
-        mock_emb.return_value = MagicMock()
+        mock_get_emb.return_value = MagicMock()
         mock_emb_wrap.return_value = MagicMock()
 
         mock_result = MagicMock()
@@ -180,14 +180,14 @@ class TestEvaluateResultsScoreParsing:
         assert result.per_sample_scores[1]["answer_relevancy"] == 0.8
 
     @patch("benchmark.evaluation.LangchainEmbeddingsWrapper")
-    @patch("benchmark.evaluation.OllamaEmbeddings")
+    @patch("benchmark.evaluation.get_embedding_model")
     @patch("benchmark.evaluation.LangchainLLMWrapper")
     @patch("benchmark.evaluation.get_chat_model")
     @patch("benchmark.evaluation.evaluate")
-    def test_valid_sample_counts(self, mock_evaluate, mock_get_chat, mock_llm_wrap, mock_emb, mock_emb_wrap):
+    def test_valid_sample_counts(self, mock_evaluate, mock_get_chat, mock_llm_wrap, mock_get_emb, mock_emb_wrap):
         mock_get_chat.return_value = MagicMock()
         mock_llm_wrap.return_value = MagicMock()
-        mock_emb.return_value = MagicMock()
+        mock_get_emb.return_value = MagicMock()
         mock_emb_wrap.return_value = MagicMock()
 
         mock_result = MagicMock()

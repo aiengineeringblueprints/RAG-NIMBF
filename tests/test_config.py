@@ -91,6 +91,8 @@ def _make_config(**overrides) -> BenchmarkConfig:
         dataset_sample_size=50,
         eval_critic_llm="gemma3:12b",
         eval_critic_embedding="nomic-embed-text:latest",
+        reranker_model=None,
+        reranker_top_k=3,
     )
     defaults.update(overrides)
     return BenchmarkConfig(**defaults)
@@ -135,6 +137,28 @@ class TestBenchmarkConfig:
             openai_compat_api_key="sk-test",
         )
         assert cfg.llm_api_key() == "sk-test"
+
+    def test_reranker_model_none_by_default(self):
+        cfg = _make_config()
+        assert cfg.reranker_model is None
+        assert cfg.reranker_top_k == 3
+
+    def test_name_includes_reranker(self):
+        cfg = _make_config(reranker_model="huggingface:cross-encoder/ms-marco-MiniLM-L-6-v2")
+        assert "rerank-" in cfg.name
+        assert "cross-encoder" in cfg.name
+
+    def test_name_excludes_reranker_when_none(self):
+        cfg = _make_config()
+        assert "rerank" not in cfg.name
+
+    def test_embedding_provider_ollama_default(self):
+        cfg = _make_config(embedding_model="nomic-embed-text:latest")
+        assert cfg.embedding_provider == "ollama"
+
+    def test_embedding_provider_huggingface(self):
+        cfg = _make_config(embedding_model="huggingface:BAAI/bge-small-en-v1.5")
+        assert cfg.embedding_provider == "huggingface"
 
 
 # ---------------------------------------------------------------------------
@@ -209,3 +233,29 @@ class TestGetAllCombinations:
     def test_overlap_ge_size_raises(self):
         with pytest.raises(ValueError, match="chunk_overlap"):
             get_all_combinations()
+
+    @patch.dict(os.environ, {
+        "LLM_MODELS": "gemma3:4b",
+        "EMBEDDING_MODELS": "nomic-embed-text:latest",
+        "CHUNK_SIZES": "1000",
+        "CHUNK_OVERLAPS": "200",
+        "CHUNKING_STRATEGIES": "recursive",
+        "RERANKER_MODELS": "huggingface:cross-encoder/ms-marco-MiniLM-L-6-v2",
+    }, clear=False)
+    def test_reranker_in_combinations(self):
+        configs = get_all_combinations()
+        assert len(configs) == 1
+        assert configs[0].reranker_model == "huggingface:cross-encoder/ms-marco-MiniLM-L-6-v2"
+
+    @patch.dict(os.environ, {
+        "LLM_MODELS": "gemma3:4b",
+        "EMBEDDING_MODELS": "nomic-embed-text:latest",
+        "CHUNK_SIZES": "1000",
+        "CHUNK_OVERLAPS": "200",
+        "CHUNKING_STRATEGIES": "recursive",
+        "RERANKER_MODELS": "",
+    }, clear=False)
+    def test_no_reranker_same_count(self):
+        configs = get_all_combinations()
+        assert len(configs) == 1
+        assert configs[0].reranker_model is None
