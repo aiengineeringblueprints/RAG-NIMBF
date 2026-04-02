@@ -88,9 +88,78 @@ def get_chat_model(
             api_key=api_key or "not-needed",
             max_tokens=max_tokens,
             temperature=temperature,
-            strict_tool_calling=False,
         )
 
     raise ValueError(
         f"Unknown provider '{provider}'. Supported: 'ollama', 'openai'."
     )
+
+
+class _ContentAsStringChatModel(BaseChatModel):
+    """Wrapper that ensures ``message.content`` is always a string.
+
+    Some OpenAI-compatible servers (vLLM serving Qwen3) return JSON content
+    that ``langchain-openai`` auto-parses into a Python dict.  RAGAS expects
+    raw strings and crashes with ``OutputParserException`` / ``StringIO``
+    validation errors.  This wrapper coerces any non-string content back to
+    a JSON string before passing it to RAGAS.
+    """
+
+    _wrapped: BaseChatModel
+
+    def __init__(self, wrapped: BaseChatModel) -> None:
+        super().__init__()
+        self._wrapped = wrapped
+
+    @property
+    def _llm_type(self) -> str:
+        return getattr(self._wrapped, "_llm_type", "content-as-string-wrapper")
+
+    def _generate(
+        self,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
+        run_manager: CallbackManagerForLLMRun | None = None,
+        **kwargs: Any,
+    ) -> ChatResult:
+        result = self._wrapped._generate(messages, stop=stop, run_manager=run_manager, **kwargs)
+        return self._coerce_result(result)
+
+    async def _agenerate(
+        self,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
+        run_manager: Any | None = None,
+        **kwargs: Any,
+    ) -> ChatResult:
+        result = await self._wrapped._agenerate(messages, stop=stop, run_manager=run_manager, **kwargs)
+        return self._coerce_result(result)
+
+    @staticmethod
+    def _coerce_result(result: ChatResult) -> ChatResult:
+        new_gens: list[ChatGeneration] = []
+        for gen in result.generations:
+            msg = gen.message
+            if not isinstance(msg.content, str):
+                # Serialize dicts/lists back to a JSON string
+                text = json.dumps(msg.content) if isinstance(msg.content, (dict, list)) else str(msg.content)
+                msg = AIMessage(
+                    content=text,
+                    additional_kwargs=msg.additional_kwargs,
+                    response_metadata=msg.response_metadata,
+                    id=msg.id,
+                )
+                new_gens.append(ChatGeneration(message=msg, generation_info=gen.generation_info))
+            else:
+                new_gens.append(gen)
+        result.generations = new_gens
+        return result
+
+
+def wrap_for_ragas(llm: BaseChatModel) -> BaseChatModel:
+    """Wrap an LLM so that ``message.content`` is always a string.
+
+    Apply this to critic / evaluator LLMs before passing them to RAGAS.
+    Generator LLMs (question answering) do not need it.
+    """
+    return _ContentAsStringChatModel(llm)
