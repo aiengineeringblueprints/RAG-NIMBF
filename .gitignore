@@ -208,3 +208,7 @@ __marimo__/
 
 # Benchmark results
 #results/
+
+# MLflow
+mlflow.db
+mlruns/

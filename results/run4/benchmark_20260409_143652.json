@@ -1,0 +1,1044 @@
+{
+  "timestamp": "20260409_143652",
+  "num_configs": 9,
+  "dataset": {
+    "subset": "FinQA",
+    "sample_size": 1
+  },
+  "system_info": {
+    "python": "3.12.3",
+    "os": "Linux",
+    "os_version": "6.17.0-19-generic",
+    "platform": "Linux-6.17.0-19-generic-x86_64-with-glibc2.39",
+    "gpu": "NVIDIA GeForce RTX 3050 Ti Laptop GPU",
+    "gpu_memory_total_mb": "4096 MiB"
+  },
+  "results": [
+    {
+      "config_name": "recursive_cs1000_co100_nomic-embed-text:latest_Qwen/Qwen3-32B-AWQ",
+      "llm_model": "Qwen/Qwen3-32B-AWQ",
+      "embedding_model": "nomic-embed-text:latest",
+      "chunking_strategy": "recursive",
+      "chunk_size": 1000,
+      "chunk_overlap": 100,
+      "num_chunks": 6,
+      "num_questions": 1,
+      "avg_ttft_seconds": 6.719180279999819,
+      "avg_tokens_per_second": 58.935760538934474,
+      "avg_gpu_utilization_pct": 0.0,
+      "avg_gpu_memory_used_mb": 631.0,
+      "ragas_faithfulness": 0.5,
+      "ragas_answer_relevancy": 0.9688319340682092,
+      "ragas_context_precision": 0.9999999999,
+      "ragas_context_recall": 1.0,
+      "total_time_seconds": 83.5127255870002,
+      "stats": {
+        "ttft_seconds": {
+          "mean": 6.719180279999819,
+          "std": 0.0,
+          "min": 6.719180279999819,
+          "max": 6.719180279999819,
+          "median": 6.719180279999819,
+          "count": 1
+        },
+        "tokens_per_second": {
+          "mean": 58.935760538934474,
+          "std": 0.0,
+          "min": 58.935760538934474,
+          "max": 58.935760538934474,
+          "median": 58.935760538934474,
+          "count": 1
+        },
+        "gpu_utilization_pct": {
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0,
+          "max": 0.0,
+          "median": 0.0,
+          "count": 1
+        },
+        "gpu_memory_mb": {
+          "mean": 631.0,
+          "std": 0.0,
+          "min": 631.0,
+          "max": 631.0,
+          "median": 631.0,
+          "count": 1
+        },
+        "ragas_faithfulness": {
+          "mean": 0.5,
+          "std": 0.0,
+          "min": 0.5,
+          "max": 0.5,
+          "median": 0.5,
+          "count": 1
+        },
+        "ragas_answer_relevancy": {
+          "mean": 0.9688319340682092,
+          "std": 0.0,
+          "min": 0.9688319340682092,
+          "max": 0.9688319340682092,
+          "median": 0.9688319340682092,
+          "count": 1
+        },
+        "ragas_context_precision": {
+          "mean": 0.9999999999,
+          "std": 0.0,
+          "min": 0.9999999999,
+          "max": 0.9999999999,
+          "median": 0.9999999999,
+          "count": 1
+        },
+        "ragas_context_recall": {
+          "mean": 1.0,
+          "std": 0.0,
+          "min": 1.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 1
+        }
+      },
+      "per_sample": [
+        {
+          "question": "What was the change in compensation and benefits liability for Goldman Sachs in millions from December 2013 to December 2014?",
+          "ground_truth": "494.0",
+          "answer": "The change in compensation and benefits liability for Goldman Sachs from December 2013 to December 2014 was **$494 million** (calculated as $8,368 million - $7,874 million).",
+          "contexts": [
+            "|    | $ in millions                                        | as of december 2014   | as of december 2013   |\n|---:|:-----------------------------------------------------|:----------------------|:----------------------|\n|  0 | compensation and benefits                            | $ 8368                | $ 7874                |\n|  1 | noncontrolling interests1                            | 404                   | 326                   |\n|  2 | income tax-related liabilities                       | 1533                  | 1974                  |\n|  3 | employee interests in consolidated funds             | 176                   | 210                   |\n|  4 | subordinated liabilities issued by consolidated vies | 843                   | 477                   |\n|  5 | accrued expenses and other                           | 4751                  | 5183                  |\n|  6 | total                                                | $ 16075               | $ 16044               |",
+            "following the exchange , these trust preferred securities , common beneficial interests and junior subordinated debt were extinguished and the firm recognized a gain of $ 289 million ( $ 270 million of which was recorded at extinguishment in the third quarter of 2014 ) , which is included in 201cmarket making 201d in the consolidated statements of earnings .\nsubsequent to this exchange , during the second half of 2014 , the firm purchased $ 214 million ( par amount ) of trust preferred securities and delivered these securities , along with $ 6.6 million of common beneficial interests , to the trust in february 2015 in exchange for a corresponding par amount of the junior subordinated debt .\nthe trust is a wholly-owned finance subsidiary of the firm for regulatory and legal purposes but is not consolidated for accounting purposes .\nthe firm pays interest semi-annually on the junior subordinated debt at an annual rate of 6.345% ( 6.345 % ) and the debt matures on february 15 , 2034 .",
+            "the coupon rate and the payment dates applicable to the beneficial interests are the same as the interest rate and payment dates for the junior subordinated debt .\nthe firm has the right , from time to time , to defer payment of interest on the junior subordinated debt , and therefore cause payment on the trust 2019s preferred beneficial interests to be deferred , in each case up to ten consecutive semi-annual periods .\nduring any such deferral period , the firm will not be permitted to , among other things , pay dividends on or make certain repurchases of its common stock .\nthe trust is not permitted to pay any distributions on the common beneficial interests held by group inc .\nunless all dividends payable on the preferred beneficial interests have been paid in full .\nnote 17 .\nother liabilities and accrued expenses the table below presents other liabilities and accrued expenses by type. .",
+            "1 .\nprimarily relates to consolidated investment funds .\ngoldman sachs 2014 annual report 163 .",
+            "junior subordinated debt issued in connection with trust preferred securities .\ngroup inc .\nissued $ 2.84 billion of junior subordinated debt in 2004 to goldman sachs capital i ( trust ) , a delaware statutory trust .\nthe trust issued $ 2.75 billion of guaranteed preferred beneficial interests ( trust preferred securities ) to third parties and $ 85 million of common beneficial interests to group inc .\nand used the proceeds from the issuances to purchase the junior subordinated debt from group inc .\nduring the second quarter of 2014 , the firm purchased $ 1.22 billion ( par amount ) of trust preferred securities and delivered these securities , along with $ 37.6 million of common beneficial interests , to the trust in the third quarter of 2014 in exchange for a corresponding par amount of the junior subordinated debt ."
+          ],
+          "ttft_seconds": 6.719180279999819,
+          "total_seconds": 6.719180279999819,
+          "token_count": 396,
+          "tokens_per_second": 58.935760538934474,
+          "gpu_usage": {
+            "gpu_utilization_pct": 0.0,
+            "memory_used_mb": 631.0,
+            "memory_total_mb": 4096.0
+          },
+          "ragas_scores": {
+            "faithfulness": 0.5,
+            "answer_relevancy": 0.9688319340682092,
+            "context_precision": 0.9999999999,
+            "context_recall": 1.0
+          }
+        }
+      ]
+    },
+    {
+      "config_name": "recursive_cs1000_co50_nomic-embed-text:latest_Qwen/Qwen3-32B-AWQ",
+      "llm_model": "Qwen/Qwen3-32B-AWQ",
+      "embedding_model": "nomic-embed-text:latest",
+      "chunking_strategy": "recursive",
+      "chunk_size": 1000,
+      "chunk_overlap": 50,
+      "num_chunks": 6,
+      "num_questions": 1,
+      "avg_ttft_seconds": 8.430096914000387,
+      "avg_tokens_per_second": 60.85339293644761,
+      "avg_gpu_utilization_pct": 0.0,
+      "avg_gpu_memory_used_mb": 631.0,
+      "ragas_faithfulness": 1.0,
+      "ragas_answer_relevancy": 0.9688319340682092,
+      "ragas_context_precision": 0.9999999999,
+      "ragas_context_recall": 1.0,
+      "total_time_seconds": 95.18850537700018,
+      "stats": {
+        "ttft_seconds": {
+          "mean": 8.430096914000387,
+          "std": 0.0,
+          "min": 8.430096914000387,
+          "max": 8.430096914000387,
+          "median": 8.430096914000387,
+          "count": 1
+        },
+        "tokens_per_second": {
+          "mean": 60.85339293644761,
+          "std": 0.0,
+          "min": 60.85339293644761,
+          "max": 60.85339293644761,
+          "median": 60.85339293644761,
+          "count": 1
+        },
+        "gpu_utilization_pct": {
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0,
+          "max": 0.0,
+          "median": 0.0,
+          "count": 1
+        },
+        "gpu_memory_mb": {
+          "mean": 631.0,
+          "std": 0.0,
+          "min": 631.0,
+          "max": 631.0,
+          "median": 631.0,
+          "count": 1
+        },
+        "ragas_faithfulness": {
+          "mean": 1.0,
+          "std": 0.0,
+          "min": 1.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 1
+        },
+        "ragas_answer_relevancy": {
+          "mean": 0.9688319340682092,
+          "std": 0.0,
+          "min": 0.9688319340682092,
+          "max": 0.9688319340682092,
+          "median": 0.9688319340682092,
+          "count": 1
+        },
+        "ragas_context_precision": {
+          "mean": 0.9999999999,
+          "std": 0.0,
+          "min": 0.9999999999,
+          "max": 0.9999999999,
+          "median": 0.9999999999,
+          "count": 1
+        },
+        "ragas_context_recall": {
+          "mean": 1.0,
+          "std": 0.0,
+          "min": 1.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 1
+        }
+      },
+      "per_sample": [
+        {
+          "question": "What was the change in compensation and benefits liability for Goldman Sachs in millions from December 2013 to December 2014?",
+          "ground_truth": "494.0",
+          "answer": "The change in compensation and benefits liability for Goldman Sachs from December 2013 to December 2014 was **$494 million** ($8,368 million in 2014 minus $7,874 million in 2013).",
+          "contexts": [
+            "|    | $ in millions                                        | as of december 2014   | as of december 2013   |\n|---:|:-----------------------------------------------------|:----------------------|:----------------------|\n|  0 | compensation and benefits                            | $ 8368                | $ 7874                |\n|  1 | noncontrolling interests1                            | 404                   | 326                   |\n|  2 | income tax-related liabilities                       | 1533                  | 1974                  |\n|  3 | employee interests in consolidated funds             | 176                   | 210                   |\n|  4 | subordinated liabilities issued by consolidated vies | 843                   | 477                   |\n|  5 | accrued expenses and other                           | 4751                  | 5183                  |\n|  6 | total                                                | $ 16075               | $ 16044               |",
+            "following the exchange , these trust preferred securities , common beneficial interests and junior subordinated debt were extinguished and the firm recognized a gain of $ 289 million ( $ 270 million of which was recorded at extinguishment in the third quarter of 2014 ) , which is included in 201cmarket making 201d in the consolidated statements of earnings .\nsubsequent to this exchange , during the second half of 2014 , the firm purchased $ 214 million ( par amount ) of trust preferred securities and delivered these securities , along with $ 6.6 million of common beneficial interests , to the trust in february 2015 in exchange for a corresponding par amount of the junior subordinated debt .\nthe trust is a wholly-owned finance subsidiary of the firm for regulatory and legal purposes but is not consolidated for accounting purposes .\nthe firm pays interest semi-annually on the junior subordinated debt at an annual rate of 6.345% ( 6.345 % ) and the debt matures on february 15 , 2034 .",
+            "the coupon rate and the payment dates applicable to the beneficial interests are the same as the interest rate and payment dates for the junior subordinated debt .\nthe firm has the right , from time to time , to defer payment of interest on the junior subordinated debt , and therefore cause payment on the trust 2019s preferred beneficial interests to be deferred , in each case up to ten consecutive semi-annual periods .\nduring any such deferral period , the firm will not be permitted to , among other things , pay dividends on or make certain repurchases of its common stock .\nthe trust is not permitted to pay any distributions on the common beneficial interests held by group inc .\nunless all dividends payable on the preferred beneficial interests have been paid in full .\nnote 17 .\nother liabilities and accrued expenses the table below presents other liabilities and accrued expenses by type. .",
+            "group inc .\nissued $ 2.84 billion of junior subordinated debt in 2004 to goldman sachs capital i ( trust ) , a delaware statutory trust .\nthe trust issued $ 2.75 billion of guaranteed preferred beneficial interests ( trust preferred securities ) to third parties and $ 85 million of common beneficial interests to group inc .\nand used the proceeds from the issuances to purchase the junior subordinated debt from group inc .\nduring the second quarter of 2014 , the firm purchased $ 1.22 billion ( par amount ) of trust preferred securities and delivered these securities , along with $ 37.6 million of common beneficial interests , to the trust in the third quarter of 2014 in exchange for a corresponding par amount of the junior subordinated debt .",
+            "1 .\nprimarily relates to consolidated investment funds .\ngoldman sachs 2014 annual report 163 ."
+          ],
+          "ttft_seconds": 8.430096914000387,
+          "total_seconds": 8.430096914000387,
+          "token_count": 513,
+          "tokens_per_second": 60.85339293644761,
+          "gpu_usage": {
+            "gpu_utilization_pct": 0.0,
+            "memory_used_mb": 631.0,
+            "memory_total_mb": 4096.0
+          },
+          "ragas_scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.9688319340682092,
+            "context_precision": 0.9999999999,
+            "context_recall": 1.0
+          }
+        }
+      ]
+    },
+    {
+      "config_name": "recursive_cs1000_co25_nomic-embed-text:latest_Qwen/Qwen3-32B-AWQ",
+      "llm_model": "Qwen/Qwen3-32B-AWQ",
+      "embedding_model": "nomic-embed-text:latest",
+      "chunking_strategy": "recursive",
+      "chunk_size": 1000,
+      "chunk_overlap": 25,
+      "num_chunks": 6,
+      "num_questions": 1,
+      "avg_ttft_seconds": 7.347108245000527,
+      "avg_tokens_per_second": 60.84026328374422,
+      "avg_gpu_utilization_pct": 0.0,
+      "avg_gpu_memory_used_mb": 631.0,
+      "ragas_faithfulness": 1.0,
+      "ragas_answer_relevancy": 0.9688319340682092,
+      "ragas_context_precision": 0.9999999999,
+      "ragas_context_recall": 1.0,
+      "total_time_seconds": 73.99962310800038,
+      "stats": {
+        "ttft_seconds": {
+          "mean": 7.347108245000527,
+          "std": 0.0,
+          "min": 7.347108245000527,
+          "max": 7.347108245000527,
+          "median": 7.347108245000527,
+          "count": 1
+        },
+        "tokens_per_second": {
+          "mean": 60.84026328374422,
+          "std": 0.0,
+          "min": 60.84026328374422,
+          "max": 60.84026328374422,
+          "median": 60.84026328374422,
+          "count": 1
+        },
+        "gpu_utilization_pct": {
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0,
+          "max": 0.0,
+          "median": 0.0,
+          "count": 1
+        },
+        "gpu_memory_mb": {
+          "mean": 631.0,
+          "std": 0.0,
+          "min": 631.0,
+          "max": 631.0,
+          "median": 631.0,
+          "count": 1
+        },
+        "ragas_faithfulness": {
+          "mean": 1.0,
+          "std": 0.0,
+          "min": 1.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 1
+        },
+        "ragas_answer_relevancy": {
+          "mean": 0.9688319340682092,
+          "std": 0.0,
+          "min": 0.9688319340682092,
+          "max": 0.9688319340682092,
+          "median": 0.9688319340682092,
+          "count": 1
+        },
+        "ragas_context_precision": {
+          "mean": 0.9999999999,
+          "std": 0.0,
+          "min": 0.9999999999,
+          "max": 0.9999999999,
+          "median": 0.9999999999,
+          "count": 1
+        },
+        "ragas_context_recall": {
+          "mean": 1.0,
+          "std": 0.0,
+          "min": 1.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 1
+        }
+      },
+      "per_sample": [
+        {
+          "question": "What was the change in compensation and benefits liability for Goldman Sachs in millions from December 2013 to December 2014?",
+          "ground_truth": "494.0",
+          "answer": "The change in compensation and benefits liability for Goldman Sachs from December 2013 to December 2014 was **$494 million** (calculated as $8,368 million in 2014 minus $7,874 million in 2013).",
+          "contexts": [
+            "|    | $ in millions                                        | as of december 2014   | as of december 2013   |\n|---:|:-----------------------------------------------------|:----------------------|:----------------------|\n|  0 | compensation and benefits                            | $ 8368                | $ 7874                |\n|  1 | noncontrolling interests1                            | 404                   | 326                   |\n|  2 | income tax-related liabilities                       | 1533                  | 1974                  |\n|  3 | employee interests in consolidated funds             | 176                   | 210                   |\n|  4 | subordinated liabilities issued by consolidated vies | 843                   | 477                   |\n|  5 | accrued expenses and other                           | 4751                  | 5183                  |\n|  6 | total                                                | $ 16075               | $ 16044               |",
+            "following the exchange , these trust preferred securities , common beneficial interests and junior subordinated debt were extinguished and the firm recognized a gain of $ 289 million ( $ 270 million of which was recorded at extinguishment in the third quarter of 2014 ) , which is included in 201cmarket making 201d in the consolidated statements of earnings .\nsubsequent to this exchange , during the second half of 2014 , the firm purchased $ 214 million ( par amount ) of trust preferred securities and delivered these securities , along with $ 6.6 million of common beneficial interests , to the trust in february 2015 in exchange for a corresponding par amount of the junior subordinated debt .\nthe trust is a wholly-owned finance subsidiary of the firm for regulatory and legal purposes but is not consolidated for accounting purposes .\nthe firm pays interest semi-annually on the junior subordinated debt at an annual rate of 6.345% ( 6.345 % ) and the debt matures on february 15 , 2034 .",
+            "the coupon rate and the payment dates applicable to the beneficial interests are the same as the interest rate and payment dates for the junior subordinated debt .\nthe firm has the right , from time to time , to defer payment of interest on the junior subordinated debt , and therefore cause payment on the trust 2019s preferred beneficial interests to be deferred , in each case up to ten consecutive semi-annual periods .\nduring any such deferral period , the firm will not be permitted to , among other things , pay dividends on or make certain repurchases of its common stock .\nthe trust is not permitted to pay any distributions on the common beneficial interests held by group inc .\nunless all dividends payable on the preferred beneficial interests have been paid in full .\nnote 17 .\nother liabilities and accrued expenses the table below presents other liabilities and accrued expenses by type. .",
+            "group inc .\nissued $ 2.84 billion of junior subordinated debt in 2004 to goldman sachs capital i ( trust ) , a delaware statutory trust .\nthe trust issued $ 2.75 billion of guaranteed preferred beneficial interests ( trust preferred securities ) to third parties and $ 85 million of common beneficial interests to group inc .\nand used the proceeds from the issuances to purchase the junior subordinated debt from group inc .\nduring the second quarter of 2014 , the firm purchased $ 1.22 billion ( par amount ) of trust preferred securities and delivered these securities , along with $ 37.6 million of common beneficial interests , to the trust in the third quarter of 2014 in exchange for a corresponding par amount of the junior subordinated debt .",
+            "1 .\nprimarily relates to consolidated investment funds .\ngoldman sachs 2014 annual report 163 ."
+          ],
+          "ttft_seconds": 7.347108245000527,
+          "total_seconds": 7.347108245000527,
+          "token_count": 447,
+          "tokens_per_second": 60.84026328374422,
+          "gpu_usage": {
+            "gpu_utilization_pct": 0.0,
+            "memory_used_mb": 631.0,
+            "memory_total_mb": 4096.0
+          },
+          "ragas_scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.9688319340682092,
+            "context_precision": 0.9999999999,
+            "context_recall": 1.0
+          }
+        }
+      ]
+    },
+    {
+      "config_name": "recursive_cs500_co100_nomic-embed-text:latest_Qwen/Qwen3-32B-AWQ",
+      "llm_model": "Qwen/Qwen3-32B-AWQ",
+      "embedding_model": "nomic-embed-text:latest",
+      "chunking_strategy": "recursive",
+      "chunk_size": 500,
+      "chunk_overlap": 100,
+      "num_chunks": 14,
+      "num_questions": 1,
+      "avg_ttft_seconds": 6.050722633000078,
+      "avg_tokens_per_second": 58.670678120967416,
+      "avg_gpu_utilization_pct": 0.0,
+      "avg_gpu_memory_used_mb": 631.0,
+      "ragas_faithfulness": 1.0,
+      "ragas_answer_relevancy": 0.9688319340682092,
+      "ragas_context_precision": 0.9999999999,
+      "ragas_context_recall": 1.0,
+      "total_time_seconds": 87.05893828999979,
+      "stats": {
+        "ttft_seconds": {
+          "mean": 6.050722633000078,
+          "std": 0.0,
+          "min": 6.050722633000078,
+          "max": 6.050722633000078,
+          "median": 6.050722633000078,
+          "count": 1
+        },
+        "tokens_per_second": {
+          "mean": 58.670678120967416,
+          "std": 0.0,
+          "min": 58.670678120967416,
+          "max": 58.670678120967416,
+          "median": 58.670678120967416,
+          "count": 1
+        },
+        "gpu_utilization_pct": {
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0,
+          "max": 0.0,
+          "median": 0.0,
+          "count": 1
+        },
+        "gpu_memory_mb": {
+          "mean": 631.0,
+          "std": 0.0,
+          "min": 631.0,
+          "max": 631.0,
+          "median": 631.0,
+          "count": 1
+        },
+        "ragas_faithfulness": {
+          "mean": 1.0,
+          "std": 0.0,
+          "min": 1.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 1
+        },
+        "ragas_answer_relevancy": {
+          "mean": 0.9688319340682092,
+          "std": 0.0,
+          "min": 0.9688319340682092,
+          "max": 0.9688319340682092,
+          "median": 0.9688319340682092,
+          "count": 1
+        },
+        "ragas_context_precision": {
+          "mean": 0.9999999999,
+          "std": 0.0,
+          "min": 0.9999999999,
+          "max": 0.9999999999,
+          "median": 0.9999999999,
+          "count": 1
+        },
+        "ragas_context_recall": {
+          "mean": 1.0,
+          "std": 0.0,
+          "min": 1.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 1
+        }
+      },
+      "per_sample": [
+        {
+          "question": "What was the change in compensation and benefits liability for Goldman Sachs in millions from December 2013 to December 2014?",
+          "ground_truth": "494.0",
+          "answer": "The change in compensation and benefits liability for Goldman Sachs from December 2013 to December 2014 was **$494 million** ($8,368 million - $7,874 million).",
+          "contexts": [
+            "|    | $ in millions                                        | as of december 2014   | as of december 2013   |\n|---:|:-----------------------------------------------------|:----------------------|:----------------------|\n|  0 | compensation and benefits                            | $ 8368                | $ 7874                |\n|  1 | noncontrolling interests1                            | 404                   | 326                   |",
+            "and used the proceeds from the issuances to purchase the junior subordinated debt from group inc .\nduring the second quarter of 2014 , the firm purchased $ 1.22 billion ( par amount ) of trust preferred securities and delivered these securities , along with $ 37.6 million of common beneficial interests , to the trust in the third quarter of 2014 in exchange for a corresponding par amount of the junior subordinated debt .",
+            "following the exchange , these trust preferred securities , common beneficial interests and junior subordinated debt were extinguished and the firm recognized a gain of $ 289 million ( $ 270 million of which was recorded at extinguishment in the third quarter of 2014 ) , which is included in 201cmarket making 201d in the consolidated statements of earnings .",
+            "subsequent to this exchange , during the second half of 2014 , the firm purchased $ 214 million ( par amount ) of trust preferred securities and delivered these securities , along with $ 6.6 million of common beneficial interests , to the trust in february 2015 in exchange for a corresponding par amount of the junior subordinated debt .\nthe trust is a wholly-owned finance subsidiary of the firm for regulatory and legal purposes but is not consolidated for accounting purposes .",
+            "1 .\nprimarily relates to consolidated investment funds .\ngoldman sachs 2014 annual report 163 ."
+          ],
+          "ttft_seconds": 6.050722633000078,
+          "total_seconds": 6.050722633000078,
+          "token_count": 355,
+          "tokens_per_second": 58.670678120967416,
+          "gpu_usage": {
+            "gpu_utilization_pct": 0.0,
+            "memory_used_mb": 631.0,
+            "memory_total_mb": 4096.0
+          },
+          "ragas_scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.9688319340682092,
+            "context_precision": 0.9999999999,
+            "context_recall": 1.0
+          }
+        }
+      ]
+    },
+    {
+      "config_name": "recursive_cs500_co50_nomic-embed-text:latest_Qwen/Qwen3-32B-AWQ",
+      "llm_model": "Qwen/Qwen3-32B-AWQ",
+      "embedding_model": "nomic-embed-text:latest",
+      "chunking_strategy": "recursive",
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "num_chunks": 14,
+      "num_questions": 1,
+      "avg_ttft_seconds": 5.954048734000025,
+      "avg_tokens_per_second": 59.6232943094346,
+      "avg_gpu_utilization_pct": 0.0,
+      "avg_gpu_memory_used_mb": 631.0,
+      "ragas_faithfulness": 1.0,
+      "ragas_answer_relevancy": 0.9688319340682092,
+      "ragas_context_precision": 0.9999999999,
+      "ragas_context_recall": 1.0,
+      "total_time_seconds": 95.2715378490002,
+      "stats": {
+        "ttft_seconds": {
+          "mean": 5.954048734000025,
+          "std": 0.0,
+          "min": 5.954048734000025,
+          "max": 5.954048734000025,
+          "median": 5.954048734000025,
+          "count": 1
+        },
+        "tokens_per_second": {
+          "mean": 59.6232943094346,
+          "std": 0.0,
+          "min": 59.6232943094346,
+          "max": 59.6232943094346,
+          "median": 59.6232943094346,
+          "count": 1
+        },
+        "gpu_utilization_pct": {
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0,
+          "max": 0.0,
+          "median": 0.0,
+          "count": 1
+        },
+        "gpu_memory_mb": {
+          "mean": 631.0,
+          "std": 0.0,
+          "min": 631.0,
+          "max": 631.0,
+          "median": 631.0,
+          "count": 1
+        },
+        "ragas_faithfulness": {
+          "mean": 1.0,
+          "std": 0.0,
+          "min": 1.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 1
+        },
+        "ragas_answer_relevancy": {
+          "mean": 0.9688319340682092,
+          "std": 0.0,
+          "min": 0.9688319340682092,
+          "max": 0.9688319340682092,
+          "median": 0.9688319340682092,
+          "count": 1
+        },
+        "ragas_context_precision": {
+          "mean": 0.9999999999,
+          "std": 0.0,
+          "min": 0.9999999999,
+          "max": 0.9999999999,
+          "median": 0.9999999999,
+          "count": 1
+        },
+        "ragas_context_recall": {
+          "mean": 1.0,
+          "std": 0.0,
+          "min": 1.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 1
+        }
+      },
+      "per_sample": [
+        {
+          "question": "What was the change in compensation and benefits liability for Goldman Sachs in millions from December 2013 to December 2014?",
+          "ground_truth": "494.0",
+          "answer": "The change in compensation and benefits liability for Goldman Sachs from December 2013 to December 2014 was **$494 million** ($8,368 million - $7,874 million).",
+          "contexts": [
+            "|    | $ in millions                                        | as of december 2014   | as of december 2013   |\n|---:|:-----------------------------------------------------|:----------------------|:----------------------|\n|  0 | compensation and benefits                            | $ 8368                | $ 7874                |\n|  1 | noncontrolling interests1                            | 404                   | 326                   |",
+            "and used the proceeds from the issuances to purchase the junior subordinated debt from group inc .\nduring the second quarter of 2014 , the firm purchased $ 1.22 billion ( par amount ) of trust preferred securities and delivered these securities , along with $ 37.6 million of common beneficial interests , to the trust in the third quarter of 2014 in exchange for a corresponding par amount of the junior subordinated debt .",
+            "following the exchange , these trust preferred securities , common beneficial interests and junior subordinated debt were extinguished and the firm recognized a gain of $ 289 million ( $ 270 million of which was recorded at extinguishment in the third quarter of 2014 ) , which is included in 201cmarket making 201d in the consolidated statements of earnings .",
+            "subsequent to this exchange , during the second half of 2014 , the firm purchased $ 214 million ( par amount ) of trust preferred securities and delivered these securities , along with $ 6.6 million of common beneficial interests , to the trust in february 2015 in exchange for a corresponding par amount of the junior subordinated debt .\nthe trust is a wholly-owned finance subsidiary of the firm for regulatory and legal purposes but is not consolidated for accounting purposes .",
+            "1 .\nprimarily relates to consolidated investment funds .\ngoldman sachs 2014 annual report 163 ."
+          ],
+          "ttft_seconds": 5.954048734000025,
+          "total_seconds": 5.954048734000025,
+          "token_count": 355,
+          "tokens_per_second": 59.6232943094346,
+          "gpu_usage": {
+            "gpu_utilization_pct": 0.0,
+            "memory_used_mb": 631.0,
+            "memory_total_mb": 4096.0
+          },
+          "ragas_scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.9688319340682092,
+            "context_precision": 0.9999999999,
+            "context_recall": 1.0
+          }
+        }
+      ]
+    },
+    {
+      "config_name": "recursive_cs500_co25_nomic-embed-text:latest_Qwen/Qwen3-32B-AWQ",
+      "llm_model": "Qwen/Qwen3-32B-AWQ",
+      "embedding_model": "nomic-embed-text:latest",
+      "chunking_strategy": "recursive",
+      "chunk_size": 500,
+      "chunk_overlap": 25,
+      "num_chunks": 14,
+      "num_questions": 1,
+      "avg_ttft_seconds": 5.9132988170003955,
+      "avg_tokens_per_second": 60.0341722930347,
+      "avg_gpu_utilization_pct": 0.0,
+      "avg_gpu_memory_used_mb": 631.0,
+      "ragas_faithfulness": 1.0,
+      "ragas_answer_relevancy": 0.9688319340682092,
+      "ragas_context_precision": 0.9999999999,
+      "ragas_context_recall": 1.0,
+      "total_time_seconds": 54.9898518659993,
+      "stats": {
+        "ttft_seconds": {
+          "mean": 5.9132988170003955,
+          "std": 0.0,
+          "min": 5.9132988170003955,
+          "max": 5.9132988170003955,
+          "median": 5.9132988170003955,
+          "count": 1
+        },
+        "tokens_per_second": {
+          "mean": 60.0341722930347,
+          "std": 0.0,
+          "min": 60.0341722930347,
+          "max": 60.0341722930347,
+          "median": 60.0341722930347,
+          "count": 1
+        },
+        "gpu_utilization_pct": {
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0,
+          "max": 0.0,
+          "median": 0.0,
+          "count": 1
+        },
+        "gpu_memory_mb": {
+          "mean": 631.0,
+          "std": 0.0,
+          "min": 631.0,
+          "max": 631.0,
+          "median": 631.0,
+          "count": 1
+        },
+        "ragas_faithfulness": {
+          "mean": 1.0,
+          "std": 0.0,
+          "min": 1.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 1
+        },
+        "ragas_answer_relevancy": {
+          "mean": 0.9688319340682092,
+          "std": 0.0,
+          "min": 0.9688319340682092,
+          "max": 0.9688319340682092,
+          "median": 0.9688319340682092,
+          "count": 1
+        },
+        "ragas_context_precision": {
+          "mean": 0.9999999999,
+          "std": 0.0,
+          "min": 0.9999999999,
+          "max": 0.9999999999,
+          "median": 0.9999999999,
+          "count": 1
+        },
+        "ragas_context_recall": {
+          "mean": 1.0,
+          "std": 0.0,
+          "min": 1.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 1
+        }
+      },
+      "per_sample": [
+        {
+          "question": "What was the change in compensation and benefits liability for Goldman Sachs in millions from December 2013 to December 2014?",
+          "ground_truth": "494.0",
+          "answer": "The change in compensation and benefits liability for Goldman Sachs from December 2013 to December 2014 was **$494 million** ($8,368 million - $7,874 million).",
+          "contexts": [
+            "|    | $ in millions                                        | as of december 2014   | as of december 2013   |\n|---:|:-----------------------------------------------------|:----------------------|:----------------------|\n|  0 | compensation and benefits                            | $ 8368                | $ 7874                |\n|  1 | noncontrolling interests1                            | 404                   | 326                   |",
+            "and used the proceeds from the issuances to purchase the junior subordinated debt from group inc .\nduring the second quarter of 2014 , the firm purchased $ 1.22 billion ( par amount ) of trust preferred securities and delivered these securities , along with $ 37.6 million of common beneficial interests , to the trust in the third quarter of 2014 in exchange for a corresponding par amount of the junior subordinated debt .",
+            "following the exchange , these trust preferred securities , common beneficial interests and junior subordinated debt were extinguished and the firm recognized a gain of $ 289 million ( $ 270 million of which was recorded at extinguishment in the third quarter of 2014 ) , which is included in 201cmarket making 201d in the consolidated statements of earnings .",
+            "subsequent to this exchange , during the second half of 2014 , the firm purchased $ 214 million ( par amount ) of trust preferred securities and delivered these securities , along with $ 6.6 million of common beneficial interests , to the trust in february 2015 in exchange for a corresponding par amount of the junior subordinated debt .\nthe trust is a wholly-owned finance subsidiary of the firm for regulatory and legal purposes but is not consolidated for accounting purposes .",
+            "1 .\nprimarily relates to consolidated investment funds .\ngoldman sachs 2014 annual report 163 ."
+          ],
+          "ttft_seconds": 5.9132988170003955,
+          "total_seconds": 5.9132988170003955,
+          "token_count": 355,
+          "tokens_per_second": 60.0341722930347,
+          "gpu_usage": {
+            "gpu_utilization_pct": 0.0,
+            "memory_used_mb": 631.0,
+            "memory_total_mb": 4096.0
+          },
+          "ragas_scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.9688319340682092,
+            "context_precision": 0.9999999999,
+            "context_recall": 1.0
+          }
+        }
+      ]
+    },
+    {
+      "config_name": "recursive_cs200_co100_nomic-embed-text:latest_Qwen/Qwen3-32B-AWQ",
+      "llm_model": "Qwen/Qwen3-32B-AWQ",
+      "embedding_model": "nomic-embed-text:latest",
+      "chunking_strategy": "recursive",
+      "chunk_size": 200,
+      "chunk_overlap": 100,
+      "num_chunks": 39,
+      "num_questions": 1,
+      "avg_ttft_seconds": 5.354182825999487,
+      "avg_tokens_per_second": 59.95312644933405,
+      "avg_gpu_utilization_pct": 0.0,
+      "avg_gpu_memory_used_mb": 631.0,
+      "ragas_faithfulness": 0.0,
+      "ragas_answer_relevancy": 0.9688319340682092,
+      "ragas_context_precision": 0.49999999995,
+      "ragas_context_recall": 1.0,
+      "total_time_seconds": 90.4997693739997,
+      "stats": {
+        "ttft_seconds": {
+          "mean": 5.354182825999487,
+          "std": 0.0,
+          "min": 5.354182825999487,
+          "max": 5.354182825999487,
+          "median": 5.354182825999487,
+          "count": 1
+        },
+        "tokens_per_second": {
+          "mean": 59.95312644933405,
+          "std": 0.0,
+          "min": 59.95312644933405,
+          "max": 59.95312644933405,
+          "median": 59.95312644933405,
+          "count": 1
+        },
+        "gpu_utilization_pct": {
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0,
+          "max": 0.0,
+          "median": 0.0,
+          "count": 1
+        },
+        "gpu_memory_mb": {
+          "mean": 631.0,
+          "std": 0.0,
+          "min": 631.0,
+          "max": 631.0,
+          "median": 631.0,
+          "count": 1
+        },
+        "ragas_faithfulness": {
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0,
+          "max": 0.0,
+          "median": 0.0,
+          "count": 1
+        },
+        "ragas_answer_relevancy": {
+          "mean": 0.9688319340682092,
+          "std": 0.0,
+          "min": 0.9688319340682092,
+          "max": 0.9688319340682092,
+          "median": 0.9688319340682092,
+          "count": 1
+        },
+        "ragas_context_precision": {
+          "mean": 0.49999999995,
+          "std": 0.0,
+          "min": 0.49999999995,
+          "max": 0.49999999995,
+          "median": 0.49999999995,
+          "count": 1
+        },
+        "ragas_context_recall": {
+          "mean": 1.0,
+          "std": 0.0,
+          "min": 1.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 1
+        }
+      },
+      "per_sample": [
+        {
+          "question": "What was the change in compensation and benefits liability for Goldman Sachs in millions from December 2013 to December 2014?",
+          "ground_truth": "494.0",
+          "answer": "The change in compensation and benefits liability for Goldman Sachs from December 2013 to December 2014 was an increase of **$494 million** ($8,368 million - $7,874 million).",
+          "contexts": [
+            "|    | $ in millions                                        | as of december 2014   | as of december 2013   |",
+            "|  0 | compensation and benefits                            | $ 8368                | $ 7874                |",
+            "subordinated debt were extinguished and the firm recognized a gain of $ 289 million ( $ 270 million of which was recorded at extinguishment in the third quarter of 2014 ) , which is included in",
+            "during the second quarter of 2014 , the firm purchased $ 1.22 billion ( par amount ) of trust preferred securities and delivered these securities , along with $ 37.6 million of common beneficial",
+            "securities and delivered these securities , along with $ 37.6 million of common beneficial interests , to the trust in the third quarter of 2014 in exchange for a corresponding par amount of the"
+          ],
+          "ttft_seconds": 5.354182825999487,
+          "total_seconds": 5.354182825999487,
+          "token_count": 321,
+          "tokens_per_second": 59.95312644933405,
+          "gpu_usage": {
+            "gpu_utilization_pct": 0.0,
+            "memory_used_mb": 631.0,
+            "memory_total_mb": 4096.0
+          },
+          "ragas_scores": {
+            "faithfulness": 0.0,
+            "answer_relevancy": 0.9688319340682092,
+            "context_precision": 0.49999999995,
+            "context_recall": 1.0
+          }
+        }
+      ]
+    },
+    {
+      "config_name": "recursive_cs200_co50_nomic-embed-text:latest_Qwen/Qwen3-32B-AWQ",
+      "llm_model": "Qwen/Qwen3-32B-AWQ",
+      "embedding_model": "nomic-embed-text:latest",
+      "chunking_strategy": "recursive",
+      "chunk_size": 200,
+      "chunk_overlap": 50,
+      "num_chunks": 35,
+      "num_questions": 1,
+      "avg_ttft_seconds": 4.567188805999649,
+      "avg_tokens_per_second": 58.89837522079893,
+      "avg_gpu_utilization_pct": 0.0,
+      "avg_gpu_memory_used_mb": 631.0,
+      "ragas_faithfulness": 0.0,
+      "ragas_answer_relevancy": 0.9688319340682092,
+      "ragas_context_precision": 0.49999999995,
+      "ragas_context_recall": 1.0,
+      "total_time_seconds": 81.9714270279992,
+      "stats": {
+        "ttft_seconds": {
+          "mean": 4.567188805999649,
+          "std": 0.0,
+          "min": 4.567188805999649,
+          "max": 4.567188805999649,
+          "median": 4.567188805999649,
+          "count": 1
+        },
+        "tokens_per_second": {
+          "mean": 58.89837522079893,
+          "std": 0.0,
+          "min": 58.89837522079893,
+          "max": 58.89837522079893,
+          "median": 58.89837522079893,
+          "count": 1
+        },
+        "gpu_utilization_pct": {
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0,
+          "max": 0.0,
+          "median": 0.0,
+          "count": 1
+        },
+        "gpu_memory_mb": {
+          "mean": 631.0,
+          "std": 0.0,
+          "min": 631.0,
+          "max": 631.0,
+          "median": 631.0,
+          "count": 1
+        },
+        "ragas_faithfulness": {
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0,
+          "max": 0.0,
+          "median": 0.0,
+          "count": 1
+        },
+        "ragas_answer_relevancy": {
+          "mean": 0.9688319340682092,
+          "std": 0.0,
+          "min": 0.9688319340682092,
+          "max": 0.9688319340682092,
+          "median": 0.9688319340682092,
+          "count": 1
+        },
+        "ragas_context_precision": {
+          "mean": 0.49999999995,
+          "std": 0.0,
+          "min": 0.49999999995,
+          "max": 0.49999999995,
+          "median": 0.49999999995,
+          "count": 1
+        },
+        "ragas_context_recall": {
+          "mean": 1.0,
+          "std": 0.0,
+          "min": 1.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 1
+        }
+      },
+      "per_sample": [
+        {
+          "question": "What was the change in compensation and benefits liability for Goldman Sachs in millions from December 2013 to December 2014?",
+          "ground_truth": "494.0",
+          "answer": "The change in compensation and benefits liability for Goldman Sachs from December 2013 to December 2014 was **$494 million** ($8,368 million - $7,874 million).",
+          "contexts": [
+            "|    | $ in millions                                        | as of december 2014   | as of december 2013   |",
+            "|  0 | compensation and benefits                            | $ 8368                | $ 7874                |",
+            "during the second quarter of 2014 , the firm purchased $ 1.22 billion ( par amount ) of trust preferred securities and delivered these securities , along with $ 37.6 million of common beneficial",
+            ", along with $ 37.6 million of common beneficial interests , to the trust in the third quarter of 2014 in exchange for a corresponding par amount of the junior subordinated debt .",
+            "a gain of $ 289 million ( $ 270 million of which was recorded at extinguishment in the third quarter of 2014 ) , which is included in 201cmarket making 201d in the consolidated statements of earnings"
+          ],
+          "ttft_seconds": 4.567188805999649,
+          "total_seconds": 4.567188805999649,
+          "token_count": 269,
+          "tokens_per_second": 58.89837522079893,
+          "gpu_usage": {
+            "gpu_utilization_pct": 0.0,
+            "memory_used_mb": 631.0,
+            "memory_total_mb": 4096.0
+          },
+          "ragas_scores": {
+            "faithfulness": 0.0,
+            "answer_relevancy": 0.9688319340682092,
+            "context_precision": 0.49999999995,
+            "context_recall": 1.0
+          }
+        }
+      ]
+    },
+    {
+      "config_name": "recursive_cs200_co25_nomic-embed-text:latest_Qwen/Qwen3-32B-AWQ",
+      "llm_model": "Qwen/Qwen3-32B-AWQ",
+      "embedding_model": "nomic-embed-text:latest",
+      "chunking_strategy": "recursive",
+      "chunk_size": 200,
+      "chunk_overlap": 25,
+      "num_chunks": 33,
+      "num_questions": 1,
+      "avg_ttft_seconds": 4.4104239999996935,
+      "avg_tokens_per_second": 57.5908348040954,
+      "avg_gpu_utilization_pct": 0.0,
+      "avg_gpu_memory_used_mb": 631.0,
+      "ragas_faithfulness": 0.0,
+      "ragas_answer_relevancy": 0.9688319340682092,
+      "ragas_context_precision": 0.49999999995,
+      "ragas_context_recall": 1.0,
+      "total_time_seconds": 52.7171084620004,
+      "stats": {
+        "ttft_seconds": {
+          "mean": 4.4104239999996935,
+          "std": 0.0,
+          "min": 4.4104239999996935,
+          "max": 4.4104239999996935,
+          "median": 4.4104239999996935,
+          "count": 1
+        },
+        "tokens_per_second": {
+          "mean": 57.5908348040954,
+          "std": 0.0,
+          "min": 57.5908348040954,
+          "max": 57.5908348040954,
+          "median": 57.5908348040954,
+          "count": 1
+        },
+        "gpu_utilization_pct": {
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0,
+          "max": 0.0,
+          "median": 0.0,
+          "count": 1
+        },
+        "gpu_memory_mb": {
+          "mean": 631.0,
+          "std": 0.0,
+          "min": 631.0,
+          "max": 631.0,
+          "median": 631.0,
+          "count": 1
+        },
+        "ragas_faithfulness": {
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0,
+          "max": 0.0,
+          "median": 0.0,
+          "count": 1
+        },
+        "ragas_answer_relevancy": {
+          "mean": 0.9688319340682092,
+          "std": 0.0,
+          "min": 0.9688319340682092,
+          "max": 0.9688319340682092,
+          "median": 0.9688319340682092,
+          "count": 1
+        },
+        "ragas_context_precision": {
+          "mean": 0.49999999995,
+          "std": 0.0,
+          "min": 0.49999999995,
+          "max": 0.49999999995,
+          "median": 0.49999999995,
+          "count": 1
+        },
+        "ragas_context_recall": {
+          "mean": 1.0,
+          "std": 0.0,
+          "min": 1.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 1
+        }
+      },
+      "per_sample": [
+        {
+          "question": "What was the change in compensation and benefits liability for Goldman Sachs in millions from December 2013 to December 2014?",
+          "ground_truth": "494.0",
+          "answer": "The change in compensation and benefits liability for Goldman Sachs from December 2013 to December 2014 was **$494 million** ($8,368 million - $7,874 million).",
+          "contexts": [
+            "|    | $ in millions                                        | as of december 2014   | as of december 2013   |",
+            "|  0 | compensation and benefits                            | $ 8368                | $ 7874                |",
+            "during the second quarter of 2014 , the firm purchased $ 1.22 billion ( par amount ) of trust preferred securities and delivered these securities , along with $ 37.6 million of common beneficial",
+            "million ( $ 270 million of which was recorded at extinguishment in the third quarter of 2014 ) , which is included in 201cmarket making 201d in the consolidated statements of earnings .",
+            "subsequent to this exchange , during the second half of 2014 , the firm purchased $ 214 million ( par amount ) of trust preferred securities and delivered these securities , along with $ 6.6 million"
+          ],
+          "ttft_seconds": 4.4104239999996935,
+          "total_seconds": 4.4104239999996935,
+          "token_count": 254,
+          "tokens_per_second": 57.5908348040954,
+          "gpu_usage": {
+            "gpu_utilization_pct": 0.0,
+            "memory_used_mb": 631.0,
+            "memory_total_mb": 4096.0
+          },
+          "ragas_scores": {
+            "faithfulness": 0.0,
+            "answer_relevancy": 0.9688319340682092,
+            "context_precision": 0.49999999995,
+            "context_recall": 1.0
+          }
+        }
+      ]
+    }
+  ]
+}

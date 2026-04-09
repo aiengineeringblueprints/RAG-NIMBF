@@ -63,10 +63,9 @@ def _make_sparkline(value: float | None, max_val: float, width: int = 10) -> str
     return "\u2588" * filled + "\u2591" * (width - filled)
 
 
-def _short_name(config_name: str, max_len: int = 35) -> str:
-    if len(config_name) <= max_len:
-        return config_name
-    return config_name[: max_len - 3] + "..."
+def _format_config_name(config_name: str) -> str:
+    """Format config name with line breaks at underscores for readability in tables."""
+    return config_name.replace("_", "\n")
 
 
 def display_report(
@@ -122,7 +121,7 @@ def _display_summary_panel(
 def _display_performance_table(results: list[BenchmarkResultExtended], rankings: RankTable) -> None:
     table = Table(title="Performance Metrics", show_lines=True)
     table.add_column("Rank", justify="right", style="dim", width=4)
-    table.add_column("Config", style="cyan", max_width=35)
+    table.add_column("Config", style="cyan")
     table.add_column("TTFT (s)", justify="right")
     table.add_column("Tok/s", justify="right")
     table.add_column("GPU %", justify="right")
@@ -152,7 +151,7 @@ def _display_performance_table(results: list[BenchmarkResultExtended], rankings:
 
         table.add_row(
             rank_str,
-            _short_name(r.config_name),
+            _format_config_name(r.config_name),
             Text(ttft_text, style=_score_style(r.avg_ttft_seconds, ttft_best, ttft_worst)),
             Text(tps_text, style=_score_style(r.avg_tokens_per_second, tps_best, tps_worst)),
             gpu_pct_text,
@@ -167,7 +166,7 @@ def _display_performance_table(results: list[BenchmarkResultExtended], rankings:
 def _display_ragas_table(results: list[BenchmarkResultExtended], rankings: RankTable) -> None:
     table = Table(title="RAGAS Evaluation Scores", show_lines=True)
     table.add_column("Rank", justify="right", style="dim", width=4)
-    table.add_column("Config", style="cyan", max_width=35)
+    table.add_column("Config", style="cyan")
     table.add_column("Faithfulness", justify="right")
     table.add_column("Answer Rel.", justify="right")
     table.add_column("Ctx Precision", justify="right")
@@ -188,7 +187,7 @@ def _display_ragas_table(results: list[BenchmarkResultExtended], rankings: RankT
 
         table.add_row(
             rank_str,
-            _short_name(r.config_name),
+            _format_config_name(r.config_name),
             _ragas_cell(r.ragas_faithfulness),
             _ragas_cell(r.ragas_answer_relevancy),
             _ragas_cell(r.ragas_context_precision),
@@ -224,7 +223,7 @@ def _display_sparklines(results: list[BenchmarkResultExtended]) -> None:
             val = getattr(r, attr)
             bar = _make_sparkline(val, maxima[attr], width=8)
             parts.append(f"{bar} {_fmt(val)}")
-        line = f"  {_short_name(r.config_name, 30):<30}  {'  '.join(parts)}"
+        line = f"  {_format_config_name(r.config_name):<30}  {'  '.join(parts)}"
         console.print(line)
 
 

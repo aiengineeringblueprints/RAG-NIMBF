@@ -43,7 +43,7 @@ def evaluate_results(
     critic_ollama_api_key: str | None = None,
     critic_openai_compat_base_url: str | None = None,
     critic_openai_compat_api_key: str | None = None,
-    critic_max_tokens: int = 4096,
+    critic_max_tokens: int = 10000,
 ) -> EvaluationResult:
     if not questions:
         return EvaluationResult(

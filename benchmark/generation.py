@@ -8,18 +8,90 @@ from benchmark.metrics import get_gpu_usage
 from benchmark.providers import get_chat_model
 
 # Matches <think ...>...</think > blocks (attributes + multiline content)
-_THINK_PATTERN = re.compile(r"<think[^>]*>.*?</think\s*>", re.DOTALL | re.IGNORECASE)
+_THINK_TAG_PATTERN = re.compile(r"<think[^>]*>.*?</think\s*>", re.DOTALL | re.IGNORECASE)
 
 
 def strip_thinking(text: str) -> str:
-    """Remove reasoning/thinking tags from LLM output.
+    """Remove reasoning/thinking from LLM output.
 
-    Models like Qwen3 and DeepSeek-R1 wrap internal reasoning in
-    ``<think ...>...</think >`` tags.  These inflate RAGAS scores
-    (especially answer_relevancy) because the evaluator sees the
-    reasoning text instead of just the actual answer.
+    Handles two formats:
+    1. Tag-wrapped: ``<think ...>reasoning</think >`` (Qwen3, DeepSeek-R1)
+    2. Bare thinking: the model outputs reasoning text that reads like
+       internal monologue (e.g. "Okay, let's see...") without ever
+       producing a final answer.  In this case the entire output is
+       discarded.
+
+    After stripping tags, if no substantive answer remains (i.e. the
+    content looks like thinking prose), an empty string is returned so
+    RAGAS treats it as a failed generation rather than scoring the
+    reasoning as the "answer".
     """
-    return _THINK_PATTERN.sub("", text).strip()
+    # 1. Remove explicit <think ...>...</think > blocks
+    cleaned = _THINK_TAG_PATTERN.sub("", text).strip()
+
+    # 2. If the cleaned result still looks like thinking prose
+    #    (first-person reasoning, no clear answer), discard it entirely.
+    #    Heuristic: starts with common thinking markers and never
+    #    transitions into a declarative answer.
+    if _looks_like_thinking(cleaned):
+        return ""
+
+    return cleaned
+
+
+def _looks_like_thinking(text: str) -> bool:
+    """Return True if *text* reads like internal reasoning, not an answer."""
+    if not text:
+        return False
+
+    first_line = text.split("\n", 1)[0].strip().lower()
+
+    # Common thinking starters used by Qwen / DeepSeek models
+    _THINKING_STARTS = (
+        "okay,",
+        "okay ",
+        "let's see",
+        "let me",
+        "looking at",
+        "first,",
+        "well,",
+        "hmm",
+        "so,",
+        "so ",
+        "now ",
+        "the user",
+        "i need to",
+        "i should",
+        "i'll",
+        "to answer",
+        "to find",
+        "to calculate",
+        "to determine",
+    )
+
+    # If the entire text ends mid-sentence (trailing comma, "of", "the", etc.)
+    # it was cut off and is almost certainly thinking, not a final answer.
+    _CUTOFF_ENDS = (
+        " of", " the", " a", " an", " is", " in", " to", " for",
+        " and", " that", " with", " which", " it",
+        ",",
+    )
+
+    text_lower = text.strip().lower()
+
+    # Check for cutoff: answer ends mid-sentence without punctuation
+    ends_with_punct = text_lower[-1] in ".!?" if text_lower else False
+    if not ends_with_punct:
+        for marker in _CUTOFF_ENDS:
+            if text_lower.endswith(marker):
+                return True
+
+    # Check if starts with thinking markers
+    for marker in _THINKING_STARTS:
+        if first_line.startswith(marker):
+            return True
+
+    return False
 
 
 @dataclass
