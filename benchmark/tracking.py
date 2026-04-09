@@ -16,10 +16,11 @@ logger = logging.getLogger(__name__)
 def setup_mlflow() -> str:
     """Configure MLflow tracking URI and return it.
 
-    Reads MLFLOW_TRACKING_URI from the environment (default: ``mlruns``
-    inside the project root, i.e. a local file store).
+    By default, uses an SQLite database (``mlflow.db``) in the project root
+    so all runs are persisted in a single queryable file.  Override via the
+    ``MLFLOW_TRACKING_URI`` environment variable if needed.
     """
-    tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "mlruns")
+    tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "sqlite:///mlflow.db")
     mlflow.set_tracking_uri(tracking_uri)
     logger.info("MLflow tracking URI: %s", tracking_uri)
     return tracking_uri

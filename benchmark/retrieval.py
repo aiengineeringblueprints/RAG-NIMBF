@@ -92,13 +92,18 @@ def retrieve(vector_store: Chroma, query: str, top_k: int = 3) -> list[Document]
     return vector_store.similarity_search(query, k=top_k)
 
 
-def cleanup_collection(collection_name: str) -> None:
+def cleanup_collection(collection_name: str, cache_key: str | None = None) -> None:
     """Delete a single ChromaDB collection by name.
 
     Safe to call even if the collection does not exist.
+    If *cache_key* is provided, the corresponding vector-store cache entry
+    is also removed so that subsequent configs don't reference a deleted
+    collection.
     """
     client = _get_client()
     with _chroma_lock:
+        if cache_key is not None:
+            _vector_store_cache.pop(cache_key, None)
         existing = [c.name for c in client.list_collections()]
         if collection_name in existing:
             client.delete_collection(collection_name)
