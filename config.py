@@ -58,6 +58,8 @@ class BenchmarkConfig:
     dataset_sample_size: int
     eval_critic_llm: str
     eval_critic_embedding: str
+    # Prompt template
+    prompt_template: str = "concise"
     # Reranker
     reranker_model: str | None = None
     reranker_top_k: int = 3
@@ -67,6 +69,7 @@ class BenchmarkConfig:
         parts = (
             f"{self.chunking_strategy}_cs{self.chunk_size}_co{self.chunk_overlap}"
             f"_{self.embedding_model}_{self.llm_model}"
+            f"_{self.prompt_template}"
         )
         if self.reranker_model:
             parts += f"_rerank-{self.reranker_model}"
@@ -157,6 +160,18 @@ def get_all_combinations() -> list[BenchmarkConfig]:
     embedding_ollama_api_key = os.getenv("EMBEDDING_OLLAMA_API_KEY") or None
     eval_critic_max_tokens = int(os.getenv("EVAL_CRITIC_MAX_TOKENS", "4096"))
 
+    # Prompt templates
+    prompt_templates = _parse_list(os.getenv("PROMPT_TEMPLATES", "concise"))
+
+    # Validate template names early
+    from benchmark.prompt_templates import BUILTIN_TEMPLATES
+    for pt in prompt_templates:
+        if pt not in BUILTIN_TEMPLATES:
+            raise ValueError(
+                f"Unknown prompt template '{pt}'. "
+                f"Available: {', '.join(sorted(BUILTIN_TEMPLATES))}"
+            )
+
     # Reranker config
     reranker_models_raw = _parse_list(os.getenv("RERANKER_MODELS", ""))
     reranker_models: list[str | None] = reranker_models_raw if reranker_models_raw else [None]
@@ -184,7 +199,7 @@ def get_all_combinations() -> list[BenchmarkConfig]:
 
     combos = list(product(
         llm_parsed, embedding_models, chunk_sizes, chunk_overlaps, chunking_strategies,
-        reranker_models,
+        reranker_models, prompt_templates,
     ))
 
     return [
@@ -218,6 +233,7 @@ def get_all_combinations() -> list[BenchmarkConfig]:
             eval_critic_embedding=eval_critic_embedding,
             reranker_model=reranker,
             reranker_top_k=reranker_top_k,
+            prompt_template=tmpl,
         )
-        for (provider, model_name), emb, cs, co, strat, reranker in combos
+        for (provider, model_name), emb, cs, co, strat, reranker, tmpl in combos
     ]

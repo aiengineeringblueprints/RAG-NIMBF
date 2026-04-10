@@ -34,6 +34,7 @@ def _flatten_ragas_stats(
     for key, stats in [
         ("ragas_faithfulness", result.ragas_faithfulness_stats),
         ("ragas_answer_relevancy", result.ragas_answer_relevancy_stats),
+        ("ragas_answer_correctness", result.ragas_answer_correctness_stats),
         ("ragas_context_precision", result.ragas_context_precision_stats),
         ("ragas_context_recall", result.ragas_context_recall_stats),
     ]:
@@ -67,6 +68,7 @@ def log_benchmark_run(result: BenchmarkResultExtended) -> None:
         "llm_model": result.llm_model,
         "embedding_model": result.embedding_model,
         "chunking_strategy": result.chunking_strategy,
+        "prompt_template": result.prompt_template,
     }
     if result.reranker_model:
         tags["reranker_model"] = result.reranker_model
@@ -96,6 +98,7 @@ def log_benchmark_run(result: BenchmarkResultExtended) -> None:
     for key, value in [
         ("ragas_faithfulness", result.ragas_faithfulness),
         ("ragas_answer_relevancy", result.ragas_answer_relevancy),
+        ("ragas_answer_correctness", result.ragas_answer_correctness),
         ("ragas_context_precision", result.ragas_context_precision),
         ("ragas_context_recall", result.ragas_context_recall),
     ]:
@@ -146,6 +149,7 @@ def _log_per_sample_csv(result: BenchmarkResultExtended, run_id: str) -> None:
     ragas_keys = [
         "faithfulness",
         "answer_relevancy",
+        "answer_correctness",
         "context_precision",
         "context_recall",
     ]

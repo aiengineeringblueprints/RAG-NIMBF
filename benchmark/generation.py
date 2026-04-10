@@ -1,8 +1,14 @@
+import logging
 import re
 import time
 from dataclasses import dataclass
 
 from langchain_core.language_models.chat_models import BaseChatModel
+
+logger = logging.getLogger(__name__)
+
+_MAX_RETRIES = 5
+_BASE_DELAY = 10  # seconds
 
 from benchmark.metrics import get_gpu_usage
 from benchmark.providers import get_chat_model
@@ -123,17 +129,42 @@ def get_llm(
     )
 
 
-def generate_answer(llm: BaseChatModel, question: str, contexts: list[str]) -> GenerationResult:
+def generate_answer(
+    llm: BaseChatModel,
+    question: str,
+    contexts: list[str],
+    *,
+    system_prompt: str = (
+        "Answer the question using ONLY the provided context. "
+        "Return ONLY the raw value — a number, percentage, ratio, or yes/no. "
+        "Do NOT include units, explanations, reasoning, or full sentences. "
+        "Examples: 494.0 | 0.12 | -0.46 | 1 | 5.8"
+    ),
+    human_template: str = "Context:\n{context}\n\nQuestion: {question}\n\nAnswer:",
+) -> GenerationResult:
     from langchain_core.messages import HumanMessage, SystemMessage
 
     context_text = "\n\n".join(contexts)
     messages = [
-        SystemMessage(content="Answer the question based only on the provided context. Be concise and precise."),
-        HumanMessage(content=f"Context:\n{context_text}\n\nQuestion: {question}\n\nAnswer:"),
+        SystemMessage(content=system_prompt),
+        HumanMessage(content=human_template.format(context=context_text, question=question)),
     ]
 
     start = time.perf_counter()
-    response = llm.invoke(messages)
+    response = None
+    for attempt in range(1, _MAX_RETRIES + 1):
+        try:
+            response = llm.invoke(messages)
+            break
+        except Exception as exc:
+            if attempt == _MAX_RETRIES:
+                raise
+            delay = _BASE_DELAY * 2 ** (attempt - 1)
+            logger.warning(
+                "LLM invoke failed (attempt %d/%d): %s  — retrying in %ds",
+                attempt, _MAX_RETRIES, exc, delay,
+            )
+            time.sleep(delay)
     total = time.perf_counter() - start
 
     answer = strip_thinking(str(response.content))

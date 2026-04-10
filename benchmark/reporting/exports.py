@@ -32,11 +32,12 @@ def _result_to_dict(r: BenchmarkResultExtended) -> dict:
     d = {}
     # Old fields (backward compatible keys)
     for key in (
-        "config_name", "llm_model", "embedding_model", "chunking_strategy",
+        "config_name", "llm_model", "embedding_model", "prompt_template",
+        "chunking_strategy",
         "chunk_size", "chunk_overlap", "num_chunks", "num_questions",
         "avg_ttft_seconds", "avg_tokens_per_second",
         "avg_gpu_utilization_pct", "avg_gpu_memory_used_mb",
-        "ragas_faithfulness", "ragas_answer_relevancy",
+        "ragas_faithfulness", "ragas_answer_relevancy", "ragas_answer_correctness",
         "ragas_context_precision", "ragas_context_recall",
         "total_time_seconds",
     ):
@@ -51,6 +52,7 @@ def _result_to_dict(r: BenchmarkResultExtended) -> dict:
         "gpu_memory_mb": _stats_to_dict(r.gpu_mem_stats),
         "ragas_faithfulness": _stats_to_dict(r.ragas_faithfulness_stats),
         "ragas_answer_relevancy": _stats_to_dict(r.ragas_answer_relevancy_stats),
+        "ragas_answer_correctness": _stats_to_dict(r.ragas_answer_correctness_stats),
         "ragas_context_precision": _stats_to_dict(r.ragas_context_precision_stats),
         "ragas_context_recall": _stats_to_dict(r.ragas_context_recall_stats),
     }
@@ -107,6 +109,7 @@ def save_csv_report(
             "config_name": r.config_name,
             "llm_model": r.llm_model,
             "embedding_model": r.embedding_model,
+            "prompt_template": r.prompt_template,
             "chunking_strategy": r.chunking_strategy,
             "chunk_size": r.chunk_size,
             "chunk_overlap": r.chunk_overlap,
@@ -118,6 +121,7 @@ def save_csv_report(
             "avg_gpu_memory_used_mb": r.avg_gpu_memory_used_mb,
             "ragas_faithfulness": r.ragas_faithfulness,
             "ragas_answer_relevancy": r.ragas_answer_relevancy,
+            "ragas_answer_correctness": r.ragas_answer_correctness,
             "ragas_context_precision": r.ragas_context_precision,
             "ragas_context_recall": r.ragas_context_recall,
             "total_time_seconds": r.total_time_seconds,
@@ -130,6 +134,7 @@ def save_csv_report(
             ("gpu_mem", r.gpu_mem_stats),
             ("faithfulness", r.ragas_faithfulness_stats),
             ("answer_relevancy", r.ragas_answer_relevancy_stats),
+            ("answer_correctness", r.ragas_answer_correctness_stats),
             ("context_precision", r.ragas_context_precision_stats),
             ("context_recall", r.ragas_context_recall_stats),
         ):
@@ -158,6 +163,7 @@ def save_csv_report(
                 "tokens_per_second": s.tokens_per_second,
                 "faithfulness": s.ragas_scores.get("faithfulness"),
                 "answer_relevancy": s.ragas_scores.get("answer_relevancy"),
+                "answer_correctness": s.ragas_scores.get("answer_correctness"),
                 "context_precision": s.ragas_scores.get("context_precision"),
                 "context_recall": s.ragas_scores.get("context_recall"),
             })
@@ -207,14 +213,15 @@ def save_markdown_report(
     # RAGAS table
     lines.append("## RAGAS Scores")
     lines.append("")
-    lines.append("| Config | Faithfulness | Answer Rel. | Ctx Precision | Ctx Recall |")
-    lines.append("|--------|-------------|-------------|---------------|------------|")
+    lines.append("| Config | Faithfulness | Answer Rel. | Answer Corr. | Ctx Precision | Ctx Recall |")
+    lines.append("|--------|-------------|-------------|--------------|---------------|------------|")
     for r in results:
         f = _fmt_md(r.ragas_faithfulness)
         ar = _fmt_md(r.ragas_answer_relevancy)
+        ac = _fmt_md(r.ragas_answer_correctness)
         cp = _fmt_md(r.ragas_context_precision)
         cr = _fmt_md(r.ragas_context_recall)
-        lines.append(f"| {_short(r.config_name)} | {f} | {ar} | {cp} | {cr} |")
+        lines.append(f"| {_short(r.config_name)} | {f} | {ar} | {ac} | {cp} | {cr} |")
     lines.append("")
 
     # Insights
@@ -238,6 +245,7 @@ def save_markdown_report(
         for label, stats in (
             ("Faithfulness", r.ragas_faithfulness_stats),
             ("Answer Relevancy", r.ragas_answer_relevancy_stats),
+            ("Answer Correctness", r.ragas_answer_correctness_stats),
             ("Context Precision", r.ragas_context_precision_stats),
             ("Context Recall", r.ragas_context_recall_stats),
         ):

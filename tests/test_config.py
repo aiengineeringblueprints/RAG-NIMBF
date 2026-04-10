@@ -93,6 +93,7 @@ def _make_config(**overrides) -> BenchmarkConfig:
         eval_critic_embedding="nomic-embed-text:latest",
         reranker_model=None,
         reranker_top_k=3,
+        prompt_template="concise",
     )
     defaults.update(overrides)
     return BenchmarkConfig(**defaults)
@@ -101,7 +102,7 @@ def _make_config(**overrides) -> BenchmarkConfig:
 class TestBenchmarkConfig:
     def test_name_property(self):
         cfg = _make_config()
-        assert cfg.name == "recursive_cs1000_co200_nomic-embed-text:latest_gemma3:4b"
+        assert cfg.name == "recursive_cs1000_co200_nomic-embed-text:latest_gemma3:4b_concise"
 
     def test_frozen(self):
         cfg = _make_config()

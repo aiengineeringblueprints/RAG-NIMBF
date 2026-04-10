@@ -90,3 +90,24 @@ class TestGenerateAnswer:
         assert "ctx1" in call_args[1].content
         assert "ctx2" in call_args[1].content
         assert "What is X?" in call_args[1].content
+
+    @patch("benchmark.generation.get_gpu_usage", return_value=None)
+    def test_custom_template(self, mock_gpu):
+        """Verify custom system_prompt and human_template are used."""
+        mock_llm = MagicMock()
+        mock_response = MagicMock()
+        mock_response.content = "42"
+        mock_response.usage_metadata = {"output_tokens": 1}
+        mock_llm.invoke.return_value = mock_response
+
+        generate_answer(
+            mock_llm, "What is X?", ["ctx1"],
+            system_prompt="Be brief.",
+            human_template="Q: {question}\nC: {context}\nA:",
+        )
+
+        call_args = mock_llm.invoke.call_args[0][0]
+        assert call_args[0].content == "Be brief."
+        assert "Q: What is X?" in call_args[1].content
+        assert "C: ctx1" in call_args[1].content
+        assert "A:" in call_args[1].content
