@@ -36,6 +36,7 @@ class BenchmarkResultExtended:
     config_name: str
     llm_model: str
     embedding_model: str
+    prompt_template: str
     chunking_strategy: str
     chunk_size: int
     chunk_overlap: int
@@ -47,6 +48,7 @@ class BenchmarkResultExtended:
     avg_gpu_memory_used_mb: float | None
     ragas_faithfulness: float | None
     ragas_answer_relevancy: float | None
+    ragas_answer_correctness: float | None
     ragas_context_precision: float | None
     ragas_context_recall: float | None
     total_time_seconds: float
@@ -57,6 +59,7 @@ class BenchmarkResultExtended:
     gpu_mem_stats: StatSummary | None
     ragas_faithfulness_stats: StatSummary | None
     ragas_answer_relevancy_stats: StatSummary | None
+    ragas_answer_correctness_stats: StatSummary | None
     ragas_context_precision_stats: StatSummary | None
     ragas_context_recall_stats: StatSummary | None
     evaluation_error: str | None = None

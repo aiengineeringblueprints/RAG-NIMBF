@@ -15,6 +15,7 @@ from benchmark.retrieval import (
     _cache_key,
 )
 from benchmark.generation import get_llm, generate_answer, GenerationResult
+from benchmark.prompt_templates import get_template
 from benchmark.evaluation import evaluate_results
 from benchmark.reranker import get_reranker
 from benchmark.reporting import generate_report
@@ -68,6 +69,7 @@ def run_single_benchmark(
         max_new_tokens=config.max_new_tokens,
     )
     reranker = get_reranker(config.reranker_model)
+    prompt_tmpl = get_template(config.prompt_template)
     questions: list[str] = []
     ground_truths: list[str] = []
     all_contexts: list[list[str]] = []
@@ -85,7 +87,11 @@ def run_single_benchmark(
 
         context_texts = [doc.page_content for doc in retrieved_docs]
 
-        result = generate_answer(llm, sample["question"], context_texts)
+        result = generate_answer(
+            llm, sample["question"], context_texts,
+            system_prompt=prompt_tmpl.system_prompt,
+            human_template=prompt_tmpl.human_template,
+        )
 
         questions.append(sample["question"])
         ground_truths.append(sample["ground_truth"])
@@ -171,6 +177,7 @@ def run_single_benchmark(
         config_name=config.name,
         llm_model=config.llm_model,
         embedding_model=config.embedding_model,
+        prompt_template=config.prompt_template,
         chunking_strategy=config.chunking_strategy,
         chunk_size=config.chunk_size,
         chunk_overlap=config.chunk_overlap,
@@ -182,6 +189,7 @@ def run_single_benchmark(
         avg_gpu_memory_used_mb=sum(gpu_mems) / len(gpu_mems) if gpu_mems else None,
         ragas_faithfulness=ragas_means.get("faithfulness"),
         ragas_answer_relevancy=ragas_means.get("answer_relevancy"),
+        ragas_answer_correctness=ragas_means.get("answer_correctness"),
         ragas_context_precision=ragas_means.get("context_precision"),
         ragas_context_recall=ragas_means.get("context_recall"),
         total_time_seconds=total_time,
@@ -192,6 +200,7 @@ def run_single_benchmark(
         gpu_mem_stats=compute_stats(gpu_mems),
         ragas_faithfulness_stats=compute_stats(_ragas_stat_samples("faithfulness")),
         ragas_answer_relevancy_stats=compute_stats(_ragas_stat_samples("answer_relevancy")),
+        ragas_answer_correctness_stats=compute_stats(_ragas_stat_samples("answer_correctness")),
         ragas_context_precision_stats=compute_stats(_ragas_stat_samples("context_precision")),
         ragas_context_recall_stats=compute_stats(_ragas_stat_samples("context_recall")),
         evaluation_error=eval_result.error,

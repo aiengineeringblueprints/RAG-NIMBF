@@ -77,6 +77,7 @@ class TestBenchmarkResultExtended:
             config_name="test",
             llm_model="model",
             embedding_model="emb",
+            prompt_template="concise",
             chunking_strategy="recursive",
             chunk_size=1000,
             chunk_overlap=200,

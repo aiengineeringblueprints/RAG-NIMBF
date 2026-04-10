@@ -11,6 +11,7 @@ DB_PATH = Path(__file__).parent / "mlflow.db"
 # Key metric columns to show by default (main values, not stats)
 DEFAULT_METRICS = [
     "ragas_answer_relevancy",
+    "ragas_answer_correctness",
     "ragas_context_precision",
     "ragas_context_recall",
     "ragas_faithfulness",
@@ -19,7 +20,7 @@ DEFAULT_METRICS = [
     "total_time_seconds",
 ]
 
-TAG_COLUMNS = ["chunking_strategy", "embedding_model", "llm_model"]
+TAG_COLUMNS = ["chunking_strategy", "embedding_model", "llm_model", "prompt_template"]
 PARAM_COLUMNS = ["chunk_size", "chunk_overlap", "num_chunks", "num_questions"]
 
 
@@ -164,7 +165,7 @@ def _print_comparison(runs: list[dict], metrics_keys: list[str]) -> None:
         return
 
     # Only show key identifying columns + metrics
-    headers = ["LLM Model", "Embedding", "Strategy", "CS", "CO"] + metrics_keys
+    headers = ["LLM Model", "Embedding", "Strategy", "CS", "CO", "Prompt"] + metrics_keys
     rows: list[list[str]] = []
 
     for run in runs:
@@ -177,6 +178,7 @@ def _print_comparison(runs: list[dict], metrics_keys: list[str]) -> None:
             tags.get("chunking_strategy", "-"),
             params.get("chunk_size", "-"),
             params.get("chunk_overlap", "-"),
+            tags.get("prompt_template", "-"),
         ]
         row.extend(_format_val(metrics.get(k)) for k in metrics_keys)
         rows.append(row)
