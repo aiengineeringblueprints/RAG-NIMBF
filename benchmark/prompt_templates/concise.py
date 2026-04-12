@@ -3,6 +3,7 @@
 from benchmark.prompt_templates.types import PromptTemplate
 
 SYSTEM_PROMPT = (
+    "/no_think "
     "Answer the question using ONLY the provided context. "
     "Return ONLY the raw value — a number, percentage, ratio, or yes/no. "
     "Do NOT include units, explanations, reasoning, or full sentences. "

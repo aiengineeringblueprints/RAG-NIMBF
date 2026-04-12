@@ -1,3 +1,4 @@
+import json
 import logging
 import time
 from datetime import datetime
@@ -19,6 +20,7 @@ from benchmark.prompt_templates import get_template
 from benchmark.evaluation import evaluate_results
 from benchmark.reranker import get_reranker
 from benchmark.reporting import generate_report
+from benchmark.reporting.exports import _result_to_dict
 from benchmark.tracking import setup_mlflow, log_benchmark_run
 from benchmark.reporting.models import (
     BenchmarkResultExtended,
@@ -31,11 +33,20 @@ logger = logging.getLogger(__name__)
 
 
 def run_single_benchmark(
-    config: BenchmarkConfig, data: list[dict]
+    config: BenchmarkConfig, data: list[dict], run_dir: Path | None = None,
 ) -> BenchmarkResultExtended:
     run_start = time.perf_counter()
     console.print(f"\n[bold yellow]>>> Starting: {config.name}[/bold yellow]")
     collection_name = config.name.replace(":", "_").replace("/", "_")
+
+    # Prepare QA log path if run_dir is provided
+    qa_log: list[dict] = []
+    qa_log_path: Path | None = None
+    if run_dir is not None:
+        configs_dir = run_dir / "configs"
+        configs_dir.mkdir(parents=True, exist_ok=True)
+        safe_name = config.name.replace(":", "_").replace("/", "_")
+        qa_log_path = configs_dir / f"{safe_name}_qa.json"
 
     # 1. Chunk
     chunker = get_chunker(config.chunking_strategy, config.chunk_size, config.chunk_overlap)
@@ -97,6 +108,15 @@ def run_single_benchmark(
         ground_truths.append(sample["ground_truth"])
         all_contexts.append(context_texts)
         gen_results.append(result)
+
+        # Stream QA pair to log file after each answer
+        if qa_log_path is not None:
+            qa_log.append({
+                "index": i,
+                "question": sample["question"],
+                "answer": result.answer,
+            })
+            qa_log_path.write_text(json.dumps(qa_log, indent=2, ensure_ascii=False))
 
     console.print(f"  [dim]Generated {len(gen_results)} answers[/dim]       ")
 
@@ -226,15 +246,29 @@ def _next_run_dir(base: Path = Path("results")) -> Path:
     return run_dir
 
 
+def _save_config_result(result: BenchmarkResultExtended, run_dir: Path) -> None:
+    """Persist a single config result to disk immediately."""
+    config_dir = run_dir / "configs"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    safe_name = result.config_name.replace(":", "_").replace("/", "_")
+    path = config_dir / f"{safe_name}.json"
+    path.write_text(json.dumps(_result_to_dict(result), indent=2, default=str))
+    console.print(f"[dim]  Saved config result to {path}[/dim]")
+
+
 def run_all_benchmarks() -> list[BenchmarkResultExtended]:
     configs = get_all_combinations()
     console.print(f"[bold]Running {len(configs)} benchmark configuration(s)[/bold]")
 
     data = load_benchmark_data(
-        subset=configs[0].dataset_subset,
+        dataset_name=configs[0].dataset_name,
+        subset=configs[0].dataset_subset or None,
         sample_size=configs[0].dataset_sample_size,
     )
 
+    # Create run directory up front so results are saved even if a
+    # later step (MLflow, cleanup, etc.) crashes.
+    run_dir = _next_run_dir()
     wall_start = time.perf_counter()
 
     # Run sequentially: local models typically share a single GPU and process
@@ -243,7 +277,11 @@ def run_all_benchmarks() -> list[BenchmarkResultExtended]:
     results: list[BenchmarkResultExtended] = []
     for i, config in enumerate(configs):
         console.print(f"\n[bold cyan]Config {i + 1}/{len(configs)}[/bold cyan]")
-        result = run_single_benchmark(config, data)
+        result = run_single_benchmark(config, data, run_dir=run_dir)
+
+        # Save to disk immediately (survives MLflow crashes)
+        _save_config_result(result, run_dir)
+
         log_benchmark_run(result)
         results.append(result)
 
@@ -255,13 +293,13 @@ def run_all_benchmarks() -> list[BenchmarkResultExtended]:
     wall_time = time.perf_counter() - wall_start
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    run_dir = _next_run_dir()
-    console.print(f"[dim]Saving results to {run_dir}[/dim]")
+    console.print(f"[dim]Saving aggregated results to {run_dir}[/dim]")
 
     generate_report(
         results,
         results_dir=run_dir,
         timestamp=timestamp,
+        dataset_name=configs[0].dataset_name,
         dataset_subset=configs[0].dataset_subset,
         dataset_sample_size=configs[0].dataset_sample_size,
         total_time=wall_time,

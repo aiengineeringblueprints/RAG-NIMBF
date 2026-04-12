@@ -1,27 +1,29 @@
 from datasets import load_dataset
 from rich.console import Console
 
+from benchmark.dataset_adapters import get_adapter
+
 console = Console()
 
 
-def _build_context(row: dict) -> str:
-    parts = []
-    if row.get("pre_text"):
-        parts.append(row["pre_text"])
-    if row.get("table"):
-        parts.append(row["table"])
-    if row.get("post_text"):
-        parts.append(row["post_text"])
-    if not parts and row.get("context"):
-        parts.append(row["context"])
-    return "\n\n".join(parts)
+def load_benchmark_data(
+    dataset_name: str = "t2-ragbench",
+    subset: str | None = None,
+    sample_size: int = 50,
+) -> list[dict]:
+    adapter = get_adapter(dataset_name)
 
+    label = subset or "default"
+    console.print(f"[bold blue]Loading {adapter.hf_id} ({label})...[/bold blue]")
 
-def load_benchmark_data(subset: str = "FinQA", sample_size: int = 50) -> list[dict]:
-    console.print(f"[bold blue]Loading T2-RAGBench ({subset})...[/bold blue]")
-    ds = load_dataset("G4KMU/t2-ragbench", subset)
+    kwargs: dict = {}
+    if adapter.requires_subset and subset:
+        kwargs["name"] = subset
+    ds = load_dataset(adapter.hf_id, **kwargs)
 
-    split = "test" if "test" in ds else list(ds.keys())[0]
+    split = adapter.preferred_split
+    if split not in ds:
+        split = list(ds.keys())[0]
     data = ds[split]
 
     if sample_size and sample_size < len(data):
@@ -29,19 +31,25 @@ def load_benchmark_data(subset: str = "FinQA", sample_size: int = 50) -> list[di
 
     samples = []
     for row in data:
+        gt_raw = row.get(adapter.ground_truth_key, "")
+        if adapter.ground_truth_transform:
+            gt = adapter.ground_truth_transform(gt_raw)
+        else:
+            gt = str(gt_raw)
+
         samples.append({
-            "question": row["question"],
-            "ground_truth": str(row["program_answer"]),
-            "context": _build_context(row),
+            "question": row[adapter.question_key],
+            "ground_truth": gt,
+            "context": adapter.build_context(row),
             "metadata": {
                 k: row.get(k)
-                for k in [
-                    "file_name", "company_name", "company_symbol",
-                    "report_year", "page_number", "context_id",
-                ]
+                for k in adapter.metadata_keys
                 if k in row
             },
         })
 
-    console.print(f"[green]Loaded {len(samples)} samples from {subset} ({split} split)[/green]")
+    console.print(
+        f"[green]Loaded {len(samples)} samples from {adapter.hf_id} "
+        f"({split} split)[/green]"
+    )
     return samples

@@ -86,6 +86,7 @@ def save_json_report(run: BenchmarkRun, results_dir: Path) -> Path:
         "timestamp": timestamp,
         "num_configs": len(run.results),
         "dataset": {
+            "name": run.dataset_name,
             "subset": run.dataset_subset,
             "sample_size": run.dataset_sample_size,
         },
@@ -181,6 +182,7 @@ def save_markdown_report(
     rankings: RankTable,
     results_dir: Path,
     timestamp: str = "",
+    dataset_name: str = "",
     dataset_subset: str = "",
     dataset_sample_size: int = 0,
 ) -> Path:
@@ -192,7 +194,11 @@ def save_markdown_report(
     lines.append("")
     if timestamp:
         lines.append(f"**Date:** {timestamp}")
-    if dataset_subset:
+    if dataset_name or dataset_subset:
+        label = dataset_name or "unknown"
+        if dataset_subset:
+            label += f"/{dataset_subset}"
+        lines.append(f"**Dataset:** {label} ({dataset_sample_size} samples)")
         lines.append(f"**Dataset:** {dataset_subset} ({dataset_sample_size} samples)")
     lines.append(f"**Configurations:** {len(results)}")
     lines.append("")

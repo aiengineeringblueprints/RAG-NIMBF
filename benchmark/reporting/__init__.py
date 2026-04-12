@@ -14,6 +14,7 @@ def generate_report(
     results_dir: Path = Path("results"),
     *,
     timestamp: str = "",
+    dataset_name: str = "",
     dataset_subset: str = "",
     dataset_sample_size: int = 0,
     total_time: float = 0.0,
@@ -30,6 +31,7 @@ def generate_report(
         display_report(
             results,
             rankings,
+            dataset_name=dataset_name,
             dataset_subset=dataset_subset,
             dataset_sample_size=dataset_sample_size,
             total_time=total_time,
@@ -41,6 +43,7 @@ def generate_report(
     if save_json:
         run = BenchmarkRun(
             timestamp=timestamp,
+            dataset_name=dataset_name,
             dataset_subset=dataset_subset,
             dataset_sample_size=dataset_sample_size,
             system_info=system_info,
@@ -62,6 +65,7 @@ def generate_report(
         path = save_markdown_report(
             results, rankings, results_dir,
             timestamp=timestamp,
+            dataset_name=dataset_name,
             dataset_subset=dataset_subset,
             dataset_sample_size=dataset_sample_size,
         )

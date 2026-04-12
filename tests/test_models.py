@@ -89,6 +89,7 @@ class TestBenchmarkResultExtended:
             avg_gpu_memory_used_mb=None,
             ragas_faithfulness=None,
             ragas_answer_relevancy=None,
+            ragas_answer_correctness=None,
             ragas_context_precision=None,
             ragas_context_recall=None,
             total_time_seconds=30.0,
@@ -99,6 +100,7 @@ class TestBenchmarkResultExtended:
             gpu_mem_stats=None,
             ragas_faithfulness_stats=None,
             ragas_answer_relevancy_stats=None,
+            ragas_answer_correctness_stats=None,
             ragas_context_precision_stats=None,
             ragas_context_recall_stats=None,
         )

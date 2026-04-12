@@ -3,6 +3,7 @@
 from benchmark.prompt_templates.types import PromptTemplate
 
 SYSTEM_PROMPT = (
+    "/no_think "
     "Answer the question based only on the provided context. "
     "Provide a clear, complete answer in full sentences. "
     "Include relevant calculations or reasoning steps when applicable."

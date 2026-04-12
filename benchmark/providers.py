@@ -73,13 +73,16 @@ def get_chat_model(
     if provider == "ollama":
         from langchain_ollama import ChatOllama
 
-        return ChatOllama(
+        kwargs: dict[str, Any] = dict(
             model=model_name,
             base_url=base_url,
             streaming=False,
             num_predict=max_tokens,
             temperature=temperature,
         )
+        if api_key:
+            kwargs["client_kwargs"] = {"headers": {"Authorization": f"Bearer {api_key}"}}
+        return ChatOllama(**kwargs)
 
     if provider == "openai":
         from langchain_openai import ChatOpenAI
@@ -90,6 +93,7 @@ def get_chat_model(
             api_key=api_key or "not-needed",
             max_tokens=max_tokens,
             temperature=temperature,
+            extra_body={"chat_template_kwargs": {"enable_thinking": False}},
         )
 
     raise ValueError(

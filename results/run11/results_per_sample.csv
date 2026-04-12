@@ -1,0 +1,2 @@
+config_name,question,ground_truth,answer,ttft_seconds,total_seconds,token_count,tokens_per_second,faithfulness,answer_relevancy,answer_correctness,context_precision,context_recall
+recursive_cs1000_co100_nomic-embed-text:latest_Qwen/Qwen3-32B-AWQ_concise,What was the change in compensation and benefits liability for Goldman Sachs in millions from December 2013 to December 2014?,494.0,494.0,5.022864850998303,5.022864850998303,215,42.804257406461645,1.0,0.4311280864903489,1.0,0.9999999999,1.0

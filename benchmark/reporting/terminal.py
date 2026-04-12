@@ -71,6 +71,7 @@ def _format_config_name(config_name: str) -> str:
 def display_report(
     results: list[BenchmarkResultExtended],
     rankings: RankTable,
+    dataset_name: str = "",
     dataset_subset: str = "",
     dataset_sample_size: int = 0,
     total_time: float = 0.0,
@@ -79,7 +80,7 @@ def display_report(
     console.print()
 
     # --- Summary Panel ---
-    _display_summary_panel(results, dataset_subset, dataset_sample_size, total_time, system_info)
+    _display_summary_panel(results, dataset_name, dataset_subset, dataset_sample_size, total_time, system_info)
 
     # --- Performance Metrics Table ---
     _display_performance_table(results, rankings)
@@ -98,6 +99,7 @@ def display_report(
 
 def _display_summary_panel(
     results: list[BenchmarkResultExtended],
+    dataset_name: str,
     dataset_subset: str,
     dataset_sample_size: int,
     total_time: float,
@@ -105,7 +107,11 @@ def _display_summary_panel(
 ) -> None:
     parts: list[str] = []
     parts.append(f"[bold]Configurations:[/bold] {len(results)}")
-    if dataset_subset:
+    if dataset_name or dataset_subset:
+        label = dataset_name or "unknown"
+        if dataset_subset:
+            label += f"/{dataset_subset}"
+        parts.append(f"[bold]Dataset:[/bold] {label} ({dataset_sample_size} samples)")
         parts.append(f"[bold]Dataset:[/bold] {dataset_subset} ({dataset_sample_size} samples)")
     if total_time > 0:
         parts.append(f"[bold]Total wall time:[/bold] {total_time:.1f}s")

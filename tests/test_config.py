@@ -87,6 +87,7 @@ def _make_config(**overrides) -> BenchmarkConfig:
         embedding_ollama_base_url=None,
         embedding_ollama_api_key=None,
         eval_critic_max_tokens=4096,
+        dataset_name="t2-ragbench",
         dataset_subset="FinQA",
         dataset_sample_size=50,
         eval_critic_llm="gemma3:12b",
