@@ -71,6 +71,7 @@ class BenchmarkResultExtended:
 @dataclass(frozen=True)
 class BenchmarkRun:
     timestamp: str
+    dataset_name: str
     dataset_subset: str
     dataset_sample_size: int
     system_info: dict[str, Any]

@@ -167,7 +167,16 @@ def generate_answer(
             time.sleep(delay)
     total = time.perf_counter() - start
 
-    answer = strip_thinking(str(response.content))
+    raw_content = str(response.content) if response.content else ""
+    answer = strip_thinking(raw_content)
+
+    # Fallback: if content is empty but the model put its output into the
+    # reasoning/thinking field (common with thinking-enabled Ollama models),
+    # strip the thinking prose and use whatever remains.
+    if not answer:
+        reasoning = response.additional_kwargs.get("reasoning_content")
+        if reasoning:
+            answer = strip_thinking(str(reasoning))
 
     # Use actual token counts from usage metadata when available
     usage = getattr(response, "usage_metadata", None)

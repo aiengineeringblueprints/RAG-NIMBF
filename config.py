@@ -54,6 +54,7 @@ class BenchmarkConfig:
     embedding_ollama_api_key: str | None
     eval_critic_max_tokens: int
     # Dataset
+    dataset_name: str
     dataset_subset: str
     dataset_sample_size: int
     eval_critic_llm: str
@@ -139,8 +140,17 @@ def get_all_combinations() -> list[BenchmarkConfig]:
     ollama_api_key = os.getenv("OLLAMA_API_KEY") or None
     openai_compat_base_url = os.getenv("OPENAI_COMPAT_BASE_URL") or None
     openai_compat_api_key = os.getenv("OPENAI_COMPAT_API_KEY") or None
+    dataset_name = os.getenv("DATASET_NAME", "t2-ragbench")
     dataset_subset = os.getenv("DATASET_SUBSET", "FinQA")
     dataset_sample_size = int(os.getenv("DATASET_SAMPLE_SIZE", "50"))
+
+    # Validate dataset name against registry
+    from benchmark.dataset_adapters import REGISTRY
+    if dataset_name not in REGISTRY:
+        raise ValueError(
+            f"Unknown dataset '{dataset_name}'. "
+            f"Available: {', '.join(sorted(REGISTRY))}"
+        )
     eval_critic_llm = os.getenv("EVAL_CRITIC_LLM", "gemma3:12b")
     eval_critic_embedding = os.getenv(
         "EVAL_CRITIC_EMBEDDING",
@@ -227,6 +237,7 @@ def get_all_combinations() -> list[BenchmarkConfig]:
             embedding_ollama_base_url=embedding_ollama_base_url,
             embedding_ollama_api_key=embedding_ollama_api_key,
             eval_critic_max_tokens=eval_critic_max_tokens,
+            dataset_name=dataset_name,
             dataset_subset=dataset_subset,
             dataset_sample_size=dataset_sample_size,
             eval_critic_llm=eval_critic_llm,
