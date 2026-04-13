@@ -49,13 +49,15 @@ class TestParseModelId:
 class TestGetChatModel:
     def test_ollama_returns_base_chat_model(self):
         from langchain_core.language_models.chat_models import BaseChatModel
+        from langchain_core.runnables import RunnableBinding
 
         model = get_chat_model(
             provider="ollama",
             model_name="gemma3:4b",
             base_url="http://localhost:11434",
         )
-        assert isinstance(model, BaseChatModel)
+        # bind(think=False) wraps the model in RunnableBinding
+        assert isinstance(model, (BaseChatModel, RunnableBinding))
 
     def test_openai_returns_base_chat_model(self):
         from langchain_core.language_models.chat_models import BaseChatModel

@@ -95,6 +95,8 @@ def _make_config(**overrides) -> BenchmarkConfig:
         reranker_model=None,
         reranker_top_k=3,
         prompt_template="concise",
+        llm_answer_strip_mode="tags_only",
+        llm_answer_value_fallback=True,
     )
     defaults.update(overrides)
     return BenchmarkConfig(**defaults)
@@ -261,3 +263,15 @@ class TestGetAllCombinations:
         configs = get_all_combinations()
         assert len(configs) == 1
         assert configs[0].reranker_model is None
+
+    @patch.dict(os.environ, {
+        "LLM_MODELS": "gemma3:4b",
+        "EMBEDDING_MODELS": "nomic-embed-text:latest",
+        "CHUNK_SIZES": "1000",
+        "CHUNK_OVERLAPS": "200",
+        "CHUNKING_STRATEGIES": "recursive",
+        "LLM_ANSWER_STRIP_MODE": "bogus",
+    }, clear=False)
+    def test_invalid_strip_mode_raises(self):
+        with pytest.raises(ValueError, match="LLM_ANSWER_STRIP_MODE"):
+            get_all_combinations()
