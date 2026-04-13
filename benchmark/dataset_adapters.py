@@ -124,3 +124,22 @@ register(DatasetAdapter(
     preferred_split="validation",
     metadata_keys=("id", "title"),
 ))
+
+
+def _ragas_wikiqa_context(row: dict) -> str:
+    """Build context from the ``context`` column (list of chunk strings)."""
+    ctx = row.get("context")
+    if isinstance(ctx, list):
+        return "\n\n".join(str(c) for c in ctx)
+    return str(ctx) if ctx else ""
+
+
+register(DatasetAdapter(
+    name="ragas-wikiqa",
+    hf_id="vibrantlabsai/ragas-wikiqa",
+    question_key="question",
+    ground_truth_key="correct_answer",
+    build_context=_ragas_wikiqa_context,
+    preferred_split="train",
+    metadata_keys=(),
+))

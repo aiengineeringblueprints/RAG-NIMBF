@@ -9,6 +9,7 @@ from benchmark.dataset_adapters import (
     _t2_ragbench_context,
     _ragbench_context,
     _squad_ground_truth,
+    _ragas_wikiqa_context,
 )
 from benchmark.dataset import load_benchmark_data
 
@@ -71,6 +72,22 @@ class TestSquadGroundTruth:
         assert _squad_ground_truth("hello") == "hello"
 
 
+class TestRagasWikiqaContext:
+    def test_list_of_chunks(self):
+        row = {"context": ["chunk one", "chunk two", "chunk three"]}
+        result = _ragas_wikiqa_context(row)
+        assert result == "chunk one\n\nchunk two\n\nchunk three"
+
+    def test_single_string(self):
+        row = {"context": "a single string"}
+        result = _ragas_wikiqa_context(row)
+        assert result == "a single string"
+
+    def test_empty_row(self):
+        result = _ragas_wikiqa_context({})
+        assert result == ""
+
+
 # ---------------------------------------------------------------------------
 # Adapter registry
 # ---------------------------------------------------------------------------
@@ -94,6 +111,14 @@ class TestDatasetAdapters:
         adapter = get_adapter("squad")
         assert adapter.hf_id == "rajpurkar/squad"
         assert adapter.ground_truth_transform is not None
+
+    def test_ragas_wikiqa_registered(self):
+        adapter = get_adapter("ragas-wikiqa")
+        assert adapter.hf_id == "vibrantlabsai/ragas-wikiqa"
+        assert adapter.question_key == "question"
+        assert adapter.ground_truth_key == "correct_answer"
+        assert adapter.preferred_split == "train"
+        assert adapter.requires_subset is False
 
     def test_unknown_adapter_raises(self):
         with pytest.raises(ValueError, match="Unknown dataset"):
