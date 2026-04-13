@@ -104,6 +104,8 @@ def run_single_benchmark(
             human_template=prompt_tmpl.human_template,
             strip_mode=config.llm_answer_strip_mode,
             value_fallback=config.llm_answer_value_fallback,
+            ground_truth=sample["ground_truth"],
+            prompt_template_name=config.prompt_template,
         )
 
         questions.append(sample["question"])
@@ -169,11 +171,16 @@ def run_single_benchmark(
             tokens_per_second=gr.tokens_per_second,
             gpu_usage=gr.gpu_usage,
             ragas_scores=per_sample_ragas[i] if i < len(per_sample_ragas) else {},
+            answer_valid=gr.answer_valid,
         )
         for i, (q, gt, ctx, gr) in enumerate(
             zip(questions, ground_truths, all_contexts, gen_results)
         )
     )
+
+    invalid_count = sum(1 for s in per_sample if not s.answer_valid)
+    if invalid_count:
+        console.print(f"  [yellow]{invalid_count}/{len(per_sample)} answers were empty/invalid[/yellow]")
 
     # 6. Aggregate metrics
     ttfts = [s.ttft_seconds for s in per_sample]

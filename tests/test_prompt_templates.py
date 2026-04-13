@@ -24,5 +24,16 @@ class TestGetTemplate:
         with pytest.raises(KeyError, match="Unknown prompt template"):
             get_template("nonexistent")
 
-    def test_registry_has_both(self):
-        assert set(BUILTIN_TEMPLATES.keys()) == {"concise", "detailed"}
+    def test_finqa_exists(self):
+        t = get_template("finqa")
+        assert t.name == "finqa"
+        assert t.system_prompt
+        assert "{context}" in t.human_template
+        assert "{question}" in t.human_template
+
+    def test_finqa_has_final_instruction(self):
+        t = get_template("finqa")
+        assert "FINAL:" in t.system_prompt
+
+    def test_registry_has_all(self):
+        assert set(BUILTIN_TEMPLATES.keys()) == {"concise", "detailed", "finqa"}

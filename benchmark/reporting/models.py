@@ -19,6 +19,7 @@ class PerSampleResult:
     tokens_per_second: float
     gpu_usage: dict[str, float] | None
     ragas_scores: dict[str, float | None]
+    answer_valid: bool = True
 
 
 @dataclass(frozen=True)

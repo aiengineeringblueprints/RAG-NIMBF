@@ -26,3 +26,5 @@
 
 
 Test change
+
+python compare_runs.py <dir1> <dir2> [dir3...]

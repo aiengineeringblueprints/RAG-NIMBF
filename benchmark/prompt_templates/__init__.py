@@ -3,9 +3,10 @@
 from benchmark.prompt_templates.types import PromptTemplate
 from benchmark.prompt_templates.concise import CONCISE
 from benchmark.prompt_templates.detailed import DETAILED
+from benchmark.prompt_templates.finqa import FINQA
 
 BUILTIN_TEMPLATES: dict[str, PromptTemplate] = {
-    t.name: t for t in (CONCISE, DETAILED)
+    t.name: t for t in (CONCISE, DETAILED, FINQA)
 }
 
 

@@ -70,6 +70,7 @@ def _result_to_dict(r: BenchmarkResultExtended) -> dict:
             "tokens_per_second": s.tokens_per_second,
             "gpu_usage": s.gpu_usage,
             "ragas_scores": s.ragas_scores,
+            "answer_valid": s.answer_valid,
         }
         for s in r.per_sample
     ]
@@ -167,6 +168,7 @@ def save_csv_report(
                 "answer_correctness": s.ragas_scores.get("answer_correctness"),
                 "context_precision": s.ragas_scores.get("context_precision"),
                 "context_recall": s.ragas_scores.get("context_recall"),
+                "answer_valid": s.answer_valid,
             })
 
     sample_path: Path | None = None
