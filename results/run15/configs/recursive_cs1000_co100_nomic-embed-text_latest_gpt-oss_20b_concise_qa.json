@@ -9,8 +9,15 @@
   {
     "index": 1,
     "question": "What is the cumulative total return of an initial $100 investment in The Goldman Sachs Group, Inc. common stock over the five-year period from December 26, 2008, to December 31, 2013, with dividends reinvested?",
-    "answer": "",
-    "raw_content": "",
+    "answer": "0",
+    "raw_content": "0",
+    "raw_reasoning": null
+  },
+  {
+    "index": 2,
+    "question": "What was the percentage reduction in second generation tenant improvements for Duke Realty Corporation in 2012 compared to 2011?",
+    "answer": "46.8",
+    "raw_content": "46.8",
     "raw_reasoning": null
   }
 ]

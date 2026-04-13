@@ -82,7 +82,16 @@ def get_chat_model(
         )
         if api_key:
             kwargs["client_kwargs"] = {"headers": {"Authorization": f"Bearer {api_key}"}}
-        return ChatOllama(**kwargs)
+
+        llm = ChatOllama(**kwargs)
+
+        # Disable thinking mode for reasoning models (Qwen3/3.5, DeepSeek-R1, etc.)
+        # so the actual answer lands in message.content instead of being consumed
+        # by chain-of-thought reasoning that exhausts the token budget.
+        try:
+            return llm.bind(think=False)
+        except Exception:
+            return llm
 
     if provider == "openai":
         from langchain_openai import ChatOpenAI

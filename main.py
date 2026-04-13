@@ -102,6 +102,8 @@ def run_single_benchmark(
             llm, sample["question"], context_texts,
             system_prompt=prompt_tmpl.system_prompt,
             human_template=prompt_tmpl.human_template,
+            strip_mode=config.llm_answer_strip_mode,
+            value_fallback=config.llm_answer_value_fallback,
         )
 
         questions.append(sample["question"])
@@ -115,6 +117,8 @@ def run_single_benchmark(
                 "index": i,
                 "question": sample["question"],
                 "answer": result.answer,
+                "raw_content": result.raw_content,
+                "raw_reasoning": result.raw_reasoning,
             })
             qa_log_path.write_text(json.dumps(qa_log, indent=2, ensure_ascii=False))
 

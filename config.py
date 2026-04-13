@@ -1,8 +1,11 @@
 import os
 from dataclasses import dataclass
 from itertools import product
+from typing import cast
+
 from dotenv import load_dotenv
 
+from benchmark.generation import AnswerStripMode
 from benchmark.providers import parse_model_id
 
 
@@ -64,6 +67,9 @@ class BenchmarkConfig:
     # Reranker
     reranker_model: str | None = None
     reranker_top_k: int = 3
+    # Generator output post-processing (thinking tags, reasoning heuristics)
+    llm_answer_strip_mode: AnswerStripMode = "tags_only"
+    llm_answer_value_fallback: bool = True
 
     @property
     def name(self) -> str:
@@ -187,6 +193,15 @@ def get_all_combinations() -> list[BenchmarkConfig]:
     reranker_models: list[str | None] = reranker_models_raw if reranker_models_raw else [None]
     reranker_top_k = int(os.getenv("RERANKER_TOP_K", "3"))
 
+    llm_answer_strip_mode = os.getenv("LLM_ANSWER_STRIP_MODE", "tags_only").strip().lower()
+    if llm_answer_strip_mode not in ("full", "tags_only", "off"):
+        raise ValueError(
+            f"Invalid LLM_ANSWER_STRIP_MODE={llm_answer_strip_mode!r}. "
+            "Use: full, tags_only, off"
+        )
+    _vf = os.getenv("LLM_ANSWER_VALUE_FALLBACK", "true").strip().lower()
+    llm_answer_value_fallback = _vf in ("1", "true", "yes", "on")
+
     # Validate integer values
     for cs in chunk_sizes:
         _validate_positive_int(cs, "CHUNK_SIZES value")
@@ -245,6 +260,8 @@ def get_all_combinations() -> list[BenchmarkConfig]:
             reranker_model=reranker,
             reranker_top_k=reranker_top_k,
             prompt_template=tmpl,
+            llm_answer_strip_mode=cast(AnswerStripMode, llm_answer_strip_mode),
+            llm_answer_value_fallback=llm_answer_value_fallback,
         )
         for (provider, model_name), emb, cs, co, strat, reranker, tmpl in combos
     ]
