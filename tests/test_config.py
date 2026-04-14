@@ -71,6 +71,10 @@ def _make_config(**overrides) -> BenchmarkConfig:
         chunk_overlap=200,
         chunking_strategy="recursive",
         retrieval_top_k=5,
+        retrieval_strategy="similarity",
+        retrieval_fetch_k=None,
+        retrieval_mmr_lambda=0.5,
+        retrieval_use_hyde=False,
         max_new_tokens=256,
         ollama_base_url="http://localhost:11434",
         ollama_api_key=None,
@@ -97,6 +101,8 @@ def _make_config(**overrides) -> BenchmarkConfig:
         prompt_template="concise",
         llm_answer_strip_mode="tags_only",
         llm_answer_value_fallback=True,
+        semantic_breakpoint_type="percentile",
+        semantic_breakpoint_amount=95,
     )
     defaults.update(overrides)
     return BenchmarkConfig(**defaults)
@@ -163,6 +169,34 @@ class TestBenchmarkConfig:
     def test_embedding_provider_huggingface(self):
         cfg = _make_config(embedding_model="huggingface:BAAI/bge-small-en-v1.5")
         assert cfg.embedding_provider == "huggingface"
+
+    def test_retrieval_defaults(self):
+        cfg = _make_config()
+        assert cfg.retrieval_strategy == "similarity"
+        assert cfg.retrieval_fetch_k is None
+        assert cfg.retrieval_mmr_lambda == 0.5
+        assert cfg.retrieval_use_hyde is False
+
+    def test_name_includes_mmr_when_set(self):
+        cfg = _make_config(retrieval_strategy="mmr", retrieval_mmr_lambda=0.7)
+        assert "_mmr-l0.7" in cfg.name
+
+    def test_name_excludes_mmr_when_similarity(self):
+        cfg = _make_config(retrieval_strategy="similarity")
+        assert "mmr" not in cfg.name
+
+    def test_name_includes_hyde_when_enabled(self):
+        cfg = _make_config(retrieval_use_hyde=True)
+        assert "_hyde" in cfg.name
+
+    def test_name_excludes_hyde_when_disabled(self):
+        cfg = _make_config(retrieval_use_hyde=False)
+        assert "hyde" not in cfg.name
+
+    def test_semantic_defaults(self):
+        cfg = _make_config()
+        assert cfg.semantic_breakpoint_type == "percentile"
+        assert cfg.semantic_breakpoint_amount == 95
 
 
 # ---------------------------------------------------------------------------
@@ -275,3 +309,68 @@ class TestGetAllCombinations:
     def test_invalid_strip_mode_raises(self):
         with pytest.raises(ValueError, match="LLM_ANSWER_STRIP_MODE"):
             get_all_combinations()
+
+    @patch.dict(os.environ, {
+        "LLM_MODELS": "gemma3:4b",
+        "EMBEDDING_MODELS": "nomic-embed-text:latest",
+        "CHUNK_SIZES": "1000",
+        "CHUNK_OVERLAPS": "200",
+        "CHUNKING_STRATEGIES": "recursive",
+        "RETRIEVAL_STRATEGY": "invalid",
+    }, clear=False)
+    def test_invalid_retrieval_strategy_raises(self):
+        with pytest.raises(ValueError, match="RETRIEVAL_STRATEGY"):
+            get_all_combinations()
+
+    @patch.dict(os.environ, {
+        "LLM_MODELS": "gemma3:4b",
+        "EMBEDDING_MODELS": "nomic-embed-text:latest",
+        "CHUNK_SIZES": "1000",
+        "CHUNK_OVERLAPS": "200",
+        "CHUNKING_STRATEGIES": "recursive",
+        "RETRIEVAL_MMR_LAMBDA": "1.5",
+    }, clear=False)
+    def test_invalid_mmr_lambda_raises(self):
+        with pytest.raises(ValueError, match="RETRIEVAL_MMR_LAMBDA"):
+            get_all_combinations()
+
+    @patch.dict(os.environ, {
+        "LLM_MODELS": "gemma3:4b",
+        "EMBEDDING_MODELS": "nomic-embed-text:latest",
+        "CHUNK_SIZES": "1000",
+        "CHUNK_OVERLAPS": "200",
+        "CHUNKING_STRATEGIES": "recursive",
+        "SEMANTIC_BREAKPOINT_TYPE": "invalid",
+    }, clear=False)
+    def test_invalid_breakpoint_type_raises(self):
+        with pytest.raises(ValueError, match="SEMANTIC_BREAKPOINT_TYPE"):
+            get_all_combinations()
+
+    @patch.dict(os.environ, {
+        "LLM_MODELS": "gemma3:4b",
+        "EMBEDDING_MODELS": "nomic-embed-text:latest",
+        "CHUNK_SIZES": "1000",
+        "CHUNK_OVERLAPS": "200",
+        "CHUNKING_STRATEGIES": "recursive",
+        "RETRIEVAL_STRATEGY": "mmr",
+        "RETRIEVAL_FETCH_K": "25",
+        "RETRIEVAL_MMR_LAMBDA": "0.7",
+    }, clear=False)
+    def test_mmr_config_loaded(self):
+        configs = get_all_combinations()
+        assert len(configs) == 1
+        assert configs[0].retrieval_strategy == "mmr"
+        assert configs[0].retrieval_fetch_k == 25
+        assert configs[0].retrieval_mmr_lambda == 0.7
+
+    @patch.dict(os.environ, {
+        "LLM_MODELS": "gemma3:4b",
+        "EMBEDDING_MODELS": "nomic-embed-text:latest",
+        "CHUNK_SIZES": "1000",
+        "CHUNK_OVERLAPS": "200",
+        "CHUNKING_STRATEGIES": "recursive",
+        "RETRIEVAL_USE_HYDE": "true",
+    }, clear=False)
+    def test_hyde_config_loaded(self):
+        configs = get_all_combinations()
+        assert configs[0].retrieval_use_hyde is True

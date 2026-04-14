@@ -1,6 +1,7 @@
 """Tests for benchmark.chunking — text splitting strategies."""
 
 import pytest
+from unittest.mock import MagicMock, patch
 from langchain_core.documents import Document
 
 from benchmark.chunking import get_chunker, chunk_documents, STRATEGY_MAP
@@ -30,6 +31,55 @@ class TestGetChunker:
     def test_all_strategies_in_map(self):
         expected = {"recursive", "character", "token", "markdown", "text", "transformers"}
         assert set(STRATEGY_MAP.keys()) == expected
+
+
+class TestSemanticChunker:
+    def test_semantic_strategy_creates_chunker(self):
+        """Semantic chunking is handled separately — verify get_chunker routes correctly."""
+        mock_emb = MagicMock()
+        mock_instance = MagicMock()
+
+        with patch(
+            "langchain_experimental.text_splitter.SemanticChunker",
+            return_value=mock_instance,
+        ) as MockSemantic:
+            chunker = get_chunker(
+                "semantic", 500, 100,
+                embeddings=mock_emb,
+                breakpoint_threshold_type="percentile",
+                breakpoint_threshold_amount=95,
+            )
+
+            MockSemantic.assert_called_once_with(
+                embeddings=mock_emb,
+                breakpoint_threshold_type="percentile",
+                breakpoint_threshold_amount=95,
+            )
+            assert chunker is mock_instance
+
+    def test_semantic_without_embeddings_raises(self):
+        with pytest.raises(ValueError, match="embeddings"):
+            get_chunker("semantic", 500, 100)
+
+    def test_semantic_with_custom_breakpoint(self):
+        mock_emb = MagicMock()
+
+        with patch(
+            "langchain_experimental.text_splitter.SemanticChunker",
+            return_value=MagicMock(),
+        ) as MockSemantic:
+            get_chunker(
+                "semantic", 500, 100,
+                embeddings=mock_emb,
+                breakpoint_threshold_type="standard_deviation",
+                breakpoint_threshold_amount=80,
+            )
+
+            MockSemantic.assert_called_once_with(
+                embeddings=mock_emb,
+                breakpoint_threshold_type="standard_deviation",
+                breakpoint_threshold_amount=80,
+            )
 
 
 class TestChunkDocuments:

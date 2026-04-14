@@ -1,12 +1,16 @@
 import hashlib
+import logging
 import threading
 from typing import Any
 
 import chromadb
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
+from langchain_core.language_models.chat_models import BaseChatModel
 
 from benchmark.embedding import get_embedding_model
+
+logger = logging.getLogger(__name__)
 
 # Single shared client + lock: ChromaDB's Rust bindings crash when EphemeralClient
 # is created from multiple threads simultaneously.
@@ -88,8 +92,67 @@ def build_vector_store(
     return vector_store
 
 
-def retrieve(vector_store: Chroma, query: str, top_k: int = 3) -> list[Document]:
+def retrieve(
+    vector_store: Chroma,
+    query: str,
+    top_k: int = 3,
+    *,
+    retrieval_strategy: str = "similarity",
+    fetch_k: int | None = None,
+    mmr_lambda: float = 0.5,
+) -> list[Document]:
+    """Retrieve documents from the vector store.
+
+    Parameters
+    ----------
+    retrieval_strategy:
+        ``"similarity"`` (default) for plain similarity search,
+        ``"mmr"`` for Maximal Marginal Relevance (diversifies results).
+    fetch_k:
+        Number of candidates to fetch before MMR filtering.
+        Defaults to ``top_k * 4`` when ``None`` and MMR is active.
+    mmr_lambda:
+        Balance between relevance (1.0) and diversity (0.0) for MMR.
+    """
+    if retrieval_strategy == "mmr":
+        effective_fetch_k = fetch_k if fetch_k is not None else top_k * 4
+        return vector_store.max_marginal_relevance_search(
+            query, k=top_k, fetch_k=effective_fetch_k, lambda_mult=mmr_lambda,
+        )
     return vector_store.similarity_search(query, k=top_k)
+
+
+def expand_query_with_hyde(
+    llm: BaseChatModel,
+    question: str,
+) -> str:
+    """Generate a hypothetical answer for HyDE retrieval.
+
+    Uses the LLM to produce a detailed hypothetical answer, which is then
+    used as the retrieval query instead of the raw question.  This improves
+    retrieval for short or ambiguous queries because the hypothetical answer
+    is semantically closer to the actual document chunks.
+    """
+    from langchain_core.messages import HumanMessage, SystemMessage
+
+    messages = [
+        SystemMessage(
+            content=(
+                "Write a detailed, factual answer to the question. "
+                "Be specific and informative."
+            )
+        ),
+        HumanMessage(content=question),
+    ]
+    try:
+        response = llm.invoke(messages)
+        content = str(response.content) if response.content else ""
+        if content.strip():
+            logger.debug("HyDE expanded query for: %s", question[:60])
+            return content
+    except Exception as exc:
+        logger.warning("HyDE expansion failed, using original query: %s", exc)
+    return question
 
 
 def cleanup_collection(collection_name: str, cache_key: str | None = None) -> None:

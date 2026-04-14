@@ -13,6 +13,7 @@ from benchmark.retrieval import (
     build_vector_store,
     clear_cache,
     retrieve,
+    expand_query_with_hyde,
     _cache_key,
 )
 from benchmark.generation import get_llm, generate_answer, GenerationResult
@@ -49,7 +50,22 @@ def run_single_benchmark(
         qa_log_path = configs_dir / f"{safe_name}_qa.json"
 
     # 1. Chunk
-    chunker = get_chunker(config.chunking_strategy, config.chunk_size, config.chunk_overlap)
+    chunker_kwargs: dict = {}
+    if config.chunking_strategy == "semantic":
+        from benchmark.embedding import get_embedding_model
+
+        semantic_emb = get_embedding_model(
+            config.embedding_model,
+            config.embedding_base_url(),
+            config.embedding_api_key(),
+            provider=config.embedding_provider,
+        )
+        chunker_kwargs = dict(
+            embeddings=semantic_emb,
+            breakpoint_threshold_type=config.semantic_breakpoint_type,
+            breakpoint_threshold_amount=config.semantic_breakpoint_amount,
+        )
+    chunker = get_chunker(config.chunking_strategy, config.chunk_size, config.chunk_overlap, **chunker_kwargs)
     chunks = chunk_documents(chunker, data)
     console.print(f"  [dim]Chunked into {len(chunks)} pieces[/dim]")
 
@@ -89,7 +105,17 @@ def run_single_benchmark(
     for i, sample in enumerate(data):
         console.print(f"  [cyan]({i + 1}/{len(data)})[/cyan] {sample['question'][:80]}{'...' if len(sample['question']) > 80 else ''}")
 
-        retrieved_docs = retrieve(vector_store, sample["question"], config.retrieval_top_k)
+        # HyDE query expansion: replace the raw question with a hypothetical answer
+        query = sample["question"]
+        if config.retrieval_use_hyde:
+            query = expand_query_with_hyde(llm, sample["question"])
+
+        retrieved_docs = retrieve(
+            vector_store, query, config.retrieval_top_k,
+            retrieval_strategy=config.retrieval_strategy,
+            fetch_k=config.retrieval_fetch_k,
+            mmr_lambda=config.retrieval_mmr_lambda,
+        )
 
         if reranker is not None:
             retrieved_docs = reranker.rerank(
