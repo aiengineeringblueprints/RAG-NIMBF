@@ -70,6 +70,14 @@ class BenchmarkConfig:
     # Generator output post-processing (thinking tags, reasoning heuristics)
     llm_answer_strip_mode: AnswerStripMode = "tags_only"
     llm_answer_value_fallback: bool = True
+    # Retrieval strategy
+    retrieval_strategy: str = "similarity"     # "similarity" | "mmr"
+    retrieval_fetch_k: int | None = None       # MMR oversampling
+    retrieval_mmr_lambda: float = 0.5          # 0 = max diversity, 1 = max relevance
+    retrieval_use_hyde: bool = False           # HyDE query expansion
+    # Semantic chunking
+    semantic_breakpoint_type: str = "percentile"    # percentile | standard_deviation | interquartile
+    semantic_breakpoint_amount: int = 95
 
     @property
     def name(self) -> str:
@@ -80,6 +88,10 @@ class BenchmarkConfig:
         )
         if self.reranker_model:
             parts += f"_rerank-{self.reranker_model}"
+        if self.retrieval_strategy != "similarity":
+            parts += f"_mmr-l{self.retrieval_mmr_lambda}"
+        if self.retrieval_use_hyde:
+            parts += "_hyde"
         return parts
 
     @property
@@ -202,6 +214,34 @@ def get_all_combinations() -> list[BenchmarkConfig]:
     _vf = os.getenv("LLM_ANSWER_VALUE_FALLBACK", "true").strip().lower()
     llm_answer_value_fallback = _vf in ("1", "true", "yes", "on")
 
+    # Retrieval strategy
+    retrieval_strategy = os.getenv("RETRIEVAL_STRATEGY", "similarity").strip().lower()
+    if retrieval_strategy not in ("similarity", "mmr"):
+        raise ValueError(
+            f"Invalid RETRIEVAL_STRATEGY={retrieval_strategy!r}. Use: similarity, mmr"
+        )
+    _fk_raw = os.getenv("RETRIEVAL_FETCH_K", "").strip()
+    retrieval_fetch_k = int(_fk_raw) if _fk_raw else None
+    retrieval_mmr_lambda = float(os.getenv("RETRIEVAL_MMR_LAMBDA", "0.5"))
+    if not (0.0 <= retrieval_mmr_lambda <= 1.0):
+        raise ValueError(
+            f"RETRIEVAL_MMR_LAMBDA must be between 0.0 and 1.0, got {retrieval_mmr_lambda}"
+        )
+
+    # HyDE query expansion
+    _hyde_raw = os.getenv("RETRIEVAL_USE_HYDE", "false").strip().lower()
+    retrieval_use_hyde = _hyde_raw in ("1", "true", "yes", "on")
+
+    # Semantic chunking
+    semantic_breakpoint_type = os.getenv("SEMANTIC_BREAKPOINT_TYPE", "percentile").strip().lower()
+    if semantic_breakpoint_type not in ("percentile", "standard_deviation", "interquartile"):
+        raise ValueError(
+            f"Invalid SEMANTIC_BREAKPOINT_TYPE={semantic_breakpoint_type!r}. "
+            "Use: percentile, standard_deviation, interquartile"
+        )
+    semantic_breakpoint_amount = int(os.getenv("SEMANTIC_BREAKPOINT_AMOUNT", "95"))
+    _validate_positive_int(semantic_breakpoint_amount, "SEMANTIC_BREAKPOINT_AMOUNT")
+
     # Validate integer values
     for cs in chunk_sizes:
         _validate_positive_int(cs, "CHUNK_SIZES value")
@@ -236,6 +276,10 @@ def get_all_combinations() -> list[BenchmarkConfig]:
             chunk_overlap=co,
             chunking_strategy=strat,
             retrieval_top_k=retrieval_top_k,
+            retrieval_strategy=retrieval_strategy,
+            retrieval_fetch_k=retrieval_fetch_k,
+            retrieval_mmr_lambda=retrieval_mmr_lambda,
+            retrieval_use_hyde=retrieval_use_hyde,
             max_new_tokens=max_new_tokens,
             ollama_base_url=ollama_base_url,
             ollama_api_key=ollama_api_key,
@@ -262,6 +306,8 @@ def get_all_combinations() -> list[BenchmarkConfig]:
             prompt_template=tmpl,
             llm_answer_strip_mode=cast(AnswerStripMode, llm_answer_strip_mode),
             llm_answer_value_fallback=llm_answer_value_fallback,
+            semantic_breakpoint_type=semantic_breakpoint_type,
+            semantic_breakpoint_amount=semantic_breakpoint_amount,
         )
         for (provider, model_name), emb, cs, co, strat, reranker, tmpl in combos
     ]

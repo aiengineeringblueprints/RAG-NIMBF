@@ -18,10 +18,27 @@ STRATEGY_MAP = {
 }
 
 
-def get_chunker(strategy: str, chunk_size: int, chunk_overlap: int):
+def get_chunker(strategy: str, chunk_size: int, chunk_overlap: int, **kwargs):
+    if strategy == "semantic":
+        from langchain_experimental.text_splitter import SemanticChunker
+
+        embeddings = kwargs.get("embeddings")
+        if embeddings is None:
+            raise ValueError(
+                "Semantic chunking requires an 'embeddings' argument. "
+                "Pass a LangChain Embeddings instance via kwargs."
+            )
+        breakpoint_type = kwargs.get("breakpoint_threshold_type", "percentile")
+        breakpoint_amount = kwargs.get("breakpoint_threshold_amount", 95)
+        return SemanticChunker(
+            embeddings=embeddings,
+            breakpoint_threshold_type=breakpoint_type,
+            breakpoint_threshold_amount=breakpoint_amount,
+        )
+
     splitter_cls = STRATEGY_MAP.get(strategy)
     if splitter_cls is None:
-        raise ValueError(f"Unknown chunking strategy: {strategy}. Choose from: {list(STRATEGY_MAP.keys())}")
+        raise ValueError(f"Unknown chunking strategy: {strategy}. Choose from: {list(STRATEGY_MAP.keys())} + 'semantic'")
     # CharacterTextSplitter defaults to "\n\n" as separator, which produces oversized chunks
     # when paragraphs are long. "\n" gives finer-grained splits that respect the chunk_size.
     if strategy == "character":
