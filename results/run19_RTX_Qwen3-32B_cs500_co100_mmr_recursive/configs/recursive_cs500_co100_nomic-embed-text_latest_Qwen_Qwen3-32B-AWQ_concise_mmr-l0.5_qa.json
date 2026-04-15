@@ -1,0 +1,702 @@
+[
+  {
+    "index": 0,
+    "question": "what circuit court is maryland",
+    "answer": "The Circuit Courts of Maryland are the state trial courts of general jurisdiction.",
+    "raw_content": "The Circuit Courts of Maryland are the state trial courts of general jurisdiction.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 1,
+    "question": "What happened during the Starving Time in Jamestown?",
+    "answer": "I cannot answer from the provided context.",
+    "raw_content": "I cannot answer from the provided context.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 2,
+    "question": "how many members are in the house of representatives",
+    "answer": "The total number of voting representatives is fixed at 435.",
+    "raw_content": "The total number of voting representatives is fixed at 435.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 3,
+    "question": "Where Elephants Live",
+    "answer": "I cannot answer from the provided context.",
+    "raw_content": "I cannot answer from the provided context.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 4,
+    "question": "WHAT IS A FY QUARTER",
+    "answer": "I cannot answer from the provided context.",
+    "raw_content": "I cannot answer from the provided context.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 5,
+    "question": "what is homebrew for wii",
+    "answer": "Homebrew for Wii refers to unofficial software or applications created by developers outside of Nintendo, which can be run on the Wii console using the Homebrew Channel or other methods, allowing users to run custom games, tools, or modifications.",
+    "raw_content": "Homebrew for Wii refers to unofficial software or applications created by developers outside of Nintendo, which can be run on the Wii console using the Homebrew Channel or other methods, allowing users to run custom games, tools, or modifications.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 6,
+    "question": "Who was Daniel J Daly?",
+    "answer": "I cannot answer from the provided context.",
+    "raw_content": "I cannot answer from the provided context.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 7,
+    "question": "when did marlins start",
+    "answer": "The Florida Marlins (now Miami Marlins) started in 1993.",
+    "raw_content": "The Florida Marlins (now Miami Marlins) started in 1993.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 8,
+    "question": "what is the ingredient in mustard",
+    "answer": "The ingredient in mustard is the seeds of a mustard plant (white/yellow mustard, Sinapis alba; brown mustard, Brassica juncea; or black mustard, Brassica nigra).",
+    "raw_content": "The ingredient in mustard is the seeds of a mustard plant (white/yellow mustard, Sinapis alba; brown mustard, Brassica juncea; or black mustard, Brassica nigra).",
+    "raw_reasoning": null
+  },
+  {
+    "index": 9,
+    "question": "what were 3 important things that douglas MacArthur did?",
+    "answer": "I cannot answer from the provided context.",
+    "raw_content": "I cannot answer from the provided context.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 10,
+    "question": "what is active learning strategies",
+    "answer": "Active learning strategies are learner-centered approaches that require students to actively participate in the learning process through methods such as group work, project-based learning, technology-based learning, and activity-based learning, rather than passively receiving information.",
+    "raw_content": "Active learning strategies are learner-centered approaches that require students to actively participate in the learning process through methods such as group work, project-based learning, technology-based learning, and activity-based learning, rather than passively receiving information.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 11,
+    "question": "what is the formula for calcium nitrate",
+    "answer": "Ca(NO₃)₂",
+    "raw_content": "Ca(NO₃)₂",
+    "raw_reasoning": null
+  },
+  {
+    "index": 12,
+    "question": "how long to take iwo jima",
+    "answer": "I cannot answer from the provided context.",
+    "raw_content": "I cannot answer from the provided context.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 13,
+    "question": "what species is a spider",
+    "answer": "Spiders are members of the order Araneae, a group of air-breathing arthropods characterized by eight legs, venom-injecting chelicerae, and silk-spinning spinnerets.",
+    "raw_content": "Spiders are members of the order Araneae, a group of air-breathing arthropods characterized by eight legs, venom-injecting chelicerae, and silk-spinning spinnerets.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 14,
+    "question": "how is whooping cough distinguished from similar diseases",
+    "answer": "The presence of a whooping sound on coughing almost doubles the likelihood that the illness is pertussis, while the absence of a paroxysmal cough or posttussive emesis makes it less likely.",
+    "raw_content": "The presence of a whooping sound on coughing almost doubles the likelihood that the illness is pertussis, while the absence of a paroxysmal cough or posttussive emesis makes it less likely.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 15,
+    "question": "who wrote the song for star wars",
+    "answer": "John Williams.",
+    "raw_content": "John Williams.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 16,
+    "question": "who are the members of the climax blues band?",
+    "answer": "The original members of the Climax Blues Band were Colin Cooper (vocalist and harmonica), Pete Haycock (guitarist and vocalist), Derek Holt (guitarist), Richard Jones (bassist and keyboardist), George Newsome (drummer), and Arthur Wood (keyboardist).",
+    "raw_content": "The original members of the Climax Blues Band were Colin Cooper (vocalist and harmonica), Pete Haycock (guitarist and vocalist), Derek Holt (guitarist), Richard Jones (bassist and keyboardist), George Newsome (drummer), and Arthur Wood (keyboardist).",
+    "raw_reasoning": null
+  },
+  {
+    "index": 17,
+    "question": "how many players on a side for a football game",
+    "answer": "I cannot answer from the provided context.",
+    "raw_content": "I cannot answer from the provided context.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 18,
+    "question": "what is the latest season of psych",
+    "answer": "The eighth season is the latest season of *Psych*.",
+    "raw_content": "The eighth season is the latest season of *Psych*.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 19,
+    "question": "who played the lead roles in the movie leaving las vegas",
+    "answer": "Nicolas Cage played the lead role in the movie *Leaving Las Vegas*.",
+    "raw_content": "Nicolas Cage played the lead role in the movie *Leaving Las Vegas*.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 20,
+    "question": "how did women's role change during the war",
+    "answer": "Women's roles during World War II expanded significantly as they took on active roles in auxiliary and paramilitary organizations, entered traditionally male-dominated jobs due to labor shortages, and participated more directly in military and industrial efforts.",
+    "raw_content": "Women's roles during World War II expanded significantly as they took on active roles in auxiliary and paramilitary organizations, entered traditionally male-dominated jobs due to labor shortages, and participated more directly in military and industrial efforts.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 21,
+    "question": "who has brad pitt dated",
+    "answer": "Brad Pitt has dated Robin Givens, Jill Schoelen, Juliette Lewis, Gwyneth Paltrow, Jennifer Aniston, and Ines de Ramon.",
+    "raw_content": "Brad Pitt has dated Robin Givens, Jill Schoelen, Juliette Lewis, Gwyneth Paltrow, Jennifer Aniston, and Ines de Ramon.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 22,
+    "question": "what is the erb/heart",
+    "answer": "I cannot answer from the provided context.",
+    "raw_content": "I cannot answer from the provided context.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 23,
+    "question": "who makes skittles?",
+    "answer": "I cannot answer from the provided context.",
+    "raw_content": "I cannot answer from the provided context.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 24,
+    "question": "who invaded north africa during ww2",
+    "answer": "I cannot answer from the provided context.",
+    "raw_content": "I cannot answer from the provided context.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 25,
+    "question": "when did qing dynasty begin",
+    "answer": "1636.",
+    "raw_content": "1636.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 26,
+    "question": "what county is coatesville indiana located in",
+    "answer": "I cannot answer from the provided context.",
+    "raw_content": "I cannot answer from the provided context.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 27,
+    "question": "how many seasons were there of the wire",
+    "answer": "I cannot answer from the provided context.",
+    "raw_content": "I cannot answer from the provided context.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 28,
+    "question": "what type of land is savannah",
+    "answer": "A savannah is a mixed woodland-grassland ecosystem characterized by trees that are widely spaced, allowing an unbroken herbaceous layer of grasses to thrive.",
+    "raw_content": "A savannah is a mixed woodland-grassland ecosystem characterized by trees that are widely spaced, allowing an unbroken herbaceous layer of grasses to thrive.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 29,
+    "question": "what does uncle sam represent to the american people",
+    "answer": "Uncle Sam represents the federal government of the United States or the country in general to the American people.",
+    "raw_content": "Uncle Sam represents the federal government of the United States or the country in general to the American people.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 30,
+    "question": "what is the actresses name that played in walk that line?",
+    "answer": "I cannot answer from the provided context.",
+    "raw_content": "I cannot answer from the provided context.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 31,
+    "question": "where is humboldt ks",
+    "answer": "Humboldt is a city in Allen County, Kansas, United States.",
+    "raw_content": "Humboldt is a city in Allen County, Kansas, United States.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 32,
+    "question": "who is the founder of twitter",
+    "answer": "Jack Dorsey, Noah Glass, Biz Stone, and Evan Williams.",
+    "raw_content": "Jack Dorsey, Noah Glass, Biz Stone, and Evan Williams.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 33,
+    "question": "what is in a hot toddy",
+    "answer": "A hot toddy typically contains a spirit (usually whisky), hot water, honey or sugar, and may include additional ingredients such as cloves, a lemon slice, or cinnamon.",
+    "raw_content": "A hot toddy typically contains a spirit (usually whisky), hot water, honey or sugar, and may include additional ingredients such as cloves, a lemon slice, or cinnamon.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 34,
+    "question": "what is the main component of vaccines",
+    "answer": "The main components of vaccines can include inactivated or attenuated compounds from micro-organisms, or synthetic peptides, carbohydrates, or antigens in the case of synthetic vaccines.",
+    "raw_content": "The main components of vaccines can include inactivated or attenuated compounds from micro-organisms, or synthetic peptides, carbohydrates, or antigens in the case of synthetic vaccines.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 35,
+    "question": "what is general chu chicken",
+    "answer": "I cannot answer from the provided context.",
+    "raw_content": "I cannot answer from the provided context.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 36,
+    "question": "who owns youtube",
+    "answer": "Google.",
+    "raw_content": "Google.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 37,
+    "question": "what order is the moth",
+    "answer": "Lepidoptera.",
+    "raw_content": "Lepidoptera.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 38,
+    "question": "where fourth of july came from",
+    "answer": "July 4 was first recognized as a state celebration in 1781 by the Massachusetts General Court.",
+    "raw_content": "July 4 was first recognized as a state celebration in 1781 by the Massachusetts General Court.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 39,
+    "question": "who made the matrix",
+    "answer": "I cannot answer from the provided context.",
+    "raw_content": "I cannot answer from the provided context.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 40,
+    "question": "What is the prostate for?",
+    "answer": "The prostate is both an accessory gland of the male reproductive system and a muscle-driven mechanical switch between urination and ejaculation.",
+    "raw_content": "The prostate is both an accessory gland of the male reproductive system and a muscle-driven mechanical switch between urination and ejaculation.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 41,
+    "question": "WHAT ARE HERITABLE TRAITS",
+    "answer": "I cannot answer from the provided context.",
+    "raw_content": "I cannot answer from the provided context.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 42,
+    "question": "what is a CMM machine",
+    "answer": "A CMM (Coordinate Measuring Machine) is a specialized form of industrial robot used for measuring the physical geometrical characteristics of an object.",
+    "raw_content": "A CMM (Coordinate Measuring Machine) is a specialized form of industrial robot used for measuring the physical geometrical characteristics of an object.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 43,
+    "question": "Where does the word baptism come from",
+    "answer": "The English word \"baptism\" is derived indirectly through Latin from the Greek noun \"báptisma\" (βάπτισμα), meaning \"washing\" or \"dipping.\"",
+    "raw_content": "The English word \"baptism\" is derived indirectly through Latin from the Greek noun \"báptisma\" (βάπτισμα), meaning \"washing\" or \"dipping.\"",
+    "raw_reasoning": null
+  },
+  {
+    "index": 44,
+    "question": "what can sql 2005 do",
+    "answer": "SQL Server 2005 can implement support for features such as Tabular Data Stream, mirrored databases, all SQL Server data types, asynchronous operations, query notifications, encryption, and handling multiple result sets in a single session.",
+    "raw_content": "SQL Server 2005 can implement support for features such as Tabular Data Stream, mirrored databases, all SQL Server data types, asynchronous operations, query notifications, encryption, and handling multiple result sets in a single session.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 45,
+    "question": "what company is cricket wireless by",
+    "answer": "AT&T.",
+    "raw_content": "AT&T.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 46,
+    "question": "who is st patty?",
+    "answer": "Saint Patrick (c. 385 – c. 461) is the foremost patron saint of Ireland, and Saint Patrick's Day is a religious and cultural holiday held on 17 March, the traditional date of his death.",
+    "raw_content": "Saint Patrick (c. 385 – c. 461) is the foremost patron saint of Ireland, and Saint Patrick's Day is a religious and cultural holiday held on 17 March, the traditional date of his death.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 47,
+    "question": "how a water pump works",
+    "answer": "A water pump works by converting mechanical or kinetic energy into hydraulic energy to move fluids, often by increasing flow velocity and converting it to pressure.",
+    "raw_content": "A water pump works by converting mechanical or kinetic energy into hydraulic energy to move fluids, often by increasing flow velocity and converting it to pressure.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 48,
+    "question": "what school did Zach Thomas play for before making it in to the NFL",
+    "answer": "I cannot answer from the provided context.",
+    "raw_content": "I cannot answer from the provided context.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 49,
+    "question": "what are private labels",
+    "answer": "Private labels are brands owned by a company that are sold exclusively by that company, often competing with other brands in the market.",
+    "raw_content": "Private labels are brands owned by a company that are sold exclusively by that company, often competing with other brands in the market.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 50,
+    "question": "what is a letterbox movie",
+    "answer": "A letterbox movie is a film formatted with black bars at the top and bottom of the screen to maintain its original aspect ratio when displayed on screens with different proportions, such as television sets or video displays.",
+    "raw_content": "A letterbox movie is a film formatted with black bars at the top and bottom of the screen to maintain its original aspect ratio when displayed on screens with different proportions, such as television sets or video displays.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 51,
+    "question": "what day is 2011 super bowl?",
+    "answer": "February 6, 2011.",
+    "raw_content": "February 6, 2011.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 52,
+    "question": "how many humps on a camel",
+    "answer": "Camels can have one or two humps.",
+    "raw_content": "Camels can have one or two humps.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 53,
+    "question": "what years was the 18th century",
+    "answer": "The 18th century lasted from January 1, 1701 to December 31, 1800.",
+    "raw_content": "The 18th century lasted from January 1, 1701 to December 31, 1800.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 54,
+    "question": "what creates a cloud",
+    "answer": "A cloud is created when air becomes saturated with moisture, either by being cooled to its dew point or by gaining sufficient moisture, usually in the form of water vapor.",
+    "raw_content": "A cloud is created when air becomes saturated with moisture, either by being cooled to its dew point or by gaining sufficient moisture, usually in the form of water vapor.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 55,
+    "question": "what did tycho brahe do",
+    "answer": "Tycho Brahe made significant astronomical observations, criticized inaccurate astronomical tables, emphasized the need for systematic and rigorous observation, and maintained detailed journals of his findings, which contributed to his reputation as a leading astronomer.",
+    "raw_content": "Tycho Brahe made significant astronomical observations, criticized inaccurate astronomical tables, emphasized the need for systematic and rigorous observation, and maintained detailed journals of his findings, which contributed to his reputation as a leading astronomer.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 56,
+    "question": "what food is in afghan",
+    "answer": "Afghan cuisine includes dishes such as Kabuli palaw (the national dish with meat, raisins, carrots, and pistachios), Yakhni palaw, Zamarod palaw (with spinach), Bore palaw (with lawand), and Landi palaw, along with rice-based meals, various naan, tea, and a variety of meats, dairy products, and fruits.",
+    "raw_content": "Afghan cuisine includes dishes such as Kabuli palaw (the national dish with meat, raisins, carrots, and pistachios), Yakhni palaw, Zamarod palaw (with spinach), Bore palaw (with lawand), and Landi palaw, along with rice-based meals, various naan, tea, and a variety of meats, dairy products, and fruits.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 57,
+    "question": "who designed the statue of liberty",
+    "answer": "The Statue of Liberty was designed by Frédéric Auguste Bartholdi.",
+    "raw_content": "The Statue of Liberty was designed by Frédéric Auguste Bartholdi.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 58,
+    "question": "what percentage of water in in the body",
+    "answer": "The average adult human body is approximately 60% water, though this can vary based on factors like age, sex, and body composition.",
+    "raw_content": "The average adult human body is approximately 60% water, though this can vary based on factors like age, sex, and body composition.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 59,
+    "question": "How many Muslims live in the United Kingdom?",
+    "answer": "I cannot answer from the provided context.",
+    "raw_content": "I cannot answer from the provided context.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 60,
+    "question": "what is the color puce",
+    "answer": "Puce is a dark, slightly purplish red color that became popular in France in the late 18th century.",
+    "raw_content": "Puce is a dark, slightly purplish red color that became popular in France in the late 18th century.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 61,
+    "question": "where was martin luther king shot?",
+    "answer": "Martin Luther King was shot on the motel's second-floor balcony.",
+    "raw_content": "Martin Luther King was shot on the motel's second-floor balcony.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 62,
+    "question": "what is in fruitcake",
+    "answer": "Fruitcake is made with candied or dried fruit, nuts, and spices, and may optionally be soaked in spirits.",
+    "raw_content": "Fruitcake is made with candied or dried fruit, nuts, and spices, and may optionally be soaked in spirits.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 63,
+    "question": "where is the brisket from",
+    "answer": "Germany and traditional Jewish cooking.",
+    "raw_content": "Germany and traditional Jewish cooking.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 64,
+    "question": "what is google openid",
+    "answer": "I cannot answer from the provided context.",
+    "raw_content": "I cannot answer from the provided context.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 65,
+    "question": "who wrote a rose is a rose is a rose",
+    "answer": "Gertrude Stein.",
+    "raw_content": "Gertrude Stein.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 66,
+    "question": "What are the different translations for the Bible",
+    "answer": "The Bible has been translated into many languages, with some portions translated into 3,589 languages, including Syriac, Latin, Ge'ez, Gothic, and Slavonic, among others.",
+    "raw_content": "The Bible has been translated into many languages, with some portions translated into 3,589 languages, including Syriac, Latin, Ge'ez, Gothic, and Slavonic, among others.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 67,
+    "question": "who is suicide tna",
+    "answer": "Suicide is a professional wrestler in Total Nonstop Action Wrestling (TNA) who wins the TNA World Heavyweight Championship before being attacked by The Latin American Xchange and left for dead.",
+    "raw_content": "Suicide is a professional wrestler in Total Nonstop Action Wrestling (TNA) who wins the TNA World Heavyweight Championship before being attacked by The Latin American Xchange and left for dead.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 68,
+    "question": "what is the fundamental theorem of calculus used for",
+    "answer": "The fundamental theorem of calculus is used to link the concepts of differentiating a function and integrating a function, showing that they are inverse operations.",
+    "raw_content": "The fundamental theorem of calculus is used to link the concepts of differentiating a function and integrating a function, showing that they are inverse operations.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 69,
+    "question": "WHAT IS PARESTHESIAS OF HANDS",
+    "answer": "I cannot answer from the provided context.",
+    "raw_content": "I cannot answer from the provided context.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 70,
+    "question": "what states allow same sex marriage",
+    "answer": "I cannot answer from the provided context.",
+    "raw_content": "I cannot answer from the provided context.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 71,
+    "question": "what was the first year of kentucky derby",
+    "answer": "I cannot answer from the provided context.",
+    "raw_content": "I cannot answer from the provided context.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 72,
+    "question": "what does hair testing show",
+    "answer": "Hair testing shows the presence of drugs or drug metabolites in hair, indicating drug use over a period of months.",
+    "raw_content": "Hair testing shows the presence of drugs or drug metabolites in hair, indicating drug use over a period of months.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 73,
+    "question": "what kind of school is MIT",
+    "answer": "The MIT Sloan School of Management is the business school of the Massachusetts Institute of Technology.",
+    "raw_content": "The MIT Sloan School of Management is the business school of the Massachusetts Institute of Technology.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 74,
+    "question": "when was How the west was won filmed?",
+    "answer": "I cannot answer from the provided context.",
+    "raw_content": "I cannot answer from the provided context.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 75,
+    "question": "who created massey ferguson",
+    "answer": "I cannot answer from the provided context.",
+    "raw_content": "I cannot answer from the provided context.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 76,
+    "question": "who wrote the song hallelujah",
+    "answer": "Leonard Cohen.",
+    "raw_content": "Leonard Cohen.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 77,
+    "question": "how does interlibrary loan work",
+    "answer": "Interlibrary loan enables patrons to borrow physical materials and receive electronic documents from other libraries, expanding access to resources beyond their local library's holdings.",
+    "raw_content": "Interlibrary loan enables patrons to borrow physical materials and receive electronic documents from other libraries, expanding access to resources beyond their local library's holdings.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 78,
+    "question": "who sang black velvet",
+    "answer": "I cannot answer from the provided context.",
+    "raw_content": "I cannot answer from the provided context.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 79,
+    "question": "what year was President kennedy president?",
+    "answer": "1960.",
+    "raw_content": "1960.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 80,
+    "question": "how old was sue lyon when she made lolita",
+    "answer": "14.",
+    "raw_content": "14.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 81,
+    "question": "what does righteousness mean",
+    "answer": "Righteousness means being righteous before others or before God, and in Christian theology, it is often understood as a moral state or quality derived from faith.",
+    "raw_content": "Righteousness means being righteous before others or before God, and in Christian theology, it is often understood as a moral state or quality derived from faith.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 82,
+    "question": "where is al jazeera based",
+    "answer": "Doha.",
+    "raw_content": "Doha.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 83,
+    "question": "what are some six sigma tools used",
+    "answer": "I cannot answer from the provided context.",
+    "raw_content": "I cannot answer from the provided context.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 84,
+    "question": "who wrote west side story",
+    "answer": "I cannot answer from the provided context.",
+    "raw_content": "I cannot answer from the provided context.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 85,
+    "question": "what countries did immigrants come from during the immigration",
+    "answer": "Immigrants came from countries such as Korea, China, India, the Philippines, Pakistan, and Africa.",
+    "raw_content": "Immigrants came from countries such as Korea, China, India, the Philippines, Pakistan, and Africa.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 86,
+    "question": "what is the purpose of child support?",
+    "answer": "The purpose of child support is to ensure both parents financially support their children, even when the children are not living with both parents.",
+    "raw_content": "The purpose of child support is to ensure both parents financially support their children, even when the children are not living with both parents.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 87,
+    "question": "who won the 1967 nba championship",
+    "answer": "The 1967 NBA championship was won by the Philadelphia 76ers.",
+    "raw_content": "The 1967 NBA championship was won by the Philadelphia 76ers.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 88,
+    "question": "what part of the earth's structure is believed to consist of tectonic plates",
+    "answer": "The lithosphere.",
+    "raw_content": "The lithosphere.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 89,
+    "question": "who is mary matalin married to",
+    "answer": "I cannot answer from the provided context.",
+    "raw_content": "I cannot answer from the provided context.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 90,
+    "question": "when did ms .drgs go into effect",
+    "answer": "I cannot answer from the provided context.",
+    "raw_content": "I cannot answer from the provided context.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 91,
+    "question": "what is a group of deer called",
+    "answer": "I cannot answer from the provided context.",
+    "raw_content": "I cannot answer from the provided context.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 92,
+    "question": "how many asian indians live in usa",
+    "answer": "I cannot answer from the provided context.",
+    "raw_content": "I cannot answer from the provided context.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 93,
+    "question": "what is the social norm approach?",
+    "answer": "The social norms approach is an environmental strategy used in health campaigns that identifies and communicates the actual behaviors or attitudes of a population to correct misperceptions and influence positive behavior change.",
+    "raw_content": "The social norms approach is an environmental strategy used in health campaigns that identifies and communicates the actual behaviors or attitudes of a population to correct misperceptions and influence positive behavior change.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 94,
+    "question": "what does continuous improvement mean",
+    "answer": "Continuous improvement means a gradual, never-ending change focused on increasing the effectiveness and/or efficiency of an organization to fulfill its policy and objectives, essentially \"getting better all the time.\"",
+    "raw_content": "Continuous improvement means a gradual, never-ending change focused on increasing the effectiveness and/or efficiency of an organization to fulfill its policy and objectives, essentially \"getting better all the time.\"",
+    "raw_reasoning": null
+  },
+  {
+    "index": 95,
+    "question": "HOW AFRICAN AMERICANS WERE IMMIGRATED TO THE US",
+    "answer": "I cannot answer from the provided context.",
+    "raw_content": "I cannot answer from the provided context.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 96,
+    "question": "how many mvps has kobe bryant won",
+    "answer": "Kobe Bryant has won two NBA Finals MVP awards.",
+    "raw_content": "Kobe Bryant has won two NBA Finals MVP awards.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 97,
+    "question": "when did dr.carter g woodson die",
+    "answer": "April 3, 1950.",
+    "raw_content": "April 3, 1950.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 98,
+    "question": "what is doxycycline hyclate used for",
+    "answer": "Doxycycline hyclate is used to treat a variety of bacterial infections, including Lyme disease, acne, sinusitis, pelvic inflammatory disease, rickettsial infections, and infections caused by both Gram-positive and Gram-negative bacteria such as Escherichia coli and Haemophilus influenzae.",
+    "raw_content": "Doxycycline hyclate is used to treat a variety of bacterial infections, including Lyme disease, acne, sinusitis, pelvic inflammatory disease, rickettsial infections, and infections caused by both Gram-positive and Gram-negative bacteria such as Escherichia coli and Haemophilus influenzae.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 99,
+    "question": "who said tv is a vast wasteland",
+    "answer": "Newton Norman Minow.",
+    "raw_content": "Newton Norman Minow.",
+    "raw_reasoning": null
+  }
+]
