@@ -1,4 +1,4 @@
-from langfuse import observe
+from benchmark.tracing import observe
 
 from langchain_text_splitters import (
     CharacterTextSplitter,

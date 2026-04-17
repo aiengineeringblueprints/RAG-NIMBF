@@ -212,3 +212,6 @@ __marimo__/
 # MLflow
 mlflow.db
 mlruns/
+
+# ChromaDB persistent vector store
+.chroma/

@@ -53,3 +53,35 @@ def load_benchmark_data(
         f"({split} split)[/green]"
     )
     return samples
+
+
+def load_corpus_and_questions(
+    dataset_name: str = "squad",
+    subset: str | None = None,
+    sample_size: int = 50,
+) -> tuple[list[dict], list[dict]]:
+    """Load data and split into a deduplicated corpus and per-question entries.
+
+    Returns (corpus, questions) where:
+      - corpus: list of {context, metadata} dicts — all unique contexts
+      - questions: list of {question, ground_truth, context, metadata} dicts
+    """
+    samples = load_benchmark_data(dataset_name, subset, sample_size)
+
+    seen: dict[str, int] = {}  # context text → index in corpus
+    corpus: list[dict] = []
+
+    for sample in samples:
+        ctx = sample["context"]
+        if ctx not in seen:
+            seen[ctx] = len(corpus)
+            corpus.append({
+                "context": ctx,
+                "metadata": sample.get("metadata", {}),
+            })
+
+    console.print(
+        f"[green]Deduplicated corpus: {len(corpus)} unique documents "
+        f"for {len(samples)} questions[/green]"
+    )
+    return corpus, samples

@@ -4,7 +4,7 @@ import logging
 import math
 from dataclasses import dataclass, field
 
-from langfuse import observe
+from benchmark.tracing import observe
 
 from ragas import evaluate, EvaluationDataset, SingleTurnSample, RunConfig
 from ragas.metrics._answer_relevance import answer_relevancy

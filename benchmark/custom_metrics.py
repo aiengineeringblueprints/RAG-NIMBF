@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from typing import Callable, Sequence
 
 import numpy as np
-from langfuse import observe
+from benchmark.tracing import observe
 
 logger = logging.getLogger(__name__)
 
@@ -134,7 +134,12 @@ def determine_relevance(
     if embed_fn is not None:
         gt_emb = embed_fn(ground_truth)
         for i, ctx in enumerate(contexts):
-            if _cosine_sim(gt_emb, embed_fn(ctx)) >= threshold:
+            try:
+                ctx_emb = embed_fn(ctx)
+            except Exception:
+                # Context too long for embedding model — truncate to first 8000 chars
+                ctx_emb = embed_fn(ctx[:8000])
+            if _cosine_sim(gt_emb, ctx_emb) >= threshold:
                 relevant.add(i)
     else:
         gt_tokens = set(_tokenize(ground_truth))
@@ -195,7 +200,13 @@ def context_relevance(
     if not contexts:
         return 0.0
     q_emb = embed_fn(question)
-    scores = [_cosine_sim(q_emb, embed_fn(ctx)) for ctx in contexts]
+    scores = []
+    for ctx in contexts:
+        try:
+            ctx_emb = embed_fn(ctx)
+        except Exception:
+            ctx_emb = embed_fn(ctx[:8000])
+        scores.append(_cosine_sim(q_emb, ctx_emb))
     return float(np.mean(scores))
 
 

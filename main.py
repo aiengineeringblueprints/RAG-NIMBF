@@ -8,7 +8,7 @@ from pathlib import Path
 from rich.console import Console
 
 from config import BenchmarkConfig, get_all_combinations
-from benchmark.dataset import load_benchmark_data
+from benchmark.dataset import load_benchmark_data, load_corpus_and_questions
 from benchmark.chunking import get_chunker, chunk_documents
 from benchmark.retrieval import (
     build_vector_store,
@@ -38,6 +38,7 @@ logger = logging.getLogger(__name__)
 
 def run_single_benchmark(
     config: BenchmarkConfig, data: list[dict], run_dir: Path | None = None,
+    corpus: list[dict] | None = None,
 ) -> BenchmarkResultExtended:
     # Set up LangFuse callback handler for this benchmark run (one trace per config)
     _callbacks = None
@@ -62,44 +63,50 @@ def run_single_benchmark(
         safe_name = config.name.replace(":", "_").replace("/", "_")
         qa_log_path = configs_dir / f"{safe_name}_qa.json"
 
-    # 1. Chunk
-    chunker_kwargs: dict = {}
-    semantic_emb = None
-    if config.chunking_strategy == "semantic":
-        from benchmark.embedding import get_embedding_model
+    # 1. Chunk + 2. Embed (only in retrieval mode)
+    vector_store = None
+    if config.retrieval_mode == "retrieval":
+        chunker_kwargs: dict = {}
+        semantic_emb = None
+        if config.chunking_strategy == "semantic":
+            from benchmark.embedding import get_embedding_model
 
-        semantic_emb = get_embedding_model(
+            semantic_emb = get_embedding_model(
+                config.embedding_model,
+                config.embedding_base_url(),
+                config.embedding_api_key(),
+                provider=config.embedding_provider,
+            )
+            chunker_kwargs = dict(
+                embeddings=semantic_emb,
+                breakpoint_threshold_type=config.semantic_breakpoint_type,
+                breakpoint_threshold_amount=config.semantic_breakpoint_amount,
+            )
+        chunker = get_chunker(config.chunking_strategy, config.chunk_size, config.chunk_overlap, **chunker_kwargs)
+        # Use shared corpus if available, otherwise chunk per-question data
+        chunk_source = corpus if corpus else data
+        chunks = chunk_documents(chunker, chunk_source)
+        console.print(f"  [dim]Chunked into {len(chunks)} pieces[/dim]")
+
+        cache_k = _cache_key(
             config.embedding_model,
-            config.embedding_base_url(),
-            config.embedding_api_key(),
-            provider=config.embedding_provider,
+            config.chunk_size,
+            config.chunk_overlap,
+            config.chunking_strategy,
+            dataset_name=config.dataset_name,
         )
-        chunker_kwargs = dict(
-            embeddings=semantic_emb,
-            breakpoint_threshold_type=config.semantic_breakpoint_type,
-            breakpoint_threshold_amount=config.semantic_breakpoint_amount,
+        vector_store = build_vector_store(
+            chunks,
+            config.embedding_model,
+            collection_name,
+            ollama_base_url=config.embedding_base_url(),
+            ollama_api_key=config.embedding_api_key(),
+            cache_key=cache_k,
+            embedding_provider=config.embedding_provider,
         )
-    chunker = get_chunker(config.chunking_strategy, config.chunk_size, config.chunk_overlap, **chunker_kwargs)
-    chunks = chunk_documents(chunker, data)
-    console.print(f"  [dim]Chunked into {len(chunks)} pieces[/dim]")
-
-    # 2. Embed + build vector store (with caching to avoid redundant embedding)
-    cache_k = _cache_key(
-        config.embedding_model,
-        config.chunk_size,
-        config.chunk_overlap,
-        config.chunking_strategy,
-    )
-    vector_store = build_vector_store(
-        chunks,
-        config.embedding_model,
-        collection_name,
-        ollama_base_url=config.embedding_base_url(),
-        ollama_api_key=config.embedding_api_key(),
-        cache_key=cache_k,
-        embedding_provider=config.embedding_provider,
-    )
-    console.print(f"  [dim]Vector store built[/dim]")
+        console.print(f"  [dim]Vector store built[/dim]")
+    else:
+        console.print(f"  [dim]Direct mode — skipping chunking/retrieval[/dim]")
 
     # 3. Generate answers
     llm = get_llm(
@@ -121,23 +128,26 @@ def run_single_benchmark(
 
         # HyDE query expansion: replace the raw question with a hypothetical answer
         query = sample["question"]
-        if config.retrieval_use_hyde:
-            query = expand_query_with_hyde(llm, sample["question"], callbacks=_callbacks)
+        if config.retrieval_mode == "direct":
+            context_texts = [sample["context"]]
+        else:
+            if config.retrieval_use_hyde:
+                query = expand_query_with_hyde(llm, sample["question"], callbacks=_callbacks)
 
-        retrieved_docs = retrieve(
-            vector_store, query, config.retrieval_top_k,
-            retrieval_strategy=config.retrieval_strategy,
-            fetch_k=config.retrieval_fetch_k,
-            mmr_lambda=config.retrieval_mmr_lambda,
-            callbacks=_callbacks,
-        )
-
-        if reranker is not None:
-            retrieved_docs = reranker.rerank(
-                sample["question"], retrieved_docs, config.reranker_top_k,
+            retrieved_docs = retrieve(
+                vector_store, query, config.retrieval_top_k,
+                retrieval_strategy=config.retrieval_strategy,
+                fetch_k=config.retrieval_fetch_k,
+                mmr_lambda=config.retrieval_mmr_lambda,
+                callbacks=_callbacks,
             )
 
-        context_texts = [doc.page_content for doc in retrieved_docs]
+            if reranker is not None:
+                retrieved_docs = reranker.rerank(
+                    sample["question"], retrieved_docs, config.reranker_top_k,
+                )
+
+            context_texts = [doc.page_content for doc in retrieved_docs]
 
         result = generate_answer(
             llm, sample["question"], context_texts,
@@ -201,7 +211,7 @@ def run_single_benchmark(
     console.print("  [dim]Computing custom metrics (IR + NLG)...[/dim]")
     # Reuse or create embedding model for IR relevance detection + context_relevance
     from benchmark.embedding import get_embedding_model
-    _emb_model = semantic_emb or get_embedding_model(
+    _emb_model = get_embedding_model(
         config.embedding_model,
         config.embedding_base_url(),
         config.embedding_api_key(),
@@ -360,11 +370,22 @@ def run_all_benchmarks() -> list[BenchmarkResultExtended]:
     configs = get_all_combinations()
     console.print(f"[bold]Running {len(configs)} benchmark configuration(s)[/bold]")
 
-    data = load_benchmark_data(
-        dataset_name=configs[0].dataset_name,
-        subset=configs[0].dataset_subset or None,
-        sample_size=configs[0].dataset_sample_size,
-    )
+    # Load data — use shared corpus for datasets that support it
+    from benchmark.dataset_adapters import get_adapter
+    adapter = get_adapter(configs[0].dataset_name)
+    corpus: list[dict] | None = None
+    if adapter.has_shared_corpus:
+        corpus, data = load_corpus_and_questions(
+            dataset_name=configs[0].dataset_name,
+            subset=configs[0].dataset_subset or None,
+            sample_size=configs[0].dataset_sample_size,
+        )
+    else:
+        data = load_benchmark_data(
+            dataset_name=configs[0].dataset_name,
+            subset=configs[0].dataset_subset or None,
+            sample_size=configs[0].dataset_sample_size,
+        )
 
     # Create run directory up front so results are saved even if a
     # later step (MLflow, cleanup, etc.) crashes.
@@ -377,7 +398,7 @@ def run_all_benchmarks() -> list[BenchmarkResultExtended]:
     results: list[BenchmarkResultExtended] = []
     for i, config in enumerate(configs):
         console.print(f"\n[bold cyan]Config {i + 1}/{len(configs)}[/bold cyan]")
-        result = run_single_benchmark(config, data, run_dir=run_dir)
+        result = run_single_benchmark(config, data, run_dir=run_dir, corpus=corpus)
 
         # Save to disk immediately (survives MLflow crashes)
         _save_config_result(result, run_dir)
@@ -385,9 +406,8 @@ def run_all_benchmarks() -> list[BenchmarkResultExtended]:
         log_benchmark_run(result)
         results.append(result)
 
-    # Clear embedding cache and all ChromaDB collections after all runs complete
-    console.print("\n[bold]Cleaning up vector store collections...[/bold]")
-    clear_cache()
+    # Vector stores are persisted in .chroma/ — kept across runs to avoid re-embedding.
+    console.print("\n[dim]Vector stores persisted in .chroma/[/dim]")
     console.print("[green]All collections deleted.[/green]")
 
     wall_time = time.perf_counter() - wall_start
