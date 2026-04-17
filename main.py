@@ -83,6 +83,7 @@ def run_single_benchmark(
                 breakpoint_threshold_amount=config.semantic_breakpoint_amount,
             )
         chunker = get_chunker(config.chunking_strategy, config.chunk_size, config.chunk_overlap, **chunker_kwargs)
+
         # Use shared corpus if available, otherwise chunk per-question data
         chunk_source = corpus if corpus else data
         chunks = chunk_documents(chunker, chunk_source)
@@ -209,6 +210,7 @@ def run_single_benchmark(
 
     # 4b. Compute custom (non-RAGAS) metrics
     console.print("  [dim]Computing custom metrics (IR + NLG)...[/dim]")
+    
     # Reuse or create embedding model for IR relevance detection + context_relevance
     from benchmark.embedding import get_embedding_model
     _emb_model = get_embedding_model(
