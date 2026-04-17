@@ -121,7 +121,7 @@ def _lcs_length(a: Sequence[str], b: Sequence[str]) -> int:
 def determine_relevance(
     ground_truth: str,
     contexts: list[str],
-    threshold: float = 0.3,
+    threshold: float = 0.5,
     embed_fn: Callable[[str], np.ndarray] | None = None,
 ) -> set[int]:
     """Return indices of contexts that are relevant to the ground truth.
@@ -398,7 +398,7 @@ def compute_custom_metrics(
     contexts: list[list[str]],
     *,
     ir_k_values: list[int] | None = None,
-    relevance_threshold: float = 0.3,
+    relevance_threshold: float = 0.5,
     bleu_max_n: int = 4,
     bert_model: object | None = None,
     embed_fn: Callable[[str], np.ndarray] | None = None,
@@ -413,6 +413,8 @@ def compute_custom_metrics(
         *k* values for Hit@k, nDCG@k, Recall@k.  Defaults to ``[1, 3, 5]``.
     relevance_threshold
         Jaccard threshold for auto-determining context relevance (0–1).
+        Default 0.5 — lower values classify too many unrelated chunks as
+        relevant, making Hit/nDCG trivially 1.0.
     bleu_max_n
         Maximum n-gram order for BLEU (default 4).
     bert_model
