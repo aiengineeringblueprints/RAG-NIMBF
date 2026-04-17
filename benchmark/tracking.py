@@ -110,6 +110,26 @@ def log_benchmark_run(result: BenchmarkResultExtended) -> None:
         if stat_value is not None:
             metrics[stat_name] = stat_value
 
+    def _mlflow_safe(key: str) -> str:
+        """Sanitize metric key for MLflow (no ``@`` allowed)."""
+        return key.replace("@", "_at_")
+
+    # Custom metrics (IR + NLG) means
+    if result.custom_metric_means:
+        for key, value in result.custom_metric_means.items():
+            metrics[f"custom_{_mlflow_safe(key)}"] = value
+
+    # Custom metrics stats
+    if result.custom_stats:
+        for key, stats in result.custom_stats.items():
+            if stats is not None:
+                safe = _mlflow_safe(key)
+                metrics[f"custom_{safe}_mean"] = stats.mean
+                metrics[f"custom_{safe}_std"] = stats.std
+                metrics[f"custom_{safe}_median"] = stats.median
+                metrics[f"custom_{safe}_min"] = stats.min
+                metrics[f"custom_{safe}_max"] = stats.max
+
     # Latency / throughput stats
     for prefix, stats in [
         ("ttft", result.ttft_stats),
@@ -148,11 +168,21 @@ def _log_per_sample_csv(result: BenchmarkResultExtended, run_id: str) -> None:
 
     ragas_keys = [
         "faithfulness",
-        "answer_relevancy",
-        "answer_correctness",
-        "context_precision",
-        "context_recall",
+        # "answer_relevancy",
+        # "answer_correctness",
+        # "context_precision",
+        # "context_recall",
     ]
+
+    # Collect all custom metric keys across samples
+    custom_keys: list[str] = []
+    seen_custom: set[str] = set()
+    for sample in result.per_sample:
+        if sample.custom_scores:
+            for k in sample.custom_scores:
+                if k not in seen_custom:
+                    custom_keys.append(k)
+                    seen_custom.add(k)
 
     tmpdir = Path(tempfile.mkdtemp())
     csv_path = tmpdir / "per_sample_results.csv"
@@ -167,7 +197,7 @@ def _log_per_sample_csv(result: BenchmarkResultExtended, run_id: str) -> None:
             "total_seconds",
             "token_count",
             "tokens_per_second",
-        ] + [f"ragas_{k}" for k in ragas_keys]
+        ] + [f"ragas_{k}" for k in ragas_keys] + [f"custom_{k}" for k in custom_keys]
         writer.writerow(header)
 
         for sample in result.per_sample:
@@ -179,7 +209,9 @@ def _log_per_sample_csv(result: BenchmarkResultExtended, run_id: str) -> None:
                 sample.total_seconds,
                 sample.token_count,
                 sample.tokens_per_second,
-            ] + [sample.ragas_scores.get(k, "") for k in ragas_keys]
+            ] + [sample.ragas_scores.get(k, "") for k in ragas_keys] + [
+                (sample.custom_scores or {}).get(k, "") for k in custom_keys
+            ]
             writer.writerow(row)
 
     mlflow.log_artifact(str(csv_path), artifact_path="data")

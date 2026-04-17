@@ -1,3 +1,5 @@
+from langfuse import observe
+
 from langchain_text_splitters import (
     CharacterTextSplitter,
     RecursiveCharacterTextSplitter,
@@ -46,7 +48,8 @@ def get_chunker(strategy: str, chunk_size: int, chunk_overlap: int, **kwargs):
     return splitter_cls(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
 
 
-def chunk_documents(chunker, documents: list[dict]) -> list[Document]:
+@observe(name="chunk_documents")
+def chunk_documents(chunker, documents: list[dict], min_chunk_length: int = 50) -> list[Document]:
     docs = []
     for doc in documents:
         context = doc["context"]
@@ -54,4 +57,7 @@ def chunk_documents(chunker, documents: list[dict]) -> list[Document]:
             context = "\n".join(str(c) for c in context)
         docs.append(Document(page_content=context, metadata=doc.get("metadata", {})))
 
-    return chunker.split_documents(docs)
+    chunks = chunker.split_documents(docs)
+    # Filter out near-empty fragments (bibliography lines, citations, etc.)
+    chunks = [c for c in chunks if len(c.page_content.strip()) >= min_chunk_length]
+    return chunks

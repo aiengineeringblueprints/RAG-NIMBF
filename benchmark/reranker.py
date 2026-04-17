@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from typing import Protocol
 
+from langfuse import observe
+
 from langchain_core.documents import Document
 
 from benchmark.providers import parse_model_id
@@ -31,6 +33,7 @@ class CrossEncoderReranker:
 
         self.model = CrossEncoder(model_name)
 
+    @observe(name="rerank")
     def rerank(
         self, query: str, documents: list[Document], top_k: int
     ) -> list[Document]:

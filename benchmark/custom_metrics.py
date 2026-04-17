@@ -6,8 +6,6 @@ Categories:
 
 All functions are pure and stateless.  Use ``compute_custom_metrics()``
 to run every metric at once, or call individual functions directly.
-
-This module is **not** wired into the main benchmark pipeline yet.
 """
 from __future__ import annotations
 
@@ -18,6 +16,7 @@ from dataclasses import dataclass
 from typing import Callable, Sequence
 
 import numpy as np
+from langfuse import observe
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +57,39 @@ def _simple_stem(word: str) -> str:
     return w
 
 
+def is_refusal_answer(text: str) -> bool:
+    """Return True if *text* is a refusal / non-answer from the LLM."""
+    t = text.strip().lower()
+    if not t:
+        return True
+    _REFUSAL_PATTERNS = (
+        "i cannot answer",
+        "i can't answer",
+        "i cannot provide",
+        "i can't provide",
+        "i am unable to answer",
+        "i'm unable to answer",
+        "i am not able to answer",
+        "not possible to answer",
+        "cannot be answered",
+        "not sufficient",
+        "insufficient",
+        "no information",
+        "i don't have",
+        "i do not have",
+        "does not contain",
+        "does not provide",
+        "not contained",
+        "not provided",
+        "not available in",
+        "not addressed",
+        "context does not",
+        "provided context",
+        "given context",
+    )
+    return any(p in t for p in _REFUSAL_PATTERNS)
+
+
 def _jaccard(a: set[str], b: set[str]) -> float:
     if not a or not b:
         return 0.0
@@ -90,18 +122,25 @@ def determine_relevance(
     ground_truth: str,
     contexts: list[str],
     threshold: float = 0.3,
+    embed_fn: Callable[[str], np.ndarray] | None = None,
 ) -> set[int]:
-    """Return indices of contexts that overlap with the ground truth.
+    """Return indices of contexts that are relevant to the ground truth.
 
-    Uses Jaccard token-overlap between each context and the ground-truth
-    answer.  Only indices whose score >= *threshold* are considered
-    relevant.
+    When *embed_fn* is provided, uses cosine similarity between embeddings
+    (much more accurate).  Falls back to Jaccard token overlap otherwise.
+    Only indices whose score >= *threshold* are considered relevant.
     """
-    gt_tokens = set(_tokenize(ground_truth))
     relevant: set[int] = set()
-    for i, ctx in enumerate(contexts):
-        if _jaccard(gt_tokens, set(_tokenize(ctx))) >= threshold:
-            relevant.add(i)
+    if embed_fn is not None:
+        gt_emb = embed_fn(ground_truth)
+        for i, ctx in enumerate(contexts):
+            if _cosine_sim(gt_emb, embed_fn(ctx)) >= threshold:
+                relevant.add(i)
+    else:
+        gt_tokens = set(_tokenize(ground_truth))
+        for i, ctx in enumerate(contexts):
+            if _jaccard(gt_tokens, set(_tokenize(ctx))) >= threshold:
+                relevant.add(i)
     return relevant
 
 
@@ -351,6 +390,7 @@ class CustomMetricsResult:
     error: str | None = None
 
 
+@observe(name="custom_metrics")
 def compute_custom_metrics(
     questions: list[str],
     ground_truths: list[str],
@@ -400,7 +440,7 @@ def compute_custom_metrics(
         scores: dict[str, float | None] = {}
 
         # ── IR metrics ──────────────────────────────────────────
-        relevant = determine_relevance(gt, ctx, threshold=relevance_threshold)
+        relevant = determine_relevance(gt, ctx, threshold=relevance_threshold, embed_fn=embed_fn)
         retrieved = list(range(len(ctx)))
 
         for k in k_values:
@@ -419,35 +459,43 @@ def compute_custom_metrics(
         else:
             scores["context_relevance"] = None
 
-        # ── NLG metrics ─────────────────────────────────────────
-        for name, val in [
-            ("rouge_l", rouge_l(ans, gt)),
-            ("bleu", bleu(ans, gt, max_n=bleu_max_n)),
-            ("meteor", meteor_score(ans, gt)),
-        ]:
-            scores[name] = val
-            accum.setdefault(name, []).append(val)
+        # ── NLG metrics (skip for refusal answers) ──────────────
+        if is_refusal_answer(ans):
+            for name in ("rouge_l", "bleu", "meteor",
+                         "bert_score_precision", "bert_score_recall", "bert_score_f1"):
+                scores[name] = 0.0
+                accum.setdefault(name, []).append(0.0)
+        else:
+            for name, val in [
+                ("rouge_l", rouge_l(ans, gt)),
+                ("bleu", bleu(ans, gt, max_n=bleu_max_n)),
+                ("meteor", meteor_score(ans, gt)),
+            ]:
+                scores[name] = val
+                accum.setdefault(name, []).append(val)
 
-        # ── BERTScore (requires model) ──────────────────────────
-        if bert_model is not None:
-            try:
-                p, r, f1 = bert_score(ans, gt, bert_model)
-                for name, val in [
-                    ("bert_score_precision", p),
-                    ("bert_score_recall", r),
-                    ("bert_score_f1", f1),
-                ]:
-                    scores[name] = val
-                    accum.setdefault(name, []).append(val)
-            except Exception as exc:
-                logger.warning("BERTScore failed for sample %d: %s", idx, exc)
+            # ── BERTScore (requires model) ──────────────────────
+            if bert_model is not None:
+                try:
+                    p, r, f1 = bert_score(ans, gt, bert_model)
+                    for name, val in [
+                        ("bert_score_precision", p),
+                        ("bert_score_recall", r),
+                        ("bert_score_f1", f1),
+                    ]:
+                        scores[name] = val
+                        accum.setdefault(name, []).append(val)
+                except Exception as exc:
+                    logger.warning("BERTScore failed for sample %d: %s", idx, exc)
+                    scores["bert_score_precision"] = 0.0
+                    scores["bert_score_recall"] = 0.0
+                    scores["bert_score_f1"] = 0.0
+                    for n in ("bert_score_precision", "bert_score_recall", "bert_score_f1"):
+                        accum.setdefault(n, []).append(0.0)
+            else:
                 scores["bert_score_precision"] = None
                 scores["bert_score_recall"] = None
                 scores["bert_score_f1"] = None
-        else:
-            scores["bert_score_precision"] = None
-            scores["bert_score_recall"] = None
-            scores["bert_score_f1"] = None
 
         per_sample.append(scores)
 

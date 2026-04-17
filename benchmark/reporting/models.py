@@ -19,6 +19,7 @@ class PerSampleResult:
     tokens_per_second: float
     gpu_usage: dict[str, float] | None
     ragas_scores: dict[str, float | None]
+    custom_scores: dict[str, float | None] = None
     answer_valid: bool = True
 
 
@@ -65,6 +66,8 @@ class BenchmarkResultExtended:
     ragas_context_recall_stats: StatSummary | None
     evaluation_error: str | None = None
     ragas_valid_sample_counts: dict[str, int] | None = None
+    custom_metric_means: dict[str, float] | None = None
+    custom_stats: dict[str, StatSummary | None] | None = None
     reranker_model: str | None = None
     reranker_top_k: int | None = None
 

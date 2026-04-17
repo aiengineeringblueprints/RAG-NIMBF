@@ -1,8 +1,0 @@
-config_name,question,ground_truth,answer,ttft_seconds,total_seconds,token_count,tokens_per_second,faithfulness,answer_relevancy,context_precision,context_recall
-recursive_cs1000_co200_nomic-embed-text:latest_gemma3:4b,What was the change in compensation and benefits liability for Goldman Sachs in millions from December 2013 to December 2014?,494.0,$8368 to $8368,5.59794243100032,5.59794243100032,12,2.143644767324924,0.3333333333333333,0.4761929761850363,0.9999999999,1.0
-recursive_cs1000_co200_nomic-embed-text:latest_Qwen/Qwen3-32B-AWQ,What was the change in compensation and benefits liability for Goldman Sachs in millions from December 2013 to December 2014?,494.0,"<think>
-Okay, let's see. The user is asking for the change in compensation and benefits liability for Goldman Sachs from December 2013 to December 2014.
-
-Looking at the provided context, there's a table with various liabilities listed. The first row is compensation and benefits. For December 2014, it's $8368 million, and for December 2013, it's $7874 million. 
-
-So, the change would be the 2014 value minus the 2013 value. Let me calculate that: 8368 minus 7874. Let me do the subtraction. 8368 - 7",4.732813709999846,4.732813709999846,256,54.09044506845978,1.0,0.0,0.9999999999,1.0

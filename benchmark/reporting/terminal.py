@@ -112,7 +112,6 @@ def _display_summary_panel(
         if dataset_subset:
             label += f"/{dataset_subset}"
         parts.append(f"[bold]Dataset:[/bold] {label} ({dataset_sample_size} samples)")
-        parts.append(f"[bold]Dataset:[/bold] {dataset_subset} ({dataset_sample_size} samples)")
     if total_time > 0:
         parts.append(f"[bold]Total wall time:[/bold] {total_time:.1f}s")
     if system_info:

@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import time
 from datetime import datetime
 from pathlib import Path
@@ -19,10 +20,12 @@ from benchmark.retrieval import (
 from benchmark.generation import get_llm, generate_answer, GenerationResult
 from benchmark.prompt_templates import get_template
 from benchmark.evaluation import evaluate_results
+from benchmark.custom_metrics import compute_custom_metrics
 from benchmark.reranker import get_reranker
 from benchmark.reporting import generate_report
 from benchmark.reporting.exports import _result_to_dict
 from benchmark.tracking import setup_mlflow, log_benchmark_run
+from benchmark.tracing import setup_langfuse
 from benchmark.reporting.models import (
     BenchmarkResultExtended,
     PerSampleResult,
@@ -36,6 +39,16 @@ logger = logging.getLogger(__name__)
 def run_single_benchmark(
     config: BenchmarkConfig, data: list[dict], run_dir: Path | None = None,
 ) -> BenchmarkResultExtended:
+    # Set up LangFuse callback handler for this benchmark run (one trace per config)
+    _callbacks = None
+    if os.getenv("LANGFUSE_PUBLIC_KEY"):
+        from langfuse.langchain import CallbackHandler
+        _lf_handler = CallbackHandler(
+            trace_name=config.name,
+            metadata={"llm_model": config.llm_model, "chunking_strategy": config.chunking_strategy},
+        )
+        _callbacks = [_lf_handler]
+
     run_start = time.perf_counter()
     console.print(f"\n[bold yellow]>>> Starting: {config.name}[/bold yellow]")
     collection_name = config.name.replace(":", "_").replace("/", "_")
@@ -51,6 +64,7 @@ def run_single_benchmark(
 
     # 1. Chunk
     chunker_kwargs: dict = {}
+    semantic_emb = None
     if config.chunking_strategy == "semantic":
         from benchmark.embedding import get_embedding_model
 
@@ -108,13 +122,14 @@ def run_single_benchmark(
         # HyDE query expansion: replace the raw question with a hypothetical answer
         query = sample["question"]
         if config.retrieval_use_hyde:
-            query = expand_query_with_hyde(llm, sample["question"])
+            query = expand_query_with_hyde(llm, sample["question"], callbacks=_callbacks)
 
         retrieved_docs = retrieve(
             vector_store, query, config.retrieval_top_k,
             retrieval_strategy=config.retrieval_strategy,
             fetch_k=config.retrieval_fetch_k,
             mmr_lambda=config.retrieval_mmr_lambda,
+            callbacks=_callbacks,
         )
 
         if reranker is not None:
@@ -132,6 +147,7 @@ def run_single_benchmark(
             value_fallback=config.llm_answer_value_fallback,
             ground_truth=sample["ground_truth"],
             prompt_template_name=config.prompt_template,
+            callbacks=_callbacks,
         )
 
         questions.append(sample["question"])
@@ -181,10 +197,39 @@ def run_single_benchmark(
     ragas_means = eval_result.metric_means
     per_sample_ragas = eval_result.per_sample_scores
 
+    # 4b. Compute custom (non-RAGAS) metrics
+    console.print("  [dim]Computing custom metrics (IR + NLG)...[/dim]")
+    # Reuse or create embedding model for IR relevance detection + context_relevance
+    from benchmark.embedding import get_embedding_model
+    _emb_model = semantic_emb or get_embedding_model(
+        config.embedding_model,
+        config.embedding_base_url(),
+        config.embedding_api_key(),
+        provider=config.embedding_provider,
+    )
+    _embed_fn = _emb_model.embed_query
+
+    # Load SentenceTransformer for BERTScore
+    from sentence_transformers import SentenceTransformer
+    _bert_model = SentenceTransformer("roberta-large")
+
+    custom_result = compute_custom_metrics(
+        questions, ground_truths,
+        [r.answer for r in gen_results],
+        all_contexts,
+        embed_fn=_embed_fn,
+        bert_model=_bert_model,
+    )
+    if custom_result.error:
+        console.print(f"  [yellow]Custom metrics error: {custom_result.error}[/yellow]")
+    else:
+        console.print(f"  [dim]Custom metrics computed: {', '.join(custom_result.metric_means.keys())}[/dim]")
+
     total_time = time.perf_counter() - run_start
     console.print(f"[bold green]<<< Finished: {config.name} in {total_time:.1f}s[/bold green]")
 
     # 5. Build per-sample results
+    per_sample_custom = custom_result.per_sample
     per_sample = tuple(
         PerSampleResult(
             question=q,
@@ -197,6 +242,7 @@ def run_single_benchmark(
             tokens_per_second=gr.tokens_per_second,
             gpu_usage=gr.gpu_usage,
             ragas_scores=per_sample_ragas[i] if i < len(per_sample_ragas) else {},
+            custom_scores=per_sample_custom[i] if i < len(per_sample_custom) else {},
             answer_valid=gr.answer_valid,
         )
         for i, (q, gt, ctx, gr) in enumerate(
@@ -230,6 +276,21 @@ def run_single_benchmark(
                 vals.append(v)
         return vals
 
+    def _custom_stat_samples(key: str) -> list[float]:
+        vals = []
+        for s in per_sample:
+            if s.custom_scores:
+                v = s.custom_scores.get(key)
+                if v is not None:
+                    vals.append(v)
+        return vals
+
+    custom_means = custom_result.metric_means
+    custom_stat_summaries = {
+        key: compute_stats(_custom_stat_samples(key))
+        for key in custom_means
+    }
+
     return BenchmarkResultExtended(
         config_name=config.name,
         llm_model=config.llm_model,
@@ -262,6 +323,8 @@ def run_single_benchmark(
         ragas_context_recall_stats=compute_stats(_ragas_stat_samples("context_recall")),
         evaluation_error=eval_result.error,
         ragas_valid_sample_counts=eval_result.samples_with_valid_scores or None,
+        custom_metric_means=custom_means if custom_means else None,
+        custom_stats=custom_stat_summaries if custom_stat_summaries else None,
         reranker_model=config.reranker_model,
         reranker_top_k=config.reranker_top_k if config.reranker_model else None,
     )
@@ -342,6 +405,11 @@ def run_all_benchmarks() -> list[BenchmarkResultExtended]:
         total_time=wall_time,
     )
 
+    # Flush LangFuse traces before exit
+    if os.getenv("LANGFUSE_PUBLIC_KEY"):
+        from langfuse import Langfuse
+        Langfuse().flush()
+
     return results
 
 
@@ -354,6 +422,9 @@ def main():
     console.print("=" * 50)
     tracking_uri = setup_mlflow()
     console.print(f"[dim]MLflow tracking: {tracking_uri}[/dim]")
+    langfuse_host = setup_langfuse()
+    if langfuse_host:
+        console.print(f"[dim]LangFuse tracing: {langfuse_host}[/dim]")
     run_all_benchmarks()
 
 
