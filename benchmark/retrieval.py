@@ -1,6 +1,7 @@
 import hashlib
 import logging
 import threading
+from pathlib import Path
 from typing import Any
 
 import chromadb
@@ -12,14 +13,16 @@ from benchmark.embedding import get_embedding_model
 
 logger = logging.getLogger(__name__)
 
-# Single shared client + lock: ChromaDB's Rust bindings crash when EphemeralClient
-# is created from multiple threads simultaneously.
+_CHROMA_DIR = Path(".chroma")
+
+# Single shared client + lock: ChromaDB's Rust bindings crash when
+# PersistentClient is created from multiple threads simultaneously.
 _chroma_client: Any = None
 _chroma_lock = threading.Lock()
 
 # Embedding cache: keyed by a hash of (embedding_model_name, chunk_size,
-# chunk_overlap, chunking_strategy).  Stores the already-built Chroma vector
-# store so it can be reused when the same combination appears again.
+# chunk_overlap, chunking_strategy, dataset_name).  Stores the already-built
+# Chroma vector store so it can be reused when the same combination appears again.
 _vector_store_cache: dict[str, Chroma] = {}
 
 
@@ -28,17 +31,18 @@ def _cache_key(
     chunk_size: int,
     chunk_overlap: int,
     chunking_strategy: str,
+    dataset_name: str = "",
 ) -> str:
     """Deterministic key derived from the parameters that affect embeddings."""
-    raw = f"{embedding_model_name}|{chunk_size}|{chunk_overlap}|{chunking_strategy}"
-    return hashlib.sha256(raw.encode()).hexdigest()
+    raw = f"{embedding_model_name}|{chunk_size}|{chunk_overlap}|{chunking_strategy}|{dataset_name}"
+    return hashlib.sha256(raw.encode()).hexdigest()[:24]
 
 
 def _get_client() -> Any:
     global _chroma_client
     with _chroma_lock:
         if _chroma_client is None:
-            _chroma_client = chromadb.EphemeralClient()
+            _chroma_client = chromadb.PersistentClient(path=str(_CHROMA_DIR))
         return _chroma_client
 
 
@@ -57,12 +61,16 @@ def build_vector_store(
     When *cache_key* is provided, the built vector store is cached under that
     key and subsequent calls with the same key return the cached store
     directly, skipping re-embedding.
+
+    Collections are persisted to ``.chroma/`` on disk and survive across runs.
+    If a collection with the same name already exists, it is reused as-is.
     """
     # Fast path: return cached store when the key matches.
     if cache_key is not None:
         with _chroma_lock:
             cached = _vector_store_cache.get(cache_key)
             if cached is not None:
+                logger.info("Reusing in-memory cached vector store (key=%s)", cache_key)
                 return cached
 
     client = _get_client()
@@ -71,12 +79,18 @@ def build_vector_store(
         provider=embedding_provider,
     )
 
-    # The lock must cover the entire build sequence (delete + create + add)
-    # so that concurrent threads never race on the same collection.
     with _chroma_lock:
         existing = [c.name for c in client.list_collections()]
         if collection_name in existing:
-            client.delete_collection(collection_name)
+            logger.info("Reusing persisted collection '%s'", collection_name)
+            vector_store = Chroma(
+                client=client,
+                collection_name=collection_name,
+                embedding_function=embedding_model,
+            )
+            if cache_key is not None:
+                _vector_store_cache[cache_key] = vector_store
+            return vector_store
 
         vector_store = Chroma(
             client=client,
@@ -84,6 +98,7 @@ def build_vector_store(
             embedding_function=embedding_model,
         )
         vector_store.add_documents(chunks)
+        logger.info("Built new collection '%s' with %d chunks", collection_name, len(chunks))
 
     if cache_key is not None:
         with _chroma_lock:

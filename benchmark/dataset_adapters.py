@@ -24,6 +24,7 @@ class DatasetAdapter:
     metadata_keys: tuple[str, ...] = ()  # extra columns to include in metadata
     requires_subset: bool = False  # True if the HF dataset needs a config/subset
     ground_truth_transform: Callable[[Any], str] | None = None  # for complex fields
+    has_shared_corpus: bool = False  # True if contexts should be deduplicated into a shared corpus
 
 
 # ---------------------------------------------------------------------------
@@ -123,6 +124,7 @@ register(DatasetAdapter(
     ground_truth_transform=_squad_ground_truth,
     preferred_split="validation",
     metadata_keys=("id", "title"),
+    has_shared_corpus=True,
 ))
 
 

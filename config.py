@@ -75,6 +75,8 @@ class BenchmarkConfig:
     retrieval_fetch_k: int | None = None       # MMR oversampling
     retrieval_mmr_lambda: float = 0.5          # 0 = max diversity, 1 = max relevance
     retrieval_use_hyde: bool = False           # HyDE query expansion
+    # Retrieval mode
+    retrieval_mode: str = "retrieval"  # "retrieval" | "direct"
     # Semantic chunking
     semantic_breakpoint_type: str = "percentile"    # percentile | standard_deviation | interquartile
     semantic_breakpoint_amount: int = 95
@@ -92,6 +94,8 @@ class BenchmarkConfig:
             parts += f"_mmr-l{self.retrieval_mmr_lambda}"
         if self.retrieval_use_hyde:
             parts += "_hyde"
+        if self.retrieval_mode == "direct":
+            parts += "_direct"
         return parts
 
     @property
@@ -232,6 +236,13 @@ def get_all_combinations() -> list[BenchmarkConfig]:
     _hyde_raw = os.getenv("RETRIEVAL_USE_HYDE", "false").strip().lower()
     retrieval_use_hyde = _hyde_raw in ("1", "true", "yes", "on")
 
+    # Retrieval mode
+    retrieval_mode = os.getenv("RETRIEVAL_MODE", "retrieval").strip().lower()
+    if retrieval_mode not in ("retrieval", "direct"):
+        raise ValueError(
+            f"Invalid RETRIEVAL_MODE={retrieval_mode!r}. Use: retrieval, direct"
+        )
+
     # Semantic chunking
     semantic_breakpoint_type = os.getenv("SEMANTIC_BREAKPOINT_TYPE", "percentile").strip().lower()
     if semantic_breakpoint_type not in ("percentile", "standard_deviation", "interquartile"):
@@ -308,6 +319,7 @@ def get_all_combinations() -> list[BenchmarkConfig]:
             llm_answer_value_fallback=llm_answer_value_fallback,
             semantic_breakpoint_type=semantic_breakpoint_type,
             semantic_breakpoint_amount=semantic_breakpoint_amount,
+            retrieval_mode=retrieval_mode,
         )
         for (provider, model_name), emb, cs, co, strat, reranker, tmpl in combos
     ]

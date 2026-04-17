@@ -4,10 +4,30 @@ When LANGFUSE_PUBLIC_KEY is not set, all tracing is disabled with zero overhead.
 """
 from __future__ import annotations
 
+import functools
 import logging
 import os
+from typing import Callable
 
 logger = logging.getLogger(__name__)
+
+
+def _noop_observe(name: str | None = None) -> Callable:
+    """Identity decorator used when LangFuse is disabled."""
+    def decorator(fn: Callable) -> Callable:
+        return fn
+    return decorator
+
+
+def _get_observe():
+    if os.getenv("LANGFUSE_PUBLIC_KEY"):
+        from langfuse import observe
+        return observe
+    return _noop_observe
+
+
+# Module-level decorator: real @observe when key is set, no-op otherwise.
+observe = _get_observe()
 
 
 def setup_langfuse() -> str | None:

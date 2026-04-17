@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from langfuse import observe
+from benchmark.tracing import observe
 
 from langchain_core.documents import Document
 
