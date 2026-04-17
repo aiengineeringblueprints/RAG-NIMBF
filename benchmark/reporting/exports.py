@@ -35,21 +35,14 @@ def _result_to_dict(r: BenchmarkResultExtended) -> dict:
         "config_name", "llm_model", "embedding_model", "prompt_template",
         "chunking_strategy",
         "chunk_size", "chunk_overlap", "num_chunks", "num_questions",
-        "avg_ttft_seconds", "avg_tokens_per_second",
-        "avg_gpu_utilization_pct", "avg_gpu_memory_used_mb",
         "ragas_faithfulness", "ragas_answer_relevancy", "ragas_answer_correctness",
         "ragas_context_precision", "ragas_context_recall",
-        "total_time_seconds",
     ):
         val = getattr(r, key)
         d[key] = val
 
-    # Stats summary
+    # Stats summary (quality metrics only)
     d["stats"] = {
-        "ttft_seconds": _stats_to_dict(r.ttft_stats),
-        "tokens_per_second": _stats_to_dict(r.tps_stats),
-        "gpu_utilization_pct": _stats_to_dict(r.gpu_util_stats),
-        "gpu_memory_mb": _stats_to_dict(r.gpu_mem_stats),
         "ragas_faithfulness": _stats_to_dict(r.ragas_faithfulness_stats),
         "ragas_answer_relevancy": _stats_to_dict(r.ragas_answer_relevancy_stats),
         "ragas_answer_correctness": _stats_to_dict(r.ragas_answer_correctness_stats),
@@ -64,16 +57,21 @@ def _result_to_dict(r: BenchmarkResultExtended) -> dict:
             "ground_truth": s.ground_truth,
             "answer": s.answer,
             "contexts": list(s.contexts),
-            "ttft_seconds": s.ttft_seconds,
-            "total_seconds": s.total_seconds,
-            "token_count": s.token_count,
-            "tokens_per_second": s.tokens_per_second,
-            "gpu_usage": s.gpu_usage,
             "ragas_scores": s.ragas_scores,
+            "custom_scores": s.custom_scores or {},
             "answer_valid": s.answer_valid,
         }
         for s in r.per_sample
     ]
+
+    # Custom metrics (IR + NLG) — averages at top level alongside RAGAS
+    if r.custom_metric_means:
+        for key, value in r.custom_metric_means.items():
+            d[key] = value
+    if r.custom_stats:
+        d["custom_stats"] = {
+            key: _stats_to_dict(stats) for key, stats in r.custom_stats.items()
+        }
 
     return d
 
@@ -128,6 +126,10 @@ def save_csv_report(
             "ragas_context_recall": r.ragas_context_recall,
             "total_time_seconds": r.total_time_seconds,
         }
+        # Custom metric means
+        if r.custom_metric_means:
+            for key, val in r.custom_metric_means.items():
+                row[f"custom_{key}"] = val
         # Add stat summaries
         for metric, stats in (
             ("ttft", r.ttft_stats),
@@ -169,6 +171,10 @@ def save_csv_report(
                 "context_precision": s.ragas_scores.get("context_precision"),
                 "context_recall": s.ragas_scores.get("context_recall"),
                 "answer_valid": s.answer_valid,
+                **{
+                    f"custom_{k}": v
+                    for k, v in (s.custom_scores or {}).items()
+                },
             })
 
     sample_path: Path | None = None
@@ -201,7 +207,6 @@ def save_markdown_report(
         if dataset_subset:
             label += f"/{dataset_subset}"
         lines.append(f"**Dataset:** {label} ({dataset_sample_size} samples)")
-        lines.append(f"**Dataset:** {dataset_subset} ({dataset_sample_size} samples)")
     lines.append(f"**Configurations:** {len(results)}")
     lines.append("")
 
@@ -231,6 +236,33 @@ def save_markdown_report(
         cr = _fmt_md(r.ragas_context_recall)
         lines.append(f"| {_short(r.config_name)} | {f} | {ar} | {ac} | {cp} | {cr} |")
     lines.append("")
+
+    # Custom metrics table
+    if results and any(r.custom_metric_means for r in results):
+        lines.append("## Custom Metrics (IR + NLG)")
+        lines.append("")
+        # Collect all metric keys across results
+        all_custom_keys: list[str] = []
+        seen: set[str] = set()
+        for r in results:
+            if r.custom_metric_means:
+                for k in r.custom_metric_means:
+                    if k not in seen:
+                        all_custom_keys.append(k)
+                        seen.add(k)
+        header = "| Config | " + " | ".join(all_custom_keys) + " |"
+        sep = "|--------" + ("|----------" * len(all_custom_keys)) + "|"
+        lines.append(header)
+        lines.append(sep)
+        for r in results:
+            vals = [_short(r.config_name)]
+            if r.custom_metric_means:
+                for k in all_custom_keys:
+                    vals.append(_fmt_md(r.custom_metric_means.get(k)))
+            else:
+                vals.extend(["N/A"] * len(all_custom_keys))
+            lines.append("| " + " | ".join(vals) + " |")
+        lines.append("")
 
     # Insights
     if rankings.insights:

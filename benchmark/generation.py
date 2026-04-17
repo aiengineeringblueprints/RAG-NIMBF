@@ -234,9 +234,20 @@ def normalize_percentage_answer(
     return answer
 
 
+_REFUSAL_PATTERN = re.compile(
+    r"i\s+(?:cannot|can't|am\s+unable|am\s+not\s+able)\s+"
+    r"(?:answer|provide|respond)"
+    r"|insufficient|not\s+sufficient|not\s+enough\s+information"
+    r"|context\s+does\s+not|provided\s+context|given\s+context",
+    re.IGNORECASE,
+)
+
+
 def _validate_answer(answer: str) -> bool:
     """Return True if the answer is non-empty and meaningful."""
     if not answer or not answer.strip():
+        return False
+    if _REFUSAL_PATTERN.search(answer):
         return False
     return True
 
@@ -308,6 +319,7 @@ def get_llm(
 def _call_with_streaming(
     llm: BaseChatModel,
     messages: list[BaseMessage],
+    callbacks: list | None = None,
 ) -> tuple[str, float, float, dict | None, str | None]:
     """Call LLM with streaming for accurate TTFT measurement.
 
@@ -322,7 +334,7 @@ def _call_with_streaming(
     last_additional_kwargs: dict | None = None
 
     try:
-        for chunk in llm.stream(messages):
+        for chunk in llm.stream(messages, config={"callbacks": callbacks or []}):
             if first_token_time is None:
                 first_token_time = time.perf_counter()
 
@@ -354,14 +366,10 @@ def _call_with_streaming(
 
     except (NotImplementedError, AttributeError, TypeError) as exc:
         logger.debug("Streaming not supported (%s), falling back to invoke()", exc)
-        return _call_with_invoke(llm, messages)
+        return _call_with_invoke(llm, messages, callbacks)
 
     raw_content = "".join(chunks)
     raw_reasoning = "".join(reasoning_chunks) if reasoning_chunks else None
-
-    # Try to get usage from the last chunk's response_metadata
-    if not last_usage and last_additional_kwargs:
-        pass  # usage might be in response_metadata
 
     return raw_content, ttft, total, last_usage, raw_reasoning
 
@@ -369,6 +377,7 @@ def _call_with_streaming(
 def _call_with_invoke(
     llm: BaseChatModel,
     messages: list[BaseMessage],
+    callbacks: list | None = None,
 ) -> tuple[str, float, float, dict | None, str | None]:
     """Call LLM with invoke() — fallback when streaming is unavailable.
 
@@ -376,7 +385,7 @@ def _call_with_invoke(
     Note: TTFT equals total latency in non-streaming mode.
     """
     start = time.perf_counter()
-    response = llm.invoke(messages)
+    response = llm.invoke(messages, config={"callbacks": callbacks or []})
     total = time.perf_counter() - start
 
     raw_content = str(response.content) if response.content else ""
@@ -438,6 +447,7 @@ def generate_answer(
     value_fallback: bool = True,
     ground_truth: str | None = None,
     prompt_template_name: str | None = None,
+    callbacks: list | None = None,
 ) -> GenerationResult:
     from langchain_core.messages import HumanMessage, SystemMessage
 
@@ -456,7 +466,7 @@ def generate_answer(
 
     for attempt in range(1, _MAX_RETRIES + 1):
         try:
-            raw_content, ttft, total, usage, raw_reasoning = _call_with_streaming(llm, messages)
+            raw_content, ttft, total, usage, raw_reasoning = _call_with_streaming(llm, messages, callbacks)
             break
         except Exception as exc:
             if attempt == _MAX_RETRIES:

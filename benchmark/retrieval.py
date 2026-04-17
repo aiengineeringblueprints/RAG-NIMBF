@@ -100,6 +100,7 @@ def retrieve(
     retrieval_strategy: str = "similarity",
     fetch_k: int | None = None,
     mmr_lambda: float = 0.5,
+    callbacks: list | None = None,
 ) -> list[Document]:
     """Retrieve documents from the vector store.
 
@@ -114,17 +115,24 @@ def retrieve(
     mmr_lambda:
         Balance between relevance (1.0) and diversity (0.0) for MMR.
     """
+    config = {"callbacks": callbacks} if callbacks else None
     if retrieval_strategy == "mmr":
         effective_fetch_k = fetch_k if fetch_k is not None else top_k * 4
         return vector_store.max_marginal_relevance_search(
             query, k=top_k, fetch_k=effective_fetch_k, lambda_mult=mmr_lambda,
+            **({"configurable": config} if config else {}),
         )
-    return vector_store.similarity_search(query, k=top_k)
+    return vector_store.similarity_search(
+        query, k=top_k,
+        **({"configurable": config} if config else {}),
+    )
 
 
 def expand_query_with_hyde(
     llm: BaseChatModel,
     question: str,
+    *,
+    callbacks: list | None = None,
 ) -> str:
     """Generate a hypothetical answer for HyDE retrieval.
 
@@ -145,7 +153,7 @@ def expand_query_with_hyde(
         HumanMessage(content=question),
     ]
     try:
-        response = llm.invoke(messages)
+        response = llm.invoke(messages, config={"callbacks": callbacks or []})
         content = str(response.content) if response.content else ""
         if content.strip():
             logger.debug("HyDE expanded query for: %s", question[:60])

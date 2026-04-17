@@ -4,6 +4,8 @@ import logging
 import math
 from dataclasses import dataclass, field
 
+from langfuse import observe
+
 from ragas import evaluate, EvaluationDataset, SingleTurnSample, RunConfig
 from ragas.metrics._answer_relevance import answer_relevancy
 from ragas.metrics._answer_correctness import answer_correctness
@@ -27,6 +29,7 @@ class EvaluationResult:
     samples_with_valid_scores: dict[str, int] = field(default_factory=dict)
 
 
+@observe(name="ragas_evaluation")
 def evaluate_results(
     questions: list[str],
     ground_truths: list[str],
@@ -119,7 +122,8 @@ def evaluate_results(
             samples_with_valid_scores={},
         )
 
-    metrics = [faithfulness, answer_relevancy, answer_correctness, context_precision, context_recall]
+    # metrics = [faithfulness, answer_relevancy, answer_correctness, context_precision, context_recall]
+    metrics = [faithfulness]
 
     # max_workers=1: local models process requests serially anyway.
     # More workers just cause queuing and timeouts. Raise timeout instead.

@@ -89,14 +89,17 @@ def compute_rankings(results: list[BenchmarkResultExtended]) -> RankTable:
         raw = _get_metric_values(results, key)
         normalized[key] = _normalize(raw, key in _LOWER_IS_BETTER)
 
-    # Composite score per config
+    # Composite score per config (redistribute weights for None metrics)
     composites: list[float] = []
     for i in range(len(results)):
         score = 0.0
+        used_weight = 0.0
         for key, weight in _METRIC_WEIGHTS.items():
             val = normalized[key][i]
-            score += weight * val if val is not None else 0.0
-        composites.append(score)
+            if val is not None:
+                score += weight * val
+                used_weight += weight
+        composites.append(score / used_weight if used_weight > 0 else 0.0)
 
     # Rank by composite (descending)
     sorted_indices = sorted(range(len(results)), key=lambda i: composites[i], reverse=True)
