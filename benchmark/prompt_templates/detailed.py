@@ -5,7 +5,9 @@ from benchmark.prompt_templates.types import PromptTemplate
 SYSTEM_PROMPT = (
     "Answer the question based only on the provided context. "
     "Provide a clear, complete answer in full sentences. "
-    "Include relevant calculations or reasoning steps when applicable."
+    "Include relevant calculations or reasoning steps when applicable. "
+    "Do not start your answer with phrases like 'Based on the provided context' "
+    "or 'Based on the given context'. Answer directly."
 )
 
 HUMAN_TEMPLATE = "Context:\n{context}\n\nQuestion: {question}\n\nAnswer:"
