@@ -63,6 +63,10 @@ def generate_plots(
         if rank_path:
             paths.append(rank_path)
 
+    scatter = _plot_vector_distance_scatter(results, plots_dir)
+    if scatter:
+        paths.append(scatter)
+
     generated = [p for p in paths if p is not None]
     return generated
 
@@ -304,6 +308,69 @@ def _plot_ranking(
 
     fig.tight_layout()
     path = plots_dir / "ranking_chart.png"
+    fig.savefig(path, dpi=120, bbox_inches="tight")
+    plt.close(fig)
+    return path
+
+
+def _plot_vector_distance_scatter(
+    results: list[BenchmarkResultExtended], plots_dir: Path
+) -> Path | None:
+    has_data = False
+    for r in results:
+        for s in r.per_sample:
+            if s.custom_scores and s.custom_scores.get("vec_dist_q_gt") is not None:
+                has_data = True
+                break
+        if has_data:
+            break
+    if not has_data:
+        return None
+
+    fig, ax = plt.subplots(figsize=(8, 7))
+
+    for i, r in enumerate(results):
+        x_vals, y_vals = [], []
+        for s in r.per_sample:
+            if not s.custom_scores:
+                continue
+            dx = s.custom_scores.get("vec_dist_q_gt")
+            dy = s.custom_scores.get("vec_dist_q_answer")
+            if dx is not None and dy is not None:
+                x_vals.append(dx)
+                y_vals.append(dy)
+
+        if not x_vals:
+            continue
+        label = _short_labels([r])[0]
+        ax.scatter(x_vals, y_vals, alpha=0.6, s=30,
+                   color=_PALETTE[i % len(_PALETTE)], label=label, edgecolors="white", linewidths=0.3)
+
+    # Diagonal reference line y = x
+    all_vals = []
+    for r in results:
+        for s in r.per_sample:
+            if s.custom_scores:
+                for key in ("vec_dist_q_gt", "vec_dist_q_answer"):
+                    v = s.custom_scores.get(key)
+                    if v is not None:
+                        all_vals.append(v)
+    if all_vals:
+        lo, hi = min(all_vals), max(all_vals)
+        margin = (hi - lo) * 0.05 if hi > lo else 0.1
+        ax.plot([lo - margin, hi + margin], [lo - margin, hi + margin],
+                "--", color="gray", alpha=0.5, linewidth=1, label="y = x (parity)")
+        ax.set_xlim(lo - margin, hi + margin)
+        ax.set_ylim(lo - margin, hi + margin)
+
+    ax.set_xlabel("Distance  Q ↔ Ground Truth", fontsize=10)
+    ax.set_ylabel("Distance  Q ↔ Answer", fontsize=10)
+    ax.set_title("Vector Space Distance Comparison", fontsize=11, fontweight="bold")
+    ax.grid(alpha=0.2)
+    ax.legend(fontsize=8, loc="upper left")
+
+    fig.tight_layout()
+    path = plots_dir / "vector_distance_scatter.png"
     fig.savefig(path, dpi=120, bbox_inches="tight")
     plt.close(fig)
     return path
