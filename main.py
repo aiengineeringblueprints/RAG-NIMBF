@@ -223,7 +223,7 @@ def run_single_benchmark(
 
     # Load SentenceTransformer for BERTScore
     from sentence_transformers import SentenceTransformer
-    _bert_model = SentenceTransformer("roberta-large")
+    _bert_model = SentenceTransformer("roberta-large", device="cpu")
 
     custom_result = compute_custom_metrics(
         questions, ground_truths,

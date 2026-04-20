@@ -192,14 +192,17 @@ def context_relevance(
     question: str,
     contexts: list[str],
     embed_fn: Callable[[str], np.ndarray],
+    *,
+    q_embedding: np.ndarray | None = None,
 ) -> float:
     """Average cosine similarity between the question and each context.
 
     *embed_fn* should accept a single string and return a 1-D numpy array.
+    *q_embedding* can be provided to skip re-embedding the question.
     """
     if not contexts:
         return 0.0
-    q_emb = embed_fn(question)
+    q_emb = q_embedding if q_embedding is not None else embed_fn(question)
     scores = []
     for ctx in contexts:
         try:
@@ -464,13 +467,24 @@ def compute_custom_metrics(
                 scores[name] = val
                 accum.setdefault(name, []).append(val)
 
-        # Context Relevance (requires embedding function)
+        # Context Relevance + Vector distance metrics (requires embedding function)
         if embed_fn is not None:
-            cr = context_relevance(q, ctx, embed_fn)
+            q_emb = embed_fn(q)
+            cr = context_relevance(q, ctx, embed_fn, q_embedding=q_emb)
             scores["context_relevance"] = cr
             accum.setdefault("context_relevance", []).append(cr)
+
+            # Vector space distances: question ↔ ground_truth vs question ↔ answer
+            gt_emb = embed_fn(gt)
+            ans_emb = embed_fn(ans)
+            scores["vec_dist_q_gt"] = 1.0 - _cosine_sim(q_emb, gt_emb)
+            scores["vec_dist_q_answer"] = 1.0 - _cosine_sim(q_emb, ans_emb)
+            accum.setdefault("vec_dist_q_gt", []).append(scores["vec_dist_q_gt"])
+            accum.setdefault("vec_dist_q_answer", []).append(scores["vec_dist_q_answer"])
         else:
             scores["context_relevance"] = None
+            scores["vec_dist_q_gt"] = None
+            scores["vec_dist_q_answer"] = None
 
         # ── NLG metrics (skip for refusal answers) ──────────────
         if is_refusal_answer(ans):
