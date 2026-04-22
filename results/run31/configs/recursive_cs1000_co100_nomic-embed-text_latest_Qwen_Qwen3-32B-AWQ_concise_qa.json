@@ -1,0 +1,702 @@
+[
+  {
+    "index": 0,
+    "question": "In what year did Massachusetts first require children to be educated in schools?",
+    "answer": "1852.",
+    "raw_content": "1852.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 1,
+    "question": "When were stromules discovered?",
+    "answer": "Stromules were first observed in 1962.",
+    "raw_content": "Stromules were first observed in 1962.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 2,
+    "question": "Which artist who had a major influence on the Gothic Revival is represented in the V&A's British galleries?",
+    "answer": "Horace Walpole.",
+    "raw_content": "Horace Walpole.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 3,
+    "question": "In 1890, who did the university decide to team up with?",
+    "answer": "The University of Chicago affiliated with several regional colleges and universities in the 1890s, including Des Moines College, Kalamazoo College, Butler University, and Stetson University.",
+    "raw_content": "The University of Chicago affiliated with several regional colleges and universities in the 1890s, including Des Moines College, Kalamazoo College, Butler University, and Stetson University.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 4,
+    "question": "Who got a touchdown making the score 10-7?",
+    "answer": "Jonathan Stewart finished the drive with a 1-yard touchdown run, cutting the score to 10–7.",
+    "raw_content": "Jonathan Stewart finished the drive with a 1-yard touchdown run, cutting the score to 10–7.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 5,
+    "question": "How many Examination Boards exist in India?",
+    "answer": "I cannot answer from the provided context.",
+    "raw_content": "I cannot answer from the provided context.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 6,
+    "question": "Who started rumors in 2008 that ABC would sell its ten owned-and-operated stations?",
+    "answer": "Caris & Co. started rumors in 2008 that ABC would sell its ten owned-and-operated stations.",
+    "raw_content": "Caris & Co. started rumors in 2008 that ABC would sell its ten owned-and-operated stations.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 7,
+    "question": "Which network broadcasted the 50th Super Bowl game? ",
+    "answer": "CBS broadcasted the 50th Super Bowl game.",
+    "raw_content": "CBS broadcasted the 50th Super Bowl game.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 8,
+    "question": "Why was this short termed organization created?",
+    "answer": "To coordinate the response to the embargo.",
+    "raw_content": "To coordinate the response to the embargo.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 9,
+    "question": "What does LGM stands for?",
+    "answer": "I cannot answer from the provided context.",
+    "raw_content": "I cannot answer from the provided context.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 10,
+    "question": "What is the paper written by Richard Karp in 1972 that ushered in a new era of understanding between intractability and NP-complete problems?",
+    "answer": "\"Reducibility Among Combinatorial Problems\"",
+    "raw_content": "\"Reducibility Among Combinatorial Problems\"",
+    "raw_reasoning": null
+  },
+  {
+    "index": 11,
+    "question": "What Lake in a German island Mainau receives a fraction of the Rhine's flow?",
+    "answer": "Lake Überlingen.",
+    "raw_content": "Lake Überlingen.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 12,
+    "question": "What studio does ABC own at 1500 Broadway in NYC?",
+    "answer": "The Times Square Studios.",
+    "raw_content": "The Times Square Studios.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 13,
+    "question": "How many fraternities are apart of the university?",
+    "answer": "There are fifteen fraternities at the University of Chicago.",
+    "raw_content": "There are fifteen fraternities at the University of Chicago.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 14,
+    "question": "At what address did Goldenson secure a new headquarters for ABC?",
+    "answer": "1330 Avenue of the Americas in Manhattan.",
+    "raw_content": "1330 Avenue of the Americas in Manhattan.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 15,
+    "question": "Who had established the Russian empire to its former glory prior to 1921?",
+    "answer": "I cannot answer from the provided context.",
+    "raw_content": "I cannot answer from the provided context.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 16,
+    "question": "What does the Riemann hypothesis state the source of irregularity in the distribution of points comes from?",
+    "answer": "The Riemann hypothesis states that the irregularity in the distribution of primes comes from random noise.",
+    "raw_content": "The Riemann hypothesis states that the irregularity in the distribution of primes comes from random noise.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 17,
+    "question": "Which work of Luther's is effective in teaching children?",
+    "answer": "Luther's Small Catechism.",
+    "raw_content": "Luther's Small Catechism.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 18,
+    "question": "How was the civil disobedience shown in Antigone?",
+    "answer": "Antigone defied Creon's order by giving her brother Polynices a proper burial, choosing to obey her conscience rather than human law.",
+    "raw_content": "Antigone defied Creon's order by giving her brother Polynices a proper burial, choosing to obey her conscience rather than human law.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 19,
+    "question": "Where do juvenile platyctenids live?",
+    "answer": "Juveniles of the flat, bottom-dwelling platyctenids live among the plankton.",
+    "raw_content": "Juveniles of the flat, bottom-dwelling platyctenids live among the plankton.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 20,
+    "question": "How often are elections held for the Victorian Parliament?",
+    "answer": "Elections for the Victorian Parliament are held every four years in November.",
+    "raw_content": "Elections for the Victorian Parliament are held every four years in November.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 21,
+    "question": "What magnetic and electric force acts on a charge?",
+    "answer": "The force acting on a charge is the sum of the electrostatic force (due to the electric field) and the magnetic force (due to the magnetic field).",
+    "raw_content": "The force acting on a charge is the sum of the electrostatic force (due to the electric field) and the magnetic force (due to the magnetic field).",
+    "raw_reasoning": null
+  },
+  {
+    "index": 22,
+    "question": "What kinds of growth did Kublai encourage?",
+    "answer": "Kublai Khan promoted commercial, scientific, and cultural growth.",
+    "raw_content": "Kublai Khan promoted commercial, scientific, and cultural growth.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 23,
+    "question": "What was the name of the first episode of the new Doctor Who series?",
+    "answer": "\"Rose\"",
+    "raw_content": "\"Rose\"",
+    "raw_reasoning": null
+  },
+  {
+    "index": 24,
+    "question": "Each of the extended metropolitan areas has a population that exceeds what number?",
+    "answer": "5 million",
+    "raw_content": "5 million",
+    "raw_reasoning": null
+  },
+  {
+    "index": 25,
+    "question": "Why is giving a defiant speech sometimes more harmful for the individual?",
+    "answer": "Because it can be interpreted as a lack of remorse, an attempt to avoid responsibility, and an indication of likely future illegal actions, potentially leading to harsher sentences.",
+    "raw_content": "Because it can be interpreted as a lack of remorse, an attempt to avoid responsibility, and an indication of likely future illegal actions, potentially leading to harsher sentences.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 26,
+    "question": "When were Joseph Schumpeter and Norman Angell at their most prolific writing period?",
+    "answer": "I cannot answer from the provided context.",
+    "raw_content": "I cannot answer from the provided context.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 27,
+    "question": "How do competing businesses attract workers?",
+    "answer": "Competing businesses attract workers by offering higher wages.",
+    "raw_content": "Competing businesses attract workers by offering higher wages.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 28,
+    "question": "How many teams up to Super Bowl 50 have been to the championship game eight times?",
+    "answer": "Four.",
+    "raw_content": "Four.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 29,
+    "question": "What plants create most electric power?",
+    "answer": "Steam turbine plant.",
+    "raw_content": "Steam turbine plant.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 30,
+    "question": "The epidemic in Newcastle was the most what in any British city at the time?",
+    "answer": "The epidemic in Newcastle was the most devastating loss in any British city in this period.",
+    "raw_content": "The epidemic in Newcastle was the most devastating loss in any British city in this period.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 31,
+    "question": "What additional srevice did BSkyB offer besides Video on Demand that they claimed offered \"substantially more value\"?",
+    "answer": "HD channels.",
+    "raw_content": "HD channels.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 32,
+    "question": "Who did Tesla think would run the world of the future?",
+    "answer": "Tesla believed that women would run the world of the future.",
+    "raw_content": "Tesla believed that women would run the world of the future.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 33,
+    "question": "What have many HT members graduated to joining?",
+    "answer": "Terrorist groups.",
+    "raw_content": "Terrorist groups.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 34,
+    "question": "Approximately how many items are in the costume collection of the V&A?",
+    "answer": "The V&A's costume collection contains over 14,000 outfits plus accessories.",
+    "raw_content": "The V&A's costume collection contains over 14,000 outfits plus accessories.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 35,
+    "question": "Which park is home to the Fresno Chafffee Zoo?",
+    "answer": "Roeding Park.",
+    "raw_content": "Roeding Park.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 36,
+    "question": "The point at which different radiometric isotopes stop diffusing into and out of the crystal lattice is called what?",
+    "answer": "The point at which different radiometric isotopes stop diffusing into and out of the crystal lattice is called the closure temperature.",
+    "raw_content": "The point at which different radiometric isotopes stop diffusing into and out of the crystal lattice is called the closure temperature.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 37,
+    "question": "What could someone be investigated for?",
+    "answer": "Someone could be investigated for professional misconduct.",
+    "raw_content": "Someone could be investigated for professional misconduct.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 38,
+    "question": "What are examples of economic actors?",
+    "answer": "Workers, capitalists/business owners, and landlords.",
+    "raw_content": "Workers, capitalists/business owners, and landlords.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 39,
+    "question": "What field involves the study of the immune system?",
+    "answer": "Immunology.",
+    "raw_content": "Immunology.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 40,
+    "question": "What are the phagocytes that are located in tissues in contact with the external environment called?",
+    "answer": "Dendritic cells.",
+    "raw_content": "Dendritic cells.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 41,
+    "question": "What did the merchants of Newcastle plot to do to Timothy Dexter?",
+    "answer": "They plotted to ruin him by persuading him to sail a shipment of coal to Newcastle.",
+    "raw_content": "They plotted to ruin him by persuading him to sail a shipment of coal to Newcastle.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 42,
+    "question": "What job did Tesla's father have in Gospic?",
+    "answer": "Tesla's father worked as a pastor in Gospic.",
+    "raw_content": "Tesla's father worked as a pastor in Gospic.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 43,
+    "question": "Which hotel did the Panthers stay at for the Super Bowl?",
+    "answer": "The Panthers stayed at the San Jose Marriott.",
+    "raw_content": "The Panthers stayed at the San Jose Marriott.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 44,
+    "question": "What are other alternative names for French and Indian War?",
+    "answer": "Fourth Intercolonial War and the Great War for the Empire.",
+    "raw_content": "Fourth Intercolonial War and the Great War for the Empire.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 45,
+    "question": "Outside of its use of automobiles, what else is southern California famous for using?",
+    "answer": "Southern California is famous for its large, spread-out suburban communities and use of highways.",
+    "raw_content": "Southern California is famous for its large, spread-out suburban communities and use of highways.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 46,
+    "question": "What was the last name of the designers of Newcastle's library?",
+    "answer": "Green",
+    "raw_content": "Green",
+    "raw_reasoning": null
+  },
+  {
+    "index": 47,
+    "question": "How many people were on the test flight of the AS-206?",
+    "answer": "Zero.",
+    "raw_content": "Zero.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 48,
+    "question": "What is the state average growth rate?",
+    "answer": "10.0%",
+    "raw_content": "10.0%",
+    "raw_reasoning": null
+  },
+  {
+    "index": 49,
+    "question": "When was the study on sequenced Y genomes published?",
+    "answer": "The study on sequenced Y. pestis genomes was published in October 2011.",
+    "raw_content": "The study on sequenced Y. pestis genomes was published in October 2011.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 50,
+    "question": "How many times prios has the Sun Life Stadium had Super Bowls?",
+    "answer": "The Sun Life Stadium has hosted the Super Bowl 3 times.",
+    "raw_content": "The Sun Life Stadium has hosted the Super Bowl 3 times.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 51,
+    "question": "What does Kitab Rudjdjar mean in English?",
+    "answer": "I cannot answer from the provided context.",
+    "raw_content": "I cannot answer from the provided context.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 52,
+    "question": "Name one country that banned boating, driving and flying on Sundays.",
+    "answer": "The UK.",
+    "raw_content": "The UK.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 53,
+    "question": "For how long did the plague stick around?",
+    "answer": "The plague recurred occasionally in Europe until the 19th century.",
+    "raw_content": "The plague recurred occasionally in Europe until the 19th century.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 54,
+    "question": "What channels were removed from the network in March of 2007?",
+    "answer": "The basic Sky channels were removed from the network in March of 2007.",
+    "raw_content": "The basic Sky channels were removed from the network in March of 2007.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 55,
+    "question": "How many total touchdowns did Cam Newton score?",
+    "answer": "45 total touchdowns.",
+    "raw_content": "45 total touchdowns.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 56,
+    "question": "How many original treaties establishing the EU protected fundamental rights?",
+    "answer": "None.",
+    "raw_content": "None.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 57,
+    "question": "What did BSkyB name their interactive service?",
+    "answer": "Sky Active",
+    "raw_content": "Sky Active",
+    "raw_reasoning": null
+  },
+  {
+    "index": 58,
+    "question": "How many inhabitants does the Los Angeles area contain?",
+    "answer": "The Los Angeles area contains over 12 million inhabitants.",
+    "raw_content": "The Los Angeles area contains over 12 million inhabitants.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 59,
+    "question": "During what period did the Tower Theatre re-open?",
+    "answer": "The Tower Theatre re-opened in the late 1970s.",
+    "raw_content": "The Tower Theatre re-opened in the late 1970s.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 60,
+    "question": "What did Warsz own?",
+    "answer": "Warsz owned a village located at the modern-day site of Mariensztat neighbourhood.",
+    "raw_content": "Warsz owned a village located at the modern-day site of Mariensztat neighbourhood.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 61,
+    "question": "Who formed the government in Kenya?",
+    "answer": "The Kenya African National Union (KANU) of Jomo Kenyatta formed a government in Kenya.",
+    "raw_content": "The Kenya African National Union (KANU) of Jomo Kenyatta formed a government in Kenya.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 62,
+    "question": "What tool has measured the amount of dust that travels from the Sahara to the Amazon?",
+    "answer": "NASA's CALIPSO satellite.",
+    "raw_content": "NASA's CALIPSO satellite.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 63,
+    "question": "Who sacked Newton with 11 seconds left in the first half?",
+    "answer": "DeMarcus Ware.",
+    "raw_content": "DeMarcus Ware.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 64,
+    "question": "What was the hymn meant to examine students on?",
+    "answer": "The hymn was meant to examine students on specific catechism questions.",
+    "raw_content": "The hymn was meant to examine students on specific catechism questions.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 65,
+    "question": "In Nepalese private schools, what is the primary language of instruction?",
+    "answer": "The primary language of instruction in Nepalese private schools is English.",
+    "raw_content": "The primary language of instruction in Nepalese private schools is English.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 66,
+    "question": "What topic do private bills typically have?",
+    "answer": "Private bills typically relate to large-scale development projects such as infrastructure projects that require the use of land or property.",
+    "raw_content": "Private bills typically relate to large-scale development projects such as infrastructure projects that require the use of land or property.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 67,
+    "question": "To where did Ethelred flee?",
+    "answer": "Normandy.",
+    "raw_content": "Normandy.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 68,
+    "question": "What future Revolutionary key figures participated in this attack?",
+    "answer": "Braddock (with George Washington as one of his aides) led about 1,500 army troops and provincial militia on an expedition in June 1755 to take Fort Duquesne. The expedition was a disaster. It was attacked by French and Indian soldiers ambushing them from up in trees and behind logs. Braddock called for a retreat. He was killed. Approximately 1,000 British soldiers were killed or injured. The remaining 500 British troops, led by George Washington, retreated to Virginia. Two future opponents in the American Revolutionary War, Washington and Thomas Gage, played key roles in organizing the retreat.",
+    "raw_content": "Braddock (with George Washington as one of his aides) led about 1,500 army troops and provincial militia on an expedition in June 1755 to take Fort Duquesne. The expedition was a disaster. It was attacked by French and Indian soldiers ambushing them from up in trees and behind logs. Braddock called for a retreat. He was killed. Approximately 1,000 British soldiers were killed or injured. The remaining 500 British troops, led by George Washington, retreated to Virginia. Two future opponents in the American Revolutionary War, Washington and Thomas Gage, played key roles in organizing the retreat.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 69,
+    "question": "What style of lace is erroneously believed by some to have Huguenot influence?",
+    "answer": "Bucks Point.",
+    "raw_content": "Bucks Point.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 70,
+    "question": "What did the number of legions in Roman times depend on?",
+    "answer": "The actual number of legions present at any base or in all depended on whether a state or threat of war existed.",
+    "raw_content": "The actual number of legions present at any base or in all depended on whether a state or threat of war existed.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 71,
+    "question": "Before dinner what were Tesla's working hours?",
+    "answer": "Tesla worked every day from 9:00 a.m. until 6:00 p.m. or later.",
+    "raw_content": "Tesla worked every day from 9:00 a.m. until 6:00 p.m. or later.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 72,
+    "question": "What house was the site of a weaving school in Canterbury?",
+    "answer": "The Weavers, a half-timbered house by the river, was the site of a weaving school in Canterbury.",
+    "raw_content": "The Weavers, a half-timbered house by the river, was the site of a weaving school in Canterbury.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 73,
+    "question": "What is strongly linked to good student-teacher relationships?",
+    "answer": "Student motivation and attitudes towards school are strongly linked to good student-teacher relationships.",
+    "raw_content": "Student motivation and attitudes towards school are strongly linked to good student-teacher relationships.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 74,
+    "question": "What does the First Company Law Directive article 11 require?",
+    "answer": "The First Company Law Directive article 11 requires that incorporations are only nullified for a fixed list of reasons.",
+    "raw_content": "The First Company Law Directive article 11 requires that incorporations are only nullified for a fixed list of reasons.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 75,
+    "question": "What are two examples of cytotoxic or immunosuppressive drugs?",
+    "answer": "Methotrexate and azathioprine.",
+    "raw_content": "Methotrexate and azathioprine.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 76,
+    "question": "What caused the need for principal Treaties that ended up forming the EU?",
+    "answer": "The principal Treaties that formed the European Union were caused by the need for more complete and formal institutions to establish common rules for coal and steel, atomic energy, and to develop a unified European economic and political framework.",
+    "raw_content": "The principal Treaties that formed the European Union were caused by the need for more complete and formal institutions to establish common rules for coal and steel, atomic energy, and to develop a unified European economic and political framework.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 77,
+    "question": "Who originally led the Space Task Group?",
+    "answer": "Robert R. Gilruth originally led the Space Task Group.",
+    "raw_content": "Robert R. Gilruth originally led the Space Task Group.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 78,
+    "question": "Which female anchor from Today joined Hugh Downs on 20/20?",
+    "answer": "Barbara Walters.",
+    "raw_content": "Barbara Walters.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 79,
+    "question": "What is the estimate for the amount of tree species in the amazon tropical rain forest?",
+    "answer": "The Amazon tropical rainforest is estimated to have 16,000 tree species.",
+    "raw_content": "The Amazon tropical rainforest is estimated to have 16,000 tree species.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 80,
+    "question": "What type of homes is Fresno known for?",
+    "answer": "Fresno is known for its Storybook houses designed by Fresno architects, Hilliard, Taylor & Wheeler, as well as California Bungalow and American Craftsman style homes, Spanish Colonial Revival Style architecture, Mediterranean Revival Style architecture, and Mission Revival Style architecture.",
+    "raw_content": "Fresno is known for its Storybook houses designed by Fresno architects, Hilliard, Taylor & Wheeler, as well as California Bungalow and American Craftsman style homes, Spanish Colonial Revival Style architecture, Mediterranean Revival Style architecture, and Mission Revival Style architecture.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 81,
+    "question": "What team had the best start ever in the NFL?",
+    "answer": "The Carolina Panthers had the best start ever in the NFL with a 14–0 start to the 2015 regular season.",
+    "raw_content": "The Carolina Panthers had the best start ever in the NFL with a 14–0 start to the 2015 regular season.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 82,
+    "question": "Which organic compounds contain the greatest amount of oxygen by mass?",
+    "answer": "Carbohydrates contain the largest proportion by mass of oxygen.",
+    "raw_content": "Carbohydrates contain the largest proportion by mass of oxygen.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 83,
+    "question": "What did Stiglitz present in 2009 regarding global inequality?",
+    "answer": "Joseph Stiglitz presented evidence in 2009 that both global inequality and inequality within countries prevent growth by limiting aggregate demand.",
+    "raw_content": "Joseph Stiglitz presented evidence in 2009 that both global inequality and inequality within countries prevent growth by limiting aggregate demand.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 84,
+    "question": "Of what hollywood film company was UPT a subsidiary of when it merged with ABC?",
+    "answer": "Paramount Pictures.",
+    "raw_content": "Paramount Pictures.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 85,
+    "question": "When did the NFL announce that it would not use Roman numbers to designate the Super Bowl number?",
+    "answer": "June 4, 2014.",
+    "raw_content": "June 4, 2014.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 86,
+    "question": "How many Huguenots were killed in Toulouse?",
+    "answer": "Nearly 3,000 Huguenots were killed in Toulouse.",
+    "raw_content": "Nearly 3,000 Huguenots were killed in Toulouse.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 87,
+    "question": "What is 'grey literature'?",
+    "answer": "Grey literature refers to non-peer-reviewed sources such as model results, reports from government agencies and non-governmental organizations, and industry journals.",
+    "raw_content": "Grey literature refers to non-peer-reviewed sources such as model results, reports from government agencies and non-governmental organizations, and industry journals.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 88,
+    "question": "What's the name of Newcastle's speedway team?",
+    "answer": "Newcastle Diamonds.",
+    "raw_content": "Newcastle Diamonds.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 89,
+    "question": "What was the main reason for the show's suspension in 1989?",
+    "answer": "The programme's 1989 suspension was attributed to its poor late 1980s performance of three to five million viewers, according to the BBC Board of Control.",
+    "raw_content": "The programme's 1989 suspension was attributed to its poor late 1980s performance of three to five million viewers, according to the BBC Board of Control.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 90,
+    "question": "What is the name of the port city that was created?",
+    "answer": "Mombasa",
+    "raw_content": "Mombasa",
+    "raw_reasoning": null
+  },
+  {
+    "index": 91,
+    "question": "When did Martin Luther receive his Doctor of Theology?",
+    "answer": "19 October 1512.",
+    "raw_content": "19 October 1512.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 92,
+    "question": "Which phylum is more complex than sponges?",
+    "answer": "Ctenophores.",
+    "raw_content": "Ctenophores.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 93,
+    "question": "What other scientist influence Frank Burnet when he was formulating his theory of immunity?",
+    "answer": "Niels Jerne.",
+    "raw_content": "Niels Jerne.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 94,
+    "question": "How many volumes are contained in the library?",
+    "answer": "The Harvard Library contains over 18 million volumes.",
+    "raw_content": "The Harvard Library contains over 18 million volumes.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 95,
+    "question": "What does co-teaching get the students to focus on?",
+    "answer": "Co-teaching focuses the student on learning.",
+    "raw_content": "Co-teaching focuses the student on learning.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 96,
+    "question": "Of what mountain system are the Victorian Alps a part?",
+    "answer": "The Victorian Alps are part of the Great Dividing Range mountain system.",
+    "raw_content": "The Victorian Alps are part of the Great Dividing Range mountain system.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 97,
+    "question": "What body part did Thomas Davis break during the NFC Championship Game?",
+    "answer": "Thomas Davis broke his arm during the NFC Championship Game.",
+    "raw_content": "Thomas Davis broke his arm during the NFC Championship Game.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 98,
+    "question": "Whose First Law of Motion says that unless acted upon be forces, objects would continue to move at a constant velocity?",
+    "answer": "Newton's First Law of Motion states that unless acted upon by forces, objects would continue to move at a constant velocity.",
+    "raw_content": "Newton's First Law of Motion states that unless acted upon by forces, objects would continue to move at a constant velocity.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 99,
+    "question": "How was scarcity managed in many countries?",
+    "answer": "Scarcity was addressed by rationing.",
+    "raw_content": "Scarcity was addressed by rationing.",
+    "raw_reasoning": null
+  }
+]
