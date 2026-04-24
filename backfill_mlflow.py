@@ -199,7 +199,7 @@ def log_backfill_run(row: dict, json_path: Path, json_data: dict) -> bool:
 
     existing = mlflow.search_runs(
         filter_string=f"tags.source = 'backfill' AND tags.mlflow.runName = '{run_name}'",
-        run_view_type=mlflow.entities.ViewType.ALL,
+        run_view_type=mlflow.entities.ViewType.ACTIVE_ONLY,
     )
     if not existing.empty:
         print(f"  SKIP (already imported): {run_name}")
