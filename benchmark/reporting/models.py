@@ -70,6 +70,10 @@ class BenchmarkResultExtended:
     custom_stats: dict[str, StatSummary | None] | None = None
     reranker_model: str | None = None
     reranker_top_k: int | None = None
+    retrieval_strategy: str | None = None
+    retrieval_top_k: int | None = None
+    dataset_name: str | None = None
+    dataset_sample_size: int | None = None
 
 
 @dataclass(frozen=True)

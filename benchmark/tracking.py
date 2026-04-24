@@ -64,7 +64,9 @@ def _flatten_ragas_stats(
 def _make_run_name(result: BenchmarkResultExtended) -> str:
     """Generate a structured run name from config parameters."""
     llm = result.llm_model.split("/")[-1].replace(":", "_")
-    return f"{llm}_{result.chunking_strategy}_cs{result.chunk_size}_co{result.chunk_overlap}"
+    retrieval = result.retrieval_strategy or "unknown"
+    template = result.prompt_template
+    return f"{llm}_{result.chunking_strategy}_cs{result.chunk_size}_co{result.chunk_overlap}_{retrieval}_{template}"
 
 
 def _make_tags(result: BenchmarkResultExtended) -> dict[str, str]:
@@ -77,6 +79,12 @@ def _make_tags(result: BenchmarkResultExtended) -> dict[str, str]:
     }
     if result.reranker_model:
         tags["reranker_model"] = result.reranker_model
+    if result.retrieval_strategy:
+        tags["retrieval_strategy"] = result.retrieval_strategy
+    if result.retrieval_top_k is not None:
+        tags["retrieval_top_k"] = str(result.retrieval_top_k)
+    if result.dataset_name:
+        tags["dataset_name"] = result.dataset_name
     return tags
 
 
@@ -101,6 +109,14 @@ def log_benchmark_run(result: BenchmarkResultExtended) -> None:
     }
     if result.reranker_top_k is not None:
         params["reranker_top_k"] = result.reranker_top_k
+    if result.retrieval_strategy:
+        params["retrieval_strategy"] = result.retrieval_strategy
+    if result.retrieval_top_k is not None:
+        params["retrieval_top_k"] = result.retrieval_top_k
+    if result.dataset_name:
+        params["dataset_name"] = result.dataset_name
+    if result.dataset_sample_size is not None:
+        params["dataset_sample_size"] = result.dataset_sample_size
 
     metrics: dict[str, float] = {
         "avg_ttft_seconds": result.avg_ttft_seconds,
