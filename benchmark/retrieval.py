@@ -1,5 +1,6 @@
 import hashlib
 import logging
+import mlflow
 import threading
 from pathlib import Path
 from typing import Any
@@ -46,6 +47,7 @@ def _get_client() -> Any:
         return _chroma_client
 
 
+@mlflow.trace(name="build_vector_store", span_type="func", attributes={"component": "embedding"})
 def build_vector_store(
     chunks: list[Document],
     embedding_model_name: str,
@@ -107,6 +109,7 @@ def build_vector_store(
     return vector_store
 
 
+@mlflow.trace(name="retrieve", span_type="func")
 def retrieve(
     vector_store: Chroma,
     query: str,
@@ -130,6 +133,12 @@ def retrieve(
     mmr_lambda:
         Balance between relevance (1.0) and diversity (0.0) for MMR.
     """
+    span = mlflow.get_current_active_span()
+    if span:
+        span.set_attributes({
+            "retrieval.top_k": top_k,
+            "retrieval.strategy": retrieval_strategy,
+        })
     config = {"callbacks": callbacks} if callbacks else None
     if retrieval_strategy == "mmr":
         effective_fetch_k = fetch_k if fetch_k is not None else top_k * 4

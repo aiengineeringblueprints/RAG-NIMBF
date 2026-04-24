@@ -1,5 +1,6 @@
 import ast
 import logging
+import mlflow
 import operator
 import re
 import time
@@ -431,6 +432,7 @@ def _postprocess_answer(
     return answer
 
 
+@mlflow.trace(name="generate_answer", span_type="func")
 def generate_answer(
     llm: BaseChatModel,
     question: str,
@@ -450,6 +452,12 @@ def generate_answer(
     callbacks: list | None = None,
 ) -> GenerationResult:
     from langchain_core.messages import HumanMessage, SystemMessage
+
+    span = mlflow.get_current_active_span()
+    if span:
+        span.set_attributes({
+            "generation.prompt_template": prompt_template_name or "default",
+        })
 
     context_text = "\n\n".join(contexts)
     messages = [

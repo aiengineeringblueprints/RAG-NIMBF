@@ -11,12 +11,12 @@ from __future__ import annotations
 
 import logging
 import math
+import mlflow
 from collections import Counter
 from dataclasses import dataclass
 from typing import Callable, Sequence
 
 import numpy as np
-from benchmark.tracing import observe
 
 logger = logging.getLogger(__name__)
 
@@ -404,7 +404,7 @@ class CustomMetricsResult:
     error: str | None = None
 
 
-@observe(name="custom_metrics")
+@mlflow.trace(name="custom_metrics", span_type="func")
 def compute_custom_metrics(
     questions: list[str],
     ground_truths: list[str],
@@ -438,6 +438,12 @@ def compute_custom_metrics(
         Optional callable ``str → np.ndarray`` for Context Relevance.
         Skipped when ``None``.
     """
+    span = mlflow.get_current_active_span()
+    if span:
+        span.set_attributes({
+            "metrics.num_questions": len(questions),
+        })
+
     if not questions:
         return CustomMetricsResult(
             metric_means={},

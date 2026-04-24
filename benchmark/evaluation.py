@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import logging
 import math
+import mlflow
 from dataclasses import dataclass, field
-
-from benchmark.tracing import observe
 
 from ragas import evaluate, EvaluationDataset, SingleTurnSample, RunConfig
 from ragas.metrics._answer_relevance import answer_relevancy
@@ -29,7 +28,7 @@ class EvaluationResult:
     samples_with_valid_scores: dict[str, int] = field(default_factory=dict)
 
 
-@observe(name="ragas_evaluation")
+@mlflow.trace(name="ragas_evaluation", span_type="func")
 def evaluate_results(
     questions: list[str],
     ground_truths: list[str],
@@ -56,6 +55,12 @@ def evaluate_results(
             error="No questions provided for evaluation.",
             samples_with_valid_scores={},
         )
+
+    span = mlflow.get_current_active_span()
+    if span:
+        span.set_attributes({
+            "evaluation.critic_model": critic_llm_model or llm_model,
+        })
 
     # Fall back to the generator model when critic models are not specified.
     effective_critic_llm = critic_llm_model or llm_model

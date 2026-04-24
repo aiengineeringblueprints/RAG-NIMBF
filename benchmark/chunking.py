@@ -1,4 +1,4 @@
-from benchmark.tracing import observe
+import mlflow
 
 from langchain_text_splitters import (
     CharacterTextSplitter,
@@ -48,7 +48,7 @@ def get_chunker(strategy: str, chunk_size: int, chunk_overlap: int, **kwargs):
     return splitter_cls(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
 
 
-@observe(name="chunk_documents")
+@mlflow.trace(name="chunk_documents", span_type="func")
 def chunk_documents(chunker, documents: list[dict], min_chunk_length: int = 50) -> list[Document]:
     docs = []
     for doc in documents:
