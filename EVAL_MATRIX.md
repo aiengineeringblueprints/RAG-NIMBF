@@ -1,4 +1,4 @@
-# fenBenchmarking Matrix - Alle Kombinationen
+# Benchmarking Matrix
 
 ## Feste Parameter
 
@@ -31,38 +31,38 @@
 
 | #        | LLM          | Chunking  | Size | Overlap | Retrieval  | Template | Retrieval_Top_K | Reranker | Embedding        | Dataset | Faith | Rel   | Corr  | Prec  | Rec   | N   | Status      |
 | -------- | ------------ | --------- | ---- | ------- | ---------- | -------- | --------------- | -------- | ---------------- | ------- | ----- | ----- | ----- | ----- | ----- | --- | ----------- |
-| 1        | Qwen3-32B    | Recursive | 1000 | 100     | Similarity | Concise  |                 |          | nomic-embed-text | squad   | 0.898 | -     | -     | -     | -     | 100 | Getestet    |
-| 2        | Qwen3-32B    | Recursive | 1000 | 100     | Similarity | Detailed |                 |          | nomic-embed-text | squad   | 0.876 | -     | -     | -     | -     | 100 | Getestet    |
-| 3        | Qwen3-32B    | Recursive | 1000 | 100     | MMR        | Concise  |                 |          | nomic-embed-text | squad   | 0.843 | -     | -     | -     | -     | 100 | Getestet    |
-| 4        | Qwen3-32B    | Recursive | 1000 | 100     | MMR        | Detailed |                 |          | nomic-embed-text | squad   | 0.865 | -     | -     | -     | -     | 100 | Getestet    |
-| 5        | Qwen3-32B    | Recursive | 1000 | 200     | Similarity | Concise  |                 |          | nomic-embed-text | squad   | 0.889 | -     | -     | -     | -     | 100 | Getestet    |
-| 6        | Qwen3-32B    | Recursive | 1000 | 200     | Similarity | Detailed |                 |          | nomic-embed-text | squad   | 0.921 | -     | -     | -     | -     | 100 | Getestet    |
-| 7        | Qwen3-32B    | Recursive | 1000 | 200     | MMR        | Concise  |                 |          | nomic-embed-text | squad   | 0.840 | -     | -     | -     | -     | 100 | Getestet    |
-| 8        | Qwen3-32B    | Recursive | 1000 | 200     | MMR        | Detailed |                 |          | nomic-embed-text | squad   | 0.863 | -     | -     | -     | -     | 100 | Getestet    |
-| 9        | Qwen3-32B    | Recursive | 500  | 100     | Similarity | Concise  |                 |          | nomic-embed-text | squad   | 0.872 | -     | -     | -     | -     | 100 | Getestet    |
-| 10       | Qwen3-32B    | Recursive | 500  | 100     | Similarity | Detailed |                 |          | nomic-embed-text | squad   | 0.904 | -     | -     | -     | -     | 100 | Getestet    |
-| 11       | Qwen3-32B    | Recursive | 500  | 100     | MMR        | Concise  |                 |          | nomic-embed-text | squad   | 0.842 | -     | -     | -     | -     | 100 | Getestet    |
-| 12       | Qwen3-32B    | Recursive | 500  | 100     | MMR        | Detailed |                 |          | nomic-embed-text | squad   | 0.848 | -     | -     | -     | -     | 100 | Getestet    |
-| 13       | Qwen3-32B    | Recursive | 500  | 200     | Similarity | Concise  |                 |          | nomic-embed-text | squad   | 0.842 | -     | -     | -     | -     | 100 | Getestet    |
-| 14       | Qwen3-32B    | Recursive | 500  | 200     | Similarity | Detailed |                 |          | nomic-embed-text | squad   | 0.875 | -     | -     | -     | -     | 100 | Getestet    |
-| 15       | Qwen3-32B    | Recursive | 500  | 200     | MMR        | Concise  |                 |          | nomic-embed-text | squad   | 0.867 | -     | -     | -     | -     | 100 | Getestet    |
-| 16       | Qwen3-32B    | Recursive | 500  | 200     | MMR        | Detailed |                 |          | nomic-embed-text | squad   | 0.863 | -     | -     | -     | -     | 100 | Getestet    |
-| 17       | Qwen3-32B    | Semantic  | 1000 | 100     | Similarity | Concise  |                 |          | nomic-embed-text | squad   | 0.858 | -     | -     | -     | -     | 100 | Getestet    |
-| 18       | Qwen3-32B    | Semantic  | 1000 | 100     | Similarity | Detailed |                 |          | nomic-embed-text | squad   | 0.867 | -     | -     | -     | -     | 100 | Getestet    |
-| 19       | Qwen3-32B    | Semantic  | 1000 | 100     | MMR        | Concise  |                 |          | nomic-embed-text | squad   | 0.799 | -     | -     | -     | -     | 100 | Getestet    |
-| 20       | Qwen3-32B    | Semantic  | 1000 | 100     | MMR        | Detailed |                 |          | nomic-embed-text | squad   | 0.868 | -     | -     | -     | -     | 100 | Getestet    |
-| 21       | Qwen3-32B    | Semantic  | 1000 | 200     | Similarity | Concise  |                 |          | nomic-embed-text | squad   | 0.858 | -     | -     | -     | -     | 100 | Getestet    |
-| 22       | Qwen3-32B    | Semantic  | 1000 | 200     | Similarity | Detailed |                 |          | nomic-embed-text | squad   | 0.873 | -     | -     | -     | -     | 100 | Getestet    |
-| 23       | Qwen3-32B    | Semantic  | 1000 | 200     | MMR        | Concise  |                 |          | nomic-embed-text | squad   | 0.829 | -     | -     | -     | -     | 100 | Getestet    |
-| 24       | Qwen3-32B    | Semantic  | 1000 | 200     | MMR        | Detailed |                 |          | nomic-embed-text | squad   | 0.866 | -     | -     | -     | -     | 100 | Getestet    |
-| 25       | Qwen3-32B    | Semantic  | 500  | 100     | Similarity | Concise  |                 |          | nomic-embed-text | squad   | 0.855 | -     | -     | -     | -     | 100 | Getestet    |
-| 26       | Qwen3-32B    | Semantic  | 500  | 100     | Similarity | Detailed |                 |          | nomic-embed-text | squad   | 0.871 | -     | -     | -     | -     | 100 | Getestet    |
-| 27       | Qwen3-32B    | Semantic  | 500  | 100     | MMR        | Concise  |                 |          | nomic-embed-text | squad   | 0.819 | -     | -     | -     | -     | 100 | Getestet    |
-| 28       | Qwen3-32B    | Semantic  | 500  | 100     | MMR        | Detailed |                 |          | nomic-embed-text | squad   | 0.865 | -     | -     | -     | -     | 100 | Getestet    |
-| 29       | Qwen3-32B    | Semantic  | 500  | 200     | Similarity | Concise  |                 |          | nomic-embed-text | squad   | 0.853 | -     | -     | -     | -     | 100 | Getestet    |
-| 30       | Qwen3-32B    | Semantic  | 500  | 200     | Similarity | Detailed |                 |          | nomic-embed-text | squad   | 0.870 | -     | -     | -     | -     | 100 | Getestet    |
-| 31       | Qwen3-32B    | Semantic  | 500  | 200     | MMR        | Concise  |                 |          | nomic-embed-text | squad   | 0.809 | -     | -     | -     | -     | 100 | Getestet    |
-| 32       | Qwen3-32B    | Semantic  | 500  | 200     | MMR        | Detailed |                 |          | nomic-embed-text | squad   | 0.846 | -     | -     | -     | -     | 100 | Getestet    |
+| 1        | Qwen3-32B    | Recursive | 1000 | 100     | Similarity | Concise  | 12              | no       | nomic-embed-text | squad   | 0.898 | -     | -     | -     | -     | 100 | Getestet    |
+| 2        | Qwen3-32B    | Recursive | 1000 | 100     | Similarity | Detailed | 12              | no       | nomic-embed-text | squad   | 0.876 | -     | -     | -     | -     | 100 | Getestet    |
+| 3        | Qwen3-32B    | Recursive | 1000 | 100     | MMR        | Concise  | 12              | no       | nomic-embed-text | squad   | 0.843 | -     | -     | -     | -     | 100 | Getestet    |
+| 4        | Qwen3-32B    | Recursive | 1000 | 100     | MMR        | Detailed | 12              | no       | nomic-embed-text | squad   | 0.865 | -     | -     | -     | -     | 100 | Getestet    |
+| 5        | Qwen3-32B    | Recursive | 1000 | 200     | Similarity | Concise  | 12              | no       | nomic-embed-text | squad   | 0.889 | -     | -     | -     | -     | 100 | Getestet    |
+| 6        | Qwen3-32B    | Recursive | 1000 | 200     | Similarity | Detailed | 12              | no       | nomic-embed-text | squad   | 0.921 | -     | -     | -     | -     | 100 | Getestet    |
+| 7        | Qwen3-32B    | Recursive | 1000 | 200     | MMR        | Concise  | 12              | no       | nomic-embed-text | squad   | 0.840 | -     | -     | -     | -     | 100 | Getestet    |
+| 8        | Qwen3-32B    | Recursive | 1000 | 200     | MMR        | Detailed | 12              | no       | nomic-embed-text | squad   | 0.863 | -     | -     | -     | -     | 100 | Getestet    |
+| 9        | Qwen3-32B    | Recursive | 500  | 100     | Similarity | Concise  | 12              | no       | nomic-embed-text | squad   | 0.872 | -     | -     | -     | -     | 100 | Getestet    |
+| 10       | Qwen3-32B    | Recursive | 500  | 100     | Similarity | Detailed | 12              | no       | nomic-embed-text | squad   | 0.904 | -     | -     | -     | -     | 100 | Getestet    |
+| 11       | Qwen3-32B    | Recursive | 500  | 100     | MMR        | Concise  | 12              | no       | nomic-embed-text | squad   | 0.842 | -     | -     | -     | -     | 100 | Getestet    |
+| 12       | Qwen3-32B    | Recursive | 500  | 100     | MMR        | Detailed | 12              | no       | nomic-embed-text | squad   | 0.848 | -     | -     | -     | -     | 100 | Getestet    |
+| 13       | Qwen3-32B    | Recursive | 500  | 200     | Similarity | Concise  | 12              | no       | nomic-embed-text | squad   | 0.842 | -     | -     | -     | -     | 100 | Getestet    |
+| 14       | Qwen3-32B    | Recursive | 500  | 200     | Similarity | Detailed | 12              | no       | nomic-embed-text | squad   | 0.875 | -     | -     | -     | -     | 100 | Getestet    |
+| 15       | Qwen3-32B    | Recursive | 500  | 200     | MMR        | Concise  | 12              | no       | nomic-embed-text | squad   | 0.867 | -     | -     | -     | -     | 100 | Getestet    |
+| 16       | Qwen3-32B    | Recursive | 500  | 200     | MMR        | Detailed | 12              | no       | nomic-embed-text | squad   | 0.863 | -     | -     | -     | -     | 100 | Getestet    |
+| 17       | Qwen3-32B    | Semantic  | 1000 | 100     | Similarity | Concise  | 12              | no       | nomic-embed-text | squad   | 0.858 | -     | -     | -     | -     | 100 | Getestet    |
+| 18       | Qwen3-32B    | Semantic  | 1000 | 100     | Similarity | Detailed | 12              | no       | nomic-embed-text | squad   | 0.867 | -     | -     | -     | -     | 100 | Getestet    |
+| 19       | Qwen3-32B    | Semantic  | 1000 | 100     | MMR        | Concise  | 12              | no       | nomic-embed-text | squad   | 0.799 | -     | -     | -     | -     | 100 | Getestet    |
+| 20       | Qwen3-32B    | Semantic  | 1000 | 100     | MMR        | Detailed | 12              | no       | nomic-embed-text | squad   | 0.868 | -     | -     | -     | -     | 100 | Getestet    |
+| 21       | Qwen3-32B    | Semantic  | 1000 | 200     | Similarity | Concise  | 12              | no       | nomic-embed-text | squad   | 0.858 | -     | -     | -     | -     | 100 | Getestet    |
+| 22       | Qwen3-32B    | Semantic  | 1000 | 200     | Similarity | Detailed | 12              | no       | nomic-embed-text | squad   | 0.873 | -     | -     | -     | -     | 100 | Getestet    |
+| 23       | Qwen3-32B    | Semantic  | 1000 | 200     | MMR        | Concise  | 12              | no       | nomic-embed-text | squad   | 0.829 | -     | -     | -     | -     | 100 | Getestet    |
+| 24       | Qwen3-32B    | Semantic  | 1000 | 200     | MMR        | Detailed | 12              | no       | nomic-embed-text | squad   | 0.866 | -     | -     | -     | -     | 100 | Getestet    |
+| 25       | Qwen3-32B    | Semantic  | 500  | 100     | Similarity | Concise  | 12              | no       | nomic-embed-text | squad   | 0.855 | -     | -     | -     | -     | 100 | Getestet    |
+| 26       | Qwen3-32B    | Semantic  | 500  | 100     | Similarity | Detailed | 12              | no       | nomic-embed-text | squad   | 0.871 | -     | -     | -     | -     | 100 | Getestet    |
+| 27       | Qwen3-32B    | Semantic  | 500  | 100     | MMR        | Concise  | 12              | no       | nomic-embed-text | squad   | 0.819 | -     | -     | -     | -     | 100 | Getestet    |
+| 28       | Qwen3-32B    | Semantic  | 500  | 100     | MMR        | Detailed | 12              | no       | nomic-embed-text | squad   | 0.865 | -     | -     | -     | -     | 100 | Getestet    |
+| 29       | Qwen3-32B    | Semantic  | 500  | 200     | Similarity | Concise  | 12              | no       | nomic-embed-text | squad   | 0.853 | -     | -     | -     | -     | 100 | Getestet    |
+| 30       | Qwen3-32B    | Semantic  | 500  | 200     | Similarity | Detailed | 12              | no       | nomic-embed-text | squad   | 0.870 | -     | -     | -     | -     | 100 | Getestet    |
+| 31       | Qwen3-32B    | Semantic  | 500  | 200     | MMR        | Concise  | 12              | no       | nomic-embed-text | squad   | 0.809 | -     | -     | -     | -     | 100 | Getestet    |
+| 32       | Qwen3-32B    | Semantic  | 500  | 200     | MMR        | Detailed | 12              | no       | nomic-embed-text | squad   | 0.846 | -     | -     | -     | -     | 100 | Getestet    |
 | 33       | Qwen3.5-397B | Recursive | 1000 | 100     | Similarity | Concise  | 12              | No       | nomic-embed-text | squad   | 0.91  | -     | -     | -     | -     | 100 | getestet    |
 | 34 rerun | Qwen3.5-397B | Recursive | 1000 | 100     | Similarity | Detailed | 12              | No       | nomic-embed-text | squad   | 0.94  |       |       |       |       | 100 | getestet    |
 | 35       | Qwen3.5-397B | Recursive | 1000 | 100     | MMR        | Concise  | 12              | No       | nomic-embed-text | squad   | 0.885 | -     | -     | -     | -     | -   | Offen       |
