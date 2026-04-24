@@ -14,15 +14,23 @@ logger = logging.getLogger(__name__)
 
 
 def setup_mlflow() -> str:
-    """Configure MLflow tracking URI and return it.
+    """Configure MLflow experiment settings after tracing is initialized.
 
-    By default, uses an SQLite database (``mlflow.db``) in the project root
-    so all runs are persisted in a single queryable file.  Override via the
-    ``MLFLOW_TRACKING_URI`` environment variable if needed.
+    Sets the experiment name to RAG-Benchmark. Called after setup_tracing()
+    which handles the tracking URI.
     """
-    tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "sqlite:///mlflow.db")
-    mlflow.set_tracking_uri(tracking_uri)
-    logger.info("MLflow tracking URI: %s", tracking_uri)
+    tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
+
+    # Try server connection, fall back to SQLite
+    try:
+        import requests
+        requests.get(f"{tracking_uri}/api/2.0/mlflow/experiments/search", timeout=2)
+    except Exception:
+        tracking_uri = "sqlite:///mlflow.db"
+        mlflow.set_tracking_uri(tracking_uri)
+
+    mlflow.set_experiment("RAG-Benchmark")
+    logger.info("MLflow experiment: RAG-Benchmark (URI: %s)", tracking_uri)
     return tracking_uri
 
 
@@ -53,6 +61,25 @@ def _flatten_ragas_stats(
     return flat
 
 
+def _make_run_name(result: BenchmarkResultExtended) -> str:
+    """Generate a structured run name from config parameters."""
+    llm = result.llm_model.split("/")[-1].replace(":", "_")
+    return f"{llm}_{result.chunking_strategy}_cs{result.chunk_size}_co{result.chunk_overlap}"
+
+
+def _make_tags(result: BenchmarkResultExtended) -> dict[str, str]:
+    """Build MLflow tags from benchmark result."""
+    tags: dict[str, str] = {
+        "llm_model": result.llm_model,
+        "embedding_model": result.embedding_model,
+        "chunking_strategy": result.chunking_strategy,
+        "prompt_template": result.prompt_template,
+    }
+    if result.reranker_model:
+        tags["reranker_model"] = result.reranker_model
+    return tags
+
+
 def log_benchmark_run(result: BenchmarkResultExtended) -> None:
     """Log a single benchmark configuration as one MLflow run.
 
@@ -64,14 +91,7 @@ def log_benchmark_run(result: BenchmarkResultExtended) -> None:
     experiment_name = "RAG-Benchmark"
     mlflow.set_experiment(experiment_name)
 
-    tags: dict[str, str] = {
-        "llm_model": result.llm_model,
-        "embedding_model": result.embedding_model,
-        "chunking_strategy": result.chunking_strategy,
-        "prompt_template": result.prompt_template,
-    }
-    if result.reranker_model:
-        tags["reranker_model"] = result.reranker_model
+    tags = _make_tags(result)
 
     params: dict[str, Any] = {
         "chunk_size": result.chunk_size,
@@ -144,7 +164,8 @@ def log_benchmark_run(result: BenchmarkResultExtended) -> None:
             metrics[f"{prefix}_min"] = stats.min
             metrics[f"{prefix}_max"] = stats.max
 
-    with mlflow.start_run(run_name=result.config_name, tags=tags) as run:
+    run_name = _make_run_name(result)
+    with mlflow.start_run(run_name=run_name, tags=tags) as run:
         mlflow.log_params(params)
         mlflow.log_metrics(metrics)
 
