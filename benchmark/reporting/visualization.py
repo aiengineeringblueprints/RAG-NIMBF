@@ -80,6 +80,12 @@ def generate_plots(
         _plot_llm_comparison_radar_html,
         _plot_parameter_heatmap_html,
         _plot_scatter_matrix_html,
+        _plot_correlation_heatmap_html,
+        _plot_metric_boxplots_html,
+        _plot_metric_violin_html,
+        _plot_parallel_coordinates_html,
+        _plot_metric_ranking_html,
+        _plot_parameter_importance_html,
     ]:
         try:
             result = plot_fn(results, plots_dir)
@@ -495,6 +501,315 @@ def _plot_scatter_matrix_html(results: list, output_dir: Path) -> str | None:
     fig = px.scatter_matrix(df, dimensions=numeric_cols, color="llm", title="Custom Metrics Scatter Matrix")
     fig.update_layout(height=800)
     path = output_dir / "scatter_matrix.html"
+    fig.write_html(str(path))
+    return str(path)
+
+
+def _plot_correlation_heatmap_html(results: list, output_dir: Path) -> str | None:
+    """Interactive correlation heatmap of all metrics."""
+    if len(results) < 2:
+        return None
+
+    import pandas as pd
+
+    records = []
+    for r in results:
+        rec = {}
+        # RAGAS metrics
+        for key in ["faithfulness", "answer_relevancy", "answer_correctness", "context_precision", "context_recall"]:
+            val = getattr(r, f"ragas_{key}", None)
+            if val is not None:
+                rec[f"ragas_{key}"] = val
+        # Custom metrics
+        if r.custom_metric_means:
+            for k, v in r.custom_metric_means.items():
+                safe = k.replace("@", "_at_")
+                rec[f"custom_{safe}"] = v
+        if rec:
+            records.append(rec)
+
+    if len(records) < 2:
+        return None
+
+    df = pd.DataFrame(records)
+    corr_matrix = df.corr()
+
+    fig = go.Figure(data=go.Heatmap(
+        z=corr_matrix.values,
+        x=[c.replace("ragas_", "").replace("custom_", "") for c in corr_matrix.columns],
+        y=[c.replace("ragas_", "").replace("custom_", "") for c in corr_matrix.index],
+        text=np.round(corr_matrix.values, 2),
+        texttemplate="%{text}",
+        textfont={"size": 9},
+        colorscale="RdBu_r",
+        zmid=0,
+        zmin=-1,
+        zmax=1,
+    ))
+    fig.update_layout(title="Metric Correlation Matrix", width=700, height=700)
+    path = output_dir / "correlation_heatmap.html"
+    fig.write_html(str(path))
+    return str(path)
+
+
+def _plot_metric_boxplots_html(results: list, output_dir: Path) -> str | None:
+    """Interactive box plots of per-sample metrics grouped by LLM."""
+    records = []
+
+    for r in results:
+        llm = r.llm_model.split("/")[-1]
+        if not r.per_sample:
+            continue
+        for sample in r.per_sample:
+            rec = {"llm": llm}
+            if sample.ragas_scores and sample.ragas_scores.get("faithfulness") is not None:
+                rec["faithfulness"] = sample.ragas_scores["faithfulness"]
+            if sample.custom_scores:
+                for k in ["rouge_l", "meteor", "bert_score_f1"]:
+                    if k in sample.custom_scores and sample.custom_scores[k] is not None:
+                        rec[k] = sample.custom_scores[k]
+            if len(rec) > 1:
+                records.append(rec)
+
+    if not records:
+        return None
+
+    import pandas as pd
+    df = pd.DataFrame(records)
+
+    # Melt for box plotting
+    metrics_to_plot = ["faithfulness", "rouge_l", "meteor", "bert_score_f1"]
+    available = [m for m in metrics_to_plot if m in df.columns]
+    if not available:
+        return None
+
+    df_melted = df.melt(id_vars=["llm"], value_vars=available, var_name="metric", value_name="value")
+
+    fig = make_subplots(rows=2, cols=2, subplot_titles=available)
+    positions = [(1, 1), (1, 2), (2, 1), (2, 2)]
+
+    for (row, col), metric in zip(positions, available):
+        for llm in sorted(df_melted["llm"].unique()):
+            llm_data = df_melted[(df_melted["llm"] == llm) & (df_melted["metric"] == metric)]["value"].dropna()
+            if len(llm_data) > 0:
+                fig.add_trace(go.Box(
+                    y=llm_data,
+                    name=llm,
+                    showlegend=(row == 1 and col == 1),
+                ), row=row, col=col)
+
+    fig.update_layout(title_text="Per-Sample Metric Distributions by LLM", height=700)
+    path = output_dir / "metric_boxplots.html"
+    fig.write_html(str(path))
+    return str(path)
+
+
+def _plot_metric_violin_html(results: list, output_dir: Path) -> str | None:
+    """Interactive violin plots of per-sample metrics grouped by chunking strategy."""
+    records = []
+
+    for r in results:
+        chunking = r.chunking_strategy
+        if not r.per_sample:
+            continue
+        for sample in r.per_sample:
+            rec = {"chunking": chunking}
+            if sample.ragas_scores and sample.ragas_scores.get("faithfulness") is not None:
+                rec["faithfulness"] = sample.ragas_scores["faithfulness"]
+            if sample.custom_scores:
+                for k in ["rouge_l", "meteor", "bert_score_f1"]:
+                    if k in sample.custom_scores and sample.custom_scores[k] is not None:
+                        rec[k] = sample.custom_scores[k]
+            if len(rec) > 1:
+                records.append(rec)
+
+    if not records:
+        return None
+
+    import pandas as pd
+    df = pd.DataFrame(records)
+
+    metrics_to_plot = ["faithfulness", "rouge_l", "meteor", "bert_score_f1"]
+    available = [m for m in metrics_to_plot if m in df.columns]
+    if not available:
+        return None
+
+    df_melted = df.melt(id_vars=["chunking"], value_vars=available, var_name="metric", value_name="value")
+
+    fig = make_subplots(rows=2, cols=2, subplot_titles=available)
+    positions = [(1, 1), (1, 2), (2, 1), (2, 2)]
+
+    for (row, col), metric in zip(positions, available):
+        for chunking in sorted(df_melted["chunking"].unique()):
+            chunk_data = df_melted[(df_melted["chunking"] == chunking) & (df_melted["metric"] == metric)]["value"].dropna()
+            if len(chunk_data) > 0:
+                fig.add_trace(go.Violin(
+                    y=chunk_data,
+                    name=chunking,
+                    showlegend=(row == 1 and col == 1),
+                ), row=row, col=col)
+
+    fig.update_layout(title_text="Metric Distribution by Chunking Strategy", height=700)
+    path = output_dir / "metric_violin.html"
+    fig.write_html(str(path))
+    return str(path)
+
+
+def _plot_parallel_coordinates_html(results: list, output_dir: Path) -> str | None:
+    """Interactive parallel coordinates plot showing parameter impact on metrics."""
+    records = []
+
+    for r in results:
+        rec = {
+            "chunk_size": r.chunk_size,
+            "chunk_overlap": r.chunk_overlap,
+        }
+        if r.ragas_faithfulness is not None:
+            rec["faithfulness"] = r.ragas_faithfulness
+        if r.custom_metric_means:
+            for k in ["hit@1", "rouge_l", "bert_score_f1"]:
+                if k in r.custom_metric_means:
+                    safe = k.replace("@", "_at_")
+                    rec[safe] = r.custom_metric_means[k]
+        if len(rec) >= 4:
+            records.append(rec)
+
+    if len(records) < 2:
+        return None
+
+    import pandas as pd
+    df = pd.DataFrame(records)
+
+    fig = px.parallel_coordinates(
+        df,
+        dimensions=["chunk_size", "chunk_overlap", "faithfulness", "hit_at_1", "rouge_l", "bert_score_f1"],
+        color="faithfulness",
+        title="Parameter Impact on Metrics",
+        color_continuous_scale=px.colors.diverging.RdBu_r,
+    )
+    path = output_dir / "parallel_coordinates.html"
+    fig.write_html(str(path))
+    return str(path)
+
+
+def _plot_metric_ranking_html(results: list, output_dir: Path) -> str | None:
+    """Interactive horizontal bar chart ranking configs by faithfulness."""
+    if not results:
+        return None
+
+    records = []
+    for r in results:
+        if r.ragas_faithfulness is not None:
+            records.append({
+                "config": r.config_name[:40],
+                "llm": r.llm_model.split("/")[-1],
+                "faithfulness": r.ragas_faithfulness,
+            })
+
+    if not records:
+        return None
+
+    import pandas as pd
+    df = pd.DataFrame(records)
+    df = df.sort_values("faithfulness", ascending=True)
+
+    # Add rank markers
+    colors = []
+    for idx, row in df.iterrows():
+        rank = len(df) - list(df.index).index(idx)
+        if rank == 1:
+            colors.append("#FFD700")  # gold
+        elif rank == 2:
+            colors.append("#C0C0C0")  # silver
+        elif rank == 3:
+            colors.append("#CD7F32")  # bronze
+        else:
+            colors.append("#4C78A8")
+
+    fig = go.Figure()
+    for i, row in df.iterrows():
+        fig.add_trace(go.Bar(
+            x=[row["faithfulness"]],
+            y=[row["config"]],
+            orientation="h",
+            name=row["llm"],
+            marker_color=colors[list(df.index).index(i)],
+            showlegend=False,
+            text=f"{row['faithfulness']:.3f}",
+            textposition="outside",
+        ))
+
+    fig.update_layout(
+        title="Faithfulness Ranking",
+        yaxis={"categoryorder": "total ascending"},
+        xaxis_title="Faithfulness Score",
+        height=max(400, len(df) * 30),
+        margin=dict(l=200, r=50, t=50, b=50),
+    )
+    path = output_dir / "metric_ranking.html"
+    fig.write_html(str(path))
+    return str(path)
+
+
+def _plot_parameter_importance_html(results: list, output_dir: Path) -> str | None:
+    """Bar chart showing parameter importance based on faithfulness variance."""
+    if not results:
+        return None
+
+    import pandas as pd
+
+    params_to_check = ["chunk_size", "chunk_overlap", "chunking_strategy", "retrieval_strategy", "prompt_template", "llm_model"]
+    importance_scores = []
+
+    for param in params_to_check:
+        groups = {}
+        for r in results:
+            if r.ragas_faithfulness is None:
+                continue
+            val = getattr(r, param, None)
+            if val is None:
+                continue
+            if isinstance(val, str):
+                val = val.split("/")[-1]  # Shorten model names
+            groups.setdefault(val, []).append(r.ragas_faithfulness)
+
+        if len(groups) < 2:
+            continue
+
+        # Compute variance of group means
+        group_means = [np.mean(v) for v in groups.values()]
+        variance = np.var(group_means) if len(group_means) > 1 else 0
+        importance_scores.append({
+            "parameter": param.replace("_", " ").title(),
+            "importance": variance,
+            "num_groups": len(groups),
+        })
+
+    if not importance_scores:
+        return None
+
+    df = pd.DataFrame(importance_scores).sort_values("importance", ascending=True)
+
+    fig = go.Figure()
+    for _, row in df.iterrows():
+        fig.add_trace(go.Bar(
+            x=[row["importance"]],
+            y=[row["parameter"]],
+            orientation="h",
+            name=row["parameter"],
+            text=f"{row['num_groups']} groups",
+            textposition="inside",
+            showlegend=False,
+        ))
+
+    fig.update_layout(
+        title="Parameter Importance (Faithfulness Variance)",
+        yaxis={"categoryorder": "total ascending"},
+        xaxis_title="Variance of Group Means",
+        height=400,
+        margin=dict(l=150, r=50, t=50, b=50),
+    )
+    path = output_dir / "parameter_importance.html"
     fig.write_html(str(path))
     return str(path)
 
