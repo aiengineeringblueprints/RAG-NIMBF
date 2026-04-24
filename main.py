@@ -24,7 +24,7 @@ from benchmark.custom_metrics import compute_custom_metrics
 from benchmark.reranker import get_reranker
 from benchmark.reporting import generate_report
 from benchmark.reporting.exports import _result_to_dict
-from benchmark.tracking import setup_mlflow, log_benchmark_run, log_genai_eval
+from benchmark.tracking import setup_mlflow, log_benchmark_run, log_genai_eval, log_plots_to_mlflow
 from benchmark.tracing import setup_tracing
 from benchmark.reporting.models import (
     BenchmarkResultExtended,
@@ -419,6 +419,9 @@ def run_all_benchmarks() -> list[BenchmarkResultExtended]:
         dataset_sample_size=configs[0].dataset_sample_size,
         total_time=wall_time,
     )
+
+    # Log generated plots to MLflow as artifacts
+    log_plots_to_mlflow(run_dir)
 
     return results
 

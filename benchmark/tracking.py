@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import os
+from pathlib import Path
 from typing import Any
 
 import mlflow
@@ -288,3 +289,28 @@ def log_genai_eval(result: BenchmarkResultExtended) -> None:
             )
     except Exception as e:
         logger.warning("GenAI eval logging failed (non-fatal): %s", e)
+
+
+def log_plots_to_mlflow(results_dir: Path, run_name_prefix: str = "plots") -> None:
+    """Log all generated plot HTML files from a results directory to MLflow.
+
+    Scans the results_plots/ subdirectory for .html files and logs each
+    as an MLflow artifact under the 'plots' artifact path.
+    """
+    plots_dir = results_dir / "results_plots"
+    if not plots_dir.exists():
+        logger.warning("No results_plots/ directory found at %s", results_dir)
+        return
+
+    html_files = list(plots_dir.glob("*.html"))
+    if not html_files:
+        logger.warning("No HTML plot files found in %s", plots_dir)
+        return
+
+    try:
+        with mlflow.start_run(run_name=run_name_prefix, tags={"type": "plots"}) as run:
+            for html_file in sorted(html_files):
+                mlflow.log_artifact(str(html_file), artifact_path="plots")
+            logger.info("Logged %d plot artifacts to MLflow run %s", len(html_files), run.info.run_id)
+    except Exception as e:
+        logger.warning("Failed to log plots to MLflow (non-fatal): %s", e)
