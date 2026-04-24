@@ -132,7 +132,12 @@ def log_backfill_run(row: dict, json_path: Path, json_data: dict) -> bool:
         return False
 
     llm_name = row.get("LLM", "unknown").split("/")[-1]
-    run_name = f"{llm_name}_{row.get('Chunking', '?')}_cs{row.get('Size', '?')}_co{row.get('Overlap', '?')}"
+    chunking = row.get("Chunking", "?")
+    size = row.get("Size", "?")
+    overlap = row.get("Overlap", "?")
+    retrieval = row.get("Retrieval", "?")
+    template = row.get("Template", "?")
+    run_name = f"{llm_name}_{chunking}_cs{size}_co{overlap}_{retrieval}_{template}"
 
     ts_match = re.search(r"benchmark_(\d{8})_(\d{6})", json_path.name)
     start_time_ms = None
@@ -193,38 +198,47 @@ def log_backfill_run(row: dict, json_path: Path, json_data: dict) -> bool:
                         metrics[f"custom_{safe}_{stat_key}"] = val
 
     existing = mlflow.search_runs(
-        filter_string=f"tags.source = 'backfill' AND tags.run_name = '{run_name}'",
+        filter_string=f"tags.source = 'backfill' AND tags.mlflow.runName = '{run_name}'",
         run_view_type=mlflow.entities.ViewType.ALL,
     )
     if not existing.empty:
         print(f"  SKIP (already imported): {run_name}")
         return False
 
-    with mlflow.start_run(
-        run_name=run_name,
-        tags=tags,
+    from mlflow import MlflowClient
+
+    experiment = mlflow.get_experiment_by_name("RAG-Benchmark")
+    client = MlflowClient()
+    run = client.create_run(
+        experiment_id=experiment.experiment_id,
         start_time=start_time_ms,
-    ) as run:
-        mlflow.log_params(params)
-        mlflow.log_metrics(metrics)
+        tags=tags,
+        run_name=run_name,
+    )
+    run_id = run.info.run_id
 
-        per_sample = result.get("per_sample", [])
-        if per_sample:
-            import csv
-            import tempfile
+    client.log_batch(run_id, params=[mlflow.entities.Param(k, str(v)) for k, v in params.items()])
+    client.log_batch(run_id, metrics=[mlflow.entities.Metric(k, v, 0, 0) for k, v in metrics.items()])
 
-            tmpdir = Path(tempfile.mkdtemp())
-            csv_path = tmpdir / "per_sample_results.csv"
-            with open(csv_path, "w", newline="", encoding="utf-8") as f:
-                writer = csv.writer(f)
-                writer.writerow(["question", "ground_truth", "answer"])
-                for s in per_sample:
-                    writer.writerow([
-                        s.get("question", ""),
-                        s.get("ground_truth", ""),
-                        s.get("answer", ""),
-                    ])
-            mlflow.log_artifact(str(csv_path), artifact_path="data")
+    per_sample = result.get("per_sample", [])
+    if per_sample:
+        import csv
+        import tempfile
+
+        tmpdir = Path(tempfile.mkdtemp())
+        csv_path = tmpdir / "per_sample_results.csv"
+        with open(csv_path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow(["question", "ground_truth", "answer"])
+            for s in per_sample:
+                writer.writerow([
+                    s.get("question", ""),
+                    s.get("ground_truth", ""),
+                    s.get("answer", ""),
+                ])
+        client.log_artifact(run_id, str(csv_path), artifact_path="data")
+
+    client.set_terminated(run_id, status="FINISHED", end_time=(start_time_ms or 0) + 1)
 
     print(f"  IMPORTED: {run_name} ({len(metrics)} metrics)")
     return True
