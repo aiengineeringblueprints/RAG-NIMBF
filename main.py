@@ -327,6 +327,10 @@ def run_single_benchmark(
         custom_stats=custom_stat_summaries if custom_stat_summaries else None,
         reranker_model=config.reranker_model,
         reranker_top_k=config.reranker_top_k if config.reranker_model else None,
+        retrieval_strategy=config.retrieval_strategy,
+        retrieval_top_k=config.retrieval_top_k,
+        dataset_name=config.dataset_name,
+        dataset_sample_size=config.dataset_sample_size,
     )
 
 
