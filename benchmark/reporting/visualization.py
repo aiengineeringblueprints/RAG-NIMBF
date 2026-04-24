@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import matplotlib
 matplotlib.use("Agg")
 
@@ -7,8 +8,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 from pathlib import Path
 
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+import plotly.express as px
+
 from benchmark.reporting.models import BenchmarkResultExtended
 from benchmark.reporting.analysis import RankTable
+
+logger = logging.getLogger(__name__)
 
 
 _METRIC_LABELS = {
@@ -66,6 +73,20 @@ def generate_plots(
     scatter = _plot_vector_distance_scatter(results, plots_dir)
     if scatter:
         paths.append(scatter)
+
+    # Interactive Plotly charts
+    for plot_fn in [
+        _plot_metrics_over_time_html,
+        _plot_llm_comparison_radar_html,
+        _plot_parameter_heatmap_html,
+        _plot_scatter_matrix_html,
+    ]:
+        try:
+            result = plot_fn(results, plots_dir)
+            if result:
+                generated.append(result)
+        except Exception as e:
+            logger.warning("Plotly chart %s failed: %s", plot_fn.__name__, e)
 
     generated = [p for p in paths if p is not None]
     return generated
@@ -311,6 +332,171 @@ def _plot_ranking(
     fig.savefig(path, dpi=120, bbox_inches="tight")
     plt.close(fig)
     return path
+
+
+def _plot_metrics_over_time_html(results: list, output_dir: Path) -> str | None:
+    """Interactive metrics-over-time line chart saved as HTML."""
+    if len(results) < 2:
+        return None
+
+    metric_keys = ["ragas_faithfulness", "custom_hit_at_1", "custom_rouge_l", "custom_bert_score_f1"]
+    metric_labels = ["Faithfulness", "Hit@1", "ROUGE-L", "BERTScore F1"]
+
+    records = []
+    for r in results:
+        rec = {
+            "config": r.config_name,
+            "llm": r.llm_model.split("/")[-1],
+            "chunking": r.chunking_strategy,
+        }
+        if r.ragas_faithfulness is not None:
+            rec["ragas_faithfulness"] = r.ragas_faithfulness
+        if r.custom_metric_means:
+            for k in ["hit@1", "rouge_l", "bert_score_f1"]:
+                if k in r.custom_metric_means:
+                    safe = k.replace("@", "_at_")
+                    rec[f"custom_{safe}"] = r.custom_metric_means[k]
+        records.append(rec)
+
+    fig = make_subplots(rows=2, cols=2, subplot_titles=metric_labels)
+    positions = [(1, 1), (1, 2), (2, 1), (2, 2)]
+
+    for (row, col), key in zip(positions, metric_keys):
+        for llm in sorted(set(r["llm"] for r in records)):
+            y_vals = [r.get(key) for r in records if r["llm"] == llm and key in r]
+            x_vals = list(range(len(y_vals)))
+            if y_vals:
+                fig.add_trace(
+                    go.Scatter(x=x_vals, y=y_vals, mode="lines+markers", name=llm, showlegend=(row == 1 and col == 1)),
+                    row=row, col=col,
+                )
+
+    fig.update_layout(title_text="Metrics Across Configurations", height=700)
+    path = output_dir / "metrics_over_time.html"
+    fig.write_html(str(path))
+    return str(path)
+
+
+def _plot_llm_comparison_radar_html(results: list, output_dir: Path) -> str | None:
+    """Interactive radar chart comparing LLMs across metrics."""
+    llm_data: dict[str, list] = {}
+
+    for r in results:
+        llm = r.llm_model.split("/")[-1]
+        if llm not in llm_data:
+            llm_data[llm] = []
+        metrics = {}
+        if r.ragas_faithfulness is not None:
+            metrics["Faithfulness"] = r.ragas_faithfulness
+        if r.custom_metric_means:
+            for k, label in [("hit@1", "Hit@1"), ("rouge_l", "ROUGE-L"), ("meteor", "METEOR"), ("bert_score_f1", "BERTScore F1"), ("context_relevance", "Ctx Rel")]:
+                if k in r.custom_metric_means:
+                    metrics[label] = r.custom_metric_means[k]
+        llm_data[llm].append(metrics)
+
+    if len(llm_data) < 2:
+        return None
+
+    avg_data = {}
+    for llm, metrics_list in llm_data.items():
+        all_keys = set()
+        for m in metrics_list:
+            all_keys.update(m.keys())
+        avg_data[llm] = {k: sum(m.get(k, 0) for m in metrics_list) / len(metrics_list) for k in all_keys}
+
+    categories = sorted(set(k for v in avg_data.values() for k in v))
+    if not categories:
+        return None
+
+    fig = go.Figure()
+    for llm, metrics in avg_data.items():
+        values = [metrics.get(c, 0) for c in categories]
+        fig.add_trace(go.Scatterpolar(
+            r=values + [values[0]],
+            theta=categories + [categories[0]],
+            fill="toself",
+            name=llm,
+        ))
+
+    fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), showlegend=True, title="LLM Comparison")
+    path = output_dir / "llm_comparison_radar.html"
+    fig.write_html(str(path))
+    return str(path)
+
+
+def _plot_parameter_heatmap_html(results: list, output_dir: Path) -> str | None:
+    """Interactive heatmap of faithfulness by chunk_size x overlap per LLM."""
+    if not results:
+        return None
+
+    llm_groups: dict[str, list] = {}
+    for r in results:
+        llm = r.llm_model.split("/")[-1]
+        if r.ragas_faithfulness is not None:
+            llm_groups.setdefault(llm, []).append(r)
+
+    if not llm_groups:
+        return None
+
+    paths = []
+    for llm, runs in llm_groups.items():
+        sizes = sorted(set(r.chunk_size for r in runs))
+        overlaps = sorted(set(r.chunk_overlap for r in runs))
+
+        z = [[None] * len(overlaps) for _ in sizes]
+        annotations = [[None] * len(overlaps) for _ in sizes]
+
+        for r in runs:
+            si = sizes.index(r.chunk_size)
+            oi = overlaps.index(r.chunk_overlap)
+            z[si][oi] = r.ragas_faithfulness
+            annotations[si][oi] = f"{r.ragas_faithfulness:.3f}"
+
+        fig = go.Figure(data=go.Heatmap(
+            z=z, x=[str(o) for o in overlaps], y=[str(s) for s in sizes],
+            text=annotations, texttemplate="%{text}",
+            colorscale="RdYlGn", zmin=0.7, zmax=1.0,
+        ))
+        fig.update_layout(title=f"Faithfulness: {llm}", xaxis_title="Overlap", yaxis_title="Chunk Size")
+
+        safe_llm = llm.replace("/", "_").replace(":", "_")
+        path = output_dir / f"heatmap_{safe_llm}.html"
+        fig.write_html(str(path))
+        paths.append(str(path))
+
+    return paths[0] if paths else None
+
+
+def _plot_scatter_matrix_html(results: list, output_dir: Path) -> str | None:
+    """Interactive scatter matrix of custom metrics colored by LLM."""
+    if len(results) < 2:
+        return None
+
+    records = []
+    for r in results:
+        rec = {"llm": r.llm_model.split("/")[-1]}
+        if r.custom_metric_means:
+            for k in ["hit@1", "ndcg@1", "rouge_l", "meteor", "bert_score_f1", "context_relevance"]:
+                if k in r.custom_metric_means:
+                    safe = k.replace("@", "_at_")
+                    rec[safe] = r.custom_metric_means[k]
+        if len(rec) > 2:
+            records.append(rec)
+
+    if len(records) < 2:
+        return None
+
+    import pandas as pd
+    df = pd.DataFrame(records)
+    numeric_cols = [c for c in df.columns if c != "llm"]
+    if len(numeric_cols) < 2:
+        return None
+
+    fig = px.scatter_matrix(df, dimensions=numeric_cols, color="llm", title="Custom Metrics Scatter Matrix")
+    fig.update_layout(height=800)
+    path = output_dir / "scatter_matrix.html"
+    fig.write_html(str(path))
+    return str(path)
 
 
 def _plot_vector_distance_scatter(
