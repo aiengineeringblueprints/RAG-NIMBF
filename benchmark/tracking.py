@@ -237,3 +237,38 @@ def _log_per_sample_csv(result: BenchmarkResultExtended, run_id: str) -> None:
 
     mlflow.log_artifact(str(csv_path), artifact_path="data")
     logger.debug("Logged per-sample CSV artifact to run %s", run_id)
+
+
+def log_genai_eval(result: BenchmarkResultExtended) -> None:
+    """Log a GenAI evaluation dataset for the MLflow eval-monitor dashboard.
+
+    Creates an eval DataFrame from per-sample results and logs it via
+    mlflow.evaluate() with built-in scorers. This is additive — it does
+    not replace the RAGAS or custom metrics computation.
+    """
+    if not result.per_sample:
+        logger.warning("No per-sample data — skipping GenAI eval logging")
+        return
+
+    try:
+        import pandas as pd
+
+        eval_data = pd.DataFrame({
+            "inputs": [s.question for s in result.per_sample],
+            "predictions": [s.answer for s in result.per_sample],
+            "contexts": [list(s.contexts) for s in result.per_sample],
+            "ground_truth": [s.ground_truth for s in result.per_sample],
+        })
+
+        with mlflow.start_run(run_name=_make_run_name(result) + "_eval", tags=_make_tags(result)):
+            eval_result = mlflow.evaluate(
+                data=eval_data,
+                targets="ground_truth",
+                predictions="predictions",
+                evaluators="default",
+            )
+            logger.info(
+                "GenAI eval logged: %s metrics", len(eval_result.metrics)
+            )
+    except Exception as e:
+        logger.warning("GenAI eval logging failed (non-fatal): %s", e)
