@@ -25,7 +25,7 @@ from benchmark.reranker import get_reranker
 from benchmark.reporting import generate_report
 from benchmark.reporting.exports import _result_to_dict
 from benchmark.tracking import setup_mlflow, log_benchmark_run
-from benchmark.tracing import setup_langfuse
+from benchmark.tracing import setup_tracing
 from benchmark.reporting.models import (
     BenchmarkResultExtended,
     PerSampleResult,
@@ -40,16 +40,6 @@ def run_single_benchmark(
     config: BenchmarkConfig, data: list[dict], run_dir: Path | None = None,
     corpus: list[dict] | None = None,
 ) -> BenchmarkResultExtended:
-    # Set up LangFuse callback handler for this benchmark run (one trace per config)
-    _callbacks = None
-    if os.getenv("LANGFUSE_PUBLIC_KEY"):
-        from langfuse.langchain import CallbackHandler
-        _lf_handler = CallbackHandler(
-            trace_name=config.name,
-            metadata={"llm_model": config.llm_model, "chunking_strategy": config.chunking_strategy},
-        )
-        _callbacks = [_lf_handler]
-
     run_start = time.perf_counter()
     console.print(f"\n[bold yellow]>>> Starting: {config.name}[/bold yellow]")
     collection_name = config.name.replace(":", "_").replace("/", "_")
@@ -133,14 +123,13 @@ def run_single_benchmark(
             context_texts = [sample["context"]]
         else:
             if config.retrieval_use_hyde:
-                query = expand_query_with_hyde(llm, sample["question"], callbacks=_callbacks)
+                query = expand_query_with_hyde(llm, sample["question"])
 
             retrieved_docs = retrieve(
                 vector_store, query, config.retrieval_top_k,
                 retrieval_strategy=config.retrieval_strategy,
                 fetch_k=config.retrieval_fetch_k,
                 mmr_lambda=config.retrieval_mmr_lambda,
-                callbacks=_callbacks,
             )
 
             if reranker is not None:
@@ -158,7 +147,6 @@ def run_single_benchmark(
             value_fallback=config.llm_answer_value_fallback,
             ground_truth=sample["ground_truth"],
             prompt_template_name=config.prompt_template,
-            callbacks=_callbacks,
         )
 
         questions.append(sample["question"])
@@ -427,11 +415,6 @@ def run_all_benchmarks() -> list[BenchmarkResultExtended]:
         total_time=wall_time,
     )
 
-    # Flush LangFuse traces before exit
-    if os.getenv("LANGFUSE_PUBLIC_KEY"):
-        from langfuse import Langfuse
-        Langfuse().flush()
-
     return results
 
 
@@ -442,11 +425,9 @@ def main():
     )
     console.print("[bold]RAG Benchmarking Framework[/bold]")
     console.print("=" * 50)
-    tracking_uri = setup_mlflow()
+    tracking_uri = setup_tracing()
     console.print(f"[dim]MLflow tracking: {tracking_uri}[/dim]")
-    langfuse_host = setup_langfuse()
-    if langfuse_host:
-        console.print(f"[dim]LangFuse tracing: {langfuse_host}[/dim]")
+    setup_mlflow()
     run_all_benchmarks()
 
 
