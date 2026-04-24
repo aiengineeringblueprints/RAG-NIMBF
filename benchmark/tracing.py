@@ -6,6 +6,7 @@ to an external OpenTelemetry collector.
 """
 from __future__ import annotations
 
+import functools
 import logging
 import os
 from typing import Any, Callable
@@ -78,3 +79,24 @@ def _configure_otlp_exporter(endpoint: str) -> None:
         )
     except Exception as e:
         logger.warning("Failed to configure OTLP exporter: %s", e)
+
+
+def _noop_observe(name: str | None = None) -> Callable:
+    """Identity decorator used when tracing is disabled."""
+    def decorator(fn: Callable) -> Callable:
+        return fn
+    return decorator
+
+
+# Module-level decorator: real @observe when tracing is enabled, no-op otherwise.
+# For now, always use no-op since LangFuse has been removed.
+observe = _noop_observe
+
+
+def setup_langfuse() -> str | None:
+    """Deprecated: LangFuse has been removed.
+
+    This function exists for backward compatibility and always returns None.
+    """
+    logger.info("LangFuse tracing has been removed, using MLflow tracing instead")
+    return None
