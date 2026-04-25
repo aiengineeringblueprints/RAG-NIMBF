@@ -46,6 +46,7 @@ def _flatten_ragas_stats(
         ("ragas_answer_correctness", result.ragas_answer_correctness_stats),
         ("ragas_context_precision", result.ragas_context_precision_stats),
         ("ragas_context_recall", result.ragas_context_recall_stats),
+        ("ragas_semantic_similarity", result.ragas_semantic_similarity_stats),
     ]:
         if stats is None:
             flat[f"{key}_mean"] = None
@@ -138,6 +139,7 @@ def log_benchmark_run(result: BenchmarkResultExtended) -> None:
         ("ragas_answer_correctness", result.ragas_answer_correctness),
         ("ragas_context_precision", result.ragas_context_precision),
         ("ragas_context_recall", result.ragas_context_recall),
+        ("ragas_semantic_similarity", result.ragas_semantic_similarity),
     ]:
         if value is not None:
             metrics[key] = value
@@ -206,10 +208,11 @@ def _log_per_sample_csv(result: BenchmarkResultExtended, run_id: str) -> None:
 
     ragas_keys = [
         "faithfulness",
+        "semantic_similarity",
+        "context_recall",
         # "answer_relevancy",
         # "answer_correctness",
         # "context_precision",
-        # "context_recall",
     ]
 
     # Collect all custom metric keys across samples

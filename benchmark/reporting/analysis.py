@@ -24,9 +24,10 @@ class RankTable:
 # Weights for composite scoring: RAGAS metrics sum to 0.8, perf metrics sum to 0.2
 _METRIC_WEIGHTS: dict[str, float] = {
     "faithfulness": 0.20,
-    "answer_relevancy": 0.20,
-    "context_precision": 0.20,
+    "semantic_similarity": 0.20,
     "context_recall": 0.20,
+    "answer_relevancy": 0.10,
+    "context_precision": 0.10,
     "ttft": 0.10,       # lower is better
     "tok_per_s": 0.10,  # higher is better
 }
@@ -37,6 +38,7 @@ _LOWER_IS_BETTER = {"ttft"}
 def _get_metric_values(results: list[BenchmarkResultExtended], key: str) -> list[float | None]:
     mapping: dict[str, str] = {
         "faithfulness": "ragas_faithfulness",
+        "semantic_similarity": "ragas_semantic_similarity",
         "answer_relevancy": "ragas_answer_relevancy",
         "context_precision": "ragas_context_precision",
         "context_recall": "ragas_context_recall",
@@ -147,6 +149,8 @@ def _single_config_insights(r: BenchmarkResultExtended) -> list[str]:
         lines.append(f"  Throughput: {r.tps_stats.mean:.1f} tok/s (std {r.tps_stats.std:.1f})")
     if r.ragas_faithfulness is not None:
         lines.append(f"  Faithfulness: {r.ragas_faithfulness:.3f}")
+    if r.ragas_semantic_similarity is not None:
+        lines.append(f"  Semantic Similarity: {r.ragas_semantic_similarity:.3f}")
     if r.ragas_answer_relevancy is not None:
         lines.append(f"  Answer Relevancy: {r.ragas_answer_relevancy:.3f}")
     if r.ragas_context_precision is not None:
@@ -171,6 +175,12 @@ def _multi_config_insights(
     if faith_vals:
         top = max(faith_vals, key=lambda p: p[1])
         lines.append(f"Highest faithfulness: {top[0]} ({top[1]:.3f})")
+
+    # Semantic similarity leader
+    sim_vals = [(r.config_name, r.ragas_semantic_similarity) for r in results if r.ragas_semantic_similarity is not None]
+    if sim_vals:
+        top = max(sim_vals, key=lambda p: p[1])
+        lines.append(f"Highest semantic similarity: {top[0]} ({top[1]:.3f})")
 
     # Answer relevancy leader
     rel_vals = [(r.config_name, r.ragas_answer_relevancy) for r in results if r.ragas_answer_relevancy is not None]

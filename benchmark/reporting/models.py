@@ -53,6 +53,7 @@ class BenchmarkResultExtended:
     ragas_answer_correctness: float | None
     ragas_context_precision: float | None
     ragas_context_recall: float | None
+    ragas_semantic_similarity: float | None
     total_time_seconds: float
     per_sample: tuple[PerSampleResult, ...]
     ttft_stats: StatSummary | None
@@ -64,6 +65,7 @@ class BenchmarkResultExtended:
     ragas_answer_correctness_stats: StatSummary | None
     ragas_context_precision_stats: StatSummary | None
     ragas_context_recall_stats: StatSummary | None
+    ragas_semantic_similarity_stats: StatSummary | None
     evaluation_error: str | None = None
     ragas_valid_sample_counts: dict[str, int] | None = None
     custom_metric_means: dict[str, float] | None = None

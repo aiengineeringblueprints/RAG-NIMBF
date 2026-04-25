@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 _METRIC_LABELS = {
     "faithfulness": "Faithfulness",
+    "semantic_similarity": "Semantic Similarity",
     "answer_relevancy": "Answer Relevancy",
     "context_precision": "Context Precision",
     "context_recall": "Context Recall",
@@ -516,7 +517,7 @@ def _plot_correlation_heatmap_html(results: list, output_dir: Path) -> str | Non
     for r in results:
         rec = {}
         # RAGAS metrics
-        for key in ["faithfulness", "answer_relevancy", "answer_correctness", "context_precision", "context_recall"]:
+        for key in ["faithfulness", "semantic_similarity", "answer_relevancy", "answer_correctness", "context_precision", "context_recall"]:
             val = getattr(r, f"ragas_{key}", None)
             if val is not None:
                 rec[f"ragas_{key}"] = val

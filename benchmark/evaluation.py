@@ -11,6 +11,7 @@ from ragas.metrics._answer_correctness import answer_correctness
 from ragas.metrics._context_precision import context_precision
 from ragas.metrics._context_recall import context_recall
 from ragas.metrics._faithfulness import faithfulness
+from ragas.metrics import SemanticSimilarity
 from ragas.llms import LangchainLLMWrapper
 from ragas.embeddings import LangchainEmbeddingsWrapper
 
@@ -101,10 +102,16 @@ def evaluate_results(
 
         # Resolve critic embeddings via factory
         emb_provider, emb_model_name = parse_model_id(effective_critic_embedding)
+        if emb_provider == "openai":
+            emb_base = critic_openai_compat_base_url or openai_compat_base_url or ""
+            emb_key = critic_openai_compat_api_key or openai_compat_api_key
+        else:
+            emb_base = critic_ollama_base_url or ollama_base_url
+            emb_key = critic_ollama_api_key or ollama_api_key
         critic_emb = get_embedding_model(
             emb_model_name,
-            ollama_base_url,
-            ollama_api_key,
+            emb_base,
+            emb_key,
             provider=emb_provider,
         )
         critic_embeddings = LangchainEmbeddingsWrapper(critic_emb)
@@ -127,8 +134,20 @@ def evaluate_results(
             samples_with_valid_scores={},
         )
 
-    # metrics = [faithfulness, answer_relevancy, answer_correctness, context_precision, context_recall]
-    metrics = [faithfulness]
+    # Keep the default RAGAS set intentionally small:
+    # - faithfulness: existing groundedness judge
+    # - context_recall: useful retrieval signal; avoids per-context precision calls
+    # - semantic_similarity: embedding-only answer/reference similarity
+    #
+    # Deliberately not enabled by default:
+    # - answer_relevancy: generates multiple questions per answer (strictness)
+    # - answer_correctness: combines LLM factuality judging with similarity
+    # - context_precision: scales LLM judging with the number of retrieved contexts
+    metrics = [
+        faithfulness,
+        context_recall,
+        SemanticSimilarity(),
+    ]
 
     # max_workers=1: local models process requests serially anyway.
     # More workers just cause queuing and timeouts. Raise timeout instead.

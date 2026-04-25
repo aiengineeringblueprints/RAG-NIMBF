@@ -173,9 +173,10 @@ def _display_ragas_table(results: list[BenchmarkResultExtended], rankings: RankT
     table.add_column("Rank", justify="right", style="dim", width=4)
     table.add_column("Config", style="cyan")
     table.add_column("Faithfulness", justify="right")
+    table.add_column("Semantic Sim.", justify="right")
+    table.add_column("Ctx Recall", justify="right")
     table.add_column("Answer Rel.", justify="right")
     table.add_column("Ctx Precision", justify="right")
-    table.add_column("Ctx Recall", justify="right")
 
     rank_map = {cr.config_name: cr.rank for cr in rankings.ranks}
 
@@ -194,9 +195,10 @@ def _display_ragas_table(results: list[BenchmarkResultExtended], rankings: RankT
             rank_str,
             _format_config_name(r.config_name),
             _ragas_cell(r.ragas_faithfulness),
+            _ragas_cell(r.ragas_semantic_similarity),
+            _ragas_cell(r.ragas_context_recall),
             _ragas_cell(r.ragas_answer_relevancy),
             _ragas_cell(r.ragas_context_precision),
-            _ragas_cell(r.ragas_context_recall),
             style=row_style or None,
         )
 
@@ -209,9 +211,10 @@ def _display_sparklines(results: list[BenchmarkResultExtended]) -> None:
 
     metrics = [
         ("Faithfulness", "ragas_faithfulness"),
+        ("Semantic", "ragas_semantic_similarity"),
+        ("Ctx Recall", "ragas_context_recall"),
         ("Answer Rel.", "ragas_answer_relevancy"),
         ("Ctx Prec.", "ragas_context_precision"),
-        ("Ctx Recall", "ragas_context_recall"),
     ]
 
     # Compute max per metric for scaling

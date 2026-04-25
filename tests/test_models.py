@@ -92,6 +92,7 @@ class TestBenchmarkResultExtended:
             ragas_answer_correctness=None,
             ragas_context_precision=None,
             ragas_context_recall=None,
+            ragas_semantic_similarity=None,
             total_time_seconds=30.0,
             per_sample=(),
             ttft_stats=None,
@@ -103,6 +104,7 @@ class TestBenchmarkResultExtended:
             ragas_answer_correctness_stats=None,
             ragas_context_precision_stats=None,
             ragas_context_recall_stats=None,
+            ragas_semantic_similarity_stats=None,
         )
         assert r.evaluation_error is None
         assert r.ragas_valid_sample_counts is None

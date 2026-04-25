@@ -36,7 +36,7 @@ def _result_to_dict(r: BenchmarkResultExtended) -> dict:
         "chunking_strategy",
         "chunk_size", "chunk_overlap", "num_chunks", "num_questions",
         "ragas_faithfulness", "ragas_answer_relevancy", "ragas_answer_correctness",
-        "ragas_context_precision", "ragas_context_recall",
+        "ragas_context_precision", "ragas_context_recall", "ragas_semantic_similarity",
     ):
         val = getattr(r, key)
         d[key] = val
@@ -48,6 +48,7 @@ def _result_to_dict(r: BenchmarkResultExtended) -> dict:
         "ragas_answer_correctness": _stats_to_dict(r.ragas_answer_correctness_stats),
         "ragas_context_precision": _stats_to_dict(r.ragas_context_precision_stats),
         "ragas_context_recall": _stats_to_dict(r.ragas_context_recall_stats),
+        "ragas_semantic_similarity": _stats_to_dict(r.ragas_semantic_similarity_stats),
     }
 
     # Per-sample data
@@ -124,6 +125,7 @@ def save_csv_report(
             "ragas_answer_correctness": r.ragas_answer_correctness,
             "ragas_context_precision": r.ragas_context_precision,
             "ragas_context_recall": r.ragas_context_recall,
+            "ragas_semantic_similarity": r.ragas_semantic_similarity,
             "total_time_seconds": r.total_time_seconds,
         }
         # Custom metric means
@@ -141,6 +143,7 @@ def save_csv_report(
             ("answer_correctness", r.ragas_answer_correctness_stats),
             ("context_precision", r.ragas_context_precision_stats),
             ("context_recall", r.ragas_context_recall_stats),
+            ("semantic_similarity", r.ragas_semantic_similarity_stats),
         ):
             if stats:
                 row[f"{metric}_std"] = stats.std
@@ -170,6 +173,7 @@ def save_csv_report(
                 "answer_correctness": s.ragas_scores.get("answer_correctness"),
                 "context_precision": s.ragas_scores.get("context_precision"),
                 "context_recall": s.ragas_scores.get("context_recall"),
+                "semantic_similarity": s.ragas_scores.get("semantic_similarity"),
                 "answer_valid": s.answer_valid,
                 **{
                     f"custom_{k}": v
@@ -226,15 +230,16 @@ def save_markdown_report(
     # RAGAS table
     lines.append("## RAGAS Scores")
     lines.append("")
-    lines.append("| Config | Faithfulness | Answer Rel. | Answer Corr. | Ctx Precision | Ctx Recall |")
-    lines.append("|--------|-------------|-------------|--------------|---------------|------------|")
+    lines.append("| Config | Faithfulness | Semantic Sim. | Ctx Recall | Answer Rel. | Answer Corr. | Ctx Precision |")
+    lines.append("|--------|-------------|---------------|------------|-------------|--------------|---------------|")
     for r in results:
         f = _fmt_md(r.ragas_faithfulness)
+        ss = _fmt_md(r.ragas_semantic_similarity)
+        cr = _fmt_md(r.ragas_context_recall)
         ar = _fmt_md(r.ragas_answer_relevancy)
         ac = _fmt_md(r.ragas_answer_correctness)
         cp = _fmt_md(r.ragas_context_precision)
-        cr = _fmt_md(r.ragas_context_recall)
-        lines.append(f"| {_short(r.config_name)} | {f} | {ar} | {ac} | {cp} | {cr} |")
+        lines.append(f"| {_short(r.config_name)} | {f} | {ss} | {cr} | {ar} | {ac} | {cp} |")
     lines.append("")
 
     # Custom metrics table
@@ -288,6 +293,7 @@ def save_markdown_report(
             ("Answer Correctness", r.ragas_answer_correctness_stats),
             ("Context Precision", r.ragas_context_precision_stats),
             ("Context Recall", r.ragas_context_recall_stats),
+            ("Semantic Similarity", r.ragas_semantic_similarity_stats),
         ):
             if stats:
                 lines.append(f"- {label}: {stats.mean:.3f} +/- {stats.std:.3f} (range: {stats.min:.3f}-{stats.max:.3f})")
