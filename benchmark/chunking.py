@@ -59,5 +59,5 @@ def chunk_documents(chunker, documents: list[dict], min_chunk_length: int = 50) 
 
     chunks = chunker.split_documents(docs)
     # Filter out near-empty fragments (bibliography lines, citations, etc.)
-    chunks = [c for c in chunks if len(c.page_content.strip()) >= min_chunk_length]
-    return chunks
+    filtered = [c for c in chunks if len(c.page_content.strip()) >= min_chunk_length]
+    return filtered or chunks

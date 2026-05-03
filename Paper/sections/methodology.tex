@@ -1,0 +1,15 @@
+\section{Methodology}
+
+The benchmark process evaluates a set of pipeline configurations against a fixed dataset. Each configuration defines retrieval and generation parameters, including chunking strategy, chunk size, chunk overlap, embedding model, retrieval method, reranking settings, prompt template, and language model.
+
+\subsection{Pipeline Configuration}
+
+Each experiment stores its configuration alongside the output artifacts. This enables later comparison between runs and reduces ambiguity when interpreting metric differences.
+
+\subsection{Evaluation Metrics}
+
+The framework can report retrieval metrics, answer quality metrics, and runtime-oriented measurements. Depending on the dataset and evaluator availability, the metric set may include context precision, context recall, faithfulness, answer relevancy, latency, and aggregate scores.
+
+\subsection{Artifacts}
+
+Each benchmark run produces machine-readable results, summary tables, and plots. These artifacts support both automated comparison and manual inspection.

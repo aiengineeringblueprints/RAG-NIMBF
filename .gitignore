@@ -207,7 +207,7 @@ marimo/_lsp/
 __marimo__/
 
 # Benchmark results
-#results/
+results/
 
 # MLflow
 mlflow.db
@@ -215,3 +215,6 @@ mlruns/
 
 # ChromaDB persistent vector store
 .chroma/
+
+# Graphify generated graph output
+graphify-out/

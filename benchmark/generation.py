@@ -2,6 +2,7 @@ import ast
 import logging
 import mlflow
 import operator
+import os
 import re
 import time
 from dataclasses import dataclass
@@ -505,7 +506,8 @@ def generate_answer(
     if usage:
         token_count = usage.get("output_tokens", 0)
 
-    gpu = get_gpu_usage()
+    gpu_interval = float(os.getenv("GPU_METRICS_INTERVAL_SECONDS", "30"))
+    gpu = get_gpu_usage(cache_seconds=gpu_interval)
 
     return GenerationResult(
         answer=answer,

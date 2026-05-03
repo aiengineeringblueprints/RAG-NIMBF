@@ -30,6 +30,36 @@ class TestCacheKey:
         assert len(k) == 64  # SHA-256 hex digest length
         assert all(c in "0123456789abcdef" for c in k)
 
+    def test_provider_changes_key(self):
+        k1 = _cache_key("model", 1000, 200, "recursive", embedding_provider="ollama")
+        k2 = _cache_key("model", 1000, 200, "recursive", embedding_provider="huggingface")
+        assert k1 != k2
+
+    def test_dataset_subset_and_fingerprint_change_key(self):
+        k1 = _cache_key(
+            "model", 1000, 200, "recursive",
+            dataset_name="ragbench",
+            dataset_subset="FinQA",
+            dataset_sample_size=50,
+            corpus_fingerprint="abc",
+        )
+        k2 = _cache_key(
+            "model", 1000, 200, "recursive",
+            dataset_name="ragbench",
+            dataset_subset="HotpotQA",
+            dataset_sample_size=50,
+            corpus_fingerprint="abc",
+        )
+        k3 = _cache_key(
+            "model", 1000, 200, "recursive",
+            dataset_name="ragbench",
+            dataset_subset="FinQA",
+            dataset_sample_size=50,
+            corpus_fingerprint="def",
+        )
+        assert k1 != k2
+        assert k1 != k3
+
 
 class TestRetrieve:
     def _mock_store(self):

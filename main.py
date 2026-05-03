@@ -1,7 +1,8 @@
 import json
 import logging
-import os
 import time
+import hashlib
+from functools import lru_cache
 from datetime import datetime
 from pathlib import Path
 
@@ -12,7 +13,6 @@ from benchmark.dataset import load_benchmark_data, load_corpus_and_questions
 from benchmark.chunking import get_chunker, chunk_documents
 from benchmark.retrieval import (
     build_vector_store,
-    clear_cache,
     retrieve,
     expand_query_with_hyde,
     _cache_key,
@@ -36,13 +36,34 @@ console = Console()
 logger = logging.getLogger(__name__)
 
 
+def _content_fingerprint(items: list[dict]) -> str:
+    digest = hashlib.sha256()
+    for item in items:
+        digest.update(str(item.get("id", "")).encode())
+        digest.update(b"\0")
+        digest.update(str(item.get("question", "")).encode())
+        digest.update(b"\0")
+        digest.update(str(item.get("context", "")).encode())
+        digest.update(b"\0")
+        digest.update(str(item.get("ground_truth", "")).encode())
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
+@lru_cache(maxsize=2)
+def _get_bert_model(model_name: str):
+    from sentence_transformers import SentenceTransformer
+
+    return SentenceTransformer(model_name, device="cpu")
+
+
 def run_single_benchmark(
     config: BenchmarkConfig, data: list[dict], run_dir: Path | None = None,
     corpus: list[dict] | None = None,
 ) -> BenchmarkResultExtended:
     run_start = time.perf_counter()
     console.print(f"\n[bold yellow]>>> Starting: {config.name}[/bold yellow]")
-    collection_name = config.name.replace(":", "_").replace("/", "_")
+    chunks = []
 
     # Prepare QA log path if run_dir is provided
     qa_log: list[dict] = []
@@ -79,13 +100,19 @@ def run_single_benchmark(
         chunks = chunk_documents(chunker, chunk_source)
         console.print(f"  [dim]Chunked into {len(chunks)} pieces[/dim]")
 
+        corpus_fingerprint = _content_fingerprint(chunk_source)
         cache_k = _cache_key(
             config.embedding_model,
             config.chunk_size,
             config.chunk_overlap,
             config.chunking_strategy,
             dataset_name=config.dataset_name,
+            embedding_provider=config.embedding_provider,
+            dataset_subset=config.dataset_subset,
+            dataset_sample_size=config.dataset_sample_size,
+            corpus_fingerprint=corpus_fingerprint,
         )
+        collection_name = f"rag_{cache_k[:24]}"
         vector_store = build_vector_store(
             chunks,
             config.embedding_model,
@@ -125,6 +152,8 @@ def run_single_benchmark(
             if config.retrieval_use_hyde:
                 query = expand_query_with_hyde(llm, sample["question"])
 
+            if vector_store is None:
+                raise RuntimeError("Vector store missing in retrieval mode.")
             retrieved_docs = retrieve(
                 vector_store, query, config.retrieval_top_k,
                 retrieval_strategy=config.retrieval_strategy,
@@ -209,9 +238,11 @@ def run_single_benchmark(
     )
     _embed_fn = _emb_model.embed_query
 
-    # Load SentenceTransformer for BERTScore
-    from sentence_transformers import SentenceTransformer
-    _bert_model = SentenceTransformer("roberta-large", device="cpu")
+    _bert_model = (
+        _get_bert_model(config.custom_metrics_bert_model)
+        if config.custom_metrics_bert_model
+        else None
+    )
 
     custom_result = compute_custom_metrics(
         questions, ground_truths,
@@ -405,7 +436,6 @@ def run_all_benchmarks() -> list[BenchmarkResultExtended]:
 
     # Vector stores are persisted in .chroma/ — kept across runs to avoid re-embedding.
     console.print("\n[dim]Vector stores persisted in .chroma/[/dim]")
-    console.print("[green]All collections deleted.[/green]")
 
     wall_time = time.perf_counter() - wall_start
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

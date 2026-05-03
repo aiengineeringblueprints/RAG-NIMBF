@@ -21,9 +21,8 @@ _CHROMA_DIR = Path(".chroma")
 _chroma_client: Any = None
 _chroma_lock = threading.Lock()
 
-# Embedding cache: keyed by a hash of (embedding_model_name, chunk_size,
-# chunk_overlap, chunking_strategy, dataset_name).  Stores the already-built
-# Chroma vector store so it can be reused when the same combination appears again.
+# Embedding cache: keyed by every input that can affect retrieval contents.
+# Stores already-built Chroma vector stores so repeated configs skip embedding.
 _vector_store_cache: dict[str, Chroma] = {}
 
 
@@ -33,10 +32,19 @@ def _cache_key(
     chunk_overlap: int,
     chunking_strategy: str,
     dataset_name: str = "",
+    *,
+    embedding_provider: str = "",
+    dataset_subset: str = "",
+    dataset_sample_size: int | None = None,
+    corpus_fingerprint: str = "",
 ) -> str:
     """Deterministic key derived from the parameters that affect embeddings."""
-    raw = f"{embedding_model_name}|{chunk_size}|{chunk_overlap}|{chunking_strategy}|{dataset_name}"
-    return hashlib.sha256(raw.encode()).hexdigest()[:24]
+    raw = (
+        f"{embedding_provider}|{embedding_model_name}|{chunk_size}|"
+        f"{chunk_overlap}|{chunking_strategy}|{dataset_name}|"
+        f"{dataset_subset}|{dataset_sample_size}|{corpus_fingerprint}"
+    )
+    return hashlib.sha256(raw.encode()).hexdigest()
 
 
 def _get_client() -> Any:

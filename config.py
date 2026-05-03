@@ -62,6 +62,7 @@ class BenchmarkConfig:
     dataset_sample_size: int
     eval_critic_llm: str
     eval_critic_embedding: str
+    custom_metrics_bert_model: str | None = None
     # Prompt template
     prompt_template: str = "concise"
     # Reranker
@@ -178,6 +179,10 @@ def get_all_combinations() -> list[BenchmarkConfig]:
         "EVAL_CRITIC_EMBEDDING",
         os.getenv("EMBEDDING_MODELS", "nomic-embed-text:latest").split(",")[0].strip(),
     )
+    custom_metrics_bert_model = os.getenv("CUSTOM_METRICS_BERT_MODEL", "roberta-large").strip() or None
+    _bert_enabled = os.getenv("CUSTOM_METRICS_BERTSCORE_ENABLED", "true").strip().lower()
+    if _bert_enabled in ("0", "false", "no", "off"):
+        custom_metrics_bert_model = None
 
     # Per-role URLs (fall back to shared defaults when not set)
     llm_ollama_base_url = os.getenv("LLM_OLLAMA_BASE_URL") or None
@@ -312,6 +317,7 @@ def get_all_combinations() -> list[BenchmarkConfig]:
             dataset_sample_size=dataset_sample_size,
             eval_critic_llm=eval_critic_llm,
             eval_critic_embedding=eval_critic_embedding,
+            custom_metrics_bert_model=custom_metrics_bert_model,
             reranker_model=reranker,
             reranker_top_k=reranker_top_k,
             prompt_template=tmpl,

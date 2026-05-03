@@ -8,6 +8,7 @@ by the benchmark_runner node, not by the LLM.
 from __future__ import annotations
 
 import json
+import hashlib
 import logging
 import os
 import subprocess
@@ -23,6 +24,20 @@ from agentic.state import AgentState, ExplorationConfig, ExplorationResult
 
 console = Console()
 logger = logging.getLogger(__name__)
+
+
+def _content_fingerprint(items: list[dict]) -> str:
+    digest = hashlib.sha256()
+    for item in items:
+        digest.update(str(item.get("id", "")).encode())
+        digest.update(b"\0")
+        digest.update(str(item.get("question", "")).encode())
+        digest.update(b"\0")
+        digest.update(str(item.get("context", "")).encode())
+        digest.update(b"\0")
+        digest.update(str(item.get("ground_truth", "")).encode())
+        digest.update(b"\0")
+    return digest.hexdigest()
 
 
 # ---------------------------------------------------------------------------
@@ -157,13 +172,17 @@ def run_full_pipeline(
             "EVAL_CRITIC_EMBEDDING",
             os.getenv("EMBEDDING_MODELS", "nomic-embed-text:latest").split(",")[0].strip(),
         ),
+        custom_metrics_bert_model=(
+            None if os.getenv("CUSTOM_METRICS_BERTSCORE_ENABLED", "true").strip().lower()
+            in ("0", "false", "no", "off")
+            else os.getenv("CUSTOM_METRICS_BERT_MODEL", "roberta-large").strip() or None
+        ),
         reranker_top_k=int(os.getenv("RERANKER_TOP_K", "3")),
         semantic_breakpoint_type=os.getenv("SEMANTIC_BREAKPOINT_TYPE", "percentile"),
         semantic_breakpoint_amount=int(os.getenv("SEMANTIC_BREAKPOINT_AMOUNT", "95")),
     )
 
     config_label = bench_config.name
-    collection_name = config_label.replace(":", "_").replace("/", "_")
     console.print(f"\n[bold yellow]>>> Agent running: {config_label}[/bold yellow]")
 
     # Load data (cached in state)
@@ -208,7 +227,13 @@ def run_full_pipeline(
             bench_config.chunk_size,
             bench_config.chunk_overlap,
             bench_config.chunking_strategy,
+            dataset_name=bench_config.dataset_name,
+            embedding_provider=bench_config.embedding_provider,
+            dataset_subset=bench_config.dataset_subset,
+            dataset_sample_size=bench_config.dataset_sample_size,
+            corpus_fingerprint=_content_fingerprint(data),
         )
+        collection_name = f"rag_{cache_k[:24]}"
         vector_store = build_vector_store(
             chunks, bench_config.embedding_model, collection_name,
             ollama_base_url=bench_config.embedding_base_url(),
@@ -310,8 +335,11 @@ def run_full_pipeline(
         )
         _embed_fn = _emb_model.embed_query
 
-        from sentence_transformers import SentenceTransformer
-        _bert_model = SentenceTransformer("roberta-large")
+        _bert_model = None
+        if bench_config.custom_metrics_bert_model:
+            from main import _get_bert_model
+
+            _bert_model = _get_bert_model(bench_config.custom_metrics_bert_model)
 
         custom_result = compute_custom_metrics(
             questions, ground_truths,
