@@ -95,9 +95,9 @@ This is dead code that should be removed or properly implemented.
 **File:** `.env`
 
 ```
-LLM_OLLAMA_API_KEY=super-geheimes-passwort-123
-EVAL_CRITIC_OPENAI_COMPAT_API_KEY=sk-nweeger-65319c13-5c86-40c6-972c-f2ebb95ebed8
-OPENAI_COMPAT_API_KEY=dummy
+LLM_OLLAMA_API_KEY=<redacted>
+EVAL_CRITIC_OPENAI_COMPAT_API_KEY=<redacted>
+OPENAI_COMPAT_API_KEY=<redacted>
 ```
 
 While `.env` is in `.gitignore`, this is still risky on shared machines. Consider using a proper secrets manager or system-level environment variables.
@@ -107,7 +107,7 @@ While `.env` is in `.gitignore`, this is still risky on shared machines. Conside
 **File:** `.env:15`
 
 ```
-LLM_OLLAMA_BASE_URL=http://141.39.193.218/ollama
+LLM_OLLAMA_BASE_URL=<redacted-internal-url>
 ```
 
 Internal network topology is exposed in configuration.

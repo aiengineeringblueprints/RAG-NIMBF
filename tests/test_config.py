@@ -246,7 +246,7 @@ class TestGetAllCombinations:
 
     @patch.dict(os.environ, {
         "LLM_MODELS": "ollama:gpt-oss:20b",
-        "OLLAMA_BASE_URL": "http://141.39.193.218/ollama",
+        "OLLAMA_BASE_URL": "http://example.local/ollama",
         "OLLAMA_API_KEY": "super",
         "OPENAI_COMPAT_BASE_URL": "https://optimaise.ddnss.de/v1",
         "OPENAI_COMPAT_API_KEY": "",
