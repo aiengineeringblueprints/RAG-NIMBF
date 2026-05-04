@@ -85,16 +85,16 @@
 | 52       | Qwen3.5-397B | Semantic  | 1000 | 100     | MMR        | Detailed |                 | No                  | nomic-embed-text | squad   | 0.944 | -     | -     | -     | 0.910 | 100 | Getestet    |
 | 53       | Qwen3.5-397B | Semantic  | 1000 | 200     | Similarity | Concise  | 12              | No                  | nomic-embed-text | squad   | 0.872 | -     | -     | -     | 0.960 | 100 | Getestet    |
 | 54       | Qwen3.5-397B | Semantic  | 1000 | 200     | Similarity | Detailed | 12              | No                  | nomic-embed-text | squad   | 0.941 | -     | -     | -     | 0.960 | 100 | Getestet    |
-| 55       | Qwen3.5-397B | Semantic  | 1000 | 200     | MMR        | Concise  |                 |                     | nomic-embed-text |         | -     | -     | -     | -     | -     | -   | Offen       |
-| 56       | Qwen3.5-397B | Semantic  | 1000 | 200     | MMR        | Detailed |                 |                     | nomic-embed-text |         | -     | -     | -     | -     | -     | -   | Offen       |
+| 55       | Qwen3.5-397B | Semantic  | 1000 | 200     | MMR        | Concise  |                 | No                  | nomic-embed-text | squad   | 0.782 | -     | -     | 0.91  | 0.707 | 100 | Getestet    |
+| 56       | Qwen3.5-397B | Semantic  | 1000 | 200     | MMR        | Detailed |                 | No                  | nomic-embed-text | squad   | 0.947 | -     | -     | 0.91  | 0.653 | 100 | Getestet    |
 | 57       | Qwen3.5-397B | Semantic  | 500  | 100     | Similarity | Concise  | 12              | No                  | nomic-embed-text | squad   | 0.872 | -     | -     | -     | 0.960 | 100 | Getestet    |
 | 58       | Qwen3.5-397B | Semantic  | 500  | 100     | Similarity | Detailed | 12              | No                  | nomic-embed-text | squad   | 0.948 | -     | -     | -     | 0.960 | 100 | Getestet    |
-| 59       | Qwen3.5-397B | Semantic  | 500  | 100     | MMR        | Concise  |                 |                     | nomic-embed-text |         | 0.887 | 0.521 | 0.386 | 0.607 | 0.470 | 100 | Getestet    |
-| 60       | Qwen3.5-397B | Semantic  | 500  | 100     | MMR        | Detailed |                 |                     | nomic-embed-text |         | -     | -     | -     | -     | -     | -   | Offen       |
+| 59       | Qwen3.5-397B | Semantic  | 500  | 100     | MMR        | Concise  |                 | No                  | nomic-embed-text | squad   | 0.787 | -     | -     | 0.91  | 0.707 | 100 | Getestet    |
+| 60       | Qwen3.5-397B | Semantic  | 500  | 100     | MMR        | Detailed |                 | No                  | nomic-embed-text | squad   | 0.944 | -     | -     | 0.91  | 0.653 | 100 | Getestet    |
 | 61       | Qwen3.5-397B | Semantic  | 500  | 200     | Similarity | Concise  | 12              | No                  | nomic-embed-text | squad   | 0.872 | -     | -     | -     | 0.960 | 100 | Getestet    |
 | 62       | Qwen3.5-397B | Semantic  | 500  | 200     | Similarity | Detailed | 12              | No                  | nomic-embed-text | squad   | 0.945 | -     | -     | -     | 0.960 | 100 | Getestet    |
-| 63       | Qwen3.5-397B | Semantic  | 500  | 200     | MMR        | Concise  |                 |                     | nomic-embed-text |         | -     | -     | -     | -     | -     | -   | Offen       |
-| 64       | Qwen3.5-397B | Semantic  | 500  | 200     | MMR        | Detailed |                 |                     | nomic-embed-text |         | -     | -     | -     | -     | -     | -   | Offen       |
+| 63       | Qwen3.5-397B | Semantic  | 500  | 200     | MMR        | Concise  |                 | No                  | nomic-embed-text | squad   | 0.787 | -     | -     | 0.91  | 0.707 | 100 | Getestet    |
+| 64       | Qwen3.5-397B | Semantic  | 500  | 200     | MMR        | Detailed |                 | No                  | nomic-embed-text | squad   | 0.944 | -     | -     | 0.91  | 0.653 | 100 | Getestet    |
 | 65       | GPT-OSS-20B  | Recursive | 1000 | 100     | Similarity | Concise  |                 |                     | nomic-embed-text |         | -     | -     | -     | -     | -     | -   | Offen       |
 | 66       | GPT-OSS-20B  | Recursive | 1000 | 100     | Similarity | Detailed |                 |                     | nomic-embed-text |         | -     | -     | -     | -     | -     | -   | Offen       |
 | 67       | GPT-OSS-20B  | Recursive | 1000 | 100     | MMR        | Concise  |                 |                     | nomic-embed-text |         | -     | -     | -     | -     | -     | -   | Offen       |
@@ -224,8 +224,14 @@ Für alle Metriken wird der mean Wert betrachtet
 | 54  | 0.74  | 0.74   | 0.222    | 0.86  | 0.703  | 0.400    | 0.90  | 0.719  | 0.542    | 0.596             | 0.474         | 0.160             | 0.235   | 0.037 | 0.427  | 0.866                | 0.885             | 0.875         |
 | 57  | 0.74  | 0.74   | 0.222    | 0.86  | 0.703  | 0.400    | 0.90  | 0.719  | 0.542    | 0.596             | 0.474         | 0.309             | 0.497   | 0.092 | 0.584  | 0.878                | 0.889             | 0.884         |
 | 58  | 0.74  | 0.74   | 0.222    | 0.86  | 0.703  | 0.400    | 0.90  | 0.719  | 0.542    | 0.596             | 0.474         | 0.162             | 0.237   | 0.038 | 0.433  | 0.875                | 0.895             | 0.885         |
+| 59  | 0.74  | 0.74   | 0.410    | 0.86  | 0.809  | 0.860    | 0.86  | 0.809  | 0.860    | 0.670             | 0.474         | 0.324             | 0.425   | 0.088 | 0.517  | 0.780                | 0.790             | 0.785         |
+| 60  | 0.74  | 0.74   | 0.410    | 0.86  | 0.809  | 0.860    | 0.86  | 0.809  | 0.860    | 0.670             | 0.474         | 0.161             | 0.234   | 0.038 | 0.415  | 0.828                | 0.846             | 0.837         |
 | 61  | 0.74  | 0.74   | 0.222    | 0.86  | 0.703  | 0.400    | 0.90  | 0.719  | 0.542    | 0.596             | 0.474         | 0.309             | 0.497   | 0.092 | 0.584  | 0.878                | 0.889             | 0.884         |
 | 62  | 0.74  | 0.74   | 0.222    | 0.86  | 0.703  | 0.400    | 0.90  | 0.719  | 0.542    | 0.596             | 0.474         | 0.161             | 0.235   | 0.037 | 0.427  | 0.866                | 0.885             | 0.875         |
+| 63  | 0.74  | 0.74   | 0.410    | 0.86  | 0.809  | 0.860    | 0.86  | 0.809  | 0.860    | 0.670             | 0.474         | 0.324             | 0.425   | 0.088 | 0.517  | 0.780                | 0.790             | 0.785         |
+| 64  | 0.74  | 0.74   | 0.410    | 0.86  | 0.809  | 0.860    | 0.86  | 0.809  | 0.860    | 0.670             | 0.474         | 0.161             | 0.234   | 0.038 | 0.415  | 0.828                | 0.846             | 0.837         |
+| 55  | 0.74  | 0.74   | 0.410    | 0.86  | 0.809  | 0.860    | 0.86  | 0.809  | 0.860    | 0.670             | 0.474         | 0.324             | 0.425   | 0.088 | 0.517  | 0.780                | 0.790             | 0.785         |
+| 56  | 0.74  | 0.74   | 0.410    | 0.86  | 0.809  | 0.860    | 0.86  | 0.809  | 0.860    | 0.670             | 0.474         | 0.161             | 0.234   | 0.038 | 0.415  | 0.828                | 0.846             | 0.837         |
 
 
 ### Empfohlene Scores:
