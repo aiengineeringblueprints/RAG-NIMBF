@@ -1,9 +1,16 @@
+import os
+
 from datasets import load_dataset
 from rich.console import Console
 
 from benchmark.dataset_adapters import get_adapter
 
 console = Console()
+
+RAGPERF_WIKIPEDIA_DATASET = "ragperf-wikipedia-nq"
+RAGPERF_WIKIPEDIA_HF_ID = "wikimedia/wikipedia"
+RAGPERF_WIKIPEDIA_CONFIG = "20231101.en"
+RAGPERF_NQ_HF_ID = "sentence-transformers/natural-questions"
 
 
 def load_benchmark_data(
@@ -66,6 +73,9 @@ def load_corpus_and_questions(
       - corpus: list of {context, metadata} dicts — all unique contexts
       - questions: list of {question, ground_truth, context, metadata} dicts
     """
+    if dataset_name == RAGPERF_WIKIPEDIA_DATASET:
+        return _load_ragperf_wikipedia_nq(sample_size=sample_size)
+
     samples = load_benchmark_data(dataset_name, subset, sample_size)
 
     seen: dict[str, int] = {}  # context text → index in corpus
@@ -85,3 +95,64 @@ def load_corpus_and_questions(
         f"for {len(samples)} questions[/green]"
     )
     return corpus, samples
+
+
+def _load_ragperf_wikipedia_nq(sample_size: int) -> tuple[list[dict], list[dict]]:
+    """Load RAGPerf-style Wikipedia corpus with Natural Questions QA pairs.
+
+    RAGPerf indexes ``wikimedia/wikipedia`` and evaluates with
+    ``sentence-transformers/natural-questions``. Natural Questions provides
+    answers, but RAGPerf does not provide gold Wikipedia document or chunk IDs.
+    """
+    corpus_size = int(
+        os.getenv("RAGPERF_WIKIPEDIA_CORPUS_SIZE", str(max(sample_size * 20, 1000)))
+    )
+
+    console.print(
+        "[bold blue]Loading RAGPerf-style Wikipedia corpus "
+        f"({RAGPERF_WIKIPEDIA_CONFIG}, {corpus_size} docs)...[/bold blue]"
+    )
+    wiki = load_dataset(RAGPERF_WIKIPEDIA_HF_ID, RAGPERF_WIKIPEDIA_CONFIG, split="train")
+    if corpus_size and corpus_size < len(wiki):
+        wiki = wiki.shuffle(seed=42).select(range(corpus_size))
+
+    corpus = [
+        {
+            "context": str(row.get("text", "")),
+            "metadata": {
+                "id": row.get("id"),
+                "title": row.get("title"),
+                "source_dataset": RAGPERF_WIKIPEDIA_HF_ID,
+                "source_config": RAGPERF_WIKIPEDIA_CONFIG,
+            },
+        }
+        for row in wiki
+        if row.get("text")
+    ]
+
+    console.print(
+        "[bold blue]Loading Natural Questions QA pairs "
+        f"({sample_size} questions)...[/bold blue]"
+    )
+    nq = load_dataset(RAGPERF_NQ_HF_ID, split="train")
+    if sample_size and sample_size < len(nq):
+        nq = nq.shuffle(seed=42).select(range(sample_size))
+
+    questions = [
+        {
+            "question": row["query"],
+            "ground_truth": str(row["answer"]),
+            "context": "",
+            "metadata": {
+                "source_dataset": RAGPERF_NQ_HF_ID,
+                "retrieval_ground_truth": "unavailable",
+            },
+        }
+        for row in nq
+    ]
+
+    console.print(
+        f"[green]Loaded {len(corpus)} Wikipedia documents and "
+        f"{len(questions)} Natural Questions QA pairs[/green]"
+    )
+    return corpus, questions

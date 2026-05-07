@@ -76,6 +76,8 @@ class BenchmarkResultExtended:
     retrieval_top_k: int | None = None
     dataset_name: str | None = None
     dataset_sample_size: int | None = None
+    stage_timings: dict[str, float] | None = None
+    vector_db_backend: str | None = None
 
 
 @dataclass(frozen=True)

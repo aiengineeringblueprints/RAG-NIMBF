@@ -215,6 +215,7 @@ mlruns/
 
 # ChromaDB persistent vector store
 .chroma/
+.lancedb/
 
 # Graphify generated graph output
 graphify-out/

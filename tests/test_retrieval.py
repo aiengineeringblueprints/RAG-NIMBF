@@ -60,6 +60,11 @@ class TestCacheKey:
         assert k1 != k2
         assert k1 != k3
 
+    def test_vector_db_backend_changes_key(self):
+        k1 = _cache_key("model", 1000, 200, "recursive", vector_db_backend="chroma")
+        k2 = _cache_key("model", 1000, 200, "recursive", vector_db_backend="lancedb")
+        assert k1 != k2
+
 
 class TestRetrieve:
     def _mock_store(self):

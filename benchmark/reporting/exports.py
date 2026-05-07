@@ -40,6 +40,8 @@ def _result_to_dict(r: BenchmarkResultExtended) -> dict:
     ):
         val = getattr(r, key)
         d[key] = val
+    d["stage_timings"] = r.stage_timings or {}
+    d["vector_db_backend"] = r.vector_db_backend
 
     # Stats summary (quality metrics only)
     d["stats"] = {
@@ -127,7 +129,11 @@ def save_csv_report(
             "ragas_context_recall": r.ragas_context_recall,
             "ragas_semantic_similarity": r.ragas_semantic_similarity,
             "total_time_seconds": r.total_time_seconds,
+            "vector_db_backend": r.vector_db_backend,
         }
+        if r.stage_timings:
+            for key, val in r.stage_timings.items():
+                row[f"stage_{key}_seconds"] = val
         # Custom metric means
         if r.custom_metric_means:
             for key, val in r.custom_metric_means.items():

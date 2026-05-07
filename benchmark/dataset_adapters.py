@@ -145,3 +145,19 @@ register(DatasetAdapter(
     preferred_split="train",
     metadata_keys=(),
 ))
+
+
+def _ragperf_wikipedia_nq_context(row: dict) -> str:
+    return str(row.get("text", ""))
+
+
+register(DatasetAdapter(
+    name="ragperf-wikipedia-nq",
+    hf_id="sentence-transformers/natural-questions",
+    question_key="query",
+    ground_truth_key="answer",
+    build_context=_ragperf_wikipedia_nq_context,
+    preferred_split="train",
+    metadata_keys=(),
+    has_shared_corpus=True,
+))
