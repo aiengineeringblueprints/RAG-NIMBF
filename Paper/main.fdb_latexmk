@@ -1,7 +1,8 @@
 # Fdb version 4
-["pdflatex"] 1777391245.02896 "/home/niclas/Schreibtisch/Projects/Benchmarking-Framework/Paper/main.tex" "main.pdf" "main" 1777391245.20691 0
+["pdflatex"] 1778152627.4488 "/home/niclas/Schreibtisch/Projects/Benchmarking-Framework/Paper/main.tex" "main.pdf" "main" 1778152627.70968 0
   "/etc/texmf/web2c/texmf.cnf" 1777386022.12607 475 c0e671620eb5563b2130f56340a5fde8 ""
   "/home/niclas/Schreibtisch/Projects/Benchmarking-Framework/Paper/main.tex" 1777387034.4085 752 8b75f63b1701c291636ce867a25fd2c2 ""
+  "/usr/share/texlive/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/jknappen/ec/ecrm1095.tfm" 1136768653 3584 929cdff2b7a8c11bd4d49fd68cb0ae70 ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/public/cm/cmr10.tfm" 1136768653 1296 45809c5a464d5f32c8f98ba97c1bb47f ""
   "/usr/share/texlive/texmf-dist/tex/context/base/mkii/supp-pdf.mkii" 1461363279 71627 94eb9990bed73c364d7f53f960cc8c5b ""
@@ -60,11 +61,11 @@
   "/usr/share/texmf/tex/latex/lm/ot1lmr.fd" 1616454256 1882 28c08db1407ebff35a658fd141753d16 ""
   "/usr/share/texmf/tex/latex/lm/t1lmr.fd" 1616454256 1867 996fe743d88a01aca041ed22cc10e1bb ""
   "/usr/share/texmf/web2c/texmf.cnf" 1707919699 40399 f2c302f7d2af602abb742093540a5834 ""
-  "/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map" 1777386024.93505 75955 f78456fd1308dc295dc476a68e28d85b ""
-  "/var/lib/texmf/web2c/pdftex/pdflatex.fmt" 1777386029 6800788 f5ab4a0b18e15f399ea858cbd6003bc6 ""
-  "main.aux" 1777391245.17707 32 3985256e7290058c681f74d7a3565a19 "pdflatex"
+  "/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map" 1777551504.76274 128028 f533b797fba58d231669ea19e894e23e ""
+  "/var/lib/texmf/web2c/pdftex/pdflatex.fmt" 1777551517 6800787 128670d6e48fd14f31ed9d6279a905a9 ""
+  "main.aux" 1778152627.66436 32 3985256e7290058c681f74d7a3565a19 "pdflatex"
   "main.tex" 1777387034.4085 752 8b75f63b1701c291636ce867a25fd2c2 ""
-  "sections/abstract.tex" 1777391244.78707 1199 ecd479057672fe208be7996f208727fe ""
+  "sections/abstract.tex" 1778152627.15538 1197 7ba3145fe276a54436424803c3aac0ee ""
   (generated)
   "main.aux"
   "main.log"

@@ -10,8 +10,9 @@ from benchmark.dataset_adapters import (
     _ragbench_context,
     _squad_ground_truth,
     _ragas_wikiqa_context,
+    _ragperf_wikipedia_nq_context,
 )
-from benchmark.dataset import load_benchmark_data
+from benchmark.dataset import load_benchmark_data, load_corpus_and_questions
 
 
 # ---------------------------------------------------------------------------
@@ -88,6 +89,16 @@ class TestRagasWikiqaContext:
         assert result == ""
 
 
+class TestRagperfWikipediaNqContext:
+    def test_text_field(self):
+        result = _ragperf_wikipedia_nq_context({"text": "Wikipedia article"})
+        assert result == "Wikipedia article"
+
+    def test_empty_row(self):
+        result = _ragperf_wikipedia_nq_context({})
+        assert result == ""
+
+
 # ---------------------------------------------------------------------------
 # Adapter registry
 # ---------------------------------------------------------------------------
@@ -119,6 +130,14 @@ class TestDatasetAdapters:
         assert adapter.ground_truth_key == "correct_answer"
         assert adapter.preferred_split == "train"
         assert adapter.requires_subset is False
+
+    def test_ragperf_wikipedia_nq_registered(self):
+        adapter = get_adapter("ragperf-wikipedia-nq")
+        assert adapter.hf_id == "sentence-transformers/natural-questions"
+        assert adapter.question_key == "query"
+        assert adapter.ground_truth_key == "answer"
+        assert adapter.preferred_split == "train"
+        assert adapter.has_shared_corpus is True
 
     def test_unknown_adapter_raises(self):
         with pytest.raises(ValueError, match="Unknown dataset"):
@@ -203,3 +222,34 @@ class TestLoadBenchmarkData:
         assert samples[0]["question"] == "What is X?"
         assert samples[0]["ground_truth"] == "Y"
         assert "doc text" in samples[0]["context"]
+
+    @patch.dict("benchmark.dataset.os.environ", {"RAGPERF_WIKIPEDIA_CORPUS_SIZE": "2"})
+    @patch("benchmark.dataset.load_dataset")
+    def test_ragperf_wikipedia_nq_loads_corpus_and_questions(self, mock_load):
+        wiki = MagicMock()
+        wiki.__len__ = MagicMock(return_value=2)
+        wiki.__iter__ = MagicMock(return_value=iter([
+            {"id": "w1", "title": "Alpha", "text": "Alpha article"},
+            {"id": "w2", "title": "Beta", "text": "Beta article"},
+        ]))
+
+        nq = MagicMock()
+        nq.__len__ = MagicMock(return_value=1)
+        nq.__iter__ = MagicMock(return_value=iter([
+            {"query": "What is Alpha?", "answer": "Alpha answer"},
+        ]))
+
+        mock_load.side_effect = [wiki, nq]
+
+        corpus, questions = load_corpus_and_questions(
+            dataset_name="ragperf-wikipedia-nq",
+            sample_size=1,
+        )
+
+        assert len(corpus) == 2
+        assert corpus[0]["context"] == "Alpha article"
+        assert corpus[0]["metadata"]["title"] == "Alpha"
+        assert len(questions) == 1
+        assert questions[0]["question"] == "What is Alpha?"
+        assert questions[0]["ground_truth"] == "Alpha answer"
+        assert questions[0]["metadata"]["retrieval_ground_truth"] == "unavailable"

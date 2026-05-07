@@ -23,7 +23,7 @@ _chroma_lock = threading.Lock()
 
 # Embedding cache: keyed by every input that can affect retrieval contents.
 # Stores already-built Chroma vector stores so repeated configs skip embedding.
-_vector_store_cache: dict[str, Chroma] = {}
+_vector_store_cache: dict[str, Any] = {}
 
 
 def _cache_key(
@@ -37,14 +37,81 @@ def _cache_key(
     dataset_subset: str = "",
     dataset_sample_size: int | None = None,
     corpus_fingerprint: str = "",
+    vector_db_backend: str = "chroma",
 ) -> str:
     """Deterministic key derived from the parameters that affect embeddings."""
     raw = (
         f"{embedding_provider}|{embedding_model_name}|{chunk_size}|"
         f"{chunk_overlap}|{chunking_strategy}|{dataset_name}|"
-        f"{dataset_subset}|{dataset_sample_size}|{corpus_fingerprint}"
+        f"{dataset_subset}|{dataset_sample_size}|{corpus_fingerprint}|"
+        f"{vector_db_backend}"
     )
     return hashlib.sha256(raw.encode()).hexdigest()
+
+
+class LanceDBVectorStore:
+    """Small LanceDB adapter with LangChain-like retrieval methods."""
+
+    def __init__(
+        self,
+        path: str,
+        table_name: str,
+        embedding_model: Any,
+        *,
+        create_if_missing: bool,
+        chunks: list[Document] | None = None,
+    ) -> None:
+        import lancedb
+
+        self.db = lancedb.connect(path)
+        self.table_name = table_name
+        self.embedding_model = embedding_model
+        existing = set(self.db.table_names())
+        if table_name in existing:
+            self.table = self.db.open_table(table_name)
+            return
+        if not create_if_missing:
+            raise RuntimeError(
+                f"LanceDB table '{table_name}' missing at {path}. "
+                "Run BENCHMARK_STAGE=index or BENCHMARK_STAGE=all first."
+            )
+        if not chunks:
+            raise RuntimeError("Cannot create LanceDB table without chunks.")
+
+        texts = [doc.page_content for doc in chunks]
+        vectors = embedding_model.embed_documents(texts)
+        data = [
+            {
+                "vector": vector,
+                "text": doc.page_content,
+                "metadata": doc.metadata,
+            }
+            for doc, vector in zip(chunks, vectors)
+        ]
+        self.table = self.db.create_table(table_name, data=data)
+
+    def similarity_search(self, query: str, k: int = 3, **_: Any) -> list[Document]:
+        vector = self.embedding_model.embed_query(query)
+        rows = self.table.search(vector).limit(k).to_list()
+        return [
+            Document(
+                page_content=str(row.get("text", "")),
+                metadata=row.get("metadata") or {},
+            )
+            for row in rows
+        ]
+
+    def max_marginal_relevance_search(
+        self,
+        query: str,
+        k: int = 3,
+        fetch_k: int = 20,
+        lambda_mult: float = 0.5,
+        **_: Any,
+    ) -> list[Document]:
+        # LanceDB search already returns ranked candidates. Keep interface
+        # compatible; full MMR can be added once we store candidate vectors.
+        return self.similarity_search(query, k=k)
 
 
 def _get_client() -> Any:
@@ -65,8 +132,11 @@ def build_vector_store(
     cache_key: str | None = None,
     *,
     embedding_provider: str = "ollama",
-) -> Chroma:
-    """Build (or retrieve from cache) a Chroma vector store.
+    vector_db_backend: str = "chroma",
+    lancedb_path: str = ".lancedb",
+    create_if_missing: bool = True,
+) -> Any:
+    """Build (or retrieve from cache) a vector store.
 
     When *cache_key* is provided, the built vector store is cached under that
     key and subsequent calls with the same key return the cached store
@@ -83,12 +153,28 @@ def build_vector_store(
                 logger.info("Reusing in-memory cached vector store (key=%s)", cache_key)
                 return cached
 
-    client = _get_client()
     embedding_model = get_embedding_model(
         embedding_model_name, ollama_base_url, ollama_api_key,
         provider=embedding_provider,
     )
 
+    if vector_db_backend == "lancedb":
+        vector_store = LanceDBVectorStore(
+            lancedb_path,
+            collection_name,
+            embedding_model,
+            create_if_missing=create_if_missing,
+            chunks=chunks,
+        )
+        if cache_key is not None:
+            with _chroma_lock:
+                _vector_store_cache[cache_key] = vector_store
+        return vector_store
+
+    if vector_db_backend != "chroma":
+        raise ValueError(f"Unsupported vector DB backend: {vector_db_backend}")
+
+    client = _get_client()
     with _chroma_lock:
         existing = [c.name for c in client.list_collections()]
         if collection_name in existing:
@@ -101,6 +187,11 @@ def build_vector_store(
             if cache_key is not None:
                 _vector_store_cache[cache_key] = vector_store
             return vector_store
+        if not create_if_missing:
+            raise RuntimeError(
+                f"Chroma collection '{collection_name}' missing. "
+                "Run BENCHMARK_STAGE=index or BENCHMARK_STAGE=all first."
+            )
 
         vector_store = Chroma(
             client=client,
@@ -119,7 +210,7 @@ def build_vector_store(
 
 @mlflow.trace(name="retrieve", span_type="func")
 def retrieve(
-    vector_store: Chroma,
+    vector_store: Any,
     query: str,
     top_k: int = 3,
     *,

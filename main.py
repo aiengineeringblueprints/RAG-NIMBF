@@ -2,6 +2,7 @@ import json
 import logging
 import time
 import hashlib
+from contextlib import contextmanager
 from functools import lru_cache
 from datetime import datetime
 from pathlib import Path
@@ -36,6 +37,17 @@ console = Console()
 logger = logging.getLogger(__name__)
 
 
+@contextmanager
+def _stage_timer(stage_timings: dict[str, float], name: str):
+    started = time.perf_counter()
+    try:
+        yield
+    finally:
+        stage_timings[name] = stage_timings.get(name, 0.0) + (
+            time.perf_counter() - started
+        )
+
+
 def _content_fingerprint(items: list[dict]) -> str:
     digest = hashlib.sha256()
     for item in items:
@@ -60,8 +72,12 @@ def _get_bert_model(model_name: str):
 def run_single_benchmark(
     config: BenchmarkConfig, data: list[dict], run_dir: Path | None = None,
     corpus: list[dict] | None = None,
+    load_data_seconds: float | None = None,
 ) -> BenchmarkResultExtended:
     run_start = time.perf_counter()
+    stage_timings: dict[str, float] = {}
+    if load_data_seconds is not None:
+        stage_timings["load_data"] = load_data_seconds
     console.print(f"\n[bold yellow]>>> Starting: {config.name}[/bold yellow]")
     chunks = []
 
@@ -77,27 +93,33 @@ def run_single_benchmark(
     # 1. Chunk + 2. Embed (only in retrieval mode)
     vector_store = None
     if config.retrieval_mode == "retrieval":
-        chunker_kwargs: dict = {}
-        semantic_emb = None
-        if config.chunking_strategy == "semantic":
-            from benchmark.embedding import get_embedding_model
+        with _stage_timer(stage_timings, "chunk"):
+            chunker_kwargs: dict = {}
+            semantic_emb = None
+            if config.chunking_strategy == "semantic":
+                from benchmark.embedding import get_embedding_model
 
-            semantic_emb = get_embedding_model(
-                config.embedding_model,
-                config.embedding_base_url(),
-                config.embedding_api_key(),
-                provider=config.embedding_provider,
+                semantic_emb = get_embedding_model(
+                    config.embedding_model,
+                    config.embedding_base_url(),
+                    config.embedding_api_key(),
+                    provider=config.embedding_provider,
+                )
+                chunker_kwargs = dict(
+                    embeddings=semantic_emb,
+                    breakpoint_threshold_type=config.semantic_breakpoint_type,
+                    breakpoint_threshold_amount=config.semantic_breakpoint_amount,
+                )
+            chunker = get_chunker(
+                config.chunking_strategy,
+                config.chunk_size,
+                config.chunk_overlap,
+                **chunker_kwargs,
             )
-            chunker_kwargs = dict(
-                embeddings=semantic_emb,
-                breakpoint_threshold_type=config.semantic_breakpoint_type,
-                breakpoint_threshold_amount=config.semantic_breakpoint_amount,
-            )
-        chunker = get_chunker(config.chunking_strategy, config.chunk_size, config.chunk_overlap, **chunker_kwargs)
 
-        # Use shared corpus if available, otherwise chunk per-question data
-        chunk_source = corpus if corpus else data
-        chunks = chunk_documents(chunker, chunk_source)
+            # Use shared corpus if available, otherwise chunk per-question data
+            chunk_source = corpus if corpus else data
+            chunks = chunk_documents(chunker, chunk_source)
         console.print(f"  [dim]Chunked into {len(chunks)} pieces[/dim]")
 
         corpus_fingerprint = _content_fingerprint(chunk_source)
@@ -111,31 +133,83 @@ def run_single_benchmark(
             dataset_subset=config.dataset_subset,
             dataset_sample_size=config.dataset_sample_size,
             corpus_fingerprint=corpus_fingerprint,
+            vector_db_backend=config.vector_db_backend,
         )
-        collection_name = f"rag_{cache_k[:24]}"
-        vector_store = build_vector_store(
-            chunks,
-            config.embedding_model,
-            collection_name,
-            ollama_base_url=config.embedding_base_url(),
-            ollama_api_key=config.embedding_api_key(),
-            cache_key=cache_k,
-            embedding_provider=config.embedding_provider,
-        )
+        collection_name = f"rag_{config.vector_db_backend}_{cache_k[:24]}"
+        with _stage_timer(stage_timings, "index"):
+            vector_store = build_vector_store(
+                chunks,
+                config.embedding_model,
+                collection_name,
+                ollama_base_url=config.embedding_base_url(),
+                ollama_api_key=config.embedding_api_key(),
+                cache_key=cache_k,
+                embedding_provider=config.embedding_provider,
+                vector_db_backend=config.vector_db_backend,
+                lancedb_path=config.lancedb_path,
+                create_if_missing=config.benchmark_stage != "query",
+            )
         console.print(f"  [dim]Vector store built[/dim]")
     else:
         console.print(f"  [dim]Direct mode — skipping chunking/retrieval[/dim]")
 
+    if config.benchmark_stage == "index":
+        total_time = time.perf_counter() - run_start
+        stage_timings["total"] = total_time
+        console.print(
+            f"[bold green]<<< Indexed: {config.name} in {total_time:.1f}s[/bold green]"
+        )
+        return BenchmarkResultExtended(
+            config_name=config.name,
+            llm_model=config.llm_model,
+            embedding_model=config.embedding_model,
+            prompt_template=config.prompt_template,
+            chunking_strategy=config.chunking_strategy,
+            chunk_size=config.chunk_size,
+            chunk_overlap=config.chunk_overlap,
+            num_chunks=len(chunks),
+            num_questions=len(data),
+            avg_ttft_seconds=0,
+            avg_tokens_per_second=0,
+            avg_gpu_utilization_pct=None,
+            avg_gpu_memory_used_mb=None,
+            ragas_faithfulness=None,
+            ragas_answer_relevancy=None,
+            ragas_answer_correctness=None,
+            ragas_context_precision=None,
+            ragas_context_recall=None,
+            ragas_semantic_similarity=None,
+            total_time_seconds=total_time,
+            per_sample=(),
+            ttft_stats=None,
+            tps_stats=None,
+            gpu_util_stats=None,
+            gpu_mem_stats=None,
+            ragas_faithfulness_stats=None,
+            ragas_answer_relevancy_stats=None,
+            ragas_answer_correctness_stats=None,
+            ragas_context_precision_stats=None,
+            ragas_context_recall_stats=None,
+            ragas_semantic_similarity_stats=None,
+            retrieval_strategy=config.retrieval_strategy,
+            retrieval_top_k=config.retrieval_top_k,
+            dataset_name=config.dataset_name,
+            dataset_sample_size=config.dataset_sample_size,
+            stage_timings=stage_timings,
+            vector_db_backend=config.vector_db_backend,
+        )
+
     # 3. Generate answers
-    llm = get_llm(
-        provider=config.llm_provider,
-        model_name=config.llm_model,
-        base_url=config.llm_base_url(),
-        api_key=config.llm_api_key(),
-        max_new_tokens=config.max_new_tokens,
-    )
-    reranker = get_reranker(config.reranker_model)
-    prompt_tmpl = get_template(config.prompt_template)
+    with _stage_timer(stage_timings, "load_models"):
+        llm = get_llm(
+            provider=config.llm_provider,
+            model_name=config.llm_model,
+            base_url=config.llm_base_url(),
+            api_key=config.llm_api_key(),
+            max_new_tokens=config.max_new_tokens,
+        )
+        reranker = get_reranker(config.reranker_model)
+        prompt_tmpl = get_template(config.prompt_template)
     questions: list[str] = []
     ground_truths: list[str] = []
     all_contexts: list[list[str]] = []
@@ -150,33 +224,37 @@ def run_single_benchmark(
             context_texts = [sample["context"]]
         else:
             if config.retrieval_use_hyde:
-                query = expand_query_with_hyde(llm, sample["question"])
+                with _stage_timer(stage_timings, "hyde"):
+                    query = expand_query_with_hyde(llm, sample["question"])
 
             if vector_store is None:
                 raise RuntimeError("Vector store missing in retrieval mode.")
-            retrieved_docs = retrieve(
-                vector_store, query, config.retrieval_top_k,
-                retrieval_strategy=config.retrieval_strategy,
-                fetch_k=config.retrieval_fetch_k,
-                mmr_lambda=config.retrieval_mmr_lambda,
-            )
+            with _stage_timer(stage_timings, "retrieve"):
+                retrieved_docs = retrieve(
+                    vector_store, query, config.retrieval_top_k,
+                    retrieval_strategy=config.retrieval_strategy,
+                    fetch_k=config.retrieval_fetch_k,
+                    mmr_lambda=config.retrieval_mmr_lambda,
+                )
 
             if reranker is not None:
-                retrieved_docs = reranker.rerank(
-                    sample["question"], retrieved_docs, config.reranker_top_k,
-                )
+                with _stage_timer(stage_timings, "rerank"):
+                    retrieved_docs = reranker.rerank(
+                        sample["question"], retrieved_docs, config.reranker_top_k,
+                    )
 
             context_texts = [doc.page_content for doc in retrieved_docs]
 
-        result = generate_answer(
-            llm, sample["question"], context_texts,
-            system_prompt=prompt_tmpl.system_prompt,
-            human_template=prompt_tmpl.human_template,
-            strip_mode=config.llm_answer_strip_mode,
-            value_fallback=config.llm_answer_value_fallback,
-            ground_truth=sample["ground_truth"],
-            prompt_template_name=config.prompt_template,
-        )
+        with _stage_timer(stage_timings, "generate"):
+            result = generate_answer(
+                llm, sample["question"], context_texts,
+                system_prompt=prompt_tmpl.system_prompt,
+                human_template=prompt_tmpl.human_template,
+                strip_mode=config.llm_answer_strip_mode,
+                value_fallback=config.llm_answer_value_fallback,
+                ground_truth=sample["ground_truth"],
+                prompt_template_name=config.prompt_template,
+            )
 
         questions.append(sample["question"])
         ground_truths.append(sample["ground_truth"])
@@ -198,24 +276,25 @@ def run_single_benchmark(
 
     # 4. Evaluate with RAGAS using a separate critic model
     console.print(f"  [dim]Running RAGAS evaluation (critic: {config.eval_critic_llm})...[/dim]")
-    eval_result = evaluate_results(
-        questions, ground_truths,
-        [r.answer for r in gen_results],
-        all_contexts,
-        llm_model=config.llm_model,
-        embedding_model=config.embedding_model,
-        critic_llm_model=config.eval_critic_llm,
-        critic_embedding_model=config.eval_critic_embedding,
-        ollama_base_url=config.ollama_base_url,
-        ollama_api_key=config.ollama_api_key,
-        openai_compat_base_url=config.openai_compat_base_url,
-        openai_compat_api_key=config.openai_compat_api_key,
-        critic_ollama_base_url=config.eval_critic_ollama_base_url,
-        critic_ollama_api_key=config.eval_critic_ollama_api_key,
-        critic_openai_compat_base_url=config.eval_critic_openai_compat_base_url,
-        critic_openai_compat_api_key=config.eval_critic_openai_compat_api_key,
-        critic_max_tokens=config.eval_critic_max_tokens,
-    )
+    with _stage_timer(stage_timings, "ragas_eval"):
+        eval_result = evaluate_results(
+            questions, ground_truths,
+            [r.answer for r in gen_results],
+            all_contexts,
+            llm_model=config.llm_model,
+            embedding_model=config.embedding_model,
+            critic_llm_model=config.eval_critic_llm,
+            critic_embedding_model=config.eval_critic_embedding,
+            ollama_base_url=config.ollama_base_url,
+            ollama_api_key=config.ollama_api_key,
+            openai_compat_base_url=config.openai_compat_base_url,
+            openai_compat_api_key=config.openai_compat_api_key,
+            critic_ollama_base_url=config.eval_critic_ollama_base_url,
+            critic_ollama_api_key=config.eval_critic_ollama_api_key,
+            critic_openai_compat_base_url=config.eval_critic_openai_compat_base_url,
+            critic_openai_compat_api_key=config.eval_critic_openai_compat_api_key,
+            critic_max_tokens=config.eval_critic_max_tokens,
+        )
 
     if eval_result.error:
         console.print(f"  [red]RAGAS evaluation failed: {eval_result.error}[/red]")
@@ -230,33 +309,35 @@ def run_single_benchmark(
     
     # Reuse or create embedding model for IR relevance detection + context_relevance
     from benchmark.embedding import get_embedding_model
-    _emb_model = get_embedding_model(
-        config.embedding_model,
-        config.embedding_base_url(),
-        config.embedding_api_key(),
-        provider=config.embedding_provider,
-    )
-    _embed_fn = _emb_model.embed_query
+    with _stage_timer(stage_timings, "custom_metrics"):
+        _emb_model = get_embedding_model(
+            config.embedding_model,
+            config.embedding_base_url(),
+            config.embedding_api_key(),
+            provider=config.embedding_provider,
+        )
+        _embed_fn = _emb_model.embed_query
 
-    _bert_model = (
-        _get_bert_model(config.custom_metrics_bert_model)
-        if config.custom_metrics_bert_model
-        else None
-    )
+        _bert_model = (
+            _get_bert_model(config.custom_metrics_bert_model)
+            if config.custom_metrics_bert_model
+            else None
+        )
 
-    custom_result = compute_custom_metrics(
-        questions, ground_truths,
-        [r.answer for r in gen_results],
-        all_contexts,
-        embed_fn=_embed_fn,
-        bert_model=_bert_model,
-    )
+        custom_result = compute_custom_metrics(
+            questions, ground_truths,
+            [r.answer for r in gen_results],
+            all_contexts,
+            embed_fn=_embed_fn,
+            bert_model=_bert_model,
+        )
     if custom_result.error:
         console.print(f"  [yellow]Custom metrics error: {custom_result.error}[/yellow]")
     else:
         console.print(f"  [dim]Custom metrics computed: {', '.join(custom_result.metric_means.keys())}[/dim]")
 
     total_time = time.perf_counter() - run_start
+    stage_timings["total"] = total_time
     console.print(f"[bold green]<<< Finished: {config.name} in {total_time:.1f}s[/bold green]")
 
     # 5. Build per-sample results
@@ -364,6 +445,8 @@ def run_single_benchmark(
         retrieval_top_k=config.retrieval_top_k,
         dataset_name=config.dataset_name,
         dataset_sample_size=config.dataset_sample_size,
+        stage_timings=stage_timings,
+        vector_db_backend=config.vector_db_backend,
     )
 
 
@@ -395,24 +478,30 @@ def _save_config_result(result: BenchmarkResultExtended, run_dir: Path) -> None:
 
 def run_all_benchmarks() -> list[BenchmarkResultExtended]:
     configs = get_all_combinations()
-    console.print(f"[bold]Running {len(configs)} benchmark configuration(s)[/bold]")
+    console.print(
+        f"[bold]Running {len(configs)} benchmark configuration(s) "
+        f"(stage: {configs[0].benchmark_stage}, vector DB: {configs[0].vector_db_backend})[/bold]"
+    )
 
     # Load data — use shared corpus for datasets that support it
-    from benchmark.dataset_adapters import get_adapter
-    adapter = get_adapter(configs[0].dataset_name)
-    corpus: list[dict] | None = None
-    if adapter.has_shared_corpus:
-        corpus, data = load_corpus_and_questions(
-            dataset_name=configs[0].dataset_name,
-            subset=configs[0].dataset_subset or None,
-            sample_size=configs[0].dataset_sample_size,
-        )
-    else:
-        data = load_benchmark_data(
-            dataset_name=configs[0].dataset_name,
-            subset=configs[0].dataset_subset or None,
-            sample_size=configs[0].dataset_sample_size,
-        )
+    load_stage: dict[str, float] = {}
+    with _stage_timer(load_stage, "load_data"):
+        from benchmark.dataset_adapters import get_adapter
+        adapter = get_adapter(configs[0].dataset_name)
+        corpus: list[dict] | None = None
+        if adapter.has_shared_corpus:
+            corpus, data = load_corpus_and_questions(
+                dataset_name=configs[0].dataset_name,
+                subset=configs[0].dataset_subset or None,
+                sample_size=configs[0].dataset_sample_size,
+            )
+        else:
+            data = load_benchmark_data(
+                dataset_name=configs[0].dataset_name,
+                subset=configs[0].dataset_subset or None,
+                sample_size=configs[0].dataset_sample_size,
+            )
+    load_data_seconds = load_stage.get("load_data")
 
     # Create run directory up front so results are saved even if a
     # later step (MLflow, cleanup, etc.) crashes.
@@ -425,7 +514,13 @@ def run_all_benchmarks() -> list[BenchmarkResultExtended]:
     results: list[BenchmarkResultExtended] = []
     for i, config in enumerate(configs):
         console.print(f"\n[bold cyan]Config {i + 1}/{len(configs)}[/bold cyan]")
-        result = run_single_benchmark(config, data, run_dir=run_dir, corpus=corpus)
+        result = run_single_benchmark(
+            config,
+            data,
+            run_dir=run_dir,
+            corpus=corpus,
+            load_data_seconds=load_data_seconds,
+        )
 
         # Save to disk immediately (survives MLflow crashes)
         _save_config_result(result, run_dir)
@@ -434,8 +529,8 @@ def run_all_benchmarks() -> list[BenchmarkResultExtended]:
         log_genai_eval(result)
         results.append(result)
 
-    # Vector stores are persisted in .chroma/ — kept across runs to avoid re-embedding.
-    console.print("\n[dim]Vector stores persisted in .chroma/[/dim]")
+    store_path = ".chroma/" if configs[0].vector_db_backend == "chroma" else configs[0].lancedb_path
+    console.print(f"\n[dim]Vector stores persisted in {store_path}[/dim]")
 
     wall_time = time.perf_counter() - wall_start
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

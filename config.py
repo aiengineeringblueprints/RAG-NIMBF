@@ -81,6 +81,9 @@ class BenchmarkConfig:
     # Semantic chunking
     semantic_breakpoint_type: str = "percentile"    # percentile | standard_deviation | interquartile
     semantic_breakpoint_amount: int = 95
+    vector_db_backend: str = "chroma"  # chroma | lancedb
+    lancedb_path: str = ".lancedb"
+    benchmark_stage: str = "all"  # all | index | query
 
     @property
     def name(self) -> str:
@@ -97,6 +100,8 @@ class BenchmarkConfig:
             parts += "_hyde"
         if self.retrieval_mode == "direct":
             parts += "_direct"
+        if self.vector_db_backend != "chroma":
+            parts += f"_{self.vector_db_backend}"
         return parts
 
     @property
@@ -258,6 +263,21 @@ def get_all_combinations() -> list[BenchmarkConfig]:
     semantic_breakpoint_amount = int(os.getenv("SEMANTIC_BREAKPOINT_AMOUNT", "95"))
     _validate_positive_int(semantic_breakpoint_amount, "SEMANTIC_BREAKPOINT_AMOUNT")
 
+    vector_db_backend = os.getenv("VECTOR_DB_BACKEND", "chroma").strip().lower()
+    if vector_db_backend not in ("chroma", "lancedb"):
+        raise ValueError(
+            f"Invalid VECTOR_DB_BACKEND={vector_db_backend!r}. Use: chroma, lancedb"
+        )
+    lancedb_path = os.getenv("LANCEDB_PATH", ".lancedb").strip() or ".lancedb"
+
+    benchmark_stage = os.getenv("BENCHMARK_STAGE", "all").strip().lower()
+    if benchmark_stage not in ("all", "index", "query"):
+        raise ValueError(
+            f"Invalid BENCHMARK_STAGE={benchmark_stage!r}. Use: all, index, query"
+        )
+    if benchmark_stage == "index" and retrieval_mode == "direct":
+        raise ValueError("BENCHMARK_STAGE=index requires RETRIEVAL_MODE=retrieval")
+
     # Validate integer values
     for cs in chunk_sizes:
         _validate_positive_int(cs, "CHUNK_SIZES value")
@@ -326,6 +346,9 @@ def get_all_combinations() -> list[BenchmarkConfig]:
             semantic_breakpoint_type=semantic_breakpoint_type,
             semantic_breakpoint_amount=semantic_breakpoint_amount,
             retrieval_mode=retrieval_mode,
+            vector_db_backend=vector_db_backend,
+            lancedb_path=lancedb_path,
+            benchmark_stage=benchmark_stage,
         )
         for (provider, model_name), emb, cs, co, strat, reranker, tmpl in combos
     ]

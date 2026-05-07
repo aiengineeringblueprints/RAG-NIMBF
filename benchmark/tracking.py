@@ -87,6 +87,8 @@ def _make_tags(result: BenchmarkResultExtended) -> dict[str, str]:
         tags["retrieval_top_k"] = str(result.retrieval_top_k)
     if result.dataset_name:
         tags["dataset_name"] = result.dataset_name
+    if result.vector_db_backend:
+        tags["vector_db_backend"] = result.vector_db_backend
     return tags
 
 
@@ -119,6 +121,8 @@ def log_benchmark_run(result: BenchmarkResultExtended) -> None:
         params["dataset_name"] = result.dataset_name
     if result.dataset_sample_size is not None:
         params["dataset_sample_size"] = result.dataset_sample_size
+    if result.vector_db_backend:
+        params["vector_db_backend"] = result.vector_db_backend
 
     metrics: dict[str, float] = {
         "avg_ttft_seconds": result.avg_ttft_seconds,
@@ -131,6 +135,10 @@ def log_benchmark_run(result: BenchmarkResultExtended) -> None:
         metrics["avg_gpu_utilization_pct"] = result.avg_gpu_utilization_pct
     if result.avg_gpu_memory_used_mb is not None:
         metrics["avg_gpu_memory_used_mb"] = result.avg_gpu_memory_used_mb
+
+    if result.stage_timings:
+        for key, value in result.stage_timings.items():
+            metrics[f"stage_{key}_seconds"] = value
 
     # RAGAS mean metrics
     for key, value in [

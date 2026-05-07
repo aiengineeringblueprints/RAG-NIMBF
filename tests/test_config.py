@@ -216,6 +216,8 @@ class TestGetAllCombinations:
         assert len(configs) == 1
         assert configs[0].llm_provider == "ollama"
         assert configs[0].llm_model == "gemma3:4b"
+        assert configs[0].vector_db_backend == "chroma"
+        assert configs[0].benchmark_stage == "all"
 
     @patch.dict(os.environ, {
         "LLM_MODELS": "ollama:gpt-oss:20b,openai:Qwen/Qwen3-32B-AWQ",
@@ -374,3 +376,44 @@ class TestGetAllCombinations:
     def test_hyde_config_loaded(self):
         configs = get_all_combinations()
         assert configs[0].retrieval_use_hyde is True
+
+    @patch.dict(os.environ, {
+        "LLM_MODELS": "gemma3:4b",
+        "EMBEDDING_MODELS": "nomic-embed-text:latest",
+        "CHUNK_SIZES": "1000",
+        "CHUNK_OVERLAPS": "200",
+        "CHUNKING_STRATEGIES": "recursive",
+        "VECTOR_DB_BACKEND": "lancedb",
+        "LANCEDB_PATH": ".test-lancedb",
+        "BENCHMARK_STAGE": "query",
+    }, clear=False)
+    def test_backend_and_stage_loaded(self):
+        configs = get_all_combinations()
+        assert configs[0].vector_db_backend == "lancedb"
+        assert configs[0].lancedb_path == ".test-lancedb"
+        assert configs[0].benchmark_stage == "query"
+
+    @patch.dict(os.environ, {
+        "LLM_MODELS": "gemma3:4b",
+        "EMBEDDING_MODELS": "nomic-embed-text:latest",
+        "CHUNK_SIZES": "1000",
+        "CHUNK_OVERLAPS": "200",
+        "CHUNKING_STRATEGIES": "recursive",
+        "VECTOR_DB_BACKEND": "bogus",
+    }, clear=False)
+    def test_invalid_vector_db_backend_raises(self):
+        with pytest.raises(ValueError, match="VECTOR_DB_BACKEND"):
+            get_all_combinations()
+
+    @patch.dict(os.environ, {
+        "LLM_MODELS": "gemma3:4b",
+        "EMBEDDING_MODELS": "nomic-embed-text:latest",
+        "CHUNK_SIZES": "1000",
+        "CHUNK_OVERLAPS": "200",
+        "CHUNKING_STRATEGIES": "recursive",
+        "RETRIEVAL_MODE": "direct",
+        "BENCHMARK_STAGE": "index",
+    }, clear=False)
+    def test_index_stage_requires_retrieval_mode(self):
+        with pytest.raises(ValueError, match="BENCHMARK_STAGE=index"):
+            get_all_combinations()
