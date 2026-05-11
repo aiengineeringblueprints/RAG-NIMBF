@@ -25,6 +25,24 @@ Use LanceDB instead of Chroma:
 VECTOR_DB_BACKEND=lancedb LANCEDB_PATH=.lancedb python main.py
 ```
 
+Run with a local JSONL eval file:
+
+```bash
+DATASET_SOURCE=jsonl \
+DATASET_PATH=data/eval.jsonl \
+DATASET_MAPPING='{"question":"query","ground_truth":"answer","context":"ctx"}' \
+python main.py
+```
+
+Run with separate corpus and question files:
+
+```bash
+DATASET_SOURCE=corpus_jsonl \
+DATASET_CORPUS_PATH=data/corpus.jsonl \
+DATASET_QUESTIONS_PATH=data/questions.jsonl \
+python main.py
+```
+
 Run the autonomous agent:
 
 ```bash
@@ -34,7 +52,7 @@ python -m agentic.cli --agent-model qwen3:8b --max-iterations 2 --sample-size 5
 Run tests:
 
 ```bash
-python -m unittest
+.venv/bin/python -m pytest
 ```
 
 Expected local services:

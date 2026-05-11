@@ -10,7 +10,7 @@ from pathlib import Path
 from rich.console import Console
 
 from config import BenchmarkConfig, get_all_combinations
-from benchmark.dataset import load_benchmark_data, load_corpus_and_questions
+from benchmark.dataset import load_dataset_for_config
 from benchmark.chunking import get_chunker, chunk_documents
 from benchmark.retrieval import (
     build_vector_store,
@@ -483,24 +483,11 @@ def run_all_benchmarks() -> list[BenchmarkResultExtended]:
         f"(stage: {configs[0].benchmark_stage}, vector DB: {configs[0].vector_db_backend})[/bold]"
     )
 
-    # Load data — use shared corpus for datasets that support it
+    # Load data. Built-in datasets, arbitrary HF datasets, JSONL/CSV files,
+    # and split corpus/question JSONL sources all normalize to the same shape.
     load_stage: dict[str, float] = {}
     with _stage_timer(load_stage, "load_data"):
-        from benchmark.dataset_adapters import get_adapter
-        adapter = get_adapter(configs[0].dataset_name)
-        corpus: list[dict] | None = None
-        if adapter.has_shared_corpus:
-            corpus, data = load_corpus_and_questions(
-                dataset_name=configs[0].dataset_name,
-                subset=configs[0].dataset_subset or None,
-                sample_size=configs[0].dataset_sample_size,
-            )
-        else:
-            data = load_benchmark_data(
-                dataset_name=configs[0].dataset_name,
-                subset=configs[0].dataset_subset or None,
-                sample_size=configs[0].dataset_sample_size,
-            )
+        data, corpus = load_dataset_for_config(configs[0])
     load_data_seconds = load_stage.get("load_data")
 
     # Create run directory up front so results are saved even if a

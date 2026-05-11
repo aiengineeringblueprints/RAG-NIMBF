@@ -5,7 +5,9 @@ Sources:
 - [benchmark/dataset.py](../benchmark/dataset.py)
 - [benchmark/dataset_adapters.py](../benchmark/dataset_adapters.py)
 
-Dataset adapters normalize Hugging Face datasets into records consumed by the rest of the framework:
+The dataset layer normalizes built-in Hugging Face adapters, arbitrary Hugging
+Face datasets, JSONL files, CSV files, and split corpus/question JSONL files
+into records consumed by the rest of the framework:
 
 ```text
 {
@@ -16,6 +18,24 @@ Dataset adapters normalize Hugging Face datasets into records consumed by the re
   "metadata": ...
 }
 ```
+
+Canonical types in `benchmark.dataset`:
+
+- `BenchmarkSample`: question, optional ground truth, optional context, optional
+  relevant context IDs, and metadata.
+- `CorpusDocument`: searchable document text with optional ID and metadata.
+- `DatasetMapping`: maps arbitrary source columns into the canonical schema.
+
+Custom source loaders:
+
+- `samples_from_records()` and `corpus_from_records()` normalize in-memory rows.
+- `load_jsonl_dataset()` reads one JSON object per line.
+- `load_csv_dataset()` reads CSV rows with a mapping.
+- `load_huggingface_dataset()` loads any HF dataset when mapped.
+- `load_corpus_and_questions_from_jsonl()` loads separate corpus and question
+  files for retrieval benchmarks with optional `relevant_context_ids`.
+- `load_dataset_for_config()` is the single config-driven entrypoint used by
+  `main.py`.
 
 Built-in adapters:
 
@@ -40,6 +60,15 @@ Extension pattern:
 3. Register the adapter in `REGISTRY`.
 4. Add or adjust tests in [[Testing and Coverage]].
 5. Update this note and [[Configuration Reference]].
+
+Custom data pattern:
+
+1. Prefer JSONL for durable eval sets.
+2. Use `DATASET_SOURCE=jsonl` or `DATASET_SOURCE=csv` with `DATASET_PATH`.
+3. Use `DATASET_MAPPING` JSON when columns differ from the canonical names.
+4. Use `DATASET_SOURCE=corpus_jsonl` with `DATASET_CORPUS_PATH` and
+   `DATASET_QUESTIONS_PATH` when the searchable corpus is separate from the
+   benchmark questions.
 
 Related notes:
 

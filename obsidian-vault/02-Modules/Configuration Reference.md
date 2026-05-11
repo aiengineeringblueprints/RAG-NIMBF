@@ -11,7 +11,14 @@ Core variables:
 - `CHUNK_SIZES`, `CHUNK_OVERLAPS`, `CHUNKING_STRATEGIES`
 - `RETRIEVAL_TOP_K`
 - `MAX_NEW_TOKENS`
+- `DATASET_SOURCE`: `builtin`, `huggingface`, `jsonl`, `csv`, or `corpus_jsonl`.
 - `DATASET_NAME`, `DATASET_SUBSET`, `DATASET_SAMPLE_SIZE`
+- `DATASET_PATH`: path for `jsonl` and `csv` sources.
+- `DATASET_CORPUS_PATH`, `DATASET_QUESTIONS_PATH`: split corpus/question JSONL
+  paths for `corpus_jsonl`.
+- `DATASET_SPLIT`: optional split for arbitrary Hugging Face datasets.
+- `DATASET_MAPPING`: JSON object that maps source fields into canonical fields,
+  for example `{"question":"query","ground_truth":"answer","context":"ctx"}`.
 - `EVAL_CRITIC_LLM`, `EVAL_CRITIC_EMBEDDING`, `EVAL_CRITIC_MAX_TOKENS`
 - `PROMPT_TEMPLATES`
 - `RERANKER_MODELS`, `RERANKER_TOP_K`
@@ -46,12 +53,25 @@ Answer post-processing:
 
 Validation notes:
 
-- Unknown datasets and prompt templates fail early.
+- Unknown built-in datasets and prompt templates fail early.
+- `DATASET_PATH` is required for `DATASET_SOURCE=jsonl` and
+  `DATASET_SOURCE=csv`.
+- `DATASET_CORPUS_PATH` and `DATASET_QUESTIONS_PATH` are required for
+  `DATASET_SOURCE=corpus_jsonl`.
 - Chunk overlaps must be smaller than chunk sizes.
 - Positive integer checks are enforced for sample size, token limits, chunk sizes, top-k, and semantic threshold.
 
 Dataset notes:
 
+- Built-in adapters remain the default via `DATASET_SOURCE=builtin`.
+- `DATASET_SOURCE=huggingface` allows arbitrary HF datasets; use
+  `DATASET_NAME` as the HF dataset ID, `DATASET_SUBSET` as optional config, and
+  `DATASET_MAPPING` when columns are not named `question`, `ground_truth`, and
+  `context`.
+- `DATASET_SOURCE=jsonl` and `DATASET_SOURCE=csv` load custom local eval files.
+- `DATASET_SOURCE=corpus_jsonl` loads a searchable corpus from
+  `DATASET_CORPUS_PATH` and questions from `DATASET_QUESTIONS_PATH`; question
+  rows can include `relevant_context_ids` for retrieval-ground-truth metadata.
 - `ragperf-wikipedia-nq` mirrors RAGPerf's Wikipedia evaluation setup: it indexes
   `wikimedia/wikipedia` config `20231101.en` and uses
   `sentence-transformers/natural-questions` train rows for questions and answer

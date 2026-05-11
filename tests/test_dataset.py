@@ -12,7 +12,16 @@ from benchmark.dataset_adapters import (
     _ragas_wikiqa_context,
     _ragperf_wikipedia_nq_context,
 )
-from benchmark.dataset import load_benchmark_data, load_corpus_and_questions
+from benchmark.dataset import (
+    DatasetMapping,
+    load_benchmark_data,
+    load_corpus_and_questions,
+    load_corpus_and_questions_from_jsonl,
+    load_csv_dataset,
+    load_dataset_for_config,
+    load_jsonl_dataset,
+    samples_from_records,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -253,3 +262,106 @@ class TestLoadBenchmarkData:
         assert questions[0]["question"] == "What is Alpha?"
         assert questions[0]["ground_truth"] == "Alpha answer"
         assert questions[0]["metadata"]["retrieval_ground_truth"] == "unavailable"
+
+
+class TestCustomDatasetLoaders:
+    def test_samples_from_records_with_mapping(self):
+        samples = samples_from_records(
+            [
+                {
+                    "qid": "q1",
+                    "query": "What is X?",
+                    "answer": "Y",
+                    "docs": ["doc one", "doc two"],
+                    "gold_ids": "doc-1,doc-2",
+                    "domain": "unit",
+                }
+            ],
+            mapping={
+                "id": "qid",
+                "question": "query",
+                "ground_truth": "answer",
+                "context": "docs",
+                "relevant_context_ids": "gold_ids",
+                "metadata": ["domain"],
+            },
+        )
+
+        assert samples == [
+            {
+                "id": "q1",
+                "question": "What is X?",
+                "ground_truth": "Y",
+                "context": ["doc one", "doc two"],
+                "metadata": {
+                    "id": "q1",
+                    "relevant_context_ids": ["doc-1", "doc-2"],
+                    "domain": "unit",
+                },
+            }
+        ]
+
+    def test_load_jsonl_dataset(self, tmp_path):
+        path = tmp_path / "eval.jsonl"
+        path.write_text(
+            '{"query": "Q1", "answer": "A1", "ctx": "C1"}\n'
+            '{"query": "Q2", "answer": "A2", "ctx": "C2"}\n'
+        )
+
+        samples = load_jsonl_dataset(
+            path,
+            mapping={"question": "query", "ground_truth": "answer", "context": "ctx"},
+            sample_size=1,
+        )
+
+        assert len(samples) == 1
+        assert samples[0]["question"] == "Q1"
+        assert samples[0]["ground_truth"] == "A1"
+        assert samples[0]["context"] == "C1"
+
+    def test_load_csv_dataset(self, tmp_path):
+        path = tmp_path / "eval.csv"
+        path.write_text("query,answer,ctx\nQ1,A1,C1\n")
+
+        samples = load_csv_dataset(
+            path,
+            mapping=DatasetMapping(question="query", ground_truth="answer", context="ctx"),
+        )
+
+        assert samples[0]["question"] == "Q1"
+        assert samples[0]["ground_truth"] == "A1"
+        assert samples[0]["context"] == "C1"
+
+    def test_load_corpus_and_questions_from_jsonl(self, tmp_path):
+        corpus_path = tmp_path / "corpus.jsonl"
+        questions_path = tmp_path / "questions.jsonl"
+        corpus_path.write_text('{"id": "doc-1", "text": "Document text"}\n')
+        questions_path.write_text(
+            '{"id": "q1", "question": "Q?", "ground_truth": "A", '
+            '"relevant_context_ids": ["doc-1"]}\n'
+        )
+
+        corpus, questions = load_corpus_and_questions_from_jsonl(
+            corpus_path,
+            questions_path,
+        )
+
+        assert corpus[0]["context"] == "Document text"
+        assert corpus[0]["metadata"]["id"] == "doc-1"
+        assert questions[0]["question"] == "Q?"
+        assert questions[0]["metadata"]["relevant_context_ids"] == ["doc-1"]
+
+    def test_load_dataset_for_config_jsonl(self, tmp_path):
+        path = tmp_path / "eval.jsonl"
+        path.write_text('{"query": "Q", "answer": "A", "ctx": "C"}\n')
+
+        cfg = MagicMock()
+        cfg.dataset_source = "jsonl"
+        cfg.dataset_path = str(path)
+        cfg.dataset_mapping = '{"question": "query", "ground_truth": "answer", "context": "ctx"}'
+        cfg.dataset_sample_size = 50
+
+        questions, corpus = load_dataset_for_config(cfg)
+
+        assert corpus is None
+        assert questions[0]["question"] == "Q"

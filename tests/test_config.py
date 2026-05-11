@@ -216,8 +216,38 @@ class TestGetAllCombinations:
         assert len(configs) == 1
         assert configs[0].llm_provider == "ollama"
         assert configs[0].llm_model == "gemma3:4b"
+        assert configs[0].dataset_source == "builtin"
         assert configs[0].vector_db_backend == "chroma"
         assert configs[0].benchmark_stage == "all"
+
+    @patch.dict(os.environ, {
+        "LLM_MODELS": "ollama:gemma3:4b",
+        "EMBEDDING_MODELS": "nomic-embed-text:latest",
+        "CHUNK_SIZES": "1000",
+        "CHUNK_OVERLAPS": "200",
+        "CHUNKING_STRATEGIES": "recursive",
+        "DATASET_SOURCE": "jsonl",
+        "DATASET_PATH": "eval.jsonl",
+        "DATASET_MAPPING": '{"question": "query", "ground_truth": "answer"}',
+    }, clear=False)
+    def test_custom_jsonl_dataset_config(self):
+        configs = get_all_combinations()
+        assert configs[0].dataset_source == "jsonl"
+        assert configs[0].dataset_path == "eval.jsonl"
+        assert configs[0].dataset_mapping == '{"question": "query", "ground_truth": "answer"}'
+
+    @patch.dict(os.environ, {
+        "LLM_MODELS": "ollama:gemma3:4b",
+        "EMBEDDING_MODELS": "nomic-embed-text:latest",
+        "CHUNK_SIZES": "1000",
+        "CHUNK_OVERLAPS": "200",
+        "CHUNKING_STRATEGIES": "recursive",
+        "DATASET_SOURCE": "jsonl",
+        "DATASET_PATH": "",
+    }, clear=False)
+    def test_jsonl_requires_dataset_path(self):
+        with pytest.raises(ValueError, match="DATASET_PATH is required"):
+            get_all_combinations()
 
     @patch.dict(os.environ, {
         "LLM_MODELS": "ollama:gpt-oss:20b,openai:Qwen/Qwen3-32B-AWQ",

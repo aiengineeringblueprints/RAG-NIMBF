@@ -7,7 +7,8 @@ Current inspection found 12 test files and about 201 test functions under `tests
 Coverage map:
 
 - `test_config.py`: env parsing, validation, combinations.
-- `test_dataset.py`: dataset loading/adapters.
+- `test_dataset.py`: dataset loading/adapters, canonical dataset mapping,
+  JSONL/CSV loaders, and split corpus/question JSONL loading.
 - `test_dataset_adapters.py` may not exist; adapter coverage appears folded into dataset/config tests.
 - `test_chunking.py`: splitter creation and document chunking.
 - `test_retrieval.py`: vector-store/retrieval behavior.
@@ -42,14 +43,15 @@ Thin or absent coverage:
 Recommended verification commands:
 
 ```bash
-python -m unittest
-python -m py_compile main.py config.py benchmark/*.py agentic/*.py
+.venv/bin/python -m pytest
+.venv/bin/python -m py_compile main.py config.py benchmark/*.py agentic/*.py
 ```
 
 Risk-based testing guidance:
 
 - Config/env changes: run `tests/test_config.py`.
-- Dataset changes: run dataset tests and a tiny smoke benchmark.
+- Dataset changes: run `tests/test_dataset.py`, `tests/test_config.py`, and a
+  tiny smoke benchmark.
 - Retrieval/chunking changes: run chunking/retrieval tests and inspect `.chroma/` cache behavior.
 - Generation cleanup changes: run generation tests with thinking/refusal/numeric cases.
 - Reporting/tracking changes: run reporting/model tests and a tiny benchmark to ensure outputs still write.

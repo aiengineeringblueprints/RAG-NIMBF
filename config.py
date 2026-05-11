@@ -62,6 +62,12 @@ class BenchmarkConfig:
     dataset_sample_size: int
     eval_critic_llm: str
     eval_critic_embedding: str
+    dataset_source: str = "builtin"  # builtin | huggingface | jsonl | csv | corpus_jsonl
+    dataset_path: str | None = None
+    dataset_corpus_path: str | None = None
+    dataset_questions_path: str | None = None
+    dataset_split: str | None = None
+    dataset_mapping: str | None = None
     custom_metrics_bert_model: str | None = None
     # Prompt template
     prompt_template: str = "concise"
@@ -168,16 +174,37 @@ def get_all_combinations() -> list[BenchmarkConfig]:
     ollama_api_key = os.getenv("OLLAMA_API_KEY") or None
     openai_compat_base_url = os.getenv("OPENAI_COMPAT_BASE_URL") or None
     openai_compat_api_key = os.getenv("OPENAI_COMPAT_API_KEY") or None
+    dataset_source = os.getenv("DATASET_SOURCE", "builtin").strip().lower()
+    if dataset_source not in ("builtin", "huggingface", "jsonl", "csv", "corpus_jsonl"):
+        raise ValueError(
+            f"Invalid DATASET_SOURCE={dataset_source!r}. "
+            "Use: builtin, huggingface, jsonl, csv, corpus_jsonl"
+        )
     dataset_name = os.getenv("DATASET_NAME", "t2-ragbench")
     dataset_subset = os.getenv("DATASET_SUBSET", "FinQA")
     dataset_sample_size = int(os.getenv("DATASET_SAMPLE_SIZE", "50"))
+    dataset_path = os.getenv("DATASET_PATH") or None
+    dataset_corpus_path = os.getenv("DATASET_CORPUS_PATH") or None
+    dataset_questions_path = os.getenv("DATASET_QUESTIONS_PATH") or None
+    dataset_split = os.getenv("DATASET_SPLIT") or None
+    dataset_mapping = os.getenv("DATASET_MAPPING") or None
 
-    # Validate dataset name against registry
-    from benchmark.dataset_adapters import REGISTRY
-    if dataset_name not in REGISTRY:
+    if dataset_source == "builtin":
+        # Validate dataset name against registry
+        from benchmark.dataset_adapters import REGISTRY
+        if dataset_name not in REGISTRY:
+            raise ValueError(
+                f"Unknown dataset '{dataset_name}'. "
+                f"Available: {', '.join(sorted(REGISTRY))}"
+            )
+    if dataset_source in ("jsonl", "csv") and not dataset_path:
+        raise ValueError(f"DATASET_PATH is required when DATASET_SOURCE={dataset_source}")
+    if dataset_source == "corpus_jsonl" and (
+        not dataset_corpus_path or not dataset_questions_path
+    ):
         raise ValueError(
-            f"Unknown dataset '{dataset_name}'. "
-            f"Available: {', '.join(sorted(REGISTRY))}"
+            "DATASET_CORPUS_PATH and DATASET_QUESTIONS_PATH are required when "
+            "DATASET_SOURCE=corpus_jsonl"
         )
     eval_critic_llm = os.getenv("EVAL_CRITIC_LLM", "gemma3:12b")
     eval_critic_embedding = os.getenv(
@@ -335,6 +362,12 @@ def get_all_combinations() -> list[BenchmarkConfig]:
             dataset_name=dataset_name,
             dataset_subset=dataset_subset,
             dataset_sample_size=dataset_sample_size,
+            dataset_source=dataset_source,
+            dataset_path=dataset_path,
+            dataset_corpus_path=dataset_corpus_path,
+            dataset_questions_path=dataset_questions_path,
+            dataset_split=dataset_split,
+            dataset_mapping=dataset_mapping,
             eval_critic_llm=eval_critic_llm,
             eval_critic_embedding=eval_critic_embedding,
             custom_metrics_bert_model=custom_metrics_bert_model,
