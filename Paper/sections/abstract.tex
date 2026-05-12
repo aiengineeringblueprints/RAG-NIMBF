@@ -1,12 +1,12 @@
 Retrieval-Augmented Generation (RAG) has emerged as a dominant paradigm for grounding large language model outputs in factual, domain-specific knowledge. 
 Yet practitioners face a vast, poorly understood configuration space spanning chunking strategies, embedding models, retrieval methods, and generation models. 
-We present a modular, extensible benchmarking framework designed to attach non-invasively to existing RAG pipelines and automatically evaluate pipeline configurations. 
-By covering the full RAG lifecycle and automatically exploring a large configuration space across components such as chunking, embedding, retrieval, and generation, the framework eliminates manual tuning while ensuring complete experiment reproducibility via MLflow.
-To maximize evaluation coverage, it combines LLM-based quality metrics (RAGAS) with established numerical metrics from information retrieval and natural language generation. 
+To overcome these limitations, we present a modular and extensible benchmarking framework designed to integrate seamlessly with existing RAG pipelines and automatically evaluate pipeline configurations.
+By covering the full RAG lifecycle and enabling systematic exploration of a large configuration space across all components the framework eliminates manual tuning while ensuring complete experiment reproducibility via MLflow.
+To maximize evaluation coverage, it combines LLM-based quality metrics with established numerical metrics from information retrieval and natural language generation. 
 %The framework is demonstrated on Wikipedia QA datasets, benchmarking over 100 configuration combinations across locally-served open-weight models. 
 %The results reveal non-obvious interactions between chunking granularity, retrieval strategy, and generation quality. 
 %The framework supports extensible dataset adapters, per-role endpoint configuration for distributed setups, and integrated experiment tracking via Mlflow.
 
-Multiple pre-configured dataset adapters are supported out of the box, enabling evaluation across diverse domains, with the option to integrate custom domain-specific data.
-The framework is demonstrated across multiple QA datasets, benchmarking over 100 configuration combinations on locally-served open-weight models.
-Results reveal interactions between chunking granularity, retrieval strategy, and generation quality, and demonstrate that optimal configurations differ across systems underscoring the practical value of automated, non-invasive benchmarking that can be plugged into any existing RAG deployment.
+The framework provides multiple pre-configured dataset adapters for evaluating RAG pipelines across diverse QA domains, while remaining extensible to custom domain-specific datasets. 
+Validation is performed by benchmarking more than 100 configuration combinations on locally served open-weight models.
+The proposed approach enables systematic benchmarking of configurable RAG components, while being designed with modularity and extensibility in mind, aiming to simplify integration into existing RAG pipelines with minimal modifications.

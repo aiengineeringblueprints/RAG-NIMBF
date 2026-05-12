@@ -1,5 +1,5 @@
 # Fdb version 4
-["pdflatex"] 1778502581.88547 "/home/niclas/Schreibtisch/Projects/Benchmarking-Framework/Paper/main.tex" "main.pdf" "main" 1778502582.12877 0
+["pdflatex"] 1778588010.7707 "/home/niclas/Schreibtisch/Projects/Benchmarking-Framework/Paper/main.tex" "main.pdf" "main" 1778588011.00993 0
   "/etc/texmf/web2c/texmf.cnf" 1777386022.12607 475 c0e671620eb5563b2130f56340a5fde8 ""
   "/home/niclas/Schreibtisch/Projects/Benchmarking-Framework/Paper/main.tex" 1778502581.69193 760 322836856583d71e21d26df65224d8e6 ""
   "/usr/share/texlive/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
@@ -63,9 +63,9 @@
   "/usr/share/texmf/web2c/texmf.cnf" 1707919699 40399 f2c302f7d2af602abb742093540a5834 ""
   "/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map" 1777551504.76274 128028 f533b797fba58d231669ea19e894e23e ""
   "/var/lib/texmf/web2c/pdftex/pdflatex.fmt" 1777551517 6800787 128670d6e48fd14f31ed9d6279a905a9 ""
-  "main.aux" 1778502582.08578 32 3985256e7290058c681f74d7a3565a19 "pdflatex"
+  "main.aux" 1778588010.96668 32 3985256e7290058c681f74d7a3565a19 "pdflatex"
   "main.tex" 1778502581.69193 760 322836856583d71e21d26df65224d8e6 ""
-  "sections/abstract.tex" 1778502503.84054 1965 f331e4d721b61be27dec9426f0dbb758 ""
+  "sections/abstract.tex" 1778588010.57616 1876 fce0ff0b632444fd725595d61309b36d ""
   (generated)
   "main.aux"
   "main.log"
