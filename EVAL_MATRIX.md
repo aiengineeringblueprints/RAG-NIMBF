@@ -103,12 +103,12 @@
 | 70       | GPT-OSS-20B  | Recursive | 1000 | 200     | Similarity | Detailed |                 | No                  | nomic-embed-text | squad   | 0.792 | -   | -    | -    | 0.96  | 100 | Getestet |
 | 71       | GPT-OSS-20B  | Recursive | 1000 | 200     | MMR        | Concise  |                 | No                  | nomic-embed-text | squad   | 0.773 | -   | -    | -    | 0.91  | 100 | Getestet |
 | 72       | GPT-OSS-20B  | Recursive | 1000 | 200     | MMR        | Detailed |                 | No                  | nomic-embed-text | squad   | 0.769 | -   | -    | -    | 0.91  | 100 | Getestet |
-| 73       | GPT-OSS-20B  | Recursive | 500  | 100     | Similarity | Concise  |                 |                     | nomic-embed-text |         | -     | -   | -    | -    | -     | -   | Offen    |
-| 74       | GPT-OSS-20B  | Recursive | 500  | 100     | Similarity | Detailed |                 |                     | nomic-embed-text |         | -     | -   | -    | -    | -     | -   | Offen    |
+| 73       | GPT-OSS-20B  | Recursive | 500  | 100     | Similarity | Concise  |                 | No                  | nomic-embed-text | squad   | 0.809 | -   | -    | -    | 0.93  | 100 | Getestet |
+| 74       | GPT-OSS-20B  | Recursive | 500  | 100     | Similarity | Detailed |                 | No                  | nomic-embed-text | squad   | 0.787 | -   | -    | -    | 0.93  | 100 | Getestet |
 | 75       | GPT-OSS-20B  | Recursive | 500  | 100     | MMR        | Concise  |                 | No                  | nomic-embed-text | squad   | 0.802 | -   | -    | -    | 0.900 | 100 | Getestet |
 | 76       | GPT-OSS-20B  | Recursive | 500  | 100     | MMR        | Detailed |                 | No                  | nomic-embed-text | squad   | 0.813 | -   | -    | -    | 0.900 | 100 | Getestet |
-| 77       | GPT-OSS-20B  | Recursive | 500  | 200     | Similarity | Concise  |                 |                     | nomic-embed-text |         | -     | -   | -    | -    | -     | -   | Offen    |
-| 78       | GPT-OSS-20B  | Recursive | 500  | 200     | Similarity | Detailed |                 |                     | nomic-embed-text |         | -     | -   | -    | -    | -     | -   | Offen    |
+| 77       | GPT-OSS-20B  | Recursive | 500  | 200     | Similarity | Concise  |                 | No                  | nomic-embed-text | squad   | 0.826 | -   | -    | -    | 0.94  | 100 | Getestet |
+| 78       | GPT-OSS-20B  | Recursive | 500  | 200     | Similarity | Detailed |                 | No                  | nomic-embed-text | squad   | 0.807 | -   | -    | -    | 0.94  | 100 | Getestet |
 | 79       | GPT-OSS-20B  | Recursive | 500  | 200     | MMR        | Concise  |                 | No                  | nomic-embed-text | squad   | 0.772 | -   | -    | -    | 0.890 | 100 | Getestet |
 | 80       | GPT-OSS-20B  | Recursive | 500  | 200     | MMR        | Detailed |                 | No                  | nomic-embed-text | squad   | 0.802 | -   | -    | -    | 0.890 | 100 | Getestet |
 | 81       | GPT-OSS-20B  | Semantic  | 1000 | 100     | Similarity | Concise  |                 | No                  | nomic-embed-text | squad   | 0.821 | -   | -    | -    | 0.96  | 100 | Getestet |
@@ -258,6 +258,10 @@ Für alle Metriken wird der mean Wert betrachtet
 | 90  | 0.75  | 0.75   | 0.223    | 0.85  | 0.697  | 0.392    | 0.89  | 0.713  | 0.534    | 0.596             | 0.474         | 0.220             | 0.225   | 0.011 | 0.358  | 0.883                | 0.903             | 0.893         |
 | 93  | 0.75  | 0.75   | 0.223    | 0.85  | 0.697  | 0.392    | 0.89  | 0.713  | 0.534    | 0.596             | 0.474         | 0.339             | 0.539   | 0.041 | 0.573  | 0.928                | 0.936             | 0.932         |
 | 94  | 0.75  | 0.75   | 0.223    | 0.85  | 0.697  | 0.392    | 0.89  | 0.713  | 0.534    | 0.596             | 0.474         | 0.220             | 0.225   | 0.011 | 0.358  | 0.883                | 0.903             | 0.893         |
+| 73  | 0.73  | 0.73   | 0.195    | 0.86  | 0.713  | 0.408    | 0.90  | 0.724  | 0.553    | 0.600             | 0.474         | 0.340             | 0.551   | 0.045 | 0.575  | 0.889                | 0.898             | 0.893         |
+| 74  | 0.73  | 0.73   | 0.195    | 0.86  | 0.713  | 0.408    | 0.90  | 0.724  | 0.553    | 0.600             | 0.474         | 0.232             | 0.256   | 0.012 | 0.358  | 0.902                | 0.922             | 0.912         |
+| 77  | 0.72  | 0.72   | 0.202    | 0.85  | 0.721  | 0.412    | 0.89  | 0.724  | 0.553    | 0.605             | 0.474         | 0.319             | 0.551   | 0.048 | 0.583  | 0.917                | 0.926             | 0.922         |
+| 78  | 0.72  | 0.72   | 0.202    | 0.85  | 0.721  | 0.412    | 0.89  | 0.724  | 0.553    | 0.605             | 0.474         | 0.217             | 0.212   | 0.009 | 0.324  | 0.912                | 0.932             | 0.922         |
 
 
 ### Empfohlene Scores:
