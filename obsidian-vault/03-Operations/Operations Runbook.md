@@ -37,6 +37,12 @@ Run tests:
 python -m unittest
 ```
 
+Regenerate cross-run plots, including paper/poster-ready `paper_*` figures:
+
+```bash
+python -m benchmark.reporting.run_tracker
+```
+
 Expected local services:
 
 - Ollama at `OLLAMA_BASE_URL`, default `http://localhost:11434`, for local LLMs and embeddings.

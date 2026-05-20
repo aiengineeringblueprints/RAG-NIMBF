@@ -1,0 +1,5 @@
+dataset,method,n_samples,mean_score,std_score,auroc,pearson_r,spearman_r,rmse_vs_ragas,hallucinated_pct,mann_whitney_p
+ragas-wikiqa/FinQA,ragas_faithfulness,739,0.878,0.298,1.000,1.000,1.000,0.000,10.1,0.000
+squad/FinQA,ragas_faithfulness,9922,0.855,0.324,1.000,1.000,1.000,0.000,12.1,0.000
+t2-ragbench/FinQA,ragas_faithfulness,131,0.505,0.464,1.000,1.000,1.000,0.000,49.6,0.000
+unknown/FinQA,ragas_faithfulness,99,0.232,0.416,1.000,1.000,1.000,0.000,75.8,0.000

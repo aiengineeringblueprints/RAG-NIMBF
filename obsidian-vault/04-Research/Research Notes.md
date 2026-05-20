@@ -32,6 +32,7 @@ Paper:
 - `Paper/` contains LaTeX manuscript material and references.
 - Keep high-level experimental claims aligned with `results/`, `EVAL_MATRIX.md`, and [[Evaluation and Metrics]].
 - The results section currently appears placeholder-like and should be reconciled before publication claims.
+- For paper/poster figures, prefer `results/cross_run_plots/paper_*` over the exhaustive metric gallery. These figures use a timing-free quality composite because TTFT and throughput are sparsely measured locally; runtime appears only as a labeled timing subset. Show Faithfulness separately as a validation view because it has complete coverage across current runs.
 - The discussion already flags validity threats: dataset size, evaluator reliability, domain mismatch, stochasticity, and external provider changes.
 
 Roadmap themes from optimization notes:

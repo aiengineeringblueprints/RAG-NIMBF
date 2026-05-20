@@ -1,6 +1,6 @@
 # RAG Benchmark Report
 
-**Date:** 20260417_083155
+**Date:** 20260414_215123
 **Dataset:** ragas-wikiqa/FinQA (100 samples)
 **Dataset:** FinQA (100 samples)
 **Configurations:** 1
@@ -9,33 +9,34 @@
 
 | Config | TTFT (s) | Tok/s | GPU % | Total (s) |
 |--------|----------|-------|-------|-----------|
-| semantic_cs500_co100_nomic-... | 1.267 | 0.0 | 0.2 | 1350.3 |
+| semantic_cs500_co100_nomic-... | 2.979 | 0.0 | 0.0 | 12355.7 |
 
 ## RAGAS Scores
 
 | Config | Faithfulness | Answer Rel. | Answer Corr. | Ctx Precision | Ctx Recall |
 |--------|-------------|-------------|--------------|---------------|------------|
-| semantic_cs500_co100_nomic-... | 0.871 | N/A | N/A | N/A | N/A |
-
-## Custom Metrics (IR + NLG)
-
-| Config | hit@1 | ndcg@1 | recall@1 | hit@3 | ndcg@3 | recall@3 | hit@5 | ndcg@5 | recall@5 | context_relevance | rouge_l | bleu | meteor | bert_score_precision | bert_score_recall | bert_score_f1 |
-|--------|----------|----------|----------|----------|----------|----------|----------|----------|----------|----------|----------|----------|----------|----------|----------|----------|
-| semantic_cs500_co100_nomic-... | 1.000 | 1.000 | 0.333 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 0.625 | 0.241 | 0.065 | 0.245 | 0.974 | 0.963 | 0.969 |
+| semantic_cs500_co100_nomic-... | 0.921 | 0.559 | 0.420 | 0.599 | 0.590 |
 
 ## Insights
 
-- Single configuration: semantic_cs500_co100_nomic-embed-text:latest_Qwen/Qwen3-32B-AWQ_concise_mmr-l0.5
--   Processed 100 questions across 379 chunks
--   TTFT: 1.267s (std 0.411s)
+- Single configuration: semantic_cs500_co100_nomic-embed-text:latest_Qwen3.5-397B-A17B_concise
+-   Processed 100 questions across 402 chunks
+-   TTFT: 2.979s (std 1.200s)
 -   Throughput: 0.0 tok/s (std 0.0)
--   Faithfulness: 0.871
--   Total time: 1350.3s
+-   Faithfulness: 0.921
+-   Answer Relevancy: 0.559
+-   Context Precision: 0.599
+-   Context Recall: 0.590
+-   Total time: 12355.7s
 
 ## Detailed Statistics
 
 ### semantic_cs500_co100_nomic-...
 
-- TTFT: 1.267s +/- 0.411s (range: 0.562-2.816)
+- TTFT: 2.979s +/- 1.200s (range: 0.456-5.982)
 - Throughput: 0.0 tok/s +/- 0.0
-- Faithfulness: 0.871 +/- 0.318 (range: 0.000-1.000)
+- Faithfulness: 0.921 +/- 0.260 (range: 0.000-1.000)
+- Answer Relevancy: 0.559 +/- 0.304 (range: 0.000-0.981)
+- Answer Correctness: 0.420 +/- 0.283 (range: 0.096-1.000)
+- Context Precision: 0.599 +/- 0.419 (range: 0.000-1.000)
+- Context Recall: 0.590 +/- 0.494 (range: 0.000-1.000)
