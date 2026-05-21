@@ -21,7 +21,8 @@ from benchmark.retrieval import (
 from benchmark.generation import get_llm, generate_answer, GenerationResult
 from benchmark.prompt_templates import get_template
 from benchmark.evaluation import evaluate_results
-from benchmark.custom_metrics import compute_custom_metrics
+from benchmark.custom_metrics import CustomMetricsResult, compute_custom_metrics
+from benchmark.gold_retrieval_metrics import compute_gold_doc_retrieval_metrics
 from benchmark.reranker import get_reranker
 from benchmark.reporting import generate_report
 from benchmark.reporting.exports import _result_to_dict
@@ -213,6 +214,8 @@ def run_single_benchmark(
     questions: list[str] = []
     ground_truths: list[str] = []
     all_contexts: list[list[str]] = []
+    all_retrieved_metadata: list[list[dict]] = []
+    gold_doc_ids: list[str | None] = []
     gen_results: list[GenerationResult] = []
 
     for i, sample in enumerate(data):
@@ -222,6 +225,7 @@ def run_single_benchmark(
         query = sample["question"]
         if config.retrieval_mode == "direct":
             context_texts = [sample["context"]]
+            retrieved_metadata = []
         else:
             if config.retrieval_use_hyde:
                 with _stage_timer(stage_timings, "hyde"):
@@ -244,6 +248,7 @@ def run_single_benchmark(
                     )
 
             context_texts = [doc.page_content for doc in retrieved_docs]
+            retrieved_metadata = [dict(doc.metadata) for doc in retrieved_docs]
 
         with _stage_timer(stage_timings, "generate"):
             result = generate_answer(
@@ -259,6 +264,12 @@ def run_single_benchmark(
         questions.append(sample["question"])
         ground_truths.append(sample["ground_truth"])
         all_contexts.append(context_texts)
+        all_retrieved_metadata.append(retrieved_metadata)
+        gold_doc_ids.append(
+            sample.get("metadata", {}).get("gold_doc_id")
+            if config.retrieval_mode == "retrieval"
+            else None
+        )
         gen_results.append(result)
 
         # Stream QA pair to log file after each answer
@@ -331,6 +342,12 @@ def run_single_benchmark(
             embed_fn=_embed_fn,
             bert_model=_bert_model,
         )
+        if config.custom_retrieval_metrics_mode == "gold_doc":
+            custom_result = _with_gold_doc_retrieval_metrics(
+                custom_result,
+                gold_doc_ids,
+                all_retrieved_metadata,
+            )
     if custom_result.error:
         console.print(f"  [yellow]Custom metrics error: {custom_result.error}[/yellow]")
     else:
@@ -447,6 +464,47 @@ def run_single_benchmark(
         dataset_sample_size=config.dataset_sample_size,
         stage_timings=stage_timings,
         vector_db_backend=config.vector_db_backend,
+    )
+
+
+def _with_gold_doc_retrieval_metrics(
+    custom_result: CustomMetricsResult,
+    gold_doc_ids: list[str | None],
+    retrieved_metadata: list[list[dict]],
+) -> CustomMetricsResult:
+    gold_result = compute_gold_doc_retrieval_metrics(
+        gold_doc_ids,
+        retrieved_metadata,
+    )
+    metric_means = dict(custom_result.metric_means)
+    metric_means.update(gold_result.metric_means)
+
+    samples_with_valid_scores = dict(custom_result.samples_with_valid_scores)
+    samples_with_valid_scores.update(gold_result.samples_with_valid_scores)
+
+    per_sample: list[dict[str, float | None]] = []
+    max_len = max(len(custom_result.per_sample), len(gold_result.per_sample))
+    for i in range(max_len):
+        scores: dict[str, float | None] = {}
+        if i < len(custom_result.per_sample):
+            scores.update(custom_result.per_sample[i])
+        if i < len(gold_result.per_sample):
+            scores.update(gold_result.per_sample[i])
+        per_sample.append(scores)
+
+    error = custom_result.error
+    if gold_result.skipped_samples:
+        msg = (
+            f"Gold-doc retrieval metrics skipped {gold_result.skipped_samples} "
+            "sample(s) without gold_doc_id."
+        )
+        error = f"{error}; {msg}" if error else msg
+
+    return CustomMetricsResult(
+        metric_means=metric_means,
+        per_sample=per_sample,
+        samples_with_valid_scores=samples_with_valid_scores,
+        error=error,
     )
 
 

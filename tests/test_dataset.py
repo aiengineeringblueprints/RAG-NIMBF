@@ -253,3 +253,24 @@ class TestLoadBenchmarkData:
         assert questions[0]["question"] == "What is Alpha?"
         assert questions[0]["ground_truth"] == "Alpha answer"
         assert questions[0]["metadata"]["retrieval_ground_truth"] == "unavailable"
+
+
+class TestGoldDocMetadata:
+    @patch("benchmark.dataset.load_benchmark_data")
+    def test_shared_corpus_adds_doc_and_gold_doc_ids(self, mock_load_benchmark_data):
+        mock_load_benchmark_data.return_value = [
+            {"question": "q1", "ground_truth": "a1", "context": "same context", "metadata": {"id": "1"}},
+            {"question": "q2", "ground_truth": "a2", "context": "same context", "metadata": {"id": "2"}},
+            {"question": "q3", "ground_truth": "a3", "context": "other context", "metadata": {"id": "3"}},
+        ]
+
+        corpus, questions = load_corpus_and_questions(
+            dataset_name="squad",
+            sample_size=3,
+        )
+
+        assert len(corpus) == 2
+        assert corpus[0]["metadata"]["doc_id"].startswith("squad_doc_0_")
+        assert questions[0]["metadata"]["gold_doc_id"] == corpus[0]["metadata"]["doc_id"]
+        assert questions[1]["metadata"]["gold_doc_id"] == corpus[0]["metadata"]["doc_id"]
+        assert questions[2]["metadata"]["gold_doc_id"] == corpus[1]["metadata"]["doc_id"]

@@ -2,7 +2,7 @@
 
 Test folder: [tests/](../tests)
 
-Current inspection found 12 test files and about 201 test functions under `tests/*.py`.
+Current inspection found 13 test files and about 214 test functions under `tests/*.py`.
 
 Coverage map:
 
@@ -17,6 +17,7 @@ Coverage map:
 - `test_reranker.py`: reranker behavior.
 - `test_evaluation.py`: RAGAS evaluation wrapper behavior.
 - `test_metrics.py`: custom metrics and GPU metrics.
+- `test_gold_retrieval_metrics.py`: gold-document hit@k, nDCG@k, recall@k behavior.
 - `test_models.py`: reporting/result models.
 - `test_prompt_templates.py`: built-in prompt template registry.
 

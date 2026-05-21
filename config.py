@@ -78,6 +78,7 @@ class BenchmarkConfig:
     retrieval_use_hyde: bool = False           # HyDE query expansion
     # Retrieval mode
     retrieval_mode: str = "retrieval"  # "retrieval" | "direct"
+    custom_retrieval_metrics_mode: str = "heuristic"  # heuristic | gold_doc
     # Semantic chunking
     semantic_breakpoint_type: str = "percentile"    # percentile | standard_deviation | interquartile
     semantic_breakpoint_amount: int = 95
@@ -253,6 +254,15 @@ def get_all_combinations() -> list[BenchmarkConfig]:
             f"Invalid RETRIEVAL_MODE={retrieval_mode!r}. Use: retrieval, direct"
         )
 
+    custom_retrieval_metrics_mode = os.getenv(
+        "CUSTOM_RETRIEVAL_METRICS_MODE", "heuristic"
+    ).strip().lower()
+    if custom_retrieval_metrics_mode not in ("heuristic", "gold_doc"):
+        raise ValueError(
+            "Invalid CUSTOM_RETRIEVAL_METRICS_MODE="
+            f"{custom_retrieval_metrics_mode!r}. Use: heuristic, gold_doc"
+        )
+
     # Semantic chunking
     semantic_breakpoint_type = os.getenv("SEMANTIC_BREAKPOINT_TYPE", "percentile").strip().lower()
     if semantic_breakpoint_type not in ("percentile", "standard_deviation", "interquartile"):
@@ -346,6 +356,7 @@ def get_all_combinations() -> list[BenchmarkConfig]:
             semantic_breakpoint_type=semantic_breakpoint_type,
             semantic_breakpoint_amount=semantic_breakpoint_amount,
             retrieval_mode=retrieval_mode,
+            custom_retrieval_metrics_mode=custom_retrieval_metrics_mode,
             vector_db_backend=vector_db_backend,
             lancedb_path=lancedb_path,
             benchmark_stage=benchmark_stage,

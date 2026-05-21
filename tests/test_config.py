@@ -417,3 +417,28 @@ class TestGetAllCombinations:
     def test_index_stage_requires_retrieval_mode(self):
         with pytest.raises(ValueError, match="BENCHMARK_STAGE=index"):
             get_all_combinations()
+
+
+    @patch.dict(os.environ, {
+        "LLM_MODELS": "gemma3:4b",
+        "EMBEDDING_MODELS": "nomic-embed-text:latest",
+        "CHUNK_SIZES": "1000",
+        "CHUNK_OVERLAPS": "200",
+        "CHUNKING_STRATEGIES": "recursive",
+        "CUSTOM_RETRIEVAL_METRICS_MODE": "gold_doc",
+    }, clear=False)
+    def test_custom_retrieval_metrics_mode_loaded(self):
+        configs = get_all_combinations()
+        assert configs[0].custom_retrieval_metrics_mode == "gold_doc"
+
+    @patch.dict(os.environ, {
+        "LLM_MODELS": "gemma3:4b",
+        "EMBEDDING_MODELS": "nomic-embed-text:latest",
+        "CHUNK_SIZES": "1000",
+        "CHUNK_OVERLAPS": "200",
+        "CHUNKING_STRATEGIES": "recursive",
+        "CUSTOM_RETRIEVAL_METRICS_MODE": "bogus",
+    }, clear=False)
+    def test_invalid_custom_retrieval_metrics_mode_raises(self):
+        with pytest.raises(ValueError, match="CUSTOM_RETRIEVAL_METRICS_MODE"):
+            get_all_combinations()

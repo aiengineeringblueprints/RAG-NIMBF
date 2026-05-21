@@ -30,6 +30,7 @@ Retrieval behavior:
 - `RETRIEVAL_MMR_LAMBDA`: `0.0` means diversity, `1.0` means relevance.
 - `RETRIEVAL_USE_HYDE`: enables hypothetical-answer query expansion.
 - `RETRIEVAL_MODE`: `retrieval` or `direct`.
+- `CUSTOM_RETRIEVAL_METRICS_MODE`: `heuristic` keeps the existing context-overlap retrieval-style custom metrics; `gold_doc` replaces `hit@k`, `nDCG@k`, and `recall@k` with gold-document ID scoring when samples provide `metadata.gold_doc_id`.
 - `BENCHMARK_STAGE`: `all`, `index`, or `query`.
 - `VECTOR_DB_BACKEND`: `chroma` or `lancedb`.
 - `LANCEDB_PATH`: LanceDB storage path, default `.lancedb`.

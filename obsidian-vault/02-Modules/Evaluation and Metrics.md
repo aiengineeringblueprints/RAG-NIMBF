@@ -4,6 +4,7 @@ Sources:
 
 - [benchmark/evaluation.py](../benchmark/evaluation.py)
 - [benchmark/custom_metrics.py](../benchmark/custom_metrics.py)
+- [benchmark/gold_retrieval_metrics.py](../benchmark/gold_retrieval_metrics.py)
 - [benchmark/metrics.py](../benchmark/metrics.py)
 - [benchmark/reporting/models.py](../benchmark/reporting/models.py)
 
@@ -22,7 +23,7 @@ Current `evaluate_results()` default metric set should be verified in source bef
 
 Custom metrics:
 
-- Retrieval-style metrics: hit@k, nDCG@k, recall@k.
+- Retrieval-style metrics: hit@k, nDCG@k, recall@k. With `CUSTOM_RETRIEVAL_METRICS_MODE=heuristic`, these keep the existing answer/context relevance heuristic. With `CUSTOM_RETRIEVAL_METRICS_MODE=gold_doc`, these are overwritten by document-level matches between retrieved chunk `metadata.doc_id` and sample `metadata.gold_doc_id`.
 - Context relevance.
 - Answer lexical metrics: ROUGE-L, BLEU, METEOR.
 - BERTScore precision, recall, F1 when enabled.

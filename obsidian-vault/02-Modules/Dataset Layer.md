@@ -31,6 +31,7 @@ Shared corpus behavior:
 
 - Some datasets, currently `squad` and `ragperf-wikipedia-nq`, can deduplicate or load a shared corpus and benchmark questions separately.
 - `main.py` chooses `load_corpus_and_questions()` when the adapter advertises `has_shared_corpus`.
+- Deduplicated shared-corpus datasets assign stable `metadata.doc_id` values to corpus documents and matching `metadata.gold_doc_id` values to each question. For SQuAD, this turns the original context paragraph into the gold retrieval document.
 - `ragperf-wikipedia-nq` has answer ground truth, but no gold Wikipedia document or chunk IDs. Retrieval precision/recall should be treated as proxy/judge-based rather than labeled retrieval evaluation.
 
 Extension pattern:

@@ -1,3 +1,4 @@
+import hashlib
 import os
 
 from datasets import load_dataset
@@ -78,23 +79,36 @@ def load_corpus_and_questions(
 
     samples = load_benchmark_data(dataset_name, subset, sample_size)
 
-    seen: dict[str, int] = {}  # context text → index in corpus
+    seen: dict[str, str] = {}  # context text → stable gold document ID
     corpus: list[dict] = []
 
     for sample in samples:
         ctx = sample["context"]
         if ctx not in seen:
-            seen[ctx] = len(corpus)
+            doc_id = _stable_doc_id(dataset_name, ctx, len(corpus))
+            seen[ctx] = doc_id
             corpus.append({
                 "context": ctx,
-                "metadata": sample.get("metadata", {}),
+                "metadata": {
+                    **sample.get("metadata", {}),
+                    "doc_id": doc_id,
+                },
             })
+        sample["metadata"] = {
+            **sample.get("metadata", {}),
+            "gold_doc_id": seen[ctx],
+        }
 
     console.print(
         f"[green]Deduplicated corpus: {len(corpus)} unique documents "
         f"for {len(samples)} questions[/green]"
     )
     return corpus, samples
+
+
+def _stable_doc_id(dataset_name: str, context: str, index: int) -> str:
+    digest = hashlib.sha1(context.encode("utf-8")).hexdigest()[:16]
+    return f"{dataset_name}_doc_{index}_{digest}"
 
 
 def _load_ragperf_wikipedia_nq(sample_size: int) -> tuple[list[dict], list[dict]]:
