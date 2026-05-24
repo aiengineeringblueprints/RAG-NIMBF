@@ -1,0 +1,263 @@
+\documentclass[final]{beamer}
+
+\usepackage[orientation=portrait,size=a0,scale=1.18]{beamerposter}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{ragged2e}
+\usepackage{xcolor}
+
+\graphicspath{{figures/}{../results/cross_run_plots/}}
+
+\definecolor{PosterNavy}{HTML}{233142}
+\definecolor{PosterTeal}{HTML}{0E7C7B}
+\definecolor{PosterGold}{HTML}{F2A541}
+\definecolor{PosterGray}{HTML}{F4F6F8}
+\definecolor{PosterInk}{HTML}{172026}
+
+\setbeamercolor{normal text}{fg=PosterInk,bg=white}
+\setbeamercolor{headline}{fg=white,bg=PosterNavy}
+\setbeamercolor{footline}{fg=white,bg=PosterNavy}
+\setbeamercolor{block title}{fg=white,bg=PosterTeal}
+\setbeamercolor{block body}{fg=PosterInk,bg=PosterGray}
+\setbeamerfont{block title}{size=\large,series=\bfseries}
+\setbeamerfont{block body}{size=\normalsize}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{caption}[numbered]
+
+\setbeamertemplate{headline}{
+  \leavevmode
+  \begin{beamercolorbox}[wd=\paperwidth,sep=1.2cm]{headline}
+    \begin{columns}[T,totalwidth=\paperwidth]
+      \begin{column}{0.76\paperwidth}
+        {\Huge\bfseries Evaluating Retrieval-Augmented Generation Pipelines\par}
+        \vspace{0.35cm}
+        {\Large A Non-Invasive, Modular Benchmarking Framework for Automated RAG Configuration Analysis\par}
+        \vspace{0.45cm}
+        {\large Niclas Hart, Nicolas Weeger \quad Hochschule für Angewandte Wissenschaften Ansbach \quad ARC, 03.07.2026\par}
+      \end{column}
+      \begin{column}{0.18\paperwidth}
+        \centering
+        \vspace{0.2cm}
+        \includegraphics[width=0.95\linewidth]{Logo_color_RGB_62d5456bb8114.png}
+      \end{column}
+    \end{columns}
+  \end{beamercolorbox}
+}
+
+\setbeamertemplate{footline}{
+  \leavevmode
+  \begin{beamercolorbox}[wd=\paperwidth,sep=0.55cm]{footline}
+    \large TODO: repository URL \hfill n.hart18293@hs-ansbach.de \hfill Built from reproducible benchmark artifacts
+  \end{beamercolorbox}
+}
+
+\newcommand{\metric}[2]{\textbf{\textcolor{PosterTeal}{#1}} #2}
+\newcommand{\todo}[1]{\textcolor{PosterGold}{\textbf{TODO:} #1}}
+
+\title{Evaluating Retrieval-Augmented Generation Pipelines}
+\author{Niclas Hart}
+\institute{TODO: affiliation}
+\date{July 2026}
+
+\begin{document}
+\begin{frame}[t]
+
+\begin{columns}[T,totalwidth=\textwidth]
+
+\begin{column}{0.31\textwidth}
+
+\begin{block}{Problem}
+\justifying
+Retrieval-augmented generation (RAG) systems expose a large configuration
+space. Chunking, overlap, embedding model, vector database, retrieval strategy,
+reranking, prompt template, generator model, and evaluator choice can all move
+quality and runtime in different directions.
+
+\vspace{0.4cm}
+\textbf{Research goal:} make RAG configuration choices measurable,
+repeatable, and comparable without rewriting the target pipeline for each
+experiment.
+\end{block}
+
+\begin{block}{Framework Contribution}
+\begin{itemize}
+  \item Environment-driven benchmark grids for local and OpenAI-compatible
+        model providers.
+  \item Dataset adapters normalize QA corpora into one benchmark record shape.
+  \item Reusable retrieval core supports Chroma and LanceDB vector stores,
+        similarity search, MMR, optional HyDE, and cross-encoder reranking.
+  \item Generation layer captures answer text, time to first token, throughput,
+        and optional GPU statistics.
+  \item Reporting exports JSON, CSV, Markdown, static plots, MLflow runs, and
+        optional tracing artifacts.
+\end{itemize}
+\end{block}
+
+\begin{block}{Pipeline}
+\centering
+\large
+\begin{tabular}{c}
+Configuration grid \\
+$\Downarrow$ \\
+Dataset adapter \\
+$\Downarrow$ \\
+Chunking + vector-store cache \\
+$\Downarrow$ \\
+Retrieval / reranking / prompt assembly \\
+$\Downarrow$ \\
+Generation \\
+$\Downarrow$ \\
+RAGAS + custom IR/NLG metrics \\
+$\Downarrow$ \\
+Reports, plots, MLflow, traces
+\end{tabular}
+\end{block}
+
+\begin{block}{Experiment Space}
+\begin{tabular}{ll}
+\toprule
+Dimension & Current values in project \\
+\midrule
+Chunking & recursive, semantic, text, token, markdown \\
+Chunk size & 500, 1000, 1500 and variants \\
+Overlap & 100, 200, 350 and variants \\
+Retrieval & similarity, MMR \\
+Reranking & none, MiniLM cross-encoder \\
+Embedding & \texttt{nomic-embed-text:latest} snapshot \\
+Datasets & SQuAD / WikiQA-style QA adapters \\
+Models & Qwen3, Qwen3.5, GPT-OSS local runs \\
+\bottomrule
+\end{tabular}
+\end{block}
+
+\end{column}
+
+\begin{column}{0.36\textwidth}
+
+\begin{block}{Evaluation Lenses}
+\begin{itemize}
+  \item \metric{LLM-judged quality:}{faithfulness, context recall,
+        semantic similarity, and related RAGAS fields where available.}
+  \item \metric{Retrieval quality:}{hit@k, nDCG@k, recall@k, context relevance,
+        with heuristic or gold-document modes.}
+  \item \metric{Answer similarity:}{ROUGE-L, BLEU, METEOR, and optional
+        BERTScore precision, recall, F1.}
+  \item \metric{Performance:}{total runtime, stage timings, time to first
+        token, tokens per second, and GPU usage when available.}
+\end{itemize}
+\end{block}
+
+\begin{block}{Current Local Results Snapshot}
+\justifying
+The current repository contains 63 result-summary files and 151 aggregate rows.
+The manual matrix tracks 128 planned configurations. These figures are useful
+for poster development, but final submission claims should be regenerated from
+the final benchmark export.
+
+\vspace{0.6cm}
+\begin{tabular}{p{0.45\linewidth}ccc}
+\toprule
+Observed strongest configuration & Faith. & BERT-F1 & nDCG@5 \\
+\midrule
+Qwen3.5-397B-A17B, detailed prompt, recursive chunks &
+0.955 & -- & -- \\
+Qwen/Qwen3-32B-AWQ, concise prompt, semantic chunks, MMR &
+0.871 & 0.969 & 1.000 \\
+Qwen3.5-397B-A17B, detailed prompt, semantic chunks &
+0.948 & -- & -- \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.5cm}
+\textbf{Interpretation:} the best run depends on the metric. Strong
+faithfulness, strong retrieval ranking, and strong lexical/semantic answer
+similarity do not always select the same configuration.
+\end{block}
+
+\begin{block}{Quality Ranking}
+\centering
+\includegraphics[width=0.96\linewidth]{paper_quality_ranking_top10.png}
+\end{block}
+
+\begin{block}{Prompt and Model Effects}
+\centering
+\includegraphics[width=0.96\linewidth]{paper_faithfulness_by_llm_prompt.png}
+\end{block}
+
+\end{column}
+
+\begin{column}{0.31\textwidth}
+
+\begin{block}{Retrieval Trade-Offs}
+\centering
+\includegraphics[width=0.96\linewidth]{paper_retrieval_by_strategy.png}
+
+\vspace{0.4cm}
+\justifying
+MMR can improve diversity-sensitive retrieval metrics in some runs, while
+plain similarity can preserve higher faithfulness in others. Reranking helps in
+selected settings, but adds latency and should be judged jointly with answer
+quality.
+\end{block}
+
+\begin{block}{Runtime and Engineering}
+\centering
+\includegraphics[width=0.96\linewidth]{stage_timing_breakdown.png}
+
+\vspace{0.4cm}
+\begin{itemize}
+  \item Persisted vector-store collections avoid unnecessary re-embedding.
+  \item Stage-level timings separate indexing, retrieval, generation, and
+        evaluation bottlenecks.
+  \item Sequential execution matches local GPU constraints and reduces
+        resource contention.
+\end{itemize}
+\end{block}
+
+\begin{block}{Limitations}
+\begin{itemize}
+  \item Current results are local, hardware-dependent, and partly duplicated by
+        reruns.
+  \item SQuAD/WikiQA-style corpora may not transfer to domain RAG workloads.
+  \item LLM evaluator reliability, stochastic generation, and provider changes
+        remain validity threats.
+  \item Manual matrix entries must be reconciled with generated result files
+        before publication.
+\end{itemize}
+\end{block}
+
+\begin{block}{Takeaways for Practitioners}
+\begin{enumerate}
+  \item Benchmark complete RAG configurations, not isolated components.
+  \item Report multiple metrics because each metric rewards different behavior.
+  \item Store machine-readable artifacts for every run.
+  \item Treat prompt template and retrieval strategy as first-class tuning
+        variables.
+  \item Keep limitations visible when using LLM-judged metrics.
+\end{enumerate}
+\end{block}
+
+\begin{block}{Next Steps Before Conference}
+\begin{itemize}
+  \item \todo{insert final conference name, affiliation, contact, QR code.}
+  \item \todo{rerun final benchmark export and update table/plots.}
+  \item \todo{decide whether poster story favors framework, results, or both.}
+  \item \todo{add final paper/repository link.}
+\end{itemize}
+
+\vspace{0.4cm}
+\footnotesize
+References: Lewis et al. (2020), Es et al. (2023), Rajpurkar et al. (2016),
+Lin (2004), Zhang et al. (2020). See \texttt{references.bib}.
+\end{block}
+
+\end{column}
+
+\end{columns}
+
+\end{frame}
+\end{document}

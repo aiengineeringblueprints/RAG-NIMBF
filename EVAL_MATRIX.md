@@ -127,20 +127,20 @@
 | 94       | GPT-OSS-20B  | Semantic  | 500  | 200     | Similarity | Detailed |                 | No                  | nomic-embed-text | squad   | 0.822 | -   | -    | -    | 0.96  | 100 | Getestet |
 | 95       | GPT-OSS-20B  | Semantic  | 500  | 200     | MMR        | Concise  |                 | No                  | nomic-embed-text | squad   | 0.813 | -   | -    | -    | 0.910 | 100 | Getestet |
 | 96       | GPT-OSS-20B  | Semantic  | 500  | 200     | MMR        | Detailed |                 | No                  | nomic-embed-text | squad   | 0.803 | -   | -    | -    | 0.910 | 100 | Getestet |
-| 97       | qwen3.5-think  | Recursive | 1000 | 100     | Similarity | Concise  |                 |                     | nomic-embed-text |         |       |     |      |      |       |     | Offen    |
-| 98       | qwen3.5-think  | Recursive | 1000 | 100     | Similarity | Detailed |                 |                     | nomic-embed-text |         |       |     |      |      |       |     | Offen    |
+| 97       | qwen3.5-think  | Recursive | 1000 | 100     | Similarity | Concise  |                 | No                  | nomic-embed-text | squad   | 0.87  | -   | -    | -    | 0.96  | 100 | Getestet |
+| 98       | qwen3.5-think  | Recursive | 1000 | 100     | Similarity | Detailed |                 | No                  | nomic-embed-text | squad   | 0.95  | -   | -    | -    | 0.96  | 100 | Getestet |
 | 99       | qwen3.5-think  | Recursive | 1000 | 100     | MMR        | Concise  |                 | No                  | nomic-embed-text | squad   | 0.785 | -   | -    | -    | 0.91  | 100 | Getestet |
 | 100      | qwen3.5-think  | Recursive | 1000 | 100     | MMR        | Detailed |                 | No                  | nomic-embed-text | squad   | 0.939 | -   | -    | -    | 0.91  | 100 | Getestet |
-| 101      | qwen3.5-think  | Recursive | 1000 | 200     | Similarity | Concise  |                 |                     | nomic-embed-text |         | -     | -   | -    | -    | -     | -   | Offen    |
-| 102      | qwen3.5-think  | Recursive | 1000 | 200     | Similarity | Detailed |                 |                     | nomic-embed-text |         | -     | -   | -    | -    | -     | -   | Offen    |
+| 101      | qwen3.5-think  | Recursive | 1000 | 200     | Similarity | Concise  |                 | No                  | nomic-embed-text | squad   | 0.865 | -   | -    | -    | 0.96  | 100 | Getestet |
+| 102      | qwen3.5-think  | Recursive | 1000 | 200     | Similarity | Detailed |                 | No                  | nomic-embed-text | squad   | 0.942 | -   | -    | -    | 0.96  | 100 | Getestet |
 | 103      | qwen3.5-think  | Recursive | 1000 | 200     | MMR        | Concise  |                 | No                  | nomic-embed-text | squad   | 0.775 | -   | -    | -    | 0.91  | 100 | Getestet |
 | 104      | qwen3.5-think  | Recursive | 1000 | 200     | MMR        | Detailed |                 | No                  | nomic-embed-text | squad   | 0.939 | -   | -    | -    | 0.91  | 100 | Getestet |
-| 105      | qwen3.5-think  | Recursive | 500  | 100     | Similarity | Concise  |                 |                     | nomic-embed-text |         | -     | -   | -    | -    | -     | -   | Offen    |
-| 106      | qwen3.5-think  | Recursive | 500  | 100     | Similarity | Detailed |                 |                     | nomic-embed-text |         | -     | -   | -    | -    | -     | -   | Offen    |
+| 105      | qwen3.5-think  | Recursive | 500  | 100     | Similarity | Concise  |                 | No                  | nomic-embed-text | squad   | 0.837 | -   | -    | -    | 0.93  | 100 | Getestet |
+| 106      | qwen3.5-think  | Recursive | 500  | 100     | Similarity | Detailed |                 | No                  | nomic-embed-text | squad   | 0.955 | -   | -    | -    | 0.93  | 100 | Getestet |
 | 107      | qwen3.5-think  | Recursive | 500  | 100     | MMR        | Concise  |                 | No                  | nomic-embed-text | squad   | 0.767 | -   | -    | -    | 0.90  | 100 | Getestet |
 | 108      | qwen3.5-think  | Recursive | 500  | 100     | MMR        | Detailed |                 | No                  | nomic-embed-text | squad   | 0.939 | -   | -    | -    | 0.90  | 100 | Getestet |
-| 109      | qwen3.5-think  | Recursive | 500  | 200     | Similarity | Concise  |                 |                     | nomic-embed-text |         | -     | -   | -    | -    | -     | -   | Offen    |
-| 110      | qwen3.5-think  | Recursive | 500  | 200     | Similarity | Detailed |                 |                     | nomic-embed-text |         | -     | -   | -    | -    | -     | -   | Offen    |
+| 109      | qwen3.5-think  | Recursive | 500  | 200     | Similarity | Concise  |                 | No                  | nomic-embed-text | squad   | 0.797 | -   | -    | -    | 0.94  | 100 | Getestet |
+| 110      | qwen3.5-think  | Recursive | 500  | 200     | Similarity | Detailed |                 | No                  | nomic-embed-text | squad   | 0.914 | -   | -    | -    | 0.94  | 100 | Getestet |
 | 111      | qwen3.5-think  | Recursive | 500  | 200     | MMR        | Concise  |                 | No                  | nomic-embed-text | squad   | 0.807 | -   | -    | -    | 0.89  | 100 | Getestet |
 | 112      | qwen3.5-think  | Recursive | 500  | 200     | MMR        | Detailed |                 | No                  | nomic-embed-text | squad   | 0.944 | -   | -    | -    | 0.89  | 100 | Getestet |
 | 113      | qwen3.5-think  | Semantic  | 1000 | 100     | Similarity | Concise  |                 |                     | nomic-embed-text |         | -     | -   | -    | -    | -     | -   | Offen    |
@@ -280,6 +280,14 @@ Für alle Metriken wird der mean Wert betrachtet
 | 108 | 0.74  | 0.74   | 0.368    | 0.86  | 0.805  | 0.86     | 0.86  | 0.805  | 0.86     | 0.672             | 0.474         | 0.164             | 0.230   | 0.037 | 0.412  | 0.837                | 0.855             | 0.846         |
 | 111 | 0.72  | 0.72   | 0.352    | 0.85  | 0.793  | 0.85     | 0.85  | 0.793  | 0.85     | 0.678             | 0.474         | 0.315             | 0.459   | 0.082 | 0.544  | 0.820                | 0.830             | 0.825         |
 | 112 | 0.72  | 0.72   | 0.352    | 0.85  | 0.793  | 0.85     | 0.85  | 0.793  | 0.85     | 0.678             | 0.474         | 0.166             | 0.233   | 0.039 | 0.415  | 0.837                | 0.855             | 0.846         |
+| 97  | 0.68  | 0.68   | 0.214    | 0.82  | 0.662  | 0.385    | 0.85  | 0.675  | 0.518    | 0.574             | 0.474         | 0.287             | 0.440   | 0.077 | 0.552  | 0.867                | 0.879             | 0.873         |
+| 98  | 0.68  | 0.68   | 0.214    | 0.82  | 0.662  | 0.385    | 0.85  | 0.675  | 0.518    | 0.574             | 0.474         | 0.166             | 0.239   | 0.040 | 0.433  | 0.875                | 0.895             | 0.885         |
+| 101 | 0.70  | 0.70   | 0.222    | 0.82  | 0.680  | 0.397    | 0.85  | 0.678  | 0.508    | 0.574             | 0.474         | 0.288             | 0.442   | 0.078 | 0.558  | 0.867                | 0.879             | 0.873         |
+| 102 | 0.70  | 0.70   | 0.222    | 0.82  | 0.680  | 0.397    | 0.85  | 0.678  | 0.508    | 0.574             | 0.474         | 0.164             | 0.243   | 0.040 | 0.435  | 0.876                | 0.895             | 0.885         |
+| 105 | 0.74  | 0.74   | 0.197    | 0.86  | 0.718  | 0.409    | 0.90  | 0.728  | 0.554    | 0.600             | 0.474         | 0.297             | 0.444   | 0.087 | 0.545  | 0.848                | 0.859             | 0.853         |
+| 106 | 0.74  | 0.74   | 0.197    | 0.86  | 0.718  | 0.409    | 0.90  | 0.728  | 0.554    | 0.600             | 0.474         | 0.165             | 0.234   | 0.038 | 0.421  | 0.856                | 0.875             | 0.865         |
+| 109 | 0.72  | 0.72   | 0.202    | 0.85  | 0.723  | 0.413    | 0.89  | 0.726  | 0.554    | 0.605             | 0.474         | 0.305             | 0.453   | 0.087 | 0.553  | 0.839                | 0.849             | 0.844         |
+| 110 | 0.72  | 0.72   | 0.202    | 0.85  | 0.723  | 0.413    | 0.89  | 0.726  | 0.554    | 0.605             | 0.474         | 0.167             | 0.239   | 0.038 | 0.429  | 0.856                | 0.875             | 0.866         |
 
 
 ### Empfohlene Scores:
