@@ -30,6 +30,9 @@ Benchmark matrix snapshot:
 Paper:
 
 - `Paper/` contains LaTeX manuscript material and references.
+- `Poster/` contains a first scientific conference poster draft for early July
+  2026, including a `beamerposter` source, build Makefile, starter
+  bibliography, and notes about current evidence and remaining placeholders.
 - Keep high-level experimental claims aligned with `results/`, `EVAL_MATRIX.md`, and [[Evaluation and Metrics]].
 - The results section currently appears placeholder-like and should be reconciled before publication claims.
 - The discussion already flags validity threats: dataset size, evaluator reliability, domain mismatch, stochasticity, and external provider changes.
