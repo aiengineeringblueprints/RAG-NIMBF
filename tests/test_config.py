@@ -4,7 +4,14 @@ import os
 import pytest
 from unittest.mock import patch
 
-from config import BenchmarkConfig, get_all_combinations, _parse_list, _parse_int_list, _validate_positive_int
+from config import (
+    BenchmarkConfig,
+    get_all_combinations,
+    _parse_list,
+    _parse_int_list,
+    _validate_positive_int,
+    _chunk_parameter_pairs_for_strategy,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -198,6 +205,33 @@ class TestBenchmarkConfig:
         assert cfg.semantic_breakpoint_type == "percentile"
         assert cfg.semantic_breakpoint_amount == 95
 
+    def test_semantic_name_uses_breakpoint_not_size_overlap(self):
+        cfg = _make_config(
+            chunking_strategy="semantic", chunk_size=None, chunk_overlap=None
+        )
+        assert (
+            cfg.name
+            == "semantic_bppercentile95_nomic-embed-text:latest_gemma3:4b_concise"
+        )
+        assert "_cs" not in cfg.name
+        assert "_coNone" not in cfg.name
+
+
+class TestChunkParameterPairs:
+    def test_semantic_ignores_size_and_overlap_grid(self):
+        assert _chunk_parameter_pairs_for_strategy(
+            "semantic", [500, 1000], [100, 200]
+        ) == [(None, None)]
+
+    def test_non_semantic_keeps_size_overlap_grid(self):
+        assert _chunk_parameter_pairs_for_strategy(
+            "recursive", [500, 1000], [100, 200]
+        ) == [
+            (500, 100),
+            (500, 200),
+            (1000, 100),
+            (1000, 200),
+        ]
 
 # ---------------------------------------------------------------------------
 # get_all_combinations
@@ -442,3 +476,51 @@ class TestGetAllCombinations:
     def test_invalid_custom_retrieval_metrics_mode_raises(self):
         with pytest.raises(ValueError, match="CUSTOM_RETRIEVAL_METRICS_MODE"):
             get_all_combinations()
+
+    @patch.dict(os.environ, {
+        "LLM_MODELS": "gemma3:4b",
+        "EMBEDDING_MODELS": "nomic-embed-text:latest",
+        "CHUNK_SIZES": "500,1000",
+        "CHUNK_OVERLAPS": "100,200",
+        "CHUNKING_STRATEGIES": "semantic",
+        "PROMPT_TEMPLATES": "detailed,concise",
+        "RERANKER_MODELS": "",
+    }, clear=False)
+    def test_semantic_combinations_ignore_size_overlap_grid(self):
+        configs = get_all_combinations()
+        assert len(configs) == 2
+        assert {c.prompt_template for c in configs} == {"detailed", "concise"}
+        assert {c.chunk_size for c in configs} == {None}
+        assert {c.chunk_overlap for c in configs} == {None}
+        assert all("_cs" not in c.name and "_coNone" not in c.name for c in configs)
+
+    @patch.dict(os.environ, {
+        "LLM_MODELS": "gemma3:4b",
+        "EMBEDDING_MODELS": "nomic-embed-text:latest",
+        "CHUNK_SIZES": "500,1000",
+        "CHUNK_OVERLAPS": "100,200",
+        "CHUNKING_STRATEGIES": "recursive,semantic",
+        "RERANKER_MODELS": "",
+    }, clear=False)
+    def test_mixed_chunking_only_collapses_semantic_grid(self):
+        configs = get_all_combinations()
+        recursive = [c for c in configs if c.chunking_strategy == "recursive"]
+        semantic = [c for c in configs if c.chunking_strategy == "semantic"]
+        assert len(recursive) == 4
+        assert len(semantic) == 1
+        assert semantic[0].chunk_size is None
+        assert semantic[0].chunk_overlap is None
+
+    @patch.dict(os.environ, {
+        "LLM_MODELS": "gemma3:4b",
+        "EMBEDDING_MODELS": "nomic-embed-text:latest",
+        "CHUNK_SIZES": "200",
+        "CHUNK_OVERLAPS": "200",
+        "CHUNKING_STRATEGIES": "semantic",
+        "RERANKER_MODELS": "",
+    }, clear=False)
+    def test_semantic_only_allows_ignored_overlap_equal_size(self):
+        configs = get_all_combinations()
+        assert len(configs) == 1
+        assert configs[0].chunk_size is None
+        assert configs[0].chunk_overlap is None

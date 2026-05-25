@@ -19,10 +19,12 @@ Chunking strategies:
 
 `get_chunker()` creates the configured LangChain text splitter. `chunk_documents()` converts normalized dataset rows into LangChain `Document` chunks and carries metadata forward.
 
+Semantic chunking is modeled differently from fixed-size splitters: `chunk_size` and `chunk_overlap` are ignored and reported as `null`. The benchmark grid creates only one semantic config per remaining combination, with granularity controlled by `SEMANTIC_BREAKPOINT_TYPE` and `SEMANTIC_BREAKPOINT_AMOUNT`.
+
 Retrieval:
 
 - `build_vector_store()` creates or reuses persisted Chroma collections under `.chroma/`.
-- Collection/cache keys include embedding model, provider, dataset identity, chunk settings, and a corpus fingerprint.
+- Collection/cache keys include embedding model, provider, dataset identity, effective chunk settings, and a corpus fingerprint. For semantic chunking the effective chunk settings are `null`, so ignored size/overlap environment values do not create duplicate collections.
 - `retrieve()` supports similarity search and MMR.
 - `expand_query_with_hyde()` generates a hypothetical answer to use as the retrieval query when HyDE is enabled.
 

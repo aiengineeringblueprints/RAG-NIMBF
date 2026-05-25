@@ -40,8 +40,8 @@ class BenchmarkResultExtended:
     embedding_model: str
     prompt_template: str
     chunking_strategy: str
-    chunk_size: int
-    chunk_overlap: int
+    chunk_size: int | None
+    chunk_overlap: int | None
     num_chunks: int
     num_questions: int
     avg_ttft_seconds: float

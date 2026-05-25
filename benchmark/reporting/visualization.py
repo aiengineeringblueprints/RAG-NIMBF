@@ -439,7 +439,11 @@ def _plot_parameter_heatmap_html(results: list, output_dir: Path) -> str | None:
     llm_groups: dict[str, list] = {}
     for r in results:
         llm = r.llm_model.split("/")[-1]
-        if r.ragas_faithfulness is not None:
+        if (
+            r.ragas_faithfulness is not None
+            and r.chunk_size is not None
+            and r.chunk_overlap is not None
+        ):
             llm_groups.setdefault(llm, []).append(r)
 
     if not llm_groups:
@@ -661,6 +665,8 @@ def _plot_parallel_coordinates_html(results: list, output_dir: Path) -> str | No
     records = []
 
     for r in results:
+        if r.chunk_size is None or r.chunk_overlap is None:
+            continue
         rec = {
             "chunk_size": r.chunk_size,
             "chunk_overlap": r.chunk_overlap,

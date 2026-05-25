@@ -68,7 +68,11 @@ def _make_run_name(result: BenchmarkResultExtended) -> str:
     llm = result.llm_model.split("/")[-1].replace(":", "_")
     retrieval = result.retrieval_strategy or "unknown"
     template = result.prompt_template
-    return f"{llm}_{result.chunking_strategy}_cs{result.chunk_size}_co{result.chunk_overlap}_{retrieval}_{template}"
+    if result.chunking_strategy == "semantic":
+        chunk_label = "semantic"
+    else:
+        chunk_label = f"cs{result.chunk_size}_co{result.chunk_overlap}"
+    return f"{llm}_{result.chunking_strategy}_{chunk_label}_{retrieval}_{template}"
 
 
 def _make_tags(result: BenchmarkResultExtended) -> dict[str, str]:
@@ -106,8 +110,8 @@ def log_benchmark_run(result: BenchmarkResultExtended) -> None:
     tags = _make_tags(result)
 
     params: dict[str, Any] = {
-        "chunk_size": result.chunk_size,
-        "chunk_overlap": result.chunk_overlap,
+        "chunk_size": result.chunk_size if result.chunk_size is not None else "n/a",
+        "chunk_overlap": result.chunk_overlap if result.chunk_overlap is not None else "n/a",
         "num_chunks": result.num_chunks,
         "num_questions": result.num_questions,
     }

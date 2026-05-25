@@ -9,6 +9,7 @@ Core variables:
 - `LLM_MODELS`: comma-separated generator models. Prefix with provider when needed, using [[Providers and Models]] parsing.
 - `EMBEDDING_MODELS`: comma-separated embedding models.
 - `CHUNK_SIZES`, `CHUNK_OVERLAPS`, `CHUNKING_STRATEGIES`
+  - `semantic` ignores `CHUNK_SIZES` and `CHUNK_OVERLAPS`; it contributes one config per remaining grid combination instead of multiplying across the size/overlap grid.
 - `RETRIEVAL_TOP_K`
 - `MAX_NEW_TOKENS`
 - `DATASET_NAME`, `DATASET_SUBSET`, `DATASET_SAMPLE_SIZE`
@@ -39,6 +40,7 @@ Semantic chunking:
 
 - `SEMANTIC_BREAKPOINT_TYPE`: `percentile`, `standard_deviation`, or `interquartile`.
 - `SEMANTIC_BREAKPOINT_AMOUNT`: positive integer threshold amount.
+- Semantic chunking is controlled by embeddings and breakpoint settings, not fixed chunk sizes or overlap. Semantic configs store `chunk_size` and `chunk_overlap` as `null` in JSON reports and omit `cs/co` from config names.
 
 Answer post-processing:
 
@@ -48,7 +50,7 @@ Answer post-processing:
 Validation notes:
 
 - Unknown datasets and prompt templates fail early.
-- Chunk overlaps must be smaller than chunk sizes.
+- Chunk overlaps must be smaller than chunk sizes for non-semantic chunking strategies. Semantic chunking ignores both values.
 - Positive integer checks are enforced for sample size, token limits, chunk sizes, top-k, and semantic threshold.
 
 Dataset notes:

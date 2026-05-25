@@ -28,8 +28,8 @@ _vector_store_cache: dict[str, Any] = {}
 
 def _cache_key(
     embedding_model_name: str,
-    chunk_size: int,
-    chunk_overlap: int,
+    chunk_size: int | None,
+    chunk_overlap: int | None,
     chunking_strategy: str,
     dataset_name: str = "",
     *,

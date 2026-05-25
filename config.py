@@ -34,8 +34,8 @@ class BenchmarkConfig:
     llm_model: str
     llm_provider: str
     embedding_model: str
-    chunk_size: int
-    chunk_overlap: int
+    chunk_size: int | None
+    chunk_overlap: int | None
     chunking_strategy: str
     retrieval_top_k: int
     max_new_tokens: int
@@ -88,11 +88,19 @@ class BenchmarkConfig:
 
     @property
     def name(self) -> str:
-        parts = (
-            f"{self.chunking_strategy}_cs{self.chunk_size}_co{self.chunk_overlap}"
-            f"_{self.embedding_model}_{self.llm_model}"
-            f"_{self.prompt_template}"
-        )
+        if self.chunking_strategy == "semantic":
+            parts = (
+                f"semantic_bp{self.semantic_breakpoint_type}"
+                f"{self.semantic_breakpoint_amount}"
+                f"_{self.embedding_model}_{self.llm_model}"
+                f"_{self.prompt_template}"
+            )
+        else:
+            parts = (
+                f"{self.chunking_strategy}_cs{self.chunk_size}_co{self.chunk_overlap}"
+                f"_{self.embedding_model}_{self.llm_model}"
+                f"_{self.prompt_template}"
+            )
         if self.reranker_model:
             parts += f"_rerank-{self.reranker_model}"
         if self.retrieval_strategy != "similarity":
@@ -153,6 +161,22 @@ class BenchmarkConfig:
 def _validate_positive_int(value: int, name: str) -> None:
     if value <= 0:
         raise ValueError(f"{name} must be a positive non-zero integer, got {value}")
+
+
+def _chunk_parameter_pairs_for_strategy(
+    strategy: str,
+    chunk_sizes: list[int],
+    chunk_overlaps: list[int],
+) -> list[tuple[int | None, int | None]]:
+    """Return chunk parameter pairs that actually affect a strategy.
+
+    LangChain's SemanticChunker is controlled by breakpoint parameters and
+    embeddings, not fixed chunk sizes or overlaps. Represent those ignored
+    values as None so reports and cache keys do not imply a size/overlap sweep.
+    """
+    if strategy == "semantic":
+        return [(None, None)]
+    return list(product(chunk_sizes, chunk_overlaps))
 
 
 def get_all_combinations() -> list[BenchmarkConfig]:
@@ -297,69 +321,83 @@ def get_all_combinations() -> list[BenchmarkConfig]:
     _validate_positive_int(max_new_tokens, "MAX_NEW_TOKENS")
     _validate_positive_int(dataset_sample_size, "DATASET_SAMPLE_SIZE")
 
-    # Validate chunk_overlap < chunk_size for every combination
-    for cs in chunk_sizes:
-        for co in chunk_overlaps:
-            if co >= cs:
-                raise ValueError(
-                    f"chunk_overlap ({co}) must be less than chunk_size ({cs})"
-                )
+    non_semantic_strategies = [
+        strategy for strategy in chunking_strategies if strategy != "semantic"
+    ]
+    if non_semantic_strategies:
+        # Validate chunk_overlap < chunk_size for combinations that use those
+        # values. Semantic chunking ignores both fields.
+        for cs in chunk_sizes:
+            for co in chunk_overlaps:
+                if co >= cs:
+                    raise ValueError(
+                        f"chunk_overlap ({co}) must be less than chunk_size ({cs})"
+                    )
 
     # Parse provider prefixes for LLM models
     llm_parsed = [parse_model_id(m) for m in llm_models]
 
-    combos = list(product(
-        llm_parsed, embedding_models, chunk_sizes, chunk_overlaps, chunking_strategies,
+    configs: list[BenchmarkConfig] = []
+    for (
+        (provider, model_name),
+        emb,
+        strat,
+        reranker,
+        tmpl,
+    ) in product(
+        llm_parsed, embedding_models, chunking_strategies,
         reranker_models, prompt_templates,
-    ))
-
-    return [
-        BenchmarkConfig(
-            llm_model=model_name,
-            llm_provider=provider,
-            embedding_model=emb,
-            chunk_size=cs,
-            chunk_overlap=co,
-            chunking_strategy=strat,
-            retrieval_top_k=retrieval_top_k,
-            retrieval_strategy=retrieval_strategy,
-            retrieval_fetch_k=retrieval_fetch_k,
-            retrieval_mmr_lambda=retrieval_mmr_lambda,
-            retrieval_use_hyde=retrieval_use_hyde,
-            max_new_tokens=max_new_tokens,
-            ollama_base_url=ollama_base_url,
-            ollama_api_key=ollama_api_key,
-            openai_compat_base_url=openai_compat_base_url,
-            openai_compat_api_key=openai_compat_api_key,
-            llm_ollama_base_url=llm_ollama_base_url,
-            llm_ollama_api_key=llm_ollama_api_key,
-            llm_openai_compat_base_url=llm_openai_compat_base_url,
-            llm_openai_compat_api_key=llm_openai_compat_api_key,
-            eval_critic_ollama_base_url=eval_critic_ollama_base_url,
-            eval_critic_ollama_api_key=eval_critic_ollama_api_key,
-            eval_critic_openai_compat_base_url=eval_critic_openai_compat_base_url,
-            eval_critic_openai_compat_api_key=eval_critic_openai_compat_api_key,
-            embedding_ollama_base_url=embedding_ollama_base_url,
-            embedding_ollama_api_key=embedding_ollama_api_key,
-            eval_critic_max_tokens=eval_critic_max_tokens,
-            dataset_name=dataset_name,
-            dataset_subset=dataset_subset,
-            dataset_sample_size=dataset_sample_size,
-            eval_critic_llm=eval_critic_llm,
-            eval_critic_embedding=eval_critic_embedding,
-            custom_metrics_bert_model=custom_metrics_bert_model,
-            reranker_model=reranker,
-            reranker_top_k=reranker_top_k,
-            prompt_template=tmpl,
-            llm_answer_strip_mode=cast(AnswerStripMode, llm_answer_strip_mode),
-            llm_answer_value_fallback=llm_answer_value_fallback,
-            semantic_breakpoint_type=semantic_breakpoint_type,
-            semantic_breakpoint_amount=semantic_breakpoint_amount,
-            retrieval_mode=retrieval_mode,
-            custom_retrieval_metrics_mode=custom_retrieval_metrics_mode,
-            vector_db_backend=vector_db_backend,
-            lancedb_path=lancedb_path,
-            benchmark_stage=benchmark_stage,
-        )
-        for (provider, model_name), emb, cs, co, strat, reranker, tmpl in combos
-    ]
+    ):
+        for cs, co in _chunk_parameter_pairs_for_strategy(
+            strat, chunk_sizes, chunk_overlaps
+        ):
+            configs.append(
+                BenchmarkConfig(
+                    llm_model=model_name,
+                    llm_provider=provider,
+                    embedding_model=emb,
+                    chunk_size=cs,
+                    chunk_overlap=co,
+                    chunking_strategy=strat,
+                    retrieval_top_k=retrieval_top_k,
+                    retrieval_strategy=retrieval_strategy,
+                    retrieval_fetch_k=retrieval_fetch_k,
+                    retrieval_mmr_lambda=retrieval_mmr_lambda,
+                    retrieval_use_hyde=retrieval_use_hyde,
+                    max_new_tokens=max_new_tokens,
+                    ollama_base_url=ollama_base_url,
+                    ollama_api_key=ollama_api_key,
+                    openai_compat_base_url=openai_compat_base_url,
+                    openai_compat_api_key=openai_compat_api_key,
+                    llm_ollama_base_url=llm_ollama_base_url,
+                    llm_ollama_api_key=llm_ollama_api_key,
+                    llm_openai_compat_base_url=llm_openai_compat_base_url,
+                    llm_openai_compat_api_key=llm_openai_compat_api_key,
+                    eval_critic_ollama_base_url=eval_critic_ollama_base_url,
+                    eval_critic_ollama_api_key=eval_critic_ollama_api_key,
+                    eval_critic_openai_compat_base_url=eval_critic_openai_compat_base_url,
+                    eval_critic_openai_compat_api_key=eval_critic_openai_compat_api_key,
+                    embedding_ollama_base_url=embedding_ollama_base_url,
+                    embedding_ollama_api_key=embedding_ollama_api_key,
+                    eval_critic_max_tokens=eval_critic_max_tokens,
+                    dataset_name=dataset_name,
+                    dataset_subset=dataset_subset,
+                    dataset_sample_size=dataset_sample_size,
+                    eval_critic_llm=eval_critic_llm,
+                    eval_critic_embedding=eval_critic_embedding,
+                    custom_metrics_bert_model=custom_metrics_bert_model,
+                    reranker_model=reranker,
+                    reranker_top_k=reranker_top_k,
+                    prompt_template=tmpl,
+                    llm_answer_strip_mode=cast(AnswerStripMode, llm_answer_strip_mode),
+                    llm_answer_value_fallback=llm_answer_value_fallback,
+                    semantic_breakpoint_type=semantic_breakpoint_type,
+                    semantic_breakpoint_amount=semantic_breakpoint_amount,
+                    retrieval_mode=retrieval_mode,
+                    custom_retrieval_metrics_mode=custom_retrieval_metrics_mode,
+                    vector_db_backend=vector_db_backend,
+                    lancedb_path=lancedb_path,
+                    benchmark_stage=benchmark_stage,
+                )
+            )
+    return configs

@@ -113,8 +113,8 @@ def run_single_benchmark(
                 )
             chunker = get_chunker(
                 config.chunking_strategy,
-                config.chunk_size,
-                config.chunk_overlap,
+                config.chunk_size or 0,
+                config.chunk_overlap or 0,
                 **chunker_kwargs,
             )
 
