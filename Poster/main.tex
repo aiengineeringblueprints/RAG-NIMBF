@@ -9,6 +9,8 @@
 \usepackage{graphicx}
 \usepackage{ragged2e}
 \usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,calc,positioning,shapes.geometric}
 
 \graphicspath{{figures/}{../results/cross_run_plots/}}
 
@@ -99,22 +101,49 @@ experiment.
 
 \begin{block}{Pipeline}
 \centering
-\large
-\begin{tabular}{c}
-Configuration grid \\
-$\Downarrow$ \\
-Dataset adapter \\
-$\Downarrow$ \\
-Chunking + vector-store cache \\
-$\Downarrow$ \\
-Retrieval / reranking / prompt assembly \\
-$\Downarrow$ \\
-Generation \\
-$\Downarrow$ \\
-RAGAS + custom IR/NLG metrics \\
-$\Downarrow$ \\
-Reports, plots, MLflow, traces
-\end{tabular}
+\vspace{0.65cm}
+\begin{tikzpicture}[
+  node distance=0.95cm,
+  stage/.style={
+    draw=PosterTeal,
+    fill=white,
+    rounded corners=6pt,
+    line width=1.55pt,
+    text width=0.88\linewidth,
+    align=center,
+    minimum height=1.55cm,
+    inner sep=0.18cm,
+    font=\normalsize\bfseries
+  },
+  side/.style={
+    draw=PosterGold,
+    fill=PosterGold!12,
+    rounded corners=6pt,
+    line width=1.35pt,
+    text width=0.40\linewidth,
+    align=center,
+    minimum height=1.65cm,
+    inner sep=0.28cm,
+    font=\normalsize\bfseries
+  },
+  flow/.style={-Latex, line width=1.75pt, draw=PosterNavy, shorten >=4pt, shorten <=4pt}
+]
+\node[side] (config) {Configuration grid\\models, chunks, prompts};
+\node[side, right=1.0cm of config] (dataset) {Dataset adapter\\QA record shape};
+\coordinate (inputsouth) at ($(config.south)!0.5!(dataset.south)$);
+\node[stage, anchor=north] (chunk) at ($(inputsouth)+(0,-1.75cm)$) {Chunking + vector-store cache\\\scriptsize reusable index for each corpus/configuration};
+\node[stage, below=0.85cm of chunk] (retrieve) {Retrieval, optional reranking, prompt assembly\\\scriptsize similarity/MMR contexts become model input};
+\node[stage, below=0.85cm of retrieve] (generate) {Generation\\\scriptsize answer text, TTFT, throughput, GPU stats};
+\node[stage, below=0.85cm of generate] (evaluate) {RAGAS + custom IR/NLG metrics\\\scriptsize faithfulness, similarity, retrieval quality, runtime};
+\node[stage, below=0.85cm of evaluate] (report) {Artifacts\\\scriptsize JSON, CSV, Markdown, plots, MLflow, traces};
+
+\draw[flow] (config) -- (chunk);
+\draw[flow] (dataset) -- (chunk);
+\draw[flow] (chunk) -- (retrieve);
+\draw[flow] (retrieve) -- (generate);
+\draw[flow] (generate) -- (evaluate);
+\draw[flow] (evaluate) -- (report);
+\end{tikzpicture}
 \end{block}
 
 \begin{block}{Experiment Space}
@@ -134,6 +163,26 @@ Models & Qwen3, Qwen3.5, GPT-OSS local runs \\
 \end{tabular}
 \end{block}
 
+\begin{block}{Reproducibility Controls}
+\begin{itemize}
+  \item \metric{Config grid:}{environment-defined combinations generate every run.}
+  \item \metric{Run folders:}{each benchmark writes to \texttt{results/runN/}.}
+  \item \metric{Vector cache:}{corpus fingerprints avoid accidental re-embedding.}
+  \item \metric{Stage timings:}{indexing, retrieval, generation, and evaluation are timed.}
+  \item \metric{Artifact trail:}{JSON, CSV, plots, MLflow, and traces preserve evidence.}
+\end{itemize}
+\end{block}
+
+\begin{block}{Observed Answers}
+\begin{itemize}
+  \item \metric{Prompting:}{detailed prompts improve mean faithfulness (0.885 vs. 0.827); the best faithfulness run is detailed (0.955).}
+  \item \metric{Retrieval:}{similarity is stronger for faithfulness (0.870 vs. 0.843), while MMR improves nDCG@5 (0.796 vs. 0.715) and recall@5 (0.847 vs. 0.554).}
+  \item \metric{Chunking:}{chunk size and overlap have smaller faithfulness effects than prompt or retrieval choice (500: 0.854, 1000: 0.857; overlap 100: 0.854, 200: 0.858).}
+  \item \metric{Winner:}{no single configuration dominates: faithfulness, BERT-F1, nDCG@5, and recall@5 select different runs.}
+\end{itemize}
+\end{block}
+
+
 \end{column}
 
 \begin{column}{0.36\textwidth}
@@ -151,13 +200,47 @@ Models & Qwen3, Qwen3.5, GPT-OSS local runs \\
 \end{itemize}
 \end{block}
 
-\begin{block}{Current Local Results Snapshot}
-\justifying
-The current repository contains 63 result-summary files and 151 aggregate rows.
-The manual matrix tracks 128 planned configurations. These figures are useful
-for poster development, but final submission claims should be regenerated from
-the final benchmark export.
 
+\begin{block}{Prompt Templates}
+\scriptsize
+\setlength{\tabcolsep}{0.35cm}
+\renewcommand{\arraystretch}{1.18}
+\begin{tabular}{@{}p{0.48\linewidth}p{0.48\linewidth}@{}}
+\textbf{\textcolor{PosterTeal}{Concise Prompt}} &
+\textbf{\textcolor{PosterTeal}{Detailed Prompt}} \\
+\midrule
+\raggedright
+\textit{Goal: one short factual answer.}\par\vspace{0.15cm}
+\texttt{Answer the question using ONLY the provided context.}\par
+\texttt{RULES:}\par
+\texttt{- Give a short, direct, factual answer -- one sentence maximum.}\par
+\texttt{- Do NOT explain your reasoning, add context, or use markdown formatting.}\par
+\texttt{- Do NOT say `Based on the context' or similar preamble.}\par
+\texttt{- If the context does not contain the answer, say `I cannot answer from the provided context.'}\par
+\texttt{Examples:}\par
+\texttt{Q: What circuit court is Maryland? -> The Circuit Courts of Maryland are the state trial courts of general jurisdiction.}\par
+\texttt{Q: How many members are in the House of Representatives? -> The total number of voting representatives is fixed at 435.}\par
+\texttt{Q: Who wrote the music for Star Wars? -> John Williams.}
+&
+\raggedright
+\textit{Goal: complete answer with reasoning when useful.}\par\vspace{0.15cm}
+\texttt{Answer the question based only on the provided context.}\par
+\texttt{Provide a clear, complete answer in full sentences.}\par
+\texttt{Include relevant calculations or reasoning steps when applicable.}\par
+\texttt{Do not start your answer with phrases like `Based on the provided context'}\par
+\texttt{or `Based on the given context'. Answer directly.}\par\vspace{0.25cm}
+\textbf{Shared user template}\par
+\texttt{Context: \{context\}}\par
+\texttt{Question: \{question\}}\par
+\texttt{Answer:}
+\end{tabular}
+\end{block}
+
+\begin{block}{Current Results Snapshot}
+\justifying
+The current state of the project covers 128 benchmarked configurations, more are planned for future work. 
+The table below highlights the strongest configuration observed for each of the three main evaluation lenses, demonstrating that different configurations can excel in different metrics, 
+underscoring the importance of multi-metric evaluation in RAG benchmarking.
 \vspace{0.6cm}
 \begin{tabular}{p{0.45\linewidth}ccc}
 \toprule
@@ -241,19 +324,27 @@ quality.
 \end{enumerate}
 \end{block}
 
-\begin{block}{Next Steps Before Conference}
-\begin{itemize}
-  \item \todo{insert final conference name, affiliation, contact, QR code.}
-  \item \todo{rerun final benchmark export and update table/plots.}
-  \item \todo{decide whether poster story favors framework, results, or both.}
-  \item \todo{add final paper/repository link.}
-\end{itemize}
+\begin{block}{Measured Outputs}
+\setlength{\tabcolsep}{0.18cm}
+\renewcommand{\arraystretch}{1.08}
+\begin{tabular}{p{0.27\linewidth}p{0.62\linewidth}}
+\toprule
+Lens & Captured outputs \\
+\midrule
+Answer & faithfulness, recall, semantic similarity \\
+Retrieval & hit@k, nDCG@k, recall@k, relevance \\
+Runtime & total time, stage timings, TTFT, tokens/s \\
+Artifacts & JSON, CSV, Markdown, plots, MLflow, traces \\
+\bottomrule
+\end{tabular}
+\end{block}
 
-\vspace{0.4cm}
+\begin{block}{References}
 \footnotesize
-References: Lewis et al. (2020), Es et al. (2023), Rajpurkar et al. (2016),
+Lewis et al. (2020), Es et al. (2023), Rajpurkar et al. (2016),
 Lin (2004), Zhang et al. (2020). See \texttt{references.bib}.
 \end{block}
+
 
 \end{column}
 
