@@ -63,8 +63,8 @@
 | 30       | Qwen3-32B    | Semantic  | 500  | 200     | Similarity | Detailed | 12              | no                  | nomic-embed-text | squad   | 0.870 | -   | -    | -    | -     | 100 | Getestet |
 | 31       | Qwen3-32B    | Semantic  | 500  | 200     | MMR        | Concise  | 12              | no                  | nomic-embed-text | squad   | 0.809 | -   | -    | -    | -     | 100 | Getestet |
 | 32       | Qwen3-32B    | Semantic  | 500  | 200     | MMR        | Detailed | 12              | no                  | nomic-embed-text | squad   | 0.846 | -   | -    | -    | -     | 100 | Getestet |
-| 33       | Qwen3.5-397B | Recursive | 1000 | 100     | Similarity | Concise  | 12              | Yes (MiniLM-L-6-v2) | nomic-embed-text | squad   | 0.840 | -   | -    | -    | 0.960 | 100 | Getestet |
-| 34 rerun | Qwen3.5-397B | Recursive | 1000 | 100     | Similarity | Detailed | 12              | Yes (MiniLM-L-6-v2) | nomic-embed-text | squad   | 0.940 | -   | -    | -    | 0.960 | 100 | Getestet |
+| 33       | Qwen3.5-397B | Recursive | 1000 | 100     | Similarity | Concise  | 12              | No                  | nomic-embed-text | squad   | 0.840 | -   | -    | -    | 0.960 | 100 | Getestet |
+| 34 rerun | Qwen3.5-397B | Recursive | 1000 | 100     | Similarity | Detailed | 12              | No                  | nomic-embed-text | squad   | 0.940 | -   | -    | -    | 0.960 | 100 | Getestet |
 | 35       | Qwen3.5-397B | Recursive | 1000 | 100     | MMR        | Concise  | 12              | No                  | nomic-embed-text | squad   | 0.885 | -   | -    | -    | -     | -   | Offen    |
 | 36       | Qwen3.5-397B | Recursive | 1000 | 100     | MMR        | Detailed | 12              | No                  | nomic-embed-text | squad   | 0.92  | -   | -    | -    | -     | -   | Offen    |
 | 37       | Qwen3.5-397B | Recursive | 1000 | 200     | Similarity | Concise  | 12              | No                  | nomic-embed-text | squad   | 0.907 | -   | -    | -    | -     | 100 | Getestet |
@@ -76,9 +76,9 @@
 | 43       | Qwen3.5-397B | Recursive | 500  | 100     | MMR        | Concise  |                 | No                  | nomic-embed-text | squad   | 0.767 | -   | -    | 0.90 | 0.708 | 100 | Getestet |
 | 44       | Qwen3.5-397B | Recursive | 500  | 100     | MMR        | Detailed |                 | No                  | nomic-embed-text | squad   | 0.936 | -   | -    | 0.90 | 0.654 | 100 | Getestet |
 | 45       | Qwen3.5-397B | Recursive | 500  | 200     | Similarity | Concise  | 12              | No                  | nomic-embed-text | squad   | 0.910 | -   | -    | -    | -     | 100 | Getestet |
-| 46       | Qwen3.5-397B | Recursive | 500  | 200     | Similarity | Detailed | 12              | Yes (MiniLM-L-6-v2) | nomic-embed-text | squad   | 0.945 | -   | -    | -    | 0.940 | 100 | Getestet |
-| 47       | Qwen3.5-397B | Recursive | 500  | 200     | MMR        | Concise  |                 | Yes (MiniLM-L-6-v2) | nomic-embed-text | squad   | 0.812 | -   | -    | 0.89 | 0.738 | 100 | Getestet |
-| 48       | Qwen3.5-397B | Recursive | 500  | 200     | MMR        | Detailed |                 | Yes (MiniLM-L-6-v2) | nomic-embed-text | squad   | 0.949 | -   | -    | 0.89 | 0.650 | 100 | Getestet |
+| 46       | Qwen3.5-397B | Recursive | 500  | 200     | Similarity | Detailed | 12              | No                  | nomic-embed-text | squad   | 0.945 | -   | -    | -    | 0.940 | 100 | Getestet |
+| 47       | Qwen3.5-397B | Recursive | 500  | 200     | MMR        | Concise  |                 | No                  | nomic-embed-text | squad   | 0.812 | -   | -    | 0.89 | 0.738 | 100 | Getestet |
+| 48       | Qwen3.5-397B | Recursive | 500  | 200     | MMR        | Detailed |                 | No                  | nomic-embed-text | squad   | 0.949 | -   | -    | 0.89 | 0.650 | 100 | Getestet |
 | 49       | Qwen3.5-397B | Semantic  | 1000 | 100     | Similarity | Concise  | 12              | No                  | nomic-embed-text | squad   | 0.852 | -   | -    | -    | 0.960 | 100 | Getestet |
 | 50       | Qwen3.5-397B | Semantic  | 1000 | 100     | Similarity | Detailed | 12              | No                  | nomic-embed-text | squad   | 0.941 | -   | -    | -    | 0.960 | 100 | Getestet |
 | 51       | Qwen3.5-397B | Semantic  | 1000 | 100     | MMR        | Concise  |                 | No                  | nomic-embed-text | squad   | 0.787 | -   | -    | -    | 0.910 | 100 | Getestet |
@@ -143,20 +143,20 @@
 | 110      | qwen3.5-think  | Recursive | 500  | 200     | Similarity | Detailed |                 | No                  | nomic-embed-text | squad   | 0.914 | -   | -    | -    | 0.94  | 100 | Getestet |
 | 111      | qwen3.5-think  | Recursive | 500  | 200     | MMR        | Concise  |                 | No                  | nomic-embed-text | squad   | 0.807 | -   | -    | -    | 0.89  | 100 | Getestet |
 | 112      | qwen3.5-think  | Recursive | 500  | 200     | MMR        | Detailed |                 | No                  | nomic-embed-text | squad   | 0.944 | -   | -    | -    | 0.89  | 100 | Getestet |
-| 113      | qwen3.5-think  | Semantic  | 1000 | 100     | Similarity | Concise  |                 |                     | nomic-embed-text |         | -     | -   | -    | -    | -     | -   | Offen    |
-| 114      | qwen3.5-think  | Semantic  | 1000 | 100     | Similarity | Detailed |                 |                     | nomic-embed-text |         | -     | -   | -    | -    | -     | -   | Offen    |
+| 113      | qwen3.5-think  | Semantic  | 1000 | 100     | Similarity | Concise  | 12              | No                  | nomic-embed-text | squad   | 0.847 | -   | -    | -    | 0.96  | 100 | Getestet |
+| 114      | qwen3.5-think  | Semantic  | 1000 | 100     | Similarity | Detailed | 12              | No                  | nomic-embed-text | squad   | 0.945 | -   | -    | -    | 0.96  | 100 | Getestet |
 | 115      | qwen3.5-think  | Semantic  | 1000 | 100     | MMR        | Concise  |                 | No                  | nomic-embed-text | squad   | 0.787 | -   | -    | -    | 0.91  | 100 | Getestet |
 | 116      | qwen3.5-think  | Semantic  | 1000 | 100     | MMR        | Detailed |                 | No                  | nomic-embed-text | squad   | 0.940 | -   | -    | -    | 0.91  | 100 | Getestet |
-| 117      | qwen3.5-think  | Semantic  | 1000 | 200     | Similarity | Concise  |                 |                     | nomic-embed-text |         | -     | -   | -    | -    | -     | -   | Offen    |
-| 118      | qwen3.5-think  | Semantic  | 1000 | 200     | Similarity | Detailed |                 |                     | nomic-embed-text |         | -     | -   | -    | -    | -     | -   | Offen    |
+| 117      | qwen3.5-think  | Semantic  | 1000 | 200     | Similarity | Concise  | 12              | No                  | nomic-embed-text | squad   | 0.847 | -   | -    | -    | 0.96  | 100 | Getestet |
+| 118      | qwen3.5-think  | Semantic  | 1000 | 200     | Similarity | Detailed | 12              | No                  | nomic-embed-text | squad   | 0.945 | -   | -    | -    | 0.96  | 100 | Getestet |
 | 119      | qwen3.5-think  | Semantic  | 1000 | 200     | MMR        | Concise  |                 | No                  | nomic-embed-text | squad   | 0.787 | -   | -    | -    | 0.91  | 100 | Getestet |
 | 120      | qwen3.5-think  | Semantic  | 1000 | 200     | MMR        | Detailed |                 | No                  | nomic-embed-text | squad   | 0.940 | -   | -    | -    | 0.91  | 100 | Getestet |
-| 121      | qwen3.5-think  | Semantic  | 500  | 100     | Similarity | Concise  |                 |                     | nomic-embed-text |         | -     | -   | -    | -    | -     | -   | Offen    |
-| 122      | qwen3.5-think  | Semantic  | 500  | 100     | Similarity | Detailed |                 |                     | nomic-embed-text |         | -     | -   | -    | -    | -     | -   | Offen    |
+| 121      | qwen3.5-think  | Semantic  | 500  | 100     | Similarity | Concise  | 12              | No                  | nomic-embed-text | squad   | 0.847 | -   | -    | -    | 0.96  | 100 | Getestet |
+| 122      | qwen3.5-think  | Semantic  | 500  | 100     | Similarity | Detailed | 12              | No                  | nomic-embed-text | squad   | 0.945 | -   | -    | -    | 0.96  | 100 | Getestet |
 | 123      | qwen3.5-think  | Semantic  | 500  | 100     | MMR        | Concise  |                 | No                  | nomic-embed-text | squad   | 0.787 | -   | -    | -    | 0.91  | 100 | Getestet |
 | 124      | qwen3.5-think  | Semantic  | 500  | 100     | MMR        | Detailed |                 | No                  | nomic-embed-text | squad   | 0.940 | -   | -    | -    | 0.91  | 100 | Getestet |
-| 125      | qwen3.5-think  | Semantic  | 500  | 200     | Similarity | Concise  |                 |                     | nomic-embed-text |         | -     | -   | -    | -    | -     | -   | Offen    |
-| 126      | qwen3.5-think  | Semantic  | 500  | 200     | Similarity | Detailed |                 |                     | nomic-embed-text |         | -     | -   | -    | -    | -     | -   | Offen    |
+| 125      | qwen3.5-think  | Semantic  | 500  | 200     | Similarity | Concise  | 12              | No                  | nomic-embed-text | squad   | 0.847 | -   | -    | -    | 0.96  | 100 | Getestet |
+| 126      | qwen3.5-think  | Semantic  | 500  | 200     | Similarity | Detailed | 12              | No                  | nomic-embed-text | squad   | 0.945 | -   | -    | -    | 0.96  | 100 | Getestet |
 | 127      | qwen3.5-think  | Semantic  | 500  | 200     | MMR        | Concise  |                 | No                  | nomic-embed-text | squad   | 0.787 | -   | -    | -    | 0.91  | 100 | Getestet |
 | 128      | qwen3.5-think  | Semantic  | 500  | 200     | MMR        | Detailed |                 | No                  | nomic-embed-text | squad   | 0.940 | -   | -    | -    | 0.91  | 100 | Getestet |
 
@@ -288,6 +288,14 @@ Für alle Metriken wird der mean Wert betrachtet
 | 106 | 0.74  | 0.74   | 0.197    | 0.86  | 0.718  | 0.409    | 0.90  | 0.728  | 0.554    | 0.600             | 0.474         | 0.165             | 0.234   | 0.038 | 0.421  | 0.856                | 0.875             | 0.865         |
 | 109 | 0.72  | 0.72   | 0.202    | 0.85  | 0.723  | 0.413    | 0.89  | 0.726  | 0.554    | 0.605             | 0.474         | 0.305             | 0.453   | 0.087 | 0.553  | 0.839                | 0.849             | 0.844         |
 | 110 | 0.72  | 0.72   | 0.202    | 0.85  | 0.723  | 0.413    | 0.89  | 0.726  | 0.554    | 0.605             | 0.474         | 0.167             | 0.239   | 0.038 | 0.429  | 0.856                | 0.875             | 0.866         |
+| 113 | 0.75  | 0.75   | 0.223    | 0.86  | 0.704  | 0.401    | 0.90  | 0.718  | 0.542    | 0.596             | 0.474         | 0.311             | 0.485   | 0.092 | 0.573  | 0.859                | 0.869             | 0.864         |
+| 114 | 0.75  | 0.75   | 0.223    | 0.86  | 0.704  | 0.401    | 0.90  | 0.718  | 0.542    | 0.596             | 0.474         | 0.160             | 0.233   | 0.037 | 0.424  | 0.856                | 0.875             | 0.866         |
+| 117 | 0.75  | 0.75   | 0.223    | 0.86  | 0.704  | 0.401    | 0.90  | 0.718  | 0.542    | 0.596             | 0.474         | 0.311             | 0.485   | 0.092 | 0.573  | 0.859                | 0.869             | 0.864         |
+| 118 | 0.75  | 0.75   | 0.223    | 0.86  | 0.704  | 0.401    | 0.90  | 0.718  | 0.542    | 0.596             | 0.474         | 0.160             | 0.233   | 0.037 | 0.424  | 0.856                | 0.875             | 0.866         |
+| 121 | 0.75  | 0.75   | 0.223    | 0.86  | 0.704  | 0.401    | 0.90  | 0.718  | 0.542    | 0.596             | 0.474         | 0.311             | 0.485   | 0.092 | 0.573  | 0.859                | 0.869             | 0.864         |
+| 122 | 0.75  | 0.75   | 0.223    | 0.86  | 0.704  | 0.401    | 0.90  | 0.718  | 0.542    | 0.596             | 0.474         | 0.160             | 0.233   | 0.037 | 0.424  | 0.856                | 0.875             | 0.866         |
+| 125 | 0.75  | 0.75   | 0.223    | 0.86  | 0.704  | 0.401    | 0.90  | 0.718  | 0.542    | 0.596             | 0.474         | 0.311             | 0.485   | 0.092 | 0.573  | 0.859                | 0.869             | 0.864         |
+| 126 | 0.75  | 0.75   | 0.223    | 0.86  | 0.704  | 0.401    | 0.90  | 0.718  | 0.542    | 0.596             | 0.474         | 0.160             | 0.233   | 0.037 | 0.424  | 0.856                | 0.875             | 0.866         |
 
 
 ### Empfohlene Scores:
@@ -295,3 +303,55 @@ Für alle Metriken wird der mean Wert betrachtet
 Retrieval:   ndcg@5
 Context:     context_relevance
 Generation:  bert_score_f1 + meteor
+
+## Beste Konfigurationen bisher
+
+Auswahl nach `Faith` innerhalb jedes LLMs. Bei sehr aehnlichen Scores werden Varianten mit besserer Abdeckung fuer Retrieval/Chunking bevorzugt. Leere `Retrieval_Top_K`-Felder in der alten Matrix sollten als fehlende Dokumentation behandelt und vor Re-Runs explizit gesetzt werden.
+
+| Base_ID | LLM | Chunking | Size | Overlap | Retrieval | Template | Retrieval_Top_K | Reranker | Embedding | Dataset | Faith | Recall | N | Kommentar |
+| ------- | --- | -------- | ---- | ------- | --------- | -------- | --------------- | -------- | --------- | ------- | ----- | ------ | --- | --------- |
+| 6 | Qwen3-32B | Recursive | 1000 | 200 | Similarity | Detailed | 12 | no | nomic-embed-text | squad | 0.921 | - | 100 | Bester Qwen3-32B Lauf; starker Baseline-Kandidat. |
+| 10 | Qwen3-32B | Recursive | 500 | 100 | Similarity | Detailed | 12 | no | nomic-embed-text | squad | 0.904 | - | 100 | Kleinere Chunks, weiterhin stark. |
+| 1 | Qwen3-32B | Recursive | 1000 | 100 | Similarity | Concise | 12 | no | nomic-embed-text | squad | 0.898 | - | 100 | Beste Concise-Variante fuer Qwen3-32B. |
+| 5 | Qwen3-32B | Recursive | 1000 | 200 | Similarity | Concise | 12 | no | nomic-embed-text | squad | 0.889 | - | 100 | Gleiche Chunk-Laenge wie ID 6, anderes Template. |
+| 2 | Qwen3-32B | Recursive | 1000 | 100 | Similarity | Detailed | 12 | no | nomic-embed-text | squad | 0.876 | - | 100 | Nahe Baseline fuer Overlap-Vergleich. |
+| 42 | Qwen3.5-397B | Recursive | 500 | 100 | Similarity | Detailed | 12 | No | nomic-embed-text | squad | 0.955 | 0.930 | 100 | Bester Qwen3.5-397B Lauf. |
+| 48 | Qwen3.5-397B | Recursive | 500 | 200 | MMR | Detailed | TBD | No | nomic-embed-text | squad | 0.949 | 0.650 | 100 | Hohe Faith, aber Recall deutlich niedriger; gut fuer Reranker/Top-K-Test. |
+| 58 | Qwen3.5-397B | Semantic | 500 | 100 | Similarity | Detailed | 12 | No | nomic-embed-text | squad | 0.948 | 0.960 | 100 | Beste Semantic-Similarity-Variante. |
+| 56 | Qwen3.5-397B | Semantic | 1000 | 200 | MMR | Detailed | TBD | No | nomic-embed-text | squad | 0.947 | 0.653 | 100 | MMR mit hoher Faith, aber niedriger Recall. |
+| 62 | Qwen3.5-397B | Semantic | 500 | 200 | Similarity | Detailed | 12 | No | nomic-embed-text | squad | 0.945 | 0.960 | 100 | Stabile Semantic-Alternative. |
+| 83 | GPT-OSS-20B | Semantic | 1000 | 100 | MMR | Concise | TBD | No | nomic-embed-text | squad | 0.837 | 0.910 | 100 | Bester GPT-OSS-20B Lauf; anderes Muster als Qwen. |
+| 69 | GPT-OSS-20B | Recursive | 1000 | 200 | Similarity | Concise | TBD | No | nomic-embed-text | squad | 0.836 | 0.960 | 100 | Sehr nah an ID 83 mit besserem Recall. |
+| 87 | GPT-OSS-20B | Semantic | 1000 | 200 | MMR | Concise | TBD | No | nomic-embed-text | squad | 0.830 | 0.910 | 100 | MMR/Overlap-Variante. |
+| 93 | GPT-OSS-20B | Semantic | 500 | 200 | Similarity | Concise | TBD | No | nomic-embed-text | squad | 0.829 | 0.960 | 100 | Kleinere Semantic-Similarity-Variante. |
+| 89 | GPT-OSS-20B | Semantic | 500 | 100 | Similarity | Concise | TBD | No | nomic-embed-text | squad | 0.829 | 0.960 | 100 | Kontrollvariante zu ID 93. |
+| 106 | qwen3.5-think | Recursive | 500 | 100 | Similarity | Detailed | TBD | No | nomic-embed-text | squad | 0.955 | 0.930 | 100 | Bester Thinking-Lauf. |
+| 98 | qwen3.5-think | Recursive | 1000 | 100 | Similarity | Detailed | TBD | No | nomic-embed-text | squad | 0.950 | 0.960 | 100 | Beste lange Recursive-Variante. |
+| 126 | qwen3.5-think | Semantic | 500 | 200 | Similarity | Detailed | 12 | No | nomic-embed-text | squad | 0.945 | 0.960 | 100 | Semantic mit hohem Recall. |
+| 122 | qwen3.5-think | Semantic | 500 | 100 | Similarity | Detailed | 12 | No | nomic-embed-text | squad | 0.945 | 0.960 | 100 | Kontrollvariante zu ID 126. |
+| 118 | qwen3.5-think | Semantic | 1000 | 200 | Similarity | Detailed | 12 | No | nomic-embed-text | squad | 0.945 | 0.960 | 100 | Lange Semantic-Variante. |
+
+
+## Phase-2 Variantenmatrix
+
+Ziel: Nicht die gesamte Matrix als Cartesian Product vergroessern, sondern die besten Basiskonfigurationen gezielt auf Generalisierung und Robustheit testen. Primaere Gewinner pro LLM: `6`, `42`, `83`, `106`. Sekundaere Kandidaten fuer Cross-Checks: `10`, `58`, `69`, `98`.
+
+| Set | Base_IDs | Zu testende Variante | Werte / Modelle | Zweck | Erwartete Runs |
+| --- | -------- | -------------------- | --------------- | ----- | -------------- |
+| P2.1 Stability | 6, 42, 83, 106 | Re-run auf `squad` | `N=300` oder `3x N=100`; gleiche Config; `Retrieval_Top_K=12`; HyDE off; Reranker off | Varianz schaetzen und pruefen, ob die Gewinner stabil sind. | 4-12 |
+| P2.2 Dataset generalization | 6, 42, 83, 106, 10, 58, 69, 98 | Dataset | `squad`, `ragperf-wikipedia-nq`, `t2-ragbench/FinQA` | Pruefen, ob SQuAD-Gewinner auf offenen und finanznahen QA-Daten halten. | 24 |
+| P2.3 Embedding sensitivity | 6, 42, 83, 106 | Embedding Model | `nomic-embed-text:latest`, `ollama:mxbai-embed-large:latest`, `huggingface:BAAI/bge-m3` | Klaeren, ob Retrieval-Ergebnisse am Embedding haengen. | 12 |
+| P2.4 Top-K sweep | 6, 42, 83, 106 | Retrieval_Top_K | `5`, `12`, `20` | Trade-off zwischen Kontextmenge, Faithfulness und Recall messen. | 12 |
+| P2.5 Reranker light | 6, 42, 83, 106 | Reranker | `Retrieval_Top_K=20`, `RERANKER_TOP_K=5`, `huggingface:cross-encoder/ms-marco-MiniLM-L-6-v2` | Schneller Cross-Encoder-Test gegen No-Reranker-Baseline. | 4 |
+| P2.6 Reranker strong | 6, 42, 83, 106 | Reranker | `Retrieval_Top_K=20`, `RERANKER_TOP_K=5`, `huggingface:BAAI/bge-reranker-base` | Staerkerer Reranker fuer finale Kandidaten. | 4 |
+| P2.7 HyDE | 6, 42, 83, 106 | HyDE | `RETRIEVAL_USE_HYDE=true`, `Retrieval_Top_K=12`, Reranker off | Testen, ob Query Expansion bei Short-Question-Datasets hilft. | 4 |
+| P2.8 HyDE + rerank | 6, 42, 83, 106 | HyDE + Reranker | `RETRIEVAL_USE_HYDE=true`, `Retrieval_Top_K=20`, `RERANKER_TOP_K=5`, `huggingface:cross-encoder/ms-marco-MiniLM-L-6-v2` | Pruefen, ob mehr Recall durch HyDE per Reranker wieder bereinigt wird. | 4 |
+| P2.9 MMR lambda | 48, 56, 83, 87 | MMR lambda | `RETRIEVAL_MMR_LAMBDA=0.25`, `0.5`, `0.75`; `Retrieval_Top_K=12` | MMR ist gemischt: Faith oft gut, Recall teils schwach. Lambda isoliert Diversitaet vs. Relevanz. | 12 |
+| P2.10 Final combined | 6, 42, 83, 106 | Best-of stack | `huggingface:BAAI/bge-m3`, `Retrieval_Top_K=20`, `huggingface:BAAI/bge-reranker-base`, `RERANKER_TOP_K=5`, HyDE off; Datasets `squad`, `ragperf-wikipedia-nq`, `t2-ragbench/FinQA` | Finaler robuster Vergleich gegen die einfache Baseline. | 12 |
+
+### Phase-2 Prioritaet
+
+1. Zuerst `P2.1`, `P2.2`, `P2.4`: Stabilitaet, Dataset-Generalisation und Top-K sind die wichtigsten Validitaetsluecken.
+2. Danach `P2.5` und `P2.6`: Reranker nur auf Gewinnern testen, weil er teuer ist.
+3. Danach `P2.3`, `P2.7`, `P2.8`, `P2.9`: Embedding, HyDE und MMR-Lambda erklaeren die Ursachen der Unterschiede.
+4. Zum Schluss `P2.10`: Finaler Stack fuer Paper-/Poster-Claims.
