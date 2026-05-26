@@ -42,6 +42,16 @@ Semantic chunking:
 - `SEMANTIC_BREAKPOINT_AMOUNT`: positive integer threshold amount.
 - Semantic chunking is controlled by embeddings and breakpoint settings, not fixed chunk sizes or overlap. Semantic configs store `chunk_size` and `chunk_overlap` as `null` in JSON reports and omit `cs/co` from config names.
 
+RAG system adapters:
+
+- `RAG_SYSTEM_ADAPTER`: `internal` keeps the built-in chunk/retrieve/generate pipeline; `http` evaluates an external RAG service through JSON HTTP POST.
+- `RAG_HTTP_ENDPOINT_URL`: required for `RAG_SYSTEM_ADAPTER=http`. The framework sends `{question, metadata, ground_truth, config}` and expects a JSON object.
+- `RAG_HTTP_ANSWER_FIELD`, `RAG_HTTP_CONTEXTS_FIELD`, `RAG_HTTP_METADATA_FIELD`, `RAG_HTTP_TIMINGS_FIELD`: dotted response field paths. Defaults are `answer`, `contexts`, `metadata`, and `timings`.
+- `RAG_HTTP_TIMEOUT_SECONDS`: request timeout, default `60`.
+- `RAG_HTTP_HEADERS`: optional JSON object of static request headers.
+- `RAG_HTTP_AUTH_HEADER`, `RAG_HTTP_AUTH_VALUE`: optional single auth header without committing secrets to source.
+- `BENCHMARK_STAGE=index` is only supported by the internal adapter, because black-box HTTP systems own their own indexing lifecycle.
+
 Answer post-processing:
 
 - `LLM_ANSWER_STRIP_MODE`: `full`, `tags_only`, or `off`.

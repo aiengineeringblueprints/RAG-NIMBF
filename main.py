@@ -26,8 +26,15 @@ from benchmark.gold_retrieval_metrics import compute_gold_doc_retrieval_metrics
 from benchmark.reranker import get_reranker
 from benchmark.reporting import generate_report
 from benchmark.reporting.exports import _result_to_dict
-from benchmark.tracking import setup_mlflow, log_benchmark_run, log_genai_eval, log_plots_to_mlflow
+from benchmark.tracking import (
+    setup_mlflow,
+    log_benchmark_run,
+    log_genai_eval,
+    log_aggregate_artifacts_to_mlflow,
+)
 from benchmark.tracing import setup_tracing
+from benchmark.adapters import get_rag_adapter
+from benchmark.reproducibility import write_reproducibility_bundle
 from benchmark.reporting.models import (
     BenchmarkResultExtended,
     PerSampleResult,
@@ -81,6 +88,7 @@ def run_single_benchmark(
         stage_timings["load_data"] = load_data_seconds
     console.print(f"\n[bold yellow]>>> Starting: {config.name}[/bold yellow]")
     chunks = []
+    rag_adapter = get_rag_adapter(config)
 
     # Prepare QA log path if run_dir is provided
     qa_log: list[dict] = []
@@ -93,7 +101,11 @@ def run_single_benchmark(
 
     # 1. Chunk + 2. Embed (only in retrieval mode)
     vector_store = None
-    if config.retrieval_mode == "retrieval":
+    if rag_adapter is not None:
+        with _stage_timer(stage_timings, "adapter_prepare"):
+            rag_adapter.prepare(config, data, corpus=corpus)
+        console.print(f"  [dim]Using external RAG adapter: {rag_adapter.name}[/dim]")
+    elif config.retrieval_mode == "retrieval":
         with _stage_timer(stage_timings, "chunk"):
             chunker_kwargs: dict = {}
             semantic_emb = None
@@ -201,16 +213,20 @@ def run_single_benchmark(
         )
 
     # 3. Generate answers
-    with _stage_timer(stage_timings, "load_models"):
-        llm = get_llm(
-            provider=config.llm_provider,
-            model_name=config.llm_model,
-            base_url=config.llm_base_url(),
-            api_key=config.llm_api_key(),
-            max_new_tokens=config.max_new_tokens,
-        )
-        reranker = get_reranker(config.reranker_model)
-        prompt_tmpl = get_template(config.prompt_template)
+    llm = None
+    reranker = None
+    prompt_tmpl = None
+    if rag_adapter is None:
+        with _stage_timer(stage_timings, "load_models"):
+            llm = get_llm(
+                provider=config.llm_provider,
+                model_name=config.llm_model,
+                base_url=config.llm_base_url(),
+                api_key=config.llm_api_key(),
+                max_new_tokens=config.max_new_tokens,
+            )
+            reranker = get_reranker(config.reranker_model)
+            prompt_tmpl = get_template(config.prompt_template)
     questions: list[str] = []
     ground_truths: list[str] = []
     all_contexts: list[list[str]] = []
@@ -221,45 +237,65 @@ def run_single_benchmark(
     for i, sample in enumerate(data):
         console.print(f"  [cyan]({i + 1}/{len(data)})[/cyan] {sample['question'][:80]}{'...' if len(sample['question']) > 80 else ''}")
 
-        # HyDE query expansion: replace the raw question with a hypothetical answer
-        query = sample["question"]
-        if config.retrieval_mode == "direct":
-            context_texts = [sample["context"]]
-            retrieved_metadata = []
+        if rag_adapter is not None:
+            with _stage_timer(stage_timings, "external_rag"):
+                adapter_result = rag_adapter.answer(sample, config)
+            context_texts = adapter_result.contexts
+            retrieved_metadata = adapter_result.metadata
+            result = GenerationResult(
+                answer=adapter_result.answer,
+                ttft_seconds=adapter_result.ttft_seconds,
+                total_seconds=adapter_result.total_seconds,
+                token_count=adapter_result.token_count,
+                tokens_per_second=adapter_result.tokens_per_second,
+                gpu_usage=adapter_result.gpu_usage,
+                raw_content=adapter_result.raw_content,
+                raw_reasoning=adapter_result.raw_reasoning,
+                answer_valid=adapter_result.answer_valid,
+            )
         else:
-            if config.retrieval_use_hyde:
-                with _stage_timer(stage_timings, "hyde"):
-                    query = expand_query_with_hyde(llm, sample["question"])
+            if llm is None or prompt_tmpl is None:
+                raise RuntimeError("Internal RAG pipeline was not initialized.")
 
-            if vector_store is None:
-                raise RuntimeError("Vector store missing in retrieval mode.")
-            with _stage_timer(stage_timings, "retrieve"):
-                retrieved_docs = retrieve(
-                    vector_store, query, config.retrieval_top_k,
-                    retrieval_strategy=config.retrieval_strategy,
-                    fetch_k=config.retrieval_fetch_k,
-                    mmr_lambda=config.retrieval_mmr_lambda,
-                )
+            # HyDE query expansion: replace the raw question with a hypothetical answer
+            query = sample["question"]
+            if config.retrieval_mode == "direct":
+                context_texts = [sample["context"]]
+                retrieved_metadata = []
+            else:
+                if config.retrieval_use_hyde:
+                    with _stage_timer(stage_timings, "hyde"):
+                        query = expand_query_with_hyde(llm, sample["question"])
 
-            if reranker is not None:
-                with _stage_timer(stage_timings, "rerank"):
-                    retrieved_docs = reranker.rerank(
-                        sample["question"], retrieved_docs, config.reranker_top_k,
+                if vector_store is None:
+                    raise RuntimeError("Vector store missing in retrieval mode.")
+                with _stage_timer(stage_timings, "retrieve"):
+                    retrieved_docs = retrieve(
+                        vector_store, query, config.retrieval_top_k,
+                        retrieval_strategy=config.retrieval_strategy,
+                        fetch_k=config.retrieval_fetch_k,
+                        mmr_lambda=config.retrieval_mmr_lambda,
                     )
 
-            context_texts = [doc.page_content for doc in retrieved_docs]
-            retrieved_metadata = [dict(doc.metadata) for doc in retrieved_docs]
+                if reranker is not None:
+                    with _stage_timer(stage_timings, "rerank"):
+                        retrieved_docs = reranker.rerank(
+                            sample["question"], retrieved_docs, config.reranker_top_k,
+                        )
 
-        with _stage_timer(stage_timings, "generate"):
-            result = generate_answer(
-                llm, sample["question"], context_texts,
-                system_prompt=prompt_tmpl.system_prompt,
-                human_template=prompt_tmpl.human_template,
-                strip_mode=config.llm_answer_strip_mode,
-                value_fallback=config.llm_answer_value_fallback,
-                ground_truth=sample["ground_truth"],
-                prompt_template_name=config.prompt_template,
-            )
+                context_texts = [doc.page_content for doc in retrieved_docs]
+                retrieved_metadata = [dict(doc.metadata) for doc in retrieved_docs]
+
+            with _stage_timer(stage_timings, "generate"):
+                result = generate_answer(
+                    llm, sample["question"], context_texts,
+                    system_prompt=prompt_tmpl.system_prompt,
+                    human_template=prompt_tmpl.human_template,
+                    strip_mode=config.llm_answer_strip_mode,
+                    value_fallback=config.llm_answer_value_fallback,
+                    ground_truth=sample["ground_truth"],
+                    prompt_template_name=config.prompt_template,
+                )
 
         questions.append(sample["question"])
         ground_truths.append(sample["ground_truth"])
@@ -564,6 +600,8 @@ def run_all_benchmarks() -> list[BenchmarkResultExtended]:
     # Create run directory up front so results are saved even if a
     # later step (MLflow, cleanup, etc.) crashes.
     run_dir = _next_run_dir()
+    reproducibility_dir = write_reproducibility_bundle(run_dir, configs)
+    console.print(f"[dim]Reproducibility bundle: {reproducibility_dir}[/dim]")
     wall_start = time.perf_counter()
 
     # Run sequentially: local models typically share a single GPU and process
@@ -583,7 +621,7 @@ def run_all_benchmarks() -> list[BenchmarkResultExtended]:
         # Save to disk immediately (survives MLflow crashes)
         _save_config_result(result, run_dir)
 
-        log_benchmark_run(result)
+        log_benchmark_run(result, reproducibility_dir=reproducibility_dir)
         log_genai_eval(result)
         results.append(result)
 
@@ -605,8 +643,12 @@ def run_all_benchmarks() -> list[BenchmarkResultExtended]:
         total_time=wall_time,
     )
 
-    # Log generated plots to MLflow as artifacts
-    log_plots_to_mlflow(run_dir)
+    # Log aggregate tables, reports, plots, and rerun metadata to MLflow.
+    log_aggregate_artifacts_to_mlflow(
+        run_dir,
+        run_name=f"summary_{run_dir.name}_{timestamp}",
+        reproducibility_dir=reproducibility_dir,
+    )
 
     return results
 

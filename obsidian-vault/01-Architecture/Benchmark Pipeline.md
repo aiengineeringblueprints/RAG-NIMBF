@@ -7,10 +7,10 @@ Source entrypoint: [main.py](../main.py)
 `run_single_benchmark()` stages:
 
 1. Prepare per-config QA logging under `results/runN/configs/`.
-2. If `retrieval_mode == "retrieval"`, build chunks and Chroma vector store.
-3. If `retrieval_mode == "direct"`, skip vector store work and use each sample's supplied context.
-4. Create generator LLM and optional reranker.
-5. For each sample, retrieve context, generate an answer, and append the streamed answer log.
+2. Select a RAG system adapter. `RAG_SYSTEM_ADAPTER=internal` uses the built-in pipeline; `http` calls an external JSON RAG endpoint as a black-box system.
+3. For the internal adapter, if `retrieval_mode == "retrieval"`, build chunks and a vector store.
+4. For the internal adapter, if `retrieval_mode == "direct"`, skip vector store work and use each sample's supplied context.
+5. For the HTTP adapter, skip internal chunking/retrieval/generation and normalize the endpoint response into answer, contexts, metadata, and timings.
 6. Run RAGAS evaluation through [[Evaluation and Metrics]].
 7. Compute custom metrics.
 8. Build `BenchmarkResultExtended` with aggregate stats and per-sample results.
@@ -30,6 +30,7 @@ Important implementation details:
 - `_next_run_dir()` allocates monotonic `results/runN/` folders.
 - `_save_config_result()` writes each config result as soon as it finishes, so partial runs survive later failures.
 - `VECTOR_DB_BACKEND` selects `chroma` or `lancedb`. Chroma persists under `.chroma/`; LanceDB persists under `LANCEDB_PATH`, default `.lancedb/`.
+- External HTTP RAG systems are integrated through `benchmark/adapters/http.py`; they are evaluated with the same metric, reporting, and MLflow path as the internal pipeline.
 
 Related notes:
 
