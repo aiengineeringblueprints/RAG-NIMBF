@@ -7,6 +7,7 @@ from langchain_core.documents import Document
 
 from benchmark.retrieval import (
     _cache_key,
+    build_vector_store,
     cleanup_collection,
     clear_cache,
     retrieve,
@@ -64,6 +65,86 @@ class TestCacheKey:
         k1 = _cache_key("model", 1000, 200, "recursive", vector_db_backend="chroma")
         k2 = _cache_key("model", 1000, 200, "recursive", vector_db_backend="lancedb")
         assert k1 != k2
+
+
+class TestBuildVectorStore:
+    @patch("benchmark.retrieval.Chroma")
+    @patch("benchmark.retrieval.get_embedding_model")
+    @patch("benchmark.retrieval._get_client")
+    def test_reuses_existing_collection_when_count_matches(
+        self, mock_get_client, mock_get_embedding_model, mock_chroma
+    ):
+        chunks = [Document(page_content="a"), Document(page_content="b")]
+        mock_client = MagicMock()
+        mock_existing = MagicMock(name="collection_ref")
+        mock_existing.name = "test_collection"
+        mock_client.list_collections.return_value = [mock_existing]
+        mock_collection = MagicMock()
+        mock_collection.count.return_value = len(chunks)
+        mock_client.get_collection.return_value = mock_collection
+        mock_get_client.return_value = mock_client
+        mock_embedding = MagicMock()
+        mock_get_embedding_model.return_value = mock_embedding
+        mock_store = MagicMock()
+        mock_chroma.return_value = mock_store
+
+        result = build_vector_store(chunks, "embed", "test_collection")
+
+        assert result is mock_store
+        mock_client.delete_collection.assert_not_called()
+        mock_store.add_documents.assert_not_called()
+
+    @patch("benchmark.retrieval.Chroma")
+    @patch("benchmark.retrieval.get_embedding_model")
+    @patch("benchmark.retrieval._get_client")
+    def test_rebuilds_existing_collection_when_count_differs(
+        self, mock_get_client, mock_get_embedding_model, mock_chroma
+    ):
+        chunks = [Document(page_content="a"), Document(page_content="b")]
+        mock_client = MagicMock()
+        mock_existing = MagicMock(name="collection_ref")
+        mock_existing.name = "test_collection"
+        mock_client.list_collections.return_value = [mock_existing]
+        mock_collection = MagicMock()
+        mock_collection.count.return_value = 0
+        mock_client.get_collection.return_value = mock_collection
+        mock_get_client.return_value = mock_client
+        mock_embedding = MagicMock()
+        mock_get_embedding_model.return_value = mock_embedding
+        mock_store = MagicMock()
+        mock_chroma.return_value = mock_store
+
+        result = build_vector_store(chunks, "embed", "test_collection")
+
+        assert result is mock_store
+        mock_client.delete_collection.assert_called_once_with("test_collection")
+        mock_store.add_documents.assert_called_once_with(chunks)
+
+    @patch("benchmark.retrieval.get_embedding_model")
+    @patch("benchmark.retrieval._get_client")
+    def test_query_mode_raises_when_existing_count_differs(
+        self, mock_get_client, mock_get_embedding_model
+    ):
+        chunks = [Document(page_content="a"), Document(page_content="b")]
+        mock_client = MagicMock()
+        mock_existing = MagicMock(name="collection_ref")
+        mock_existing.name = "test_collection"
+        mock_client.list_collections.return_value = [mock_existing]
+        mock_collection = MagicMock()
+        mock_collection.count.return_value = 0
+        mock_client.get_collection.return_value = mock_collection
+        mock_get_client.return_value = mock_client
+        mock_get_embedding_model.return_value = MagicMock()
+
+        try:
+            build_vector_store(
+                chunks, "embed", "test_collection", create_if_missing=False
+            )
+        except RuntimeError as exc:
+            assert "has 0 documents, expected 2" in str(exc)
+        else:
+            raise AssertionError("expected RuntimeError")
+        mock_client.delete_collection.assert_not_called()
 
 
 class TestRetrieve:
