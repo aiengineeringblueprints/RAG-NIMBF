@@ -85,6 +85,17 @@ class BenchmarkConfig:
     vector_db_backend: str = "chroma"  # chroma | lancedb
     lancedb_path: str = ".lancedb"
     benchmark_stage: str = "all"  # all | index | query
+    # RAG system adapter
+    rag_system_adapter: str = "internal"  # internal | http
+    rag_http_endpoint_url: str | None = None
+    rag_http_timeout_seconds: float = 60.0
+    rag_http_answer_field: str = "answer"
+    rag_http_contexts_field: str = "contexts"
+    rag_http_metadata_field: str = "metadata"
+    rag_http_timings_field: str = "timings"
+    rag_http_headers: str | None = None
+    rag_http_auth_header: str | None = None
+    rag_http_auth_value: str | None = None
 
     @property
     def name(self) -> str:
@@ -111,6 +122,8 @@ class BenchmarkConfig:
             parts += "_direct"
         if self.vector_db_backend != "chroma":
             parts += f"_{self.vector_db_backend}"
+        if self.rag_system_adapter != "internal":
+            parts += f"_{self.rag_system_adapter}"
         return parts
 
     @property
@@ -312,6 +325,27 @@ def get_all_combinations() -> list[BenchmarkConfig]:
     if benchmark_stage == "index" and retrieval_mode == "direct":
         raise ValueError("BENCHMARK_STAGE=index requires RETRIEVAL_MODE=retrieval")
 
+    rag_system_adapter = os.getenv("RAG_SYSTEM_ADAPTER", "internal").strip().lower()
+    if rag_system_adapter not in ("internal", "http"):
+        raise ValueError(
+            f"Invalid RAG_SYSTEM_ADAPTER={rag_system_adapter!r}. Use: internal, http"
+        )
+    if rag_system_adapter != "internal" and benchmark_stage == "index":
+        raise ValueError("BENCHMARK_STAGE=index is only supported for RAG_SYSTEM_ADAPTER=internal")
+    rag_http_endpoint_url = os.getenv("RAG_HTTP_ENDPOINT_URL") or None
+    rag_http_timeout_seconds = float(os.getenv("RAG_HTTP_TIMEOUT_SECONDS", "60"))
+    if rag_http_timeout_seconds <= 0:
+        raise ValueError("RAG_HTTP_TIMEOUT_SECONDS must be positive")
+    rag_http_answer_field = os.getenv("RAG_HTTP_ANSWER_FIELD", "answer").strip() or "answer"
+    rag_http_contexts_field = os.getenv("RAG_HTTP_CONTEXTS_FIELD", "contexts").strip() or "contexts"
+    rag_http_metadata_field = os.getenv("RAG_HTTP_METADATA_FIELD", "metadata").strip() or "metadata"
+    rag_http_timings_field = os.getenv("RAG_HTTP_TIMINGS_FIELD", "timings").strip() or "timings"
+    rag_http_headers = os.getenv("RAG_HTTP_HEADERS") or None
+    rag_http_auth_header = os.getenv("RAG_HTTP_AUTH_HEADER") or None
+    rag_http_auth_value = os.getenv("RAG_HTTP_AUTH_VALUE") or None
+    if rag_system_adapter == "http" and not rag_http_endpoint_url:
+        raise ValueError("RAG_HTTP_ENDPOINT_URL is required when RAG_SYSTEM_ADAPTER=http")
+
     # Validate integer values
     for cs in chunk_sizes:
         _validate_positive_int(cs, "CHUNK_SIZES value")
@@ -398,6 +432,16 @@ def get_all_combinations() -> list[BenchmarkConfig]:
                     vector_db_backend=vector_db_backend,
                     lancedb_path=lancedb_path,
                     benchmark_stage=benchmark_stage,
+                    rag_system_adapter=rag_system_adapter,
+                    rag_http_endpoint_url=rag_http_endpoint_url,
+                    rag_http_timeout_seconds=rag_http_timeout_seconds,
+                    rag_http_answer_field=rag_http_answer_field,
+                    rag_http_contexts_field=rag_http_contexts_field,
+                    rag_http_metadata_field=rag_http_metadata_field,
+                    rag_http_timings_field=rag_http_timings_field,
+                    rag_http_headers=rag_http_headers,
+                    rag_http_auth_header=rag_http_auth_header,
+                    rag_http_auth_value=rag_http_auth_value,
                 )
             )
     return configs

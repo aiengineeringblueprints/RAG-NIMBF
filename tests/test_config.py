@@ -216,6 +216,10 @@ class TestBenchmarkConfig:
         assert "_cs" not in cfg.name
         assert "_coNone" not in cfg.name
 
+    def test_name_includes_external_adapter(self):
+        cfg = _make_config(rag_system_adapter="http")
+        assert cfg.name.endswith("_http")
+
 
 class TestChunkParameterPairs:
     def test_semantic_ignores_size_and_overlap_grid(self):
@@ -252,6 +256,28 @@ class TestGetAllCombinations:
         assert configs[0].llm_model == "gemma3:4b"
         assert configs[0].vector_db_backend == "chroma"
         assert configs[0].benchmark_stage == "all"
+        assert configs[0].rag_system_adapter == "internal"
+
+    @patch.dict(os.environ, {
+        "RAG_SYSTEM_ADAPTER": "http",
+        "RAG_HTTP_ENDPOINT_URL": "http://rag.local/query",
+        "RAG_HTTP_ANSWER_FIELD": "result.answer",
+        "RAG_HTTP_CONTEXTS_FIELD": "result.contexts",
+    }, clear=False)
+    def test_http_adapter_config(self):
+        configs = get_all_combinations()
+        assert configs[0].rag_system_adapter == "http"
+        assert configs[0].rag_http_endpoint_url == "http://rag.local/query"
+        assert configs[0].rag_http_answer_field == "result.answer"
+        assert configs[0].rag_http_contexts_field == "result.contexts"
+
+    @patch.dict(os.environ, {
+        "RAG_SYSTEM_ADAPTER": "http",
+        "RAG_HTTP_ENDPOINT_URL": "",
+    }, clear=False)
+    def test_http_adapter_requires_endpoint(self):
+        with pytest.raises(ValueError, match="RAG_HTTP_ENDPOINT_URL is required"):
+            get_all_combinations()
 
     @patch.dict(os.environ, {
         "LLM_MODELS": "ollama:gpt-oss:20b,openai:Qwen/Qwen3-32B-AWQ",

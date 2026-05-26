@@ -12,6 +12,12 @@ Run the deterministic benchmark:
 python main.py
 ```
 
+Enable MLflow system metrics for a run:
+
+```bash
+MLFLOW_ENABLE_SYSTEM_METRICS=true python main.py
+```
+
 Build/reuse vector indexes in separate stages:
 
 ```bash
@@ -24,6 +30,14 @@ Use LanceDB instead of Chroma:
 ```bash
 VECTOR_DB_BACKEND=lancedb LANCEDB_PATH=.lancedb python main.py
 ```
+
+Use an external HTTP RAG system as a black-box benchmark target:
+
+```bash
+RAG_SYSTEM_ADAPTER=http RAG_HTTP_ENDPOINT_URL=http://localhost:8000/query RAG_HTTP_ANSWER_FIELD=answer RAG_HTTP_CONTEXTS_FIELD=contexts python main.py
+```
+
+The HTTP adapter sends a JSON object with `question`, `metadata`, `ground_truth`, and `config`. The endpoint should return at least an answer field and should return contexts when RAGAS/context metrics are needed.
 
 Run the autonomous agent:
 
@@ -45,10 +59,10 @@ Expected local services:
 
 Important runtime folders:
 
-- `results/`: benchmark reports and per-config output.
+- `results/`: benchmark reports, per-config output, and `runN/reproducibility/` manifests.
 - `.chroma/`: persisted Chroma cache.
 - `.lancedb/`: persisted LanceDB tables when `VECTOR_DB_BACKEND=lancedb`.
-- `mlruns/`, `mlflow.db`: MLflow tracking artifacts.
+- `mlruns/`, `mlflow.db`: MLflow tracking artifacts, including per-run reproducibility bundles.
 
 Before long runs:
 

@@ -1,6 +1,8 @@
 """MLflow experiment tracking for RAG benchmark runs."""
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 import os
 from pathlib import Path
@@ -29,6 +31,18 @@ def setup_mlflow() -> str:
     except Exception:
         tracking_uri = "sqlite:///mlflow.db"
         mlflow.set_tracking_uri(tracking_uri)
+
+    if os.getenv("MLFLOW_ENABLE_SYSTEM_METRICS", "false").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    ):
+        try:
+            mlflow.enable_system_metrics_logging()
+            logger.info("MLflow system metrics logging enabled")
+        except Exception as exc:
+            logger.warning("Could not enable MLflow system metrics logging: %s", exc)
 
     mlflow.set_experiment("RAG-Benchmark")
     logger.info("MLflow experiment: RAG-Benchmark (URI: %s)", tracking_uri)
@@ -96,18 +110,53 @@ def _make_tags(result: BenchmarkResultExtended) -> dict[str, str]:
     return tags
 
 
-def log_benchmark_run(result: BenchmarkResultExtended) -> None:
+def _reproducibility_tags(reproducibility_dir: Path | None) -> dict[str, str]:
+    """Load searchable MLflow tags from a reproducibility manifest."""
+    if reproducibility_dir is None:
+        return {}
+    manifest_path = reproducibility_dir / "manifest.json"
+    if not manifest_path.exists():
+        return {}
+    try:
+        raw = manifest_path.read_bytes()
+        manifest = json.loads(raw.decode("utf-8"))
+    except Exception as exc:
+        logger.warning("Could not read reproducibility manifest: %s", exc)
+        return {}
+
+    git = manifest.get("git") or {}
+    python_info = manifest.get("python") or {}
+    tags: dict[str, str] = {
+        "reproducibility_hash": hashlib.sha256(raw).hexdigest()[:16],
+    }
+    if git.get("commit"):
+        tags["git_commit"] = str(git["commit"])
+    if git.get("branch"):
+        tags["git_branch"] = str(git["branch"])
+    tags["git_dirty"] = str(bool(git.get("dirty"))).lower()
+    if python_info.get("platform"):
+        tags["python_platform"] = str(python_info["platform"])[:250]
+    return tags
+
+
+def log_benchmark_run(
+    result: BenchmarkResultExtended,
+    reproducibility_dir: Path | None = None,
+) -> None:
     """Log a single benchmark configuration as one MLflow run.
 
     Parameters
     ----------
     result:
         The fully aggregated benchmark result for one config.
+    reproducibility_dir:
+        Optional directory containing manifest/package artifacts for reruns.
     """
     experiment_name = "RAG-Benchmark"
     mlflow.set_experiment(experiment_name)
 
     tags = _make_tags(result)
+    tags.update(_reproducibility_tags(reproducibility_dir))
 
     params: dict[str, Any] = {
         "chunk_size": result.chunk_size if result.chunk_size is not None else "n/a",
@@ -203,6 +252,9 @@ def log_benchmark_run(result: BenchmarkResultExtended) -> None:
         # Log per-sample results as a CSV artifact
         if result.per_sample:
             _log_per_sample_csv(result, run.info.run_id)
+
+        if reproducibility_dir is not None and reproducibility_dir.exists():
+            mlflow.log_artifacts(str(reproducibility_dir), artifact_path="reproducibility")
 
         if result.evaluation_error:
             mlflow.set_tag("evaluation_error", result.evaluation_error)
@@ -307,25 +359,61 @@ def log_genai_eval(result: BenchmarkResultExtended) -> None:
 
 
 def log_plots_to_mlflow(results_dir: Path, run_name_prefix: str = "plots") -> None:
-    """Log all generated plot HTML files from a results directory to MLflow.
+    """Backward-compatible wrapper for aggregate artifact logging."""
+    log_aggregate_artifacts_to_mlflow(results_dir, run_name=run_name_prefix)
 
-    Scans the results_plots/ subdirectory for .html files and logs each
-    as an MLflow artifact under the 'plots' artifact path.
+
+def log_aggregate_artifacts_to_mlflow(
+    results_dir: Path,
+    *,
+    run_name: str = "run_summary",
+    reproducibility_dir: Path | None = None,
+) -> None:
+    """Log run-level tables, reports, plots, and reproducibility artifacts.
+
+    This creates one MLflow run that is easy to open when comparing a full
+    benchmark sweep: summary tables live under ``tables/``, plots under
+    ``plots/``, reports under ``reports/``, and rerun metadata under
+    ``reproducibility/``.
     """
-    plots_dir = results_dir / "results_plots"
-    if not plots_dir.exists():
-        logger.warning("No results_plots/ directory found at %s", results_dir)
+    if not results_dir.exists():
+        logger.warning("Results directory does not exist: %s", results_dir)
         return
 
-    html_files = list(plots_dir.glob("*.html"))
-    if not html_files:
-        logger.warning("No HTML plot files found in %s", plots_dir)
-        return
+    artifact_groups: list[tuple[Path, str]] = []
+    for filename in ("results_summary.csv", "results_per_sample.csv"):
+        path = results_dir / filename
+        if path.exists():
+            artifact_groups.append((path, "tables"))
+
+    for path in sorted(results_dir.glob("benchmark_*.json")):
+        artifact_groups.append((path, "reports"))
+    for filename in ("report.md",):
+        path = results_dir / filename
+        if path.exists():
+            artifact_groups.append((path, "reports"))
+
+    plots_dir = results_dir / "results_plots"
+    if plots_dir.exists():
+        for pattern in ("*.html", "*.png", "*.jpg", "*.jpeg", "*.svg"):
+            for path in sorted(plots_dir.glob(pattern)):
+                artifact_groups.append((path, "plots"))
+
+    repro_dir = reproducibility_dir or (results_dir / "reproducibility")
 
     try:
-        with mlflow.start_run(run_name=run_name_prefix, tags={"type": "plots"}) as run:
-            for html_file in sorted(html_files):
-                mlflow.log_artifact(str(html_file), artifact_path="plots")
-            logger.info("Logged %d plot artifacts to MLflow run %s", len(html_files), run.info.run_id)
+        tags = {"type": "aggregate", "results_dir": str(results_dir)}
+        tags.update(_reproducibility_tags(repro_dir))
+        with mlflow.start_run(run_name=run_name, tags=tags) as run:
+            for path, artifact_path in artifact_groups:
+                mlflow.log_artifact(str(path), artifact_path=artifact_path)
+            if repro_dir.exists():
+                mlflow.log_artifacts(str(repro_dir), artifact_path="reproducibility")
+            mlflow.log_metric("num_logged_artifacts", float(len(artifact_groups)))
+            logger.info(
+                "Logged %d aggregate artifacts to MLflow run %s",
+                len(artifact_groups),
+                run.info.run_id,
+            )
     except Exception as e:
-        logger.warning("Failed to log plots to MLflow (non-fatal): %s", e)
+        logger.warning("Failed to log aggregate artifacts to MLflow (non-fatal): %s", e)
