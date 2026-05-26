@@ -143,15 +143,33 @@ def build_vector_store(
     directly, skipping re-embedding.
 
     Collections are persisted to ``.chroma/`` on disk and survive across runs.
-    If a collection with the same name already exists, it is reused as-is.
+    If a collection with the same name already exists, it is reused only when
+    its document count matches the newly generated chunk count.
     """
-    # Fast path: return cached store when the key matches.
+    expected_count = len(chunks)
+
+    # Fast path: return cached store when the key matches and the cached
+    # collection still has the expected number of documents.
     if cache_key is not None:
         with _chroma_lock:
             cached = _vector_store_cache.get(cache_key)
             if cached is not None:
-                logger.info("Reusing in-memory cached vector store (key=%s)", cache_key)
-                return cached
+                cached_count = _vector_store_count(cached)
+                if cached_count is None or cached_count == expected_count:
+                    logger.info(
+                        "Reusing in-memory cached vector store (key=%s, count=%s)",
+                        cache_key,
+                        cached_count,
+                    )
+                    return cached
+                logger.warning(
+                    "Discarding cached vector store for key=%s: expected %d "
+                    "documents, found %s",
+                    cache_key,
+                    expected_count,
+                    cached_count,
+                )
+                _vector_store_cache.pop(cache_key, None)
 
     embedding_model = get_embedding_model(
         embedding_model_name, ollama_base_url, ollama_api_key,
@@ -178,15 +196,38 @@ def build_vector_store(
     with _chroma_lock:
         existing = [c.name for c in client.list_collections()]
         if collection_name in existing:
-            logger.info("Reusing persisted collection '%s'", collection_name)
-            vector_store = Chroma(
-                client=client,
-                collection_name=collection_name,
-                embedding_function=embedding_model,
+            collection = client.get_collection(collection_name)
+            persisted_count = collection.count()
+            if persisted_count == expected_count:
+                logger.info(
+                    "Reusing persisted collection '%s' with %d documents",
+                    collection_name,
+                    persisted_count,
+                )
+                vector_store = Chroma(
+                    client=client,
+                    collection_name=collection_name,
+                    embedding_function=embedding_model,
+                )
+                if cache_key is not None:
+                    _vector_store_cache[cache_key] = vector_store
+                return vector_store
+
+            message = (
+                f"Chroma collection '{collection_name}' has {persisted_count} "
+                f"documents, expected {expected_count}."
             )
+            if not create_if_missing:
+                raise RuntimeError(
+                    f"{message} Rebuild the index with BENCHMARK_STAGE=index "
+                    "or BENCHMARK_STAGE=all before querying."
+                )
+
+            logger.warning("%s Rebuilding collection.", message)
+            client.delete_collection(collection_name)
             if cache_key is not None:
-                _vector_store_cache[cache_key] = vector_store
-            return vector_store
+                _vector_store_cache.pop(cache_key, None)
+
         if not create_if_missing:
             raise RuntimeError(
                 f"Chroma collection '{collection_name}' missing. "
@@ -206,6 +247,15 @@ def build_vector_store(
             _vector_store_cache[cache_key] = vector_store
 
     return vector_store
+
+
+def _vector_store_count(vector_store: Any) -> int | None:
+    """Return document count for Chroma-like stores, or None if unavailable."""
+    collection = getattr(vector_store, "_collection", None)
+    count = getattr(collection, "count", None)
+    if callable(count):
+        return count()
+    return None
 
 
 @mlflow.trace(name="retrieve", span_type="func")
