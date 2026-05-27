@@ -47,3 +47,8 @@ Related notes:
 - [[Benchmark Pipeline]]
 - [[Evaluation and Metrics]]
 
+Resource utilization figures:
+
+- `BENCHMARK_RESOURCE_MONITOR=true` enables per-config resource tracing under `results/runN/resource_traces/`.
+- Each traced config writes `<config>.csv` with sampled CPU, host memory, GPU utilization/memory, PCIe, disk I/O, and GPU power counters, plus `<config>_markers.csv` with stage start/end markers.
+- `python -m benchmark.reporting.resource_charts --trace-dir results/runN/resource_traces --output Paper/NGEN-AI/figures/fig_resource_breakdown` generates PDF and PNG multi-panel resource breakdown figures for the NGEN-AI paper.

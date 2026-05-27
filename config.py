@@ -310,10 +310,14 @@ def get_all_combinations() -> list[BenchmarkConfig]:
     semantic_breakpoint_amount = int(os.getenv("SEMANTIC_BREAKPOINT_AMOUNT", "95"))
     _validate_positive_int(semantic_breakpoint_amount, "SEMANTIC_BREAKPOINT_AMOUNT")
 
+    from benchmark.retrieval import available_vector_store_backends
+
     vector_db_backend = os.getenv("VECTOR_DB_BACKEND", "chroma").strip().lower()
-    if vector_db_backend not in ("chroma", "lancedb"):
+    valid_vector_backends = available_vector_store_backends()
+    if vector_db_backend not in valid_vector_backends:
         raise ValueError(
-            f"Invalid VECTOR_DB_BACKEND={vector_db_backend!r}. Use: chroma, lancedb"
+            f"Invalid VECTOR_DB_BACKEND={vector_db_backend!r}. "
+            f"Use: {', '.join(valid_vector_backends)}"
         )
     lancedb_path = os.getenv("LANCEDB_PATH", ".lancedb").strip() or ".lancedb"
 
@@ -325,10 +329,14 @@ def get_all_combinations() -> list[BenchmarkConfig]:
     if benchmark_stage == "index" and retrieval_mode == "direct":
         raise ValueError("BENCHMARK_STAGE=index requires RETRIEVAL_MODE=retrieval")
 
+    from benchmark.adapters import RAG_ADAPTER_REGISTRY
+
     rag_system_adapter = os.getenv("RAG_SYSTEM_ADAPTER", "internal").strip().lower()
-    if rag_system_adapter not in ("internal", "http"):
+    valid_rag_adapters = tuple(sorted(RAG_ADAPTER_REGISTRY))
+    if rag_system_adapter not in valid_rag_adapters:
         raise ValueError(
-            f"Invalid RAG_SYSTEM_ADAPTER={rag_system_adapter!r}. Use: internal, http"
+            f"Invalid RAG_SYSTEM_ADAPTER={rag_system_adapter!r}. "
+            f"Use: {', '.join(valid_rag_adapters)}"
         )
     if rag_system_adapter != "internal" and benchmark_stage == "index":
         raise ValueError("BENCHMARK_STAGE=index is only supported for RAG_SYSTEM_ADAPTER=internal")

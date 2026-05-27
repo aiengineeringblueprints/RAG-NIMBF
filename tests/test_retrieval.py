@@ -67,6 +67,86 @@ class TestCacheKey:
         assert k1 != k2
 
 
+class TestVectorStoreBackends:
+    @patch("benchmark.retrieval.get_embedding_model")
+    def test_dispatches_to_registered_backend(self, mock_get_embedding_model):
+        import benchmark.retrieval as ret_mod
+
+        chunks = [Document(page_content="a"), Document(page_content="b")]
+        mock_embedding = MagicMock()
+        mock_get_embedding_model.return_value = mock_embedding
+        mock_store = MagicMock()
+        backend = MagicMock()
+        backend.build.return_value = mock_store
+
+        with patch.dict(ret_mod._VECTOR_STORE_BACKENDS, {"custom": backend}):
+            result = build_vector_store(
+                chunks,
+                "embed",
+                "test_collection",
+                embedding_provider="huggingface",
+                vector_db_backend="custom",
+                lancedb_path="custom-path",
+                create_if_missing=False,
+            )
+
+        assert result is mock_store
+        backend.build.assert_called_once()
+        context = backend.build.call_args.args[0]
+        assert context.chunks == chunks
+        assert context.embedding_model is mock_embedding
+        assert context.collection_name == "test_collection"
+        assert context.expected_count == len(chunks)
+        assert context.create_if_missing is False
+        assert context.lancedb_path == "custom-path"
+        mock_get_embedding_model.assert_called_once_with(
+            "embed",
+            "http://localhost:11434",
+            None,
+            provider="huggingface",
+        )
+
+    @patch("benchmark.retrieval.LanceDBVectorStore")
+    @patch("benchmark.retrieval.get_embedding_model")
+    def test_lancedb_backend_builds_adapter(
+        self, mock_get_embedding_model, mock_lancedb_vector_store
+    ):
+        chunks = [Document(page_content="a")]
+        mock_embedding = MagicMock()
+        mock_get_embedding_model.return_value = mock_embedding
+        mock_store = MagicMock()
+        mock_lancedb_vector_store.return_value = mock_store
+
+        result = build_vector_store(
+            chunks,
+            "embed",
+            "test_collection",
+            vector_db_backend="lancedb",
+            lancedb_path=".custom-lancedb",
+            create_if_missing=False,
+        )
+
+        assert result is mock_store
+        mock_lancedb_vector_store.assert_called_once_with(
+            ".custom-lancedb",
+            "test_collection",
+            mock_embedding,
+            create_if_missing=False,
+            chunks=chunks,
+        )
+
+    @patch("benchmark.retrieval.get_embedding_model")
+    def test_unsupported_backend_raises(self, mock_get_embedding_model):
+        mock_get_embedding_model.return_value = MagicMock()
+
+        try:
+            build_vector_store([], "embed", "test_collection", vector_db_backend="unknown")
+        except ValueError as exc:
+            assert "Unsupported vector DB backend: unknown" in str(exc)
+        else:
+            raise AssertionError("expected ValueError")
+
+
 class TestBuildVectorStore:
     @patch("benchmark.retrieval.Chroma")
     @patch("benchmark.retrieval.get_embedding_model")

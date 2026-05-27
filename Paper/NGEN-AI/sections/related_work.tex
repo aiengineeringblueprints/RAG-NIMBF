@@ -1,0 +1,26 @@
+\section{Related Work}
+\label{sec:related}
+
+\subsection{Retrieval-Augmented Generation}
+
+RAG was introduced by Lewis et al.~\cite{lewis2020retrieval}, who combined dense passage retrieval~\cite{karpukhin2020dense} with sequence-to-sequence generation. The paradigm has since been extended in multiple directions: REALM~\cite{guu2020realm} integrates retrieval into pre-training; Self-RAG~\cite{asai2024selfrag} learns when and what to retrieve through self-reflection; Active-RAG~\cite{jiang2024active} retrieves dynamically during generation; GraphRAG~\cite{edge2024local} builds knowledge graphs over retrieved documents for multi-hop reasoning. Chain-of-Note~\cite{li2024chain} addresses hallucination by requiring the model to assess retrieved evidence before answering.
+
+Several surveys have catalogued the growing RAG landscape. Gao et al.~\cite{gao2024retrieval} provide a comprehensive taxonomy of RAG paradigms. Zhao et al.~\cite{zhao2024retrieval} survey retrieval-augmented generation for AI-generated content. These works establish that configuration choices---chunk size, retrieval method, prompt design---affect output quality, but stop short of providing tools for systematic comparison.
+
+\subsection{RAG Evaluation}
+
+RAGAS~\cite{es2023ragas} introduced automated evaluation of RAG systems through LLM-based metrics including faithfulness, answer relevancy, context precision, and context recall. ARES~\cite{esphandiary2024areval} uses prediction-powered inference for evaluation without gold references. RAGChecker~\cite{izrailovsky2024rag} decomposes RAG performance into fine-grained retrieval and generation diagnostics. Chen et al.~\cite{chen2024benchmarking} benchmark LLMs on retrieval-augmented generation tasks but evaluate only model-level differences.
+
+These frameworks evaluate a single pipeline configuration. None systematically sweep the multi-component configuration space, compare component interactions, or track experiments for reproducibility. Our work complements these tools by providing the orchestration layer: \toolname{} runs any number of configurations through the same evaluation pipeline and produces structured, comparable results.
+
+\subsection{RAG Component Studies}
+
+Individual RAG components have been studied in isolation. Liu et al.~\cite{liu2024lost} show that language models struggle to use information in the middle of long contexts, motivating chunking and retrieval strategies. The impact of chunk size on retrieval quality has been examined in several applied studies, typically finding a trade-off between granularity (smaller chunks improve precision) and context completeness (larger chunks capture more relevant information). Muennighoff et al.~\cite{muennighoff2022mteb} benchmark embedding models on diverse tasks through MTEB. Reimers and Gurevych~\cite{reimers2019sentence} introduced Sentence-BERT for efficient semantic similarity.
+
+Maximal Marginal Relevance (MMR)~\cite{spanakis2018similarity} balances relevance and diversity in retrieval. Nair and Mohta~\cite{izrailovsky2024rag} analyze retrieval diversity in RAG systems. However, these studies examine one component at a time, leaving interaction effects across the full pipeline unexplored.
+
+\subsection{Benchmarking Frameworks}
+
+In the broader NLP ecosystem, benchmarks like GLUE, SuperGLUE, and MTEB~\cite{muennighoff2022mteb} provide standardized evaluation protocols for specific tasks. In the RAG domain, most benchmarks are dataset-centric (SQuAD~\cite{rajpurkar2016squad}, MS MARCO~\cite{wu2024msmarco}) rather than configuration-centric. Song et al.~\cite{song2024bench} benchmark RAG for medicine but focus on domain-specific evaluation rather than configuration exploration.
+
+\toolname{} fills this gap by treating configuration exploration as a first-class concern: given parameter ranges for all pipeline components, it generates, executes, evaluates, and tracks every combination.

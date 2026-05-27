@@ -1,13 +1,10 @@
 Retrieval-Augmented Generation (RAG) has emerged as a dominant paradigm for grounding large language model outputs in factual, domain-specific knowledge. 
 Yet practitioners face a vast, poorly understood configuration space spanning chunking strategies, embedding models, retrieval methods, and generation models. 
-
-
 We address this gap with a modular benchmarking framework that attaches to existing RAG pipelines as a drop-in evaluation layer, wrapping their components without restructuring the
 pipeline. It systematically explores the configuration space across all components, replacing manual tuning. 
-
-Every benchmarked configuration is tracked end-to-end via MLflow for full reproducibility and evaluated through a hybrid scheme combining LLM-based quality metrics with established information-retrieval and natural-language-generation measures. 
+Every benchmarked configuration is tracked end-to-end via MLflow for full reproducibility and evaluated through a hybrid scheme combining LLM-based quality metrics, established information-retrieval and natural-language-generation measures, and runtime performance indicators such as latency, time-to-first-token, and throughput. 
 Pre-configured dataset adapters cover diverse QA domains and are extensible to custom domain-specific data. 
-We validate the framework by benchmarking more than 100 configuration combinations on locally served open-weight models, demonstrating the reproducability and comparability of RAG components with minimal modifications to existing pipelines.
+We validate the framework by benchmarking more than 100 configuration combinations on locally served open-weight and frontier models, demonstrating the comparability of RAG components with minimal modifications to existing pipelines.
 % To overcome these limitations, we present a modular and extensible benchmarking framework designed to integrate seamlessly with existing RAG pipelines and automatically evaluate pipeline configurations.
 % By covering the full RAG lifecycle and enabling systematic exploration of a large configuration space across all components, the framework eliminates manual tuning while ensuring complete experiment reproducibility via MLflow.
 % To maximize evaluation coverage, it combines LLM-based quality metrics with established numerical metrics from information retrieval and natural language generation. 

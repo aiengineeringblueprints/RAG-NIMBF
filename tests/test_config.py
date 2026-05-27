@@ -550,3 +550,49 @@ class TestGetAllCombinations:
         assert len(configs) == 1
         assert configs[0].chunk_size is None
         assert configs[0].chunk_overlap is None
+
+    @patch.dict(os.environ, {
+        "LLM_MODELS": "gemma3:4b",
+        "EMBEDDING_MODELS": "nomic-embed-text:latest",
+        "CHUNK_SIZES": "1000",
+        "CHUNK_OVERLAPS": "200",
+        "CHUNKING_STRATEGIES": "recursive",
+        "RAG_SYSTEM_ADAPTER": "custom",
+    }, clear=False)
+    def test_registered_rag_adapter_is_allowed(self):
+        from benchmark.adapters import RAG_ADAPTER_REGISTRY, register_rag_adapter
+
+        original_registry = RAG_ADAPTER_REGISTRY.copy()
+        try:
+            register_rag_adapter("custom", lambda config: None)
+            configs = get_all_combinations()
+            assert configs[0].rag_system_adapter == "custom"
+        finally:
+            RAG_ADAPTER_REGISTRY.clear()
+            RAG_ADAPTER_REGISTRY.update(original_registry)
+
+    @patch.dict(os.environ, {
+        "LLM_MODELS": "gemma3:4b",
+        "EMBEDDING_MODELS": "nomic-embed-text:latest",
+        "CHUNK_SIZES": "1000",
+        "CHUNK_OVERLAPS": "200",
+        "CHUNKING_STRATEGIES": "recursive",
+        "VECTOR_DB_BACKEND": "custom",
+    }, clear=False)
+    def test_registered_vector_backend_is_allowed(self):
+        import benchmark.retrieval as ret_mod
+
+        class CustomBackend:
+            name = "custom"
+
+            def build(self, context):
+                return None
+
+        original_backends = ret_mod._VECTOR_STORE_BACKENDS.copy()
+        try:
+            ret_mod.register_vector_store_backend("custom", CustomBackend())
+            configs = get_all_combinations()
+            assert configs[0].vector_db_backend == "custom"
+        finally:
+            ret_mod._VECTOR_STORE_BACKENDS.clear()
+            ret_mod._VECTOR_STORE_BACKENDS.update(original_backends)

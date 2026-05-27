@@ -80,3 +80,12 @@ Related notes:
 - [[Benchmark Pipeline]]
 - [[Agentic Runner]]
 - [[Reporting and Tracking]]
+
+Generate resource-utilization traces and NGEN-AI paper figures:
+
+```bash
+BENCHMARK_RESOURCE_MONITOR=true BENCHMARK_RESOURCE_MONITOR_INTERVAL_SECONDS=1 python main.py
+python -m benchmark.reporting.resource_charts --trace-dir results/runN/resource_traces --output Paper/NGEN-AI/figures/fig_resource_breakdown
+```
+
+The monitor writes one CSV and one marker file per benchmark configuration under `results/runN/resource_traces/`. Replace `runN` with the run folder created by the benchmark. PCIe counters depend on `nvidia-smi` support for `pcie.rx_throughput` and `pcie.tx_throughput`; unsupported counters are left blank in the trace and omitted visually.

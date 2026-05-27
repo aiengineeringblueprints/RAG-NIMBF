@@ -32,6 +32,14 @@ Important implementation details:
 - `VECTOR_DB_BACKEND` selects `chroma` or `lancedb`. Chroma persists under `.chroma/`; LanceDB persists under `LANCEDB_PATH`, default `.lancedb/`.
 - External HTTP RAG systems are integrated through `benchmark/adapters/http.py`; they are evaluated with the same metric, reporting, and MLflow path as the internal pipeline.
 
+Adapter and validation seams:
+
+- `benchmark/adapters/__init__.py` owns the RAG-system adapter registry. `register_rag_adapter()` adds adapter factories, and `get_rag_adapter()` returns `None` for the internal pipeline or an adapter instance for external systems such as `http`.
+- `benchmark/adapters/base.py` defines the black-box RAG contract. Adapters normalize their output into `RagSystemOutput`, including answer text, retrieved contexts, metadata, timings, token stats, optional raw response fields, and `answer_valid`.
+- Dataset samples are validated by `BenchmarkSample`, `normalize_sample()`, and `normalize_samples()` in `benchmark/dataset.py`. The public flow remains plain dictionaries with `question`, `ground_truth`, `context`, and `metadata`, but malformed samples now fail at the dataset boundary with source-indexed errors.
+- Answer validity is currently checked at generation/adapter output time. Empty internal generations and empty HTTP answers are marked invalid and carried into per-sample reports.
+- RAGAS evaluation and custom metrics preserve per-sample validity counts where available, which is the main reporting surface for skipped or invalid metric samples.
+
 Related notes:
 
 - [[Configuration Reference]]

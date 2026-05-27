@@ -1,0 +1,17 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+We presented \toolname{}, a non-invasive, modular benchmarking framework for systematic RAG configuration analysis. By sweeping 136 configurations across five generation models, three chunking strategies, two retrieval methods, and two prompt templates on SQuAD, we demonstrated that:
+
+\begin{enumerate}
+  \item Prompt template choice has a comparable or larger effect on faithfulness than model selection, making it a high-leverage, zero-cost optimization.
+  \item MMR retrieval improves nDCG@5 by up to 12pp and Recall@5 by up to 31pp over similarity search, but may reduce faithfulness for smaller models due to less focused context.
+  \item Chunk size effects (500 vs.\ 1000 characters) are secondary to retrieval and prompt choices, suggesting that practitioners should prioritize these higher-impact parameters first.
+  \item Semantic chunking produces identical results regardless of chunk size/overlap settings, eliminating redundant configurations from future sweeps.
+  \item Multi-metric evaluation is essential: lexical and semantic metrics can diverge significantly, and optimizing for a single metric leads to misleading conclusions.
+  \item Local models on consumer hardware achieve 40--56\% of cloud throughput while remaining within 5--9pp of cloud-model faithfulness, making local deployment viable for batch evaluation. The MoE architecture of Qwen3.5-397B achieves the best tradeoff: highest throughput (131.7 TPS) and faithfulness (0.90).
+\end{enumerate}
+
+Future work will extend the evaluation to additional datasets, reranking models, HyDE query expansion, embedding model comparisons, and larger sample sizes for statistical robustness. The framework is available as open-source software, enabling practitioners to benchmark their own RAG pipelines with minimal integration effort.
+
+
