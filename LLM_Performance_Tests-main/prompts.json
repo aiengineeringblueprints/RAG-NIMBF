@@ -1,0 +1,17 @@
+[
+  "Erkläre ausführlich, was Quantencomputing ist.",
+  "Was ist die Hauptstadt von Australien?",
+  "Schreibe eine kurze Python-Funktion, die zwei Zahlen addiert.",
+  "Wie ist thermodynamisches Computing definiert? Gib Beispiele, wo das Anwendung finden kann.",
+  "Welche sind die besten MLOps Tools zum Deployment und Monitoring von ML Modellen in der Produktion? Erstelle eine Tabelle mit den wichtigsten Tools für verschiedene Kriterien (Implementierungskomplexität, Benutzerfreundlichkeit, Funktionsumfang, Kosten, Community-Support).",
+  "Zähle alle Kaiser des Heiligen Römischen Reiches auf und gib die Regierungszeit jedes Kaisers an.",
+  "Erkläre den Unterschied zwischen supervised, unsupervised und reinforcement learning anhand konkreter Beispiele.",
+  "Was sind die wichtigsten Designprinzipien für skalierbare Microservice-Architekturen?",
+  "Beschreibe die Funktionsweise eines Transformers in der KI und warum er so wichtig ist.",
+  "Wie funktioniert das HTTP/2-Protokoll und welche Vorteile hat es gegenüber HTTP/1.1?",
+  "Erkläre CAP-Theorem und seine praktischen Auswirkungen bei der Datenbankwahl.",
+  "Was ist der Unterschied zwischen Docker und Kubernetes und wann nutzt man was?",
+  "Beschreibe die wichtigsten Algorithmen für das Sortieren großer Datensätze und vergleiche ihre Komplexität.",
+  "Wie funktioniert ein neuronales Netz auf mathematischer Ebene? Erkläre alle relevanten Konzepte.",
+  "Was sind die Vor- und Nachteile von SQL vs. NoSQL Datenbanken für verschiedene Anwendungsfälle?"
+]
