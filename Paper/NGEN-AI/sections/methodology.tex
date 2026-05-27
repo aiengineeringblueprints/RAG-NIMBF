@@ -1,0 +1,34 @@
+\section{Framework Architecture}
+\label{sec:methodology}
+
+\toolname{} wraps existing RAG components without modifying their internals. The pipeline proceeds through six stages---configuration, data loading, chunking, retrieval, generation, and evaluation---each implemented as an independent module.
+
+\subsection{Configuration and Data Loading}
+
+The framework reads all parameters from a single \texttt{.env} file. Users specify comma-separated lists for each sweepable parameter (LLM models, embedding models, chunk sizes, chunking strategies, retrieval methods, rerankers, prompt templates) and the framework computes their cartesian product. Model identifiers use \texttt{provider:name} syntax (e.g., \texttt{ollama:qwen3:32b}, \texttt{openai:Qwen/Qwen3-32B-AWQ}) with automatic provider detection. Separate base URLs can be configured per role (generation LLM, critic LLM, embedding), enabling distributed setups.
+
+A registry-based adapter pattern maps dataset identifiers to loading functions. Each adapter converts a HuggingFace dataset into a unified \texttt{\{question, ground\_truth, context\}} format. Built-in adapters cover SQuAD~\cite{rajpurkar2016squad}, RagBench, T2-RagBench, Ragas-WikiQA, and RagPerf-Wikipedia-NQ. For datasets with a shared corpus, documents are loaded once and reused across configurations.
+
+\subsection{Chunking}
+
+The framework supports three chunking strategies via LangChain text splitters~\cite{wolf2020transformers}: \emph{recursive} splitting (hierarchy of separators), \emph{fixed-size} splitting (character boundaries with overlap), and \emph{semantic} splitting (groups sentences by embedding similarity at configurable breakpoints). For semantic chunking, chunk size and overlap are ignored since boundaries are determined by embedding similarity.
+
+\subsection{Retrieval and Indexing}
+
+Chunks are embedded and stored in ChromaDB or LanceDB. Vector stores are cached using content fingerprint keys, allowing index reuse across configurations that share the same chunking and embedding setup.
+
+Retrieval supports \emph{similarity search} ($k$ nearest neighbors) and \emph{Maximal Marginal Relevance} (MMR)~\cite{spanakis2018similarity}, which balances relevance with diversity through a tunable $\lambda$ parameter. An optional HyDE step generates a hypothetical answer from the query and uses it as the retrieval input. An optional cross-encoder reranker re-scores retrieved documents and selects the top-$n$ for generation.
+
+\subsection{Generation and Evaluation}
+
+The framework routes requests to Ollama or OpenAI-compatible endpoints based on the model prefix. A wrapper normalizes response formats for RAGAS compatibility. Answer post-processing strips thinking tags from reasoning models.
+
+Each configuration is evaluated through three complementary metric layers:
+
+\textbf{LLM-based quality metrics (RAGAS).} A separate critic LLM assesses faithfulness, context recall, and semantic similarity between generated and ground-truth answers.
+
+\textbf{Information retrieval metrics.} Hit@k, nDCG@k, and Recall@k measure retrieval effectiveness. Context relevance computes cosine similarity between question and chunk embeddings.
+
+\textbf{NLG metrics.} BERTScore~\cite{zhang2020bertscore} (RoBERTa-large), METEOR~\cite{banerjee2005meteor}, ROUGE-L~\cite{lin2004rouge}, and BLEU~\cite{papineni2002bleu} compare generated answers to references. Time-to-first-token (TTFT) and tokens per second (TPS) are recorded per question.
+
+All parameters, metrics, and artifacts are logged to MLflow with a reproducibility bundle capturing the full environment state.

@@ -1,0 +1,38 @@
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{Key Findings}
+
+Our results reveal three practical insights for RAG practitioners configuring production pipelines.
+
+\textbf{Prompt design matters more than model size for faithfulness.} Switching from the Concise to the Detailed template improves faithfulness by 6--11pp for capable models, a gain comparable to upgrading the generation model itself. For Qwen3.5-397B, the template switch alone raises mean faithfulness from 0.84 to 0.93, while upgrading from Qwen3-32B to Qwen3.5-397B raises it from 0.88 to 0.93 with the Detailed template. Since prompt changes require no hardware upgrades and add no inference overhead, they should be the first optimization lever practitioners pull when pursuing higher factual grounding.
+
+\textbf{MMR retrieval improves coverage but requires careful context management.} While MMR substantially improves retrieval recall and nDCG, it introduces less-focused context that can reduce faithfulness in smaller models. For GPT-OSS-20B, MMR improves nDCG@5 from 0.70 to 0.79 but drops faithfulness from 0.82 to 0.79, suggesting the 20B model cannot reliably separate relevant evidence from peripheral passages when the context window includes both. Practitioners should pair MMR with either a larger generation model or a reranking step to maintain answer quality while benefiting from broader retrieval coverage.
+
+\textbf{Chunk size effects are secondary to retrieval and prompt choices.} The difference between 500 and 1000 character chunks is modest (2--5pp on most metrics) compared to the effects of retrieval strategy (9--12pp on nDCG) and prompt template (6--11pp on faithfulness). For initial pipeline tuning, practitioners should prioritize retrieval and prompt optimization before fine-tuning chunk parameters. Only after these higher-leverage parameters are settled should chunk size be adjusted for marginal gains.
+
+\subsection{Metric Divergence}
+
+A notable finding is the divergence between lexical metrics (METEOR, ROUGE-L, BLEU) and semantic metrics (BERTScore, faithfulness) when comparing prompt templates. The Detailed template lowers METEOR by 10--22pp while raising faithfulness by 6--11pp. This occurs because SQuAD ground-truth answers are typically short noun phrases, while Detailed-prompt answers include supporting context. A practitioner optimizing solely for METEOR would incorrectly prefer the Concise template, potentially at the cost of factual grounding. BERTScore F1 shows only minor variation between templates (1--3pp), confirming that semantic content remains stable regardless of instruction style. This underscores the importance of multi-metric evaluation and suggests that metric selection should be informed by the application's tolerance for verbosity versus conciseness.
+
+\subsection{Semantic Chunking Redundancy}
+
+Our results confirm that semantic chunking is controlled entirely by breakpoint parameters and embedding similarity, not by chunk size or overlap. All 24 semantic configurations per model produced identical metric values, inflating the configuration count without additional information. Future experiments should use a single representative configuration per semantic setup and instead explore breakpoint threshold variations.
+
+\subsection{Framework Utility}
+
+The 136-configuration sweep required no manual script writing beyond the initial \texttt{.env} file. The framework handled configuration generation, vector store caching, parallel-safe result persistence, and MLflow tracking. Content fingerprint caching proved valuable: of the 136 configurations, only 12 unique chunking/embedding combinations required actual indexing, reducing total indexing time by approximately 90\%.
+
+\subsection{Threats to Validity}
+
+\textbf{Internal validity.} LLM-based metrics are assessed by a critic model (Qwen3.5-397B), introducing a dependency on its judgment quality. The critic may be more lenient toward outputs from the same model family. We mitigate this by reporting IR and NLG metrics as complementary signals. The consistency of observed patterns across all metric families increases our confidence in the findings.
+
+\textbf{External validity.} Our experiments use SQuAD, a single-domain extractive QA dataset. Results may differ for abstractive tasks or domain-specific applications. The framework supports additional datasets, and our Phase~2 matrix includes RagPerf-Wikipedia-NQ and T2-RagBench/FinQA for cross-domain validation.
+
+\textbf{Statistical validity.} We sample 100 questions per configuration. While sufficient to detect the large effect sizes observed (6--12pp differences), smaller effects of 1--2pp may not be statistically significant. The full Phase~2 plan includes 300-question samples for stability analysis, which will enable confidence interval estimation and more rigorous pairwise comparisons.
+
+\textbf{Reproducibility.} Model outputs are stochastic. We use default temperature settings (determined by each model's server) and do not fix random seeds across runs. The reproducibility bundle captures the full environment state (model versions, dependency versions, git hash), but exact numerical replication may vary slightly across runs due to non-deterministic GPU operations and model sampling.
+
+\subsection{Limitations}
+
+The current study does not include reranking, HyDE query expansion, or embedding model comparisons. Our Phase~2 evaluation matrix addresses these with 92 additional configurations spanning reranker models, HyDE, three embedding models, and three datasets. Human evaluation is not included; all quality assessments are automated. Cost analysis is deferred to future work, though the framework records latency and throughput metrics that correlate with computational cost.

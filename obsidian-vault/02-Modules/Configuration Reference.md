@@ -59,9 +59,19 @@ Answer post-processing:
 
 Validation notes:
 
-- Unknown datasets and prompt templates fail early.
+- Unknown datasets fail early against `benchmark.dataset_adapters.REGISTRY`; unknown prompt templates fail early against `benchmark.prompt_templates.BUILTIN_TEMPLATES`.
+- `RAG_SYSTEM_ADAPTER` is validated against the RAG adapter registry in `benchmark/adapters/__init__.py`; built-ins are `internal` and `http`. The HTTP adapter also requires `RAG_HTTP_ENDPOINT_URL` and a positive timeout.
+- `VECTOR_DB_BACKEND` is validated against `available_vector_store_backends()` from `benchmark/retrieval.py`; built-ins are `chroma` and `lancedb`. This keeps backend selection explicit at config load time while allowing registered extensions.
+- `BENCHMARK_STAGE=index` is rejected with `RETRIEVAL_MODE=direct` and with non-internal RAG adapters.
 - Chunk overlaps must be smaller than chunk sizes for non-semantic chunking strategies. Semantic chunking ignores both values.
 - Positive integer checks are enforced for sample size, token limits, chunk sizes, top-k, and semantic threshold.
+- Dataset samples are normalized through `BenchmarkSample`, `normalize_sample()`, and `normalize_samples()` in `benchmark/dataset.py`. Malformed rows surface at the dataset boundary with source-indexed errors.
+
+Adapter registries:
+
+- Dataset adapters live in `benchmark/dataset_adapters.py` and register themselves in `REGISTRY` with short names such as `t2-ragbench`, `ragbench`, `squad`, `ragas-wikiqa`, and `ragperf-wikipedia-nq`.
+- RAG-system adapters live under `benchmark/adapters/`. `register_rag_adapter()` is the extension seam and `get_rag_adapter()` dispatches through the registry: `internal` returns `None`, while `http` returns `HttpRagAdapter.from_config(config)`.
+- Prompt templates are a separate registry in `benchmark/prompt_templates/__init__.py`; config validation checks names before benchmark execution.
 
 Dataset notes:
 
@@ -90,3 +100,9 @@ Related notes:
 - [[Benchmark Pipeline]]
 - [[Dataset Layer]]
 - [[Chunking and Retrieval]]
+
+Resource monitor variables:
+
+- `BENCHMARK_RESOURCE_MONITOR`: `true`/`false`, default `false`. When enabled, records per-config resource traces for paper-style utilization plots.
+- `BENCHMARK_RESOURCE_MONITOR_INTERVAL_SECONDS`: sampling interval in seconds, default `1.0`.
+- `BENCHMARK_RESOURCE_MONITOR_GPU_INDEX`: GPU index passed to `nvidia-smi --id`, default `0`.

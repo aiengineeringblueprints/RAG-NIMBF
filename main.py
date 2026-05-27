@@ -35,6 +35,12 @@ from benchmark.tracking import (
 from benchmark.tracing import setup_tracing
 from benchmark.adapters import get_rag_adapter
 from benchmark.reproducibility import write_reproducibility_bundle
+from benchmark.resource_monitor import (
+    ResourceMonitor,
+    enabled_from_env as resource_monitor_enabled,
+    gpu_index_from_env as resource_monitor_gpu_index,
+    interval_from_env as resource_monitor_interval,
+)
 from benchmark.reporting.models import (
     BenchmarkResultExtended,
     PerSampleResult,
@@ -46,14 +52,22 @@ logger = logging.getLogger(__name__)
 
 
 @contextmanager
-def _stage_timer(stage_timings: dict[str, float], name: str):
+def _stage_timer(
+    stage_timings: dict[str, float],
+    name: str,
+    resource_monitor: ResourceMonitor | None = None,
+):
     started = time.perf_counter()
+    if resource_monitor is not None:
+        resource_monitor.stage_start(name)
     try:
         yield
     finally:
         stage_timings[name] = stage_timings.get(name, 0.0) + (
             time.perf_counter() - started
         )
+        if resource_monitor is not None:
+            resource_monitor.stage_end(name)
 
 
 def _content_fingerprint(items: list[dict]) -> str:
@@ -77,10 +91,91 @@ def _get_bert_model(model_name: str):
     return SentenceTransformer(model_name, device="cpu")
 
 
+def _build_internal_retrieval_index(
+    config: BenchmarkConfig,
+    data: list[dict],
+    corpus: list[dict] | None,
+    stage_timings: dict[str, float],
+    resource_monitor: ResourceMonitor | None,
+) -> tuple[list, object]:
+    with _stage_timer(stage_timings, "chunk", resource_monitor):
+        chunker_kwargs: dict = {}
+        if config.chunking_strategy == "semantic":
+            from benchmark.embedding import get_embedding_model
+
+            semantic_emb = get_embedding_model(
+                config.embedding_model,
+                config.embedding_base_url(),
+                config.embedding_api_key(),
+                provider=config.embedding_provider,
+            )
+            chunker_kwargs = dict(
+                embeddings=semantic_emb,
+                breakpoint_threshold_type=config.semantic_breakpoint_type,
+                breakpoint_threshold_amount=config.semantic_breakpoint_amount,
+            )
+        chunker = get_chunker(
+            config.chunking_strategy,
+            config.chunk_size or 0,
+            config.chunk_overlap or 0,
+            **chunker_kwargs,
+        )
+
+        # Use shared corpus if available, otherwise chunk per-question data
+        chunk_source = corpus if corpus else data
+        chunks = chunk_documents(chunker, chunk_source)
+    console.print(f"  [dim]Chunked into {len(chunks)} pieces[/dim]")
+
+    corpus_fingerprint = _content_fingerprint(chunk_source)
+    cache_k = _cache_key(
+        config.embedding_model,
+        config.chunk_size,
+        config.chunk_overlap,
+        config.chunking_strategy,
+        dataset_name=config.dataset_name,
+        embedding_provider=config.embedding_provider,
+        dataset_subset=config.dataset_subset,
+        dataset_sample_size=config.dataset_sample_size,
+        corpus_fingerprint=corpus_fingerprint,
+        vector_db_backend=config.vector_db_backend,
+    )
+    collection_name = f"rag_{config.vector_db_backend}_{cache_k[:24]}"
+    with _stage_timer(stage_timings, "index", resource_monitor):
+        vector_store = build_vector_store(
+            chunks,
+            config.embedding_model,
+            collection_name,
+            ollama_base_url=config.embedding_base_url(),
+            ollama_api_key=config.embedding_api_key(),
+            cache_key=cache_k,
+            embedding_provider=config.embedding_provider,
+            vector_db_backend=config.vector_db_backend,
+            lancedb_path=config.lancedb_path,
+            create_if_missing=config.benchmark_stage != "query",
+        )
+    console.print(f"  [dim]Vector store built[/dim]")
+    return chunks, vector_store
+
+
+def _generation_result_from_adapter(adapter_result) -> GenerationResult:
+    return GenerationResult(
+        answer=adapter_result.answer,
+        ttft_seconds=adapter_result.ttft_seconds,
+        total_seconds=adapter_result.total_seconds,
+        token_count=adapter_result.token_count,
+        tokens_per_second=adapter_result.tokens_per_second,
+        gpu_usage=adapter_result.gpu_usage,
+        raw_content=adapter_result.raw_content,
+        raw_reasoning=adapter_result.raw_reasoning,
+        answer_valid=adapter_result.answer_valid,
+    )
+
+
 def run_single_benchmark(
     config: BenchmarkConfig, data: list[dict], run_dir: Path | None = None,
     corpus: list[dict] | None = None,
     load_data_seconds: float | None = None,
+    resource_monitor: ResourceMonitor | None = None,
 ) -> BenchmarkResultExtended:
     run_start = time.perf_counter()
     stage_timings: dict[str, float] = {}
@@ -102,67 +197,17 @@ def run_single_benchmark(
     # 1. Chunk + 2. Embed (only in retrieval mode)
     vector_store = None
     if rag_adapter is not None:
-        with _stage_timer(stage_timings, "adapter_prepare"):
+        with _stage_timer(stage_timings, "adapter_prepare", resource_monitor):
             rag_adapter.prepare(config, data, corpus=corpus)
         console.print(f"  [dim]Using external RAG adapter: {rag_adapter.name}[/dim]")
     elif config.retrieval_mode == "retrieval":
-        with _stage_timer(stage_timings, "chunk"):
-            chunker_kwargs: dict = {}
-            semantic_emb = None
-            if config.chunking_strategy == "semantic":
-                from benchmark.embedding import get_embedding_model
-
-                semantic_emb = get_embedding_model(
-                    config.embedding_model,
-                    config.embedding_base_url(),
-                    config.embedding_api_key(),
-                    provider=config.embedding_provider,
-                )
-                chunker_kwargs = dict(
-                    embeddings=semantic_emb,
-                    breakpoint_threshold_type=config.semantic_breakpoint_type,
-                    breakpoint_threshold_amount=config.semantic_breakpoint_amount,
-                )
-            chunker = get_chunker(
-                config.chunking_strategy,
-                config.chunk_size or 0,
-                config.chunk_overlap or 0,
-                **chunker_kwargs,
-            )
-
-            # Use shared corpus if available, otherwise chunk per-question data
-            chunk_source = corpus if corpus else data
-            chunks = chunk_documents(chunker, chunk_source)
-        console.print(f"  [dim]Chunked into {len(chunks)} pieces[/dim]")
-
-        corpus_fingerprint = _content_fingerprint(chunk_source)
-        cache_k = _cache_key(
-            config.embedding_model,
-            config.chunk_size,
-            config.chunk_overlap,
-            config.chunking_strategy,
-            dataset_name=config.dataset_name,
-            embedding_provider=config.embedding_provider,
-            dataset_subset=config.dataset_subset,
-            dataset_sample_size=config.dataset_sample_size,
-            corpus_fingerprint=corpus_fingerprint,
-            vector_db_backend=config.vector_db_backend,
+        chunks, vector_store = _build_internal_retrieval_index(
+            config,
+            data,
+            corpus,
+            stage_timings,
+            resource_monitor,
         )
-        collection_name = f"rag_{config.vector_db_backend}_{cache_k[:24]}"
-        with _stage_timer(stage_timings, "index"):
-            vector_store = build_vector_store(
-                chunks,
-                config.embedding_model,
-                collection_name,
-                ollama_base_url=config.embedding_base_url(),
-                ollama_api_key=config.embedding_api_key(),
-                cache_key=cache_k,
-                embedding_provider=config.embedding_provider,
-                vector_db_backend=config.vector_db_backend,
-                lancedb_path=config.lancedb_path,
-                create_if_missing=config.benchmark_stage != "query",
-            )
-        console.print(f"  [dim]Vector store built[/dim]")
     else:
         console.print(f"  [dim]Direct mode — skipping chunking/retrieval[/dim]")
 
@@ -217,7 +262,7 @@ def run_single_benchmark(
     reranker = None
     prompt_tmpl = None
     if rag_adapter is None:
-        with _stage_timer(stage_timings, "load_models"):
+        with _stage_timer(stage_timings, "load_models", resource_monitor):
             llm = get_llm(
                 provider=config.llm_provider,
                 model_name=config.llm_model,
@@ -238,21 +283,11 @@ def run_single_benchmark(
         console.print(f"  [cyan]({i + 1}/{len(data)})[/cyan] {sample['question'][:80]}{'...' if len(sample['question']) > 80 else ''}")
 
         if rag_adapter is not None:
-            with _stage_timer(stage_timings, "external_rag"):
+            with _stage_timer(stage_timings, "external_rag", resource_monitor):
                 adapter_result = rag_adapter.answer(sample, config)
             context_texts = adapter_result.contexts
             retrieved_metadata = adapter_result.metadata
-            result = GenerationResult(
-                answer=adapter_result.answer,
-                ttft_seconds=adapter_result.ttft_seconds,
-                total_seconds=adapter_result.total_seconds,
-                token_count=adapter_result.token_count,
-                tokens_per_second=adapter_result.tokens_per_second,
-                gpu_usage=adapter_result.gpu_usage,
-                raw_content=adapter_result.raw_content,
-                raw_reasoning=adapter_result.raw_reasoning,
-                answer_valid=adapter_result.answer_valid,
-            )
+            result = _generation_result_from_adapter(adapter_result)
         else:
             if llm is None or prompt_tmpl is None:
                 raise RuntimeError("Internal RAG pipeline was not initialized.")
@@ -264,12 +299,12 @@ def run_single_benchmark(
                 retrieved_metadata = []
             else:
                 if config.retrieval_use_hyde:
-                    with _stage_timer(stage_timings, "hyde"):
+                    with _stage_timer(stage_timings, "hyde", resource_monitor):
                         query = expand_query_with_hyde(llm, sample["question"])
 
                 if vector_store is None:
                     raise RuntimeError("Vector store missing in retrieval mode.")
-                with _stage_timer(stage_timings, "retrieve"):
+                with _stage_timer(stage_timings, "retrieve", resource_monitor):
                     retrieved_docs = retrieve(
                         vector_store, query, config.retrieval_top_k,
                         retrieval_strategy=config.retrieval_strategy,
@@ -278,7 +313,7 @@ def run_single_benchmark(
                     )
 
                 if reranker is not None:
-                    with _stage_timer(stage_timings, "rerank"):
+                    with _stage_timer(stage_timings, "rerank", resource_monitor):
                         retrieved_docs = reranker.rerank(
                             sample["question"], retrieved_docs, config.reranker_top_k,
                         )
@@ -286,7 +321,7 @@ def run_single_benchmark(
                 context_texts = [doc.page_content for doc in retrieved_docs]
                 retrieved_metadata = [dict(doc.metadata) for doc in retrieved_docs]
 
-            with _stage_timer(stage_timings, "generate"):
+            with _stage_timer(stage_timings, "generate", resource_monitor):
                 result = generate_answer(
                     llm, sample["question"], context_texts,
                     system_prompt=prompt_tmpl.system_prompt,
@@ -323,7 +358,7 @@ def run_single_benchmark(
 
     # 4. Evaluate with RAGAS using a separate critic model
     console.print(f"  [dim]Running RAGAS evaluation (critic: {config.eval_critic_llm})...[/dim]")
-    with _stage_timer(stage_timings, "ragas_eval"):
+    with _stage_timer(stage_timings, "ragas_eval", resource_monitor):
         eval_result = evaluate_results(
             questions, ground_truths,
             [r.answer for r in gen_results],
@@ -356,7 +391,7 @@ def run_single_benchmark(
     
     # Reuse or create embedding model for IR relevance detection + context_relevance
     from benchmark.embedding import get_embedding_model
-    with _stage_timer(stage_timings, "custom_metrics"):
+    with _stage_timer(stage_timings, "custom_metrics", resource_monitor):
         _emb_model = get_embedding_model(
             config.embedding_model,
             config.embedding_base_url(),
@@ -610,13 +645,36 @@ def run_all_benchmarks() -> list[BenchmarkResultExtended]:
     results: list[BenchmarkResultExtended] = []
     for i, config in enumerate(configs):
         console.print(f"\n[bold cyan]Config {i + 1}/{len(configs)}[/bold cyan]")
-        result = run_single_benchmark(
-            config,
-            data,
-            run_dir=run_dir,
-            corpus=corpus,
-            load_data_seconds=load_data_seconds,
-        )
+        monitor = None
+        if resource_monitor_enabled():
+            safe_name = config.name.replace(":", "_").replace("/", "_")
+            trace_dir = run_dir / "resource_traces"
+            monitor = ResourceMonitor(
+                trace_dir / f"{safe_name}.csv",
+                trace_dir / f"{safe_name}_markers.csv",
+                interval_seconds=resource_monitor_interval(),
+                gpu_index=resource_monitor_gpu_index(),
+            )
+
+        if monitor is None:
+            result = run_single_benchmark(
+                config,
+                data,
+                run_dir=run_dir,
+                corpus=corpus,
+                load_data_seconds=load_data_seconds,
+            )
+        else:
+            with monitor:
+                result = run_single_benchmark(
+                    config,
+                    data,
+                    run_dir=run_dir,
+                    corpus=corpus,
+                    load_data_seconds=load_data_seconds,
+                    resource_monitor=monitor,
+                )
+            console.print(f"[dim]  Resource trace: {monitor.trace_path}[/dim]")
 
         # Save to disk immediately (survives MLflow crashes)
         _save_config_result(result, run_dir)

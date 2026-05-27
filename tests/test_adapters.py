@@ -3,7 +3,12 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 
-from benchmark.adapters import get_rag_adapter
+from benchmark.adapters import (
+    RAG_ADAPTER_REGISTRY,
+    get_rag_adapter,
+    register_rag_adapter,
+)
+from benchmark.adapters.base import RagSystemOutput
 from benchmark.adapters.http import HttpRagAdapter
 
 
@@ -23,6 +28,16 @@ class DummyConfig:
     rag_http_headers: str | None = None
     rag_http_auth_header: str | None = None
     rag_http_auth_value: str | None = None
+
+
+class CustomAdapter:
+    name = "custom"
+
+    def prepare(self, config, data, corpus=None):
+        return None
+
+    def answer(self, sample, config):
+        return RagSystemOutput(answer="custom")
 
 
 class FakeResponse:
@@ -74,3 +89,37 @@ def test_http_adapter_normalizes_nested_response(monkeypatch):
 def test_get_rag_adapter_returns_none_for_internal():
     cfg = DummyConfig(rag_system_adapter="internal")
     assert get_rag_adapter(cfg) is None
+
+
+def test_get_rag_adapter_uses_registered_factory():
+    original_registry = RAG_ADAPTER_REGISTRY.copy()
+    try:
+        seen = {}
+
+        def factory(config):
+            seen["config"] = config
+            return CustomAdapter()
+
+        register_rag_adapter("custom", factory)
+
+        cfg = DummyConfig(rag_system_adapter="custom")
+        adapter = get_rag_adapter(cfg)
+
+        assert isinstance(adapter, CustomAdapter)
+        assert seen["config"] is cfg
+    finally:
+        RAG_ADAPTER_REGISTRY.clear()
+        RAG_ADAPTER_REGISTRY.update(original_registry)
+
+
+def test_register_rag_adapter_normalizes_names():
+    original_registry = RAG_ADAPTER_REGISTRY.copy()
+    try:
+        register_rag_adapter("  CUSTOM  ", lambda config: CustomAdapter())
+
+        adapter = get_rag_adapter(DummyConfig(rag_system_adapter="custom"))
+
+        assert isinstance(adapter, CustomAdapter)
+    finally:
+        RAG_ADAPTER_REGISTRY.clear()
+        RAG_ADAPTER_REGISTRY.update(original_registry)

@@ -9,13 +9,27 @@ Dataset adapters normalize Hugging Face datasets into records consumed by the re
 
 ```text
 {
-  "id": ...,
   "question": ...,
   "ground_truth": ...,
   "context": ...,
   "metadata": ...
 }
 ```
+
+Adapter registry and contracts:
+
+- `benchmark/dataset_adapters.py` owns `REGISTRY`, `register()`, and `get_adapter()`. Config validation and dataset loading both use that registry, so a new dataset name must be registered before it can run.
+- `DatasetAdapter` records the Hugging Face ID, question and ground-truth column names, context builder, preferred split, metadata keys, subset requirement, optional ground-truth transform, and whether the dataset has a shared corpus.
+- `load_benchmark_data()` selects the adapter, loads the preferred split, applies deterministic sample shuffling, converts ground truth to text, builds context, and copies declared metadata keys only.
+- `load_corpus_and_questions()` is the shared-corpus path. It deduplicates contexts for adapters with `has_shared_corpus` and adds stable `metadata.doc_id` / `metadata.gold_doc_id` pairs where labels are available.
+
+Sample validation surface:
+
+- `BenchmarkSample`, `normalize_sample()`, and `normalize_samples()` in `benchmark/dataset.py` define the typed/validated sample contract while preserving the public plain-dict flow. Every sample must expose `question`, `ground_truth`, `context`, and `metadata`.
+- Normalization coerces question and ground truth to strings, keeps string context as text, converts list context items to strings, treats `metadata=None` as `{}`, and rejects non-dict metadata with a source-indexed error message.
+- Unknown dataset names fail early through `get_adapter()` / config registry checks. Missing or malformed dataset columns fail while the adapter reads row keys or builds the normalized sample.
+- Empty contexts are not globally rejected. This is intentional for datasets such as `ragperf-wikipedia-nq`, where questions are evaluated against a separate shared corpus and retrieval ground truth is unavailable.
+- Retrieval-label validation is metadata-based: gold-document metrics use `metadata.gold_doc_id` when present and skip samples without it.
 
 Built-in adapters:
 

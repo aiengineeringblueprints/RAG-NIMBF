@@ -12,7 +12,61 @@ from benchmark.dataset_adapters import (
     _ragas_wikiqa_context,
     _ragperf_wikipedia_nq_context,
 )
-from benchmark.dataset import load_benchmark_data, load_corpus_and_questions
+from benchmark.dataset import (
+    normalize_sample,
+    normalize_samples,
+    load_benchmark_data,
+    load_corpus_and_questions,
+)
+
+
+# ---------------------------------------------------------------------------
+# Sample contract normalization
+# ---------------------------------------------------------------------------
+
+class TestSampleContract:
+    def test_normalize_sample_preserves_public_shape_and_extra_keys(self):
+        sample = normalize_sample({
+            "question": 123,
+            "ground_truth": 42,
+            "context": ["ctx", 7],
+            "metadata": {"id": "abc"},
+            "extra": "kept",
+        })
+
+        assert sample["question"] == "123"
+        assert sample["ground_truth"] == "42"
+        assert sample["context"] == ["ctx", "7"]
+        assert sample["metadata"] == {"id": "abc"}
+        assert sample["extra"] == "kept"
+
+    def test_normalize_sample_rejects_missing_required_fields(self):
+        with pytest.raises(ValueError, match=r"dataset\[0\].*ground_truth, metadata"):
+            normalize_sample({"question": "q", "context": "ctx"}, source="dataset[0]")
+
+    def test_normalize_sample_rejects_non_dict_metadata(self):
+        with pytest.raises(
+            ValueError,
+            match=r"dataset\[1\]\.metadata must be a dict, got list",
+        ):
+            normalize_sample({
+                "question": "q",
+                "ground_truth": "a",
+                "context": "ctx",
+                "metadata": [],
+            }, source="dataset[1]")
+
+    def test_normalize_samples_labels_failing_index(self):
+        with pytest.raises(ValueError, match=r"batch\[1\].*context"):
+            normalize_samples([
+                {
+                    "question": "q",
+                    "ground_truth": "a",
+                    "context": "ctx",
+                    "metadata": {},
+                },
+                {"question": "q", "ground_truth": "a", "metadata": {}},
+            ], source="batch")
 
 
 # ---------------------------------------------------------------------------
@@ -274,3 +328,25 @@ class TestGoldDocMetadata:
         assert questions[0]["metadata"]["gold_doc_id"] == corpus[0]["metadata"]["doc_id"]
         assert questions[1]["metadata"]["gold_doc_id"] == corpus[0]["metadata"]["doc_id"]
         assert questions[2]["metadata"]["gold_doc_id"] == corpus[1]["metadata"]["doc_id"]
+
+    @patch("benchmark.dataset.load_benchmark_data")
+    def test_shared_corpus_normalizes_loaded_samples(self, mock_load_benchmark_data):
+        mock_load_benchmark_data.return_value = [
+            {
+                "question": 1,
+                "ground_truth": 2,
+                "context": ["same", "context"],
+                "metadata": None,
+            },
+        ]
+
+        corpus, questions = load_corpus_and_questions(
+            dataset_name="squad",
+            sample_size=1,
+        )
+
+        assert corpus[0]["context"] == ["same", "context"]
+        assert corpus[0]["metadata"]["doc_id"].startswith("squad_doc_0_")
+        assert questions[0]["question"] == "1"
+        assert questions[0]["ground_truth"] == "2"
+        assert questions[0]["metadata"]["gold_doc_id"] == corpus[0]["metadata"]["doc_id"]

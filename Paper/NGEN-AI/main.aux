@@ -1,0 +1,148 @@
+\relax 
+\citation{lewis2020retrieval}
+\citation{shuster2021retrieval}
+\citation{chen2024benchmarking}
+\@writefile{toc}{\contentsline {title}{RAG-NIMBF: A Non-Invasive, Modular Benchmarking Framework for Automated RAG Configuration Analysis}{1}{}\protected@file@percent }
+\@writefile{toc}{\authcount {2}}
+\@writefile{toc}{\contentsline {author}{Niclas Hart \and Nicolas Weeger}{1}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{}\protected@file@percent }
+\newlabel{sec:intro}{{1}{1}{}{}{}}
+\citation{es2023ragas}
+\citation{esphandiary2024areval}
+\citation{izrailovsky2024rag}
+\citation{rajpurkar2016squad}
+\citation{lewis2020retrieval}
+\citation{karpukhin2020dense}
+\citation{guu2020realm}
+\citation{asai2024selfrag}
+\citation{jiang2024active}
+\citation{edge2024local}
+\citation{li2024chain}
+\citation{gao2024retrieval}
+\citation{zhao2024retrieval}
+\citation{es2023ragas}
+\citation{esphandiary2024areval}
+\citation{izrailovsky2024rag}
+\citation{chen2024benchmarking}
+\citation{liu2024lost}
+\citation{muennighoff2022mteb}
+\citation{reimers2019sentence}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Related Work}{3}{}\protected@file@percent }
+\newlabel{sec:related}{{2}{3}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Retrieval-Augmented Generation}{3}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}RAG Evaluation}{3}{}\protected@file@percent }
+\citation{spanakis2018similarity}
+\citation{izrailovsky2024rag}
+\citation{muennighoff2022mteb}
+\citation{rajpurkar2016squad}
+\citation{wu2024msmarco}
+\citation{song2024bench}
+\citation{rajpurkar2016squad}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}RAG Component Studies}{4}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Benchmarking Frameworks}{4}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3}Framework Architecture}{4}{}\protected@file@percent }
+\newlabel{sec:methodology}{{3}{4}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Configuration and Data Loading}{4}{}\protected@file@percent }
+\citation{wolf2020transformers}
+\citation{spanakis2018similarity}
+\citation{zhang2020bertscore}
+\citation{banerjee2005meteor}
+\citation{lin2004rouge}
+\citation{papineni2002bleu}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Chunking}{5}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Retrieval and Indexing}{5}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Generation and Evaluation}{5}{}\protected@file@percent }
+\citation{qwen2025qwen3}
+\citation{gptoss2024}
+\citation{nomic2024nomic}
+\citation{muennighoff2022mteb}
+\citation{rajpurkar2016squad}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Raw inference performance (sequential, 6 calls, max 1024 tokens). TTFT = time to first token; TPS = tokens per second.}}{6}{}\protected@file@percent }
+\newlabel{tab:perf}{{1}{6}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4}Experimental Setup}{6}{}\protected@file@percent }
+\newlabel{sec:setup}{{4}{6}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Models}{6}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Embedding and Dataset}{6}{}\protected@file@percent }
+\citation{zhang2020bertscore}
+\citation{banerjee2005meteor}
+\citation{lin2004rouge}
+\citation{papineni2002bleu}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Configuration space for Phase~1 experiments.}}{7}{}\protected@file@percent }
+\newlabel{tab:config-space}{{2}{7}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Configuration Space}{7}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Prompt Templates}{7}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.5}Evaluation Protocol}{7}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Model comparison: mean and (best) across all configurations. Faithfulness (Faith.), nDCG@5, BERTScore F1 (BS-F1), and METEOR are reported.}}{8}{}\protected@file@percent }
+\newlabel{tab:model-comparison}{{3}{8}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {5}Results}{8}{}\protected@file@percent }
+\newlabel{sec:results}{{5}{8}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}RQ1: How Do Generation Models Compare?}{8}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}RQ2: Retrieval Strategy --- Similarity vs.\ MMR}{8}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Model comparison across four key metrics (mean $\pm $ std). No single model dominates all dimensions.}}{9}{}\protected@file@percent }
+\newlabel{fig:model-comparison}{{1}{9}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Retrieval strategy comparison: mean over all chunk sizes, overlaps, and templates.}}{9}{}\protected@file@percent }
+\newlabel{tab:retrieval}{{4}{9}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}RQ3: Prompt Template Effects}{9}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Prompt template effect on faithfulness and METEOR across models. The Detailed template raises faithfulness at the cost of lower METEOR scores.}}{10}{}\protected@file@percent }
+\newlabel{fig:template-effect}{{2}{10}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces IR metrics for Qwen3-32B across chunk sizes and retrieval strategies (Concise template).}}{10}{}\protected@file@percent }
+\newlabel{tab:ir-metrics}{{5}{10}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}RQ4: Chunk Size and Overlap}{10}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Prompt template comparison: mean over all chunk sizes, overlaps, and retrieval strategies.}}{11}{}\protected@file@percent }
+\newlabel{tab:template}{{6}{11}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces Chunk parameter effects for Qwen3-32B with recursive chunking and similarity retrieval. Values are means over both templates.}}{11}{}\protected@file@percent }
+\newlabel{tab:chunking}{{7}{11}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.5}RQ5: Interaction Effects}{11}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.6}RQ6: Performance--Quality Tradeoffs}{11}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Interaction between prompt template and generation model on mean faithfulness. Larger models (Qwen3.5-397B, Qwen3.5-think, GPT-4o-mini) show gains of 9--11pp with the Detailed template, while GPT-OSS-20B shows no effect.}}{12}{}\protected@file@percent }
+\newlabel{fig:interaction}{{3}{12}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces Performance--quality tradeoff: inference throughput vs.\ mean RAG faithfulness. TPS measured with 6 sequential calls at 1024 max tokens.}}{12}{}\protected@file@percent }
+\newlabel{tab:perf-quality}{{8}{12}{}{}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Interaction heatmap: mean faithfulness by model and prompt template. Larger models show stronger gains with the Detailed template.}}{13}{}\protected@file@percent }
+\newlabel{fig:interaction-heatmap}{{4}{13}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {6}Discussion}{13}{}\protected@file@percent }
+\newlabel{sec:discussion}{{6}{13}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Key Findings}{13}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces LLM speed performance: time-to-first-token and generation throughput across models. Lower TTFT and higher throughput are better.}}{14}{}\protected@file@percent }
+\newlabel{fig:speed-bars}{{5}{14}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Metric Divergence}{14}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Semantic Chunking Redundancy}{14}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Quality vs.\ speed trade-off: faithfulness against generation throughput per model. No model dominates both axes.}}{15}{}\protected@file@percent }
+\newlabel{fig:perf-quality}{{6}{15}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.4}Framework Utility}{15}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.5}Threats to Validity}{15}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.6}Limitations}{16}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7}Conclusion}{16}{}\protected@file@percent }
+\newlabel{sec:conclusion}{{7}{16}{}{}{}}
+\bibstyle{splncs04}
+\bibdata{references}
+\bibcite{asai2024selfrag}{1}
+\bibcite{banerjee2005meteor}{2}
+\bibcite{spanakis2018similarity}{3}
+\bibcite{chen2024benchmarking}{4}
+\bibcite{edge2024local}{5}
+\bibcite{es2023ragas}{6}
+\bibcite{gao2024retrieval}{7}
+\bibcite{guu2020realm}{8}
+\bibcite{izrailovsky2024rag}{9}
+\bibcite{jiang2024active}{10}
+\bibcite{karpukhin2020dense}{11}
+\bibcite{lewis2020retrieval}{12}
+\bibcite{li2024chain}{13}
+\bibcite{lin2004rouge}{14}
+\bibcite{liu2024lost}{15}
+\bibcite{muennighoff2022mteb}{16}
+\bibcite{wu2024msmarco}{17}
+\bibcite{nomic2024nomic}{18}
+\bibcite{gptoss2024}{19}
+\bibcite{papineni2002bleu}{20}
+\bibcite{qwen2025qwen3}{21}
+\bibcite{rajpurkar2016squad}{22}
+\bibcite{reimers2019sentence}{23}
+\bibcite{esphandiary2024areval}{24}
+\bibcite{shuster2021retrieval}{25}
+\bibcite{song2024bench}{26}
+\bibcite{wolf2020transformers}{27}
+\bibcite{zhang2020bertscore}{28}
+\bibcite{zhao2024retrieval}{29}
+\gdef \@abspage@last{18}

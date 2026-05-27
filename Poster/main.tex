@@ -1,11 +1,12 @@
 \documentclass[final]{beamer}
 
-\usepackage[orientation=portrait,size=a0,scale=1.18]{beamerposter}
+\usepackage[orientation=portrait,size=a1,scale=1.14]{beamerposter}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
 \usepackage{amsmath}
 \usepackage{booktabs}
+\usepackage{fontawesome5}
 \usepackage{graphicx}
 \usepackage{ragged2e}
 \usepackage{xcolor}
@@ -32,19 +33,17 @@
 
 \setbeamertemplate{headline}{
   \leavevmode
-  \begin{beamercolorbox}[wd=\paperwidth,sep=1.2cm]{headline}
+  \begin{beamercolorbox}[wd=\paperwidth,sep=0.95cm]{headline}
     \begin{columns}[T,totalwidth=\paperwidth]
       \begin{column}{0.76\paperwidth}
-        {\Huge\bfseries Evaluating Retrieval-Augmented Generation Pipelines\par}
-        \vspace{0.35cm}
-        {\Large A Non-Invasive, Modular Benchmarking Framework for Automated RAG Configuration Analysis\par}
+        {\Huge\bfseries RAG-NIMBF: A Non-Invasive, Modular Benchmarking Framework for Automated RAG Configuration Analysis\par}
         \vspace{0.45cm}
-        {\large Niclas Hart, Nicolas Weeger \quad Hochschule für Angewandte Wissenschaften Ansbach \quad ARC, 03.07.2026\par}
+        {\Large Niclas Hart, Nicolas Weeger \quad Hochschule für Angewandte Wissenschaften Ansbach\par}
       \end{column}
       \begin{column}{0.18\paperwidth}
         \centering
         \vspace{0.2cm}
-        \includegraphics[width=0.95\linewidth]{Logo_color_RGB_62d5456bb8114.png}
+        \includegraphics[width=0.95\linewidth]{Logo_HS_Ansbach_white.png}
       \end{column}
     \end{columns}
   \end{beamercolorbox}
@@ -52,13 +51,14 @@
 
 \setbeamertemplate{footline}{
   \leavevmode
-  \begin{beamercolorbox}[wd=\paperwidth,sep=0.55cm]{footline}
-    \large TODO: repository URL \hfill n.hart18293@hs-ansbach.de \hfill Built from reproducible benchmark artifacts
+  \begin{beamercolorbox}[wd=\paperwidth,sep=0.42cm]{footline}
+    \large n.hart18293@hs-ansbach.de \hfill ARC, 03.07.2026
   \end{beamercolorbox}
 }
 
 \newcommand{\metric}[2]{\textbf{\textcolor{PosterTeal}{#1}} #2}
 \newcommand{\todo}[1]{\textcolor{PosterGold}{\textbf{TODO:} #1}}
+\newcommand{\blockheading}[2]{\faIcon{#1}\hspace{0.45em}#2}
 
 \title{Evaluating Retrieval-Augmented Generation Pipelines}
 \author{Niclas Hart}
@@ -72,7 +72,7 @@
 
 \begin{column}{0.31\textwidth}
 
-\begin{block}{Problem}
+\begin{block}{\blockheading{question-circle}{Problem}}
 \justifying
 Retrieval-augmented generation (RAG) systems expose a large configuration
 space. Chunking, overlap, embedding model, vector database, retrieval strategy,
@@ -85,8 +85,8 @@ repeatable, and comparable without rewriting the target pipeline for each
 experiment.
 \end{block}
 
-\begin{block}{Framework Contribution}
-\begin{itemize}
+\begin{block}{\blockheading{puzzle-piece}{Framework Contribution}}
+\begin{itemize}\setlength\itemsep{0.05cm}
   \item Environment-driven benchmark grids for local and OpenAI-compatible
         model providers.
   \item Dataset adapters normalize QA corpora into one benchmark record shape.
@@ -99,9 +99,9 @@ experiment.
 \end{itemize}
 \end{block}
 
-\begin{block}{Pipeline}
+\begin{block}{\blockheading{project-diagram}{Pipeline}}
 \centering
-\vspace{0.65cm}
+\vspace{0.35cm}
 \begin{tikzpicture}[
   node distance=0.95cm,
   stage/.style={
@@ -111,7 +111,7 @@ experiment.
     line width=1.55pt,
     text width=0.88\linewidth,
     align=center,
-    minimum height=1.55cm,
+    minimum height=1.30cm,
     inner sep=0.18cm,
     font=\normalsize\bfseries
   },
@@ -122,7 +122,7 @@ experiment.
     line width=1.35pt,
     text width=0.40\linewidth,
     align=center,
-    minimum height=1.65cm,
+    minimum height=1.35cm,
     inner sep=0.28cm,
     font=\normalsize\bfseries
   },
@@ -131,11 +131,11 @@ experiment.
 \node[side] (config) {Configuration grid\\models, chunks, prompts};
 \node[side, right=1.0cm of config] (dataset) {Dataset adapter\\QA record shape};
 \coordinate (inputsouth) at ($(config.south)!0.5!(dataset.south)$);
-\node[stage, anchor=north] (chunk) at ($(inputsouth)+(0,-1.75cm)$) {Chunking + vector-store cache\\\scriptsize reusable index for each corpus/configuration};
-\node[stage, below=0.85cm of chunk] (retrieve) {Retrieval, optional reranking, prompt assembly\\\scriptsize similarity/MMR contexts become model input};
-\node[stage, below=0.85cm of retrieve] (generate) {Generation\\\scriptsize answer text, TTFT, throughput, GPU stats};
-\node[stage, below=0.85cm of generate] (evaluate) {RAGAS + custom IR/NLG metrics\\\scriptsize faithfulness, similarity, retrieval quality, runtime};
-\node[stage, below=0.85cm of evaluate] (report) {Artifacts\\\scriptsize JSON, CSV, Markdown, plots, MLflow, traces};
+\node[stage, anchor=north] (chunk) at ($(inputsouth)+(0,-1.35cm)$) {Chunking + vector-store cache\\reusable index for each corpus/configuration};
+\node[stage, below=0.60cm of chunk] (retrieve) {Retrieval, optional reranking, prompt assembly\\similarity/MMR contexts become model input};
+\node[stage, below=0.60cm of retrieve] (generate) {Generation\\answer text, TTFT, throughput, GPU stats};
+\node[stage, below=0.60cm of generate] (evaluate) {RAGAS + custom IR/NLG metrics\\faithfulness, similarity, retrieval quality, runtime};
+\node[stage, below=0.60cm of evaluate] (report) {Artifacts\\JSON, CSV, Markdown, plots, MLflow, traces};
 
 \draw[flow] (config) -- (chunk);
 \draw[flow] (dataset) -- (chunk);
@@ -146,7 +146,7 @@ experiment.
 \end{tikzpicture}
 \end{block}
 
-\begin{block}{Experiment Space}
+\begin{block}{\blockheading{sliders-h}{Experiment Space}}
 \begin{tabular}{ll}
 \toprule
 Dimension & Current values in project \\
@@ -163,8 +163,8 @@ Models & Qwen3, Qwen3.5, GPT-OSS local runs \\
 \end{tabular}
 \end{block}
 
-\begin{block}{Reproducibility Controls}
-\begin{itemize}
+\begin{block}{\blockheading{redo}{Reproducibility Controls}}
+\begin{itemize}\setlength\itemsep{0.04cm}
   \item \metric{Config grid:}{environment-defined combinations generate every run.}
   \item \metric{Run folders:}{each benchmark writes to \texttt{results/runN/}.}
   \item \metric{Vector cache:}{corpus fingerprints avoid accidental re-embedding.}
@@ -173,8 +173,8 @@ Models & Qwen3, Qwen3.5, GPT-OSS local runs \\
 \end{itemize}
 \end{block}
 
-\begin{block}{Observed Answers}
-\begin{itemize}
+\begin{block}{\blockheading{lightbulb}{Observed Answers}}
+\begin{itemize}\setlength\itemsep{0.04cm}
   \item \metric{Prompting:}{detailed prompts improve mean faithfulness (0.885 vs. 0.827); the best faithfulness run is detailed (0.955).}
   \item \metric{Retrieval:}{similarity is stronger for faithfulness (0.870 vs. 0.843), while MMR improves nDCG@5 (0.796 vs. 0.715) and recall@5 (0.847 vs. 0.554).}
   \item \metric{Chunking:}{chunk size and overlap have smaller faithfulness effects than prompt or retrieval choice (500: 0.854, 1000: 0.857; overlap 100: 0.854, 200: 0.858).}
@@ -187,7 +187,7 @@ Models & Qwen3, Qwen3.5, GPT-OSS local runs \\
 
 \begin{column}{0.36\textwidth}
 
-\begin{block}{Evaluation Lenses}
+\begin{block}{\blockheading{search}{Evaluation Lenses}}
 \begin{itemize}
   \item \metric{LLM-judged quality:}{faithfulness, context recall,
         semantic similarity, and related RAGAS fields where available.}
@@ -201,42 +201,38 @@ Models & Qwen3, Qwen3.5, GPT-OSS local runs \\
 \end{block}
 
 
-\begin{block}{Prompt Templates}
-\scriptsize
+\begin{block}{\blockheading{comment-dots}{Prompt Templates}}
 \setlength{\tabcolsep}{0.35cm}
-\renewcommand{\arraystretch}{1.18}
+\renewcommand{\arraystretch}{1.08}
 \begin{tabular}{@{}p{0.48\linewidth}p{0.48\linewidth}@{}}
 \textbf{\textcolor{PosterTeal}{Concise Prompt}} &
 \textbf{\textcolor{PosterTeal}{Detailed Prompt}} \\
 \midrule
 \raggedright
-\textit{Goal: one short factual answer.}\par\vspace{0.15cm}
-\texttt{Answer the question using ONLY the provided context.}\par
-\texttt{RULES:}\par
-\texttt{- Give a short, direct, factual answer -- one sentence maximum.}\par
-\texttt{- Do NOT explain your reasoning, add context, or use markdown formatting.}\par
-\texttt{- Do NOT say `Based on the context' or similar preamble.}\par
-\texttt{- If the context does not contain the answer, say `I cannot answer from the provided context.'}\par
-\texttt{Examples:}\par
-\texttt{Q: What circuit court is Maryland? -> The Circuit Courts of Maryland are the state trial courts of general jurisdiction.}\par
-\texttt{Q: How many members are in the House of Representatives? -> The total number of voting representatives is fixed at 435.}\par
-\texttt{Q: Who wrote the music for Star Wars? -> John Williams.}
+\scriptsize\ttfamily
+Answer the question using ONLY the provided context.\\
+RULES:\\
+- Give a short, direct, factual answer -- one sentence maximum.\\
+- Do NOT explain your reasoning, add context, or use markdown formatting.\\
+- Do NOT say 'Based on the context' or similar preamble.\\
+- If the context does not contain the answer, say 'I cannot answer from the provided context.'\\
+Examples:\\
+Q: What circuit court is Maryland? \(\rightarrow\) The Circuit Courts of Maryland are the state trial courts of general jurisdiction.\\
+Q: How many members are in the House of Representatives? \(\rightarrow\) The total number of voting representatives is fixed at 435.\\
+Q: Who wrote the music for Star Wars? \(\rightarrow\) John Williams.
 &
 \raggedright
-\textit{Goal: complete answer with reasoning when useful.}\par\vspace{0.15cm}
-\texttt{Answer the question based only on the provided context.}\par
-\texttt{Provide a clear, complete answer in full sentences.}\par
-\texttt{Include relevant calculations or reasoning steps when applicable.}\par
-\texttt{Do not start your answer with phrases like `Based on the provided context'}\par
-\texttt{or `Based on the given context'. Answer directly.}\par\vspace{0.25cm}
-\textbf{Shared user template}\par
-\texttt{Context: \{context\}}\par
-\texttt{Question: \{question\}}\par
-\texttt{Answer:}
+\scriptsize\ttfamily
+Answer the question based only on the provided context. Provide a clear, complete answer in full sentences. Include relevant calculations or reasoning steps when applicable. Do not start your answer with phrases like 'Based on the provided context' or 'Based on the given context'. Answer directly.
 \end{tabular}
+
+\vspace{0.28cm}
+{\scriptsize\ttfamily
+Human template for both: Context:\textbackslash n\texttt{\{context\}}\textbackslash n\textbackslash nQuestion: \texttt{\{question\}}\textbackslash n\textbackslash nAnswer:
+}
 \end{block}
 
-\begin{block}{Current Results Snapshot}
+\begin{block}{\blockheading{chart-bar}{Current Results Snapshot}}
 \justifying
 The current state of the project covers 128 benchmarked configurations, more are planned for future work. 
 The table below highlights the strongest configuration observed for each of the three main evaluation lenses, demonstrating that different configurations can excel in different metrics, 
@@ -261,12 +257,12 @@ faithfulness, strong retrieval ranking, and strong lexical/semantic answer
 similarity do not always select the same configuration.
 \end{block}
 
-\begin{block}{Quality Ranking}
+\begin{block}{\blockheading{sort-amount-up}{Quality Ranking}}
 \centering
 \includegraphics[width=0.96\linewidth]{paper_quality_ranking_top10.png}
 \end{block}
 
-\begin{block}{Prompt and Model Effects}
+\begin{block}{\blockheading{robot}{Prompt and Model Effects}}
 \centering
 \includegraphics[width=0.96\linewidth]{paper_faithfulness_by_llm_prompt.png}
 \end{block}
@@ -275,7 +271,7 @@ similarity do not always select the same configuration.
 
 \begin{column}{0.31\textwidth}
 
-\begin{block}{Retrieval Trade-Offs}
+\begin{block}{\blockheading{balance-scale}{Retrieval Trade-Offs}}
 \centering
 \includegraphics[width=0.96\linewidth]{paper_retrieval_by_strategy.png}
 
@@ -287,7 +283,7 @@ selected settings, but adds latency and should be judged jointly with answer
 quality.
 \end{block}
 
-\begin{block}{Runtime and Engineering}
+\begin{block}{\blockheading{tachometer-alt}{Runtime and Engineering}}
 \centering
 \includegraphics[width=0.96\linewidth]{stage_timing_breakdown.png}
 
@@ -301,7 +297,7 @@ quality.
 \end{itemize}
 \end{block}
 
-\begin{block}{Limitations}
+\begin{block}{\blockheading{exclamation-triangle}{Limitations}}
 \begin{itemize}
   \item Current results are local, hardware-dependent, and partly duplicated by
         reruns.
@@ -313,7 +309,7 @@ quality.
 \end{itemize}
 \end{block}
 
-\begin{block}{Takeaways for Practitioners}
+\begin{block}{\blockheading{clipboard-check}{Takeaways for Practitioners}}
 \begin{enumerate}
   \item Benchmark complete RAG configurations, not isolated components.
   \item Report multiple metrics because each metric rewards different behavior.
@@ -324,7 +320,7 @@ quality.
 \end{enumerate}
 \end{block}
 
-\begin{block}{Measured Outputs}
+\begin{block}{\blockheading{table}{Measured Outputs}}
 \setlength{\tabcolsep}{0.18cm}
 \renewcommand{\arraystretch}{1.08}
 \begin{tabular}{p{0.27\linewidth}p{0.62\linewidth}}
@@ -339,10 +335,18 @@ Artifacts & JSON, CSV, Markdown, plots, MLflow, traces \\
 \end{tabular}
 \end{block}
 
-\begin{block}{References}
-\footnotesize
-Lewis et al. (2020), Es et al. (2023), Rajpurkar et al. (2016),
-Lin (2004), Zhang et al. (2020). See \texttt{references.bib}.
+\begin{block}{\blockheading{book}{References}}
+\begin{columns}[T,totalwidth=\linewidth]
+  \begin{column}{0.68\linewidth}
+    Lewis et al. (2020), Es et al. (2023), Rajpurkar et al. (2016),
+    Lin (2004), Zhang et al. (2020). 
+  \end{column}
+  \begin{column}{0.24\linewidth}
+    \centering
+    \href{https://github.com/niclashart/Benchmarking-Framework}{\includegraphics[width=\linewidth]{qr-code.png}}\\[-0.05cm]
+    {scan for code}
+  \end{column}
+\end{columns}
 \end{block}
 
 

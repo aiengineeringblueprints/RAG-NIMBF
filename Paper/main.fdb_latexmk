@@ -1,7 +1,7 @@
 # Fdb version 4
-["pdflatex"] 1779781121.39753 "/home/niclas/Schreibtisch/Projects/Benchmarking-Framework/Paper/main.tex" "main.pdf" "main" 1779781121.57962 0
+["pdflatex"] 1779804576.82801 "/home/niclas/Schreibtisch/Projects/Benchmarking-Framework/Paper/main.tex" "main.pdf" "main" 1779804577.03342 0
   "/etc/texmf/web2c/texmf.cnf" 1777386022.12607 475 c0e671620eb5563b2130f56340a5fde8 ""
-  "/home/niclas/Schreibtisch/Projects/Benchmarking-Framework/Paper/main.tex" 1779652381.89944 840 a63bae5099960c26636dc4f627d1843d ""
+  "/home/niclas/Schreibtisch/Projects/Benchmarking-Framework/Paper/main.tex" 1779798477.90741 771 51f757d2a8ac50772b9c5db3cd836660 ""
   "/usr/share/texlive/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/jknappen/ec/ecrm1095.tfm" 1136768653 3584 929cdff2b7a8c11bd4d49fd68cb0ae70 ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/public/cm/cmr10.tfm" 1136768653 1296 45809c5a464d5f32c8f98ba97c1bb47f ""
@@ -63,9 +63,9 @@
   "/usr/share/texmf/web2c/texmf.cnf" 1707919699 40399 f2c302f7d2af602abb742093540a5834 ""
   "/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map" 1777551504.76274 128028 f533b797fba58d231669ea19e894e23e ""
   "/var/lib/texmf/web2c/pdftex/pdflatex.fmt" 1777551517 6800787 128670d6e48fd14f31ed9d6279a905a9 ""
-  "main.aux" 1779781121.54727 32 3985256e7290058c681f74d7a3565a19 "pdflatex"
-  "main.tex" 1779652381.89944 840 a63bae5099960c26636dc4f627d1843d ""
-  "sections/abstract.tex" 1779781121.22066 2781 f095b1329bcb8b5a618fa74bc79f1984 ""
+  "main.aux" 1779804577.00215 32 3985256e7290058c681f74d7a3565a19 "pdflatex"
+  "main.tex" 1779798477.90741 771 51f757d2a8ac50772b9c5db3cd836660 ""
+  "sections/abstract.tex" 1779804576.62987 2856 dd10eb4346f6e3604131597f36f21488 ""
   (generated)
   "main.aux"
   "main.log"

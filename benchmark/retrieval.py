@@ -2,8 +2,9 @@ import hashlib
 import logging
 import mlflow
 import threading
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 import chromadb
 from langchain_chroma import Chroma
@@ -22,7 +23,7 @@ _chroma_client: Any = None
 _chroma_lock = threading.Lock()
 
 # Embedding cache: keyed by every input that can affect retrieval contents.
-# Stores already-built Chroma vector stores so repeated configs skip embedding.
+# Stores already-built vector stores so repeated configs skip embedding.
 _vector_store_cache: dict[str, Any] = {}
 
 
@@ -114,6 +115,129 @@ class LanceDBVectorStore:
         return self.similarity_search(query, k=k)
 
 
+@dataclass(frozen=True)
+class VectorStoreBuildContext:
+    """Inputs needed by a vector-store backend implementation."""
+
+    chunks: list[Document]
+    embedding_model: Any
+    collection_name: str
+    expected_count: int
+    create_if_missing: bool
+    lancedb_path: str
+
+
+class VectorStoreBackend(Protocol):
+    """Factory seam for persisted vector-store backends."""
+
+    name: str
+
+    def build(self, context: VectorStoreBuildContext) -> Any:
+        """Build or reuse a vector store for the given context."""
+
+
+class LanceDBVectorStoreBackend:
+    """Factory for LanceDB-backed vector stores."""
+
+    name = "lancedb"
+
+    def build(self, context: VectorStoreBuildContext) -> Any:
+        return LanceDBVectorStore(
+            context.lancedb_path,
+            context.collection_name,
+            context.embedding_model,
+            create_if_missing=context.create_if_missing,
+            chunks=context.chunks,
+        )
+
+
+class ChromaVectorStoreBackend:
+    """Factory for Chroma-backed vector stores."""
+
+    name = "chroma"
+
+    def build(self, context: VectorStoreBuildContext) -> Any:
+        client = _get_client()
+        with _chroma_lock:
+            existing = [c.name for c in client.list_collections()]
+            if context.collection_name in existing:
+                collection = client.get_collection(context.collection_name)
+                persisted_count = collection.count()
+                if persisted_count == context.expected_count:
+                    logger.info(
+                        "Reusing persisted collection '%s' with %d documents",
+                        context.collection_name,
+                        persisted_count,
+                    )
+                    return Chroma(
+                        client=client,
+                        collection_name=context.collection_name,
+                        embedding_function=context.embedding_model,
+                    )
+
+                message = (
+                    f"Chroma collection '{context.collection_name}' has {persisted_count} "
+                    f"documents, expected {context.expected_count}."
+                )
+                if not context.create_if_missing:
+                    raise RuntimeError(
+                        f"{message} Rebuild the index with BENCHMARK_STAGE=index "
+                        "or BENCHMARK_STAGE=all before querying."
+                    )
+
+                logger.warning("%s Rebuilding collection.", message)
+                client.delete_collection(context.collection_name)
+
+            if not context.create_if_missing:
+                raise RuntimeError(
+                    f"Chroma collection '{context.collection_name}' missing. "
+                    "Run BENCHMARK_STAGE=index or BENCHMARK_STAGE=all first."
+                )
+
+            vector_store = Chroma(
+                client=client,
+                collection_name=context.collection_name,
+                embedding_function=context.embedding_model,
+            )
+            vector_store.add_documents(context.chunks)
+            logger.info(
+                "Built new collection '%s' with %d chunks",
+                context.collection_name,
+                len(context.chunks),
+            )
+            return vector_store
+
+
+_VECTOR_STORE_BACKENDS: dict[str, VectorStoreBackend] = {
+    ChromaVectorStoreBackend.name: ChromaVectorStoreBackend(),
+    LanceDBVectorStoreBackend.name: LanceDBVectorStoreBackend(),
+}
+
+
+def register_vector_store_backend(name: str, backend: VectorStoreBackend) -> None:
+    """Register a vector-store backend by config name."""
+    normalized_name = name.strip().lower()
+    if not normalized_name:
+        raise ValueError("Vector store backend name must not be empty")
+    _VECTOR_STORE_BACKENDS[normalized_name] = backend
+
+
+def available_vector_store_backends() -> tuple[str, ...]:
+    return tuple(sorted(_VECTOR_STORE_BACKENDS))
+
+
+def _get_vector_store_backend(vector_db_backend: str) -> VectorStoreBackend:
+    normalized_backend = vector_db_backend.strip().lower()
+    try:
+        return _VECTOR_STORE_BACKENDS[normalized_backend]
+    except KeyError as exc:
+        available = ", ".join(available_vector_store_backends())
+        raise ValueError(
+            f"Unsupported vector DB backend: {vector_db_backend}. "
+            f"Available: {available}"
+        ) from exc
+
+
 def _get_client() -> Any:
     global _chroma_client
     with _chroma_lock:
@@ -176,71 +300,16 @@ def build_vector_store(
         provider=embedding_provider,
     )
 
-    if vector_db_backend == "lancedb":
-        vector_store = LanceDBVectorStore(
-            lancedb_path,
-            collection_name,
-            embedding_model,
-            create_if_missing=create_if_missing,
-            chunks=chunks,
-        )
-        if cache_key is not None:
-            with _chroma_lock:
-                _vector_store_cache[cache_key] = vector_store
-        return vector_store
-
-    if vector_db_backend != "chroma":
-        raise ValueError(f"Unsupported vector DB backend: {vector_db_backend}")
-
-    client = _get_client()
-    with _chroma_lock:
-        existing = [c.name for c in client.list_collections()]
-        if collection_name in existing:
-            collection = client.get_collection(collection_name)
-            persisted_count = collection.count()
-            if persisted_count == expected_count:
-                logger.info(
-                    "Reusing persisted collection '%s' with %d documents",
-                    collection_name,
-                    persisted_count,
-                )
-                vector_store = Chroma(
-                    client=client,
-                    collection_name=collection_name,
-                    embedding_function=embedding_model,
-                )
-                if cache_key is not None:
-                    _vector_store_cache[cache_key] = vector_store
-                return vector_store
-
-            message = (
-                f"Chroma collection '{collection_name}' has {persisted_count} "
-                f"documents, expected {expected_count}."
-            )
-            if not create_if_missing:
-                raise RuntimeError(
-                    f"{message} Rebuild the index with BENCHMARK_STAGE=index "
-                    "or BENCHMARK_STAGE=all before querying."
-                )
-
-            logger.warning("%s Rebuilding collection.", message)
-            client.delete_collection(collection_name)
-            if cache_key is not None:
-                _vector_store_cache.pop(cache_key, None)
-
-        if not create_if_missing:
-            raise RuntimeError(
-                f"Chroma collection '{collection_name}' missing. "
-                "Run BENCHMARK_STAGE=index or BENCHMARK_STAGE=all first."
-            )
-
-        vector_store = Chroma(
-            client=client,
-            collection_name=collection_name,
-            embedding_function=embedding_model,
-        )
-        vector_store.add_documents(chunks)
-        logger.info("Built new collection '%s' with %d chunks", collection_name, len(chunks))
+    backend = _get_vector_store_backend(vector_db_backend)
+    context = VectorStoreBuildContext(
+        chunks=chunks,
+        embedding_model=embedding_model,
+        collection_name=collection_name,
+        expected_count=expected_count,
+        create_if_missing=create_if_missing,
+        lancedb_path=lancedb_path,
+    )
+    vector_store = backend.build(context)
 
     if cache_key is not None:
         with _chroma_lock:
