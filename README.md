@@ -15,12 +15,78 @@ pip install -r requirements.txt
 ## Run the Built-In Pipeline
 
 ```bash
-python main.py
+BENCHMARK_CONFIG_FILE=experiments/full-grid-example.yaml python main.py
 ```
 
 The built-in mode chunks/indexes the selected dataset, retrieves contexts,
 generates answers, evaluates the results, writes reports under `results/`, and
-logs to MLflow.
+logs to MLflow. Keep models, chunking, retrieval, datasets, and evaluator
+settings in YAML; keep API keys and machine-local service URLs in `.env`. If
+`BENCHMARK_CONFIG_FILE` is not set, `python main.py` still falls back to the
+legacy `.env` matrix variables.
+
+
+## Run a Resumable Experiment Matrix
+
+Use the worker when you want to move the repo to another machine and let it run
+a full configuration matrix unattended:
+
+```bash
+python -m benchmark.worker plan experiments/full-grid-example.yaml
+python -m benchmark.worker run experiments/full-grid-example.yaml --keep-going
+```
+
+The worker expands the manifest into `BenchmarkConfig` objects, runs them
+sequentially through the same benchmark core as `main.py`, writes every config
+result immediately, and records resume state in `results/runN/progress.json`.
+Reuse a run directory to continue after interruption:
+
+```bash
+python -m benchmark.worker run experiments/full-grid-example.yaml --run-dir results/run3
+```
+
+Omit the manifest to use `BENCHMARK_CONFIG_FILE` when set, or the legacy `.env` matrix otherwise.
+For the normal non-worker workflow, `BENCHMARK_CONFIG_FILE=<manifest> python main.py`
+uses the same manifest format without requiring ClearML.
+
+## Run With ClearML Agent
+
+Use ClearML when you want to clone a benchmark task in the Web UI, edit
+hyperparameters, enqueue it, and let a `clearml-agent` execute it on a worker
+machine.
+
+Create the initial task from `.env` or from the first expanded config in a
+manifest:
+
+```bash
+python -m benchmark.clearml_task experiments/full-grid-example.yaml \
+  --project-name "RAG Benchmarking" \
+  --task-name rag_eval_baseline
+```
+
+The task exposes non-secret `BenchmarkConfig` fields such as `llm_model`,
+`embedding_model`, `chunk_size`, `chunk_overlap`, `retrieval_top_k`,
+`prompt_template`, `reranker_model`, and dataset settings in ClearML
+Hyperparameters. API keys, auth headers, and raw HTTP headers are intentionally
+not published to ClearML.
+
+Start an agent on the execution machine:
+
+```bash
+clearml-agent daemon --queue rag-benchmark-gpu
+```
+
+Then clone the baseline task in the ClearML UI, edit Hyperparameters, and
+enqueue the clone to `rag-benchmark-gpu`. For a local smoke submission you can
+also let the script enqueue itself and exit locally:
+
+```bash
+python -m benchmark.clearml_task --remote-queue rag-benchmark-gpu
+```
+
+The ClearML task still runs the existing worker core, writes `results/runN/`,
+logs scalar benchmark metrics to ClearML, and keeps MLflow logging enabled unless
+`--no-mlflow` is passed.
 
 ## Use an External RAG System
 
@@ -134,8 +200,13 @@ RAG_HTTP_AUTH_VALUE="Bearer $RAG_API_TOKEN"
 
 ## Important Environment Variables
 
+YAML-first runs should set `BENCHMARK_CONFIG_FILE` and keep secrets/service URLs
+in `.env`. Workflow fields such as datasets, models, retrieval, chunking, prompt
+templates, vector backend, and evaluator settings belong in `experiments/*.yaml`.
+
 | Variable | Description |
 | --- | --- |
+| `BENCHMARK_CONFIG_FILE` | Optional JSON/YAML manifest for `python main.py`; falls back to legacy `.env` matrix when unset. |
 | `RAG_SYSTEM_ADAPTER` | `internal` or `http`; defaults to `internal`. |
 | `RAG_HTTP_ENDPOINT_URL` | Required when `RAG_SYSTEM_ADAPTER=http`. |
 | `RAG_HTTP_TIMEOUT_SECONDS` | HTTP request timeout; defaults to `60`. |

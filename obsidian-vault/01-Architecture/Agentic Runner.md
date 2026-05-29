@@ -18,7 +18,7 @@ START -> propose -> run -> analyze -> propose or END
 Responsibilities:
 
 - `config_proposer_node`: uses an Ollama tool-calling model and fallback heuristics to choose the next `ExplorationConfig`.
-- `benchmark_runner_node`: executes one benchmark configuration through the shared benchmark pipeline.
+- `benchmark_runner_node`: executes one benchmark configuration through `main.run_single_benchmark()` via the shared orchestration helpers, so agentic and worker runs use the same benchmark core.
 - `result_analyzer_node`: analyzes completed runs, extracts insights, selects the best config, and detects convergence.
 - `should_continue`: loops until convergence or `max_iterations`.
 - `agentic.cli`: parses CLI args, builds the initial state, invokes the graph, and writes the final exploration report.
@@ -39,13 +39,11 @@ Operational assumptions:
 
 Current gaps and drift risks:
 
-- The agentic pipeline duplicates much of `main.run_single_benchmark()`, so behavior can drift.
-- Unlike `main.py`, agentic loading does not use shared-corpus dataset mode.
-- Agentic runs do not currently expose `retrieval_mode="direct"`.
+- Agentic exploration still depends on local model tool-call quality; heuristic fallback keeps it moving but does not guarantee optimal search.
 - `seed_config` is initialized in state but the graph starts at `propose`, so the first proposal can overwrite it.
 - Data caching in state is ineffective if loaded data is not returned into graph state.
 - The prompt says not to repeat configs, but LLM proposals are not fully duplicate-checked before execution.
-- Agentic MLflow logging skips tracing, GenAI eval logging, plot logging, and aggregate report generation compared with `main.py`.
+- Agentic runs save per-config JSON and MLflow benchmark entries, but do not yet generate the worker's resumable `progress.json` or aggregate report at the end.
 
 Related notes:
 

@@ -1,0 +1,46 @@
+{
+  "timestamp": "2026-05-29T07:51:47.190249",
+  "n_calls": 1,
+  "max_tokens": 512,
+  "model_label": "Spark gpt-oss-20B (Ollama)",
+  "seq_wall_s": 8.980767478000018,
+  "par_wall_s": 9.027075240999977,
+  "results": [
+    {
+      "model": "Spark gpt-oss-20B (Ollama)",
+      "provider": "ollama",
+      "prompt_idx": 0,
+      "mode": "sequential",
+      "call_idx": 0,
+      "latency_s": 8.942915733000007,
+      "success": true,
+      "tokens_in": 80,
+      "tokens_out": 512,
+      "error": null,
+      "output_text": "<think>We need to explain in detail what quantum computing is. Provide definitions, principles, qubits, superposition, entanglement, gates, quantum circuits, algorithms, noise, error correction, current state, applications. Should be in German. The user: \"Erkl\u00e4re ausf\u00fchrlich, was Quantencomputing ist.\" So German explanation. Provide details, examples: Shor, Grover. Mention differences vs classical, scaling, hardware, etc. Also mention quantum supremacy, current devices, challenges. Provide some analogies.\n\nWe should aim thorough but not too verbose. Use headings. Let's structure: 1. Einleitung, 2. Grundlagen der Quantenmechanik, 3. Qubit, 4. Grundoperationen, 5. Quantenalgorithmen, 6. Hardware, 7. Aktueller Stand, 8. Herausforderungen, 9. Anwendungsfelder, 10. Ausblick.\n\nAdd some diagrams descriptions maybe. Provide citations? No.\n\nLet's produce.</think>## Quantencomputing \u2013 Eine ausf\u00fchrliche Einf\u00fchrung\n\n### 1. Einleitung\n\nQuantencomputing (oder Quantencomputer) ist eine Technologie, die die Gesetze der Quantenmechanik nutzt, um bestimmte Arten von Berechnungen schneller oder effizienter durchzuf\u00fchren als klassische Computer. Anstatt Bits, die nur zwei Zust\u00e4nde (0 oder\u202f1) annehmen k\u00f6nnen, verwendet ein Quantencomputer *Qubits*, die gleichzeitig mehrere Zust\u00e4nde darstellen k\u00f6nnen. Diese Eigenschaft, zusammen mit Ph\u00e4nomenen wie *Superposition* und *Verschr\u00e4nkung*, er\u00f6ffnet v\u00f6llig neue Rechenparadigmen.\n\n---\n\n### 2. Grundlagen der Quantenmechanik\n\n| Begriff | Bedeutung | Kurz erkl\u00e4rt |\n|---------|-----------|--------------|\n| **Superposition** | Ein Quantensystem kann sich in einer Linearkombination von Zust\u00e4nden befinden. | Ein Qubit kann 0, 1 oder *gleichzeitig* beide sein, gewichtet durch Amplituden. |\n| **Verschr\u00e4nkung (Entanglement)** | Zwei oder mehr Qubits sind so miteinander verbunden, dass der Zustand eines Qubits sofort den Zustand der anderen beeinflusst \u2013 unabh\u00e4ngig von der Entfernung. | Wenn Qubit\u202fA und Qubit\u202fB verschr\u00e4nkt sind, bestimmt das Messungsergebnis von A sofort das Ergebnis von B. |\n| **Quanteninterferenz** | Durch \u00dcberlagerung von Zust\u00e4nden k\u00f6nnen bestimmte Ergebnisse konstr",
+      "ttft_s": 0.33668776500002195,
+      "tpot_s": 0.017143527272908382,
+      "itl_p50_s": 3.59759999923881e-05,
+      "itl_p95_s": 0.09573861000001216,
+      "gen_tok_s": 57.25202107302464
+    },
+    {
+      "model": "Spark gpt-oss-20B (Ollama)",
+      "provider": "ollama",
+      "prompt_idx": 0,
+      "mode": "parallel",
+      "call_idx": 0,
+      "latency_s": 8.991744119999964,
+      "success": true,
+      "tokens_in": 80,
+      "tokens_out": 512,
+      "error": null,
+      "output_text": "<think>The user is German: \"Erkl\u00e4re ausf\u00fchrlich, was Quantencomputing ist.\" They want a thorough explanation. I should write a detailed explanation, covering basics, principles, differences from classical computing, qubits, superposition, entanglement, quantum gates, quantum algorithms (Shor, Grover), noise, error correction, hardware implementations, applications, challenges, future prospects, maybe mention quantum supremacy, hybrid quantum-classical. Keep it thorough. Should be in German. Provide sections: Einf\u00fchrung, Grundprinzipien, Quantenbits, Zust\u00e4nde, Superposition, Verschr\u00e4nkung, Messung, Quantenlogikgatter, Quantenalgorithmen, Quantenfehlerkorrektur, Hardware, Anwendungen, Herausforderungen, Zukunft. Might also mention quantum annealing, D-Wave, IBM, Google, Microsoft, etc. Let's write.</think>## Quantencomputing \u2013 ein ausf\u00fchrlicher \u00dcberblick\n\n### 1. Einf\u00fchrung\n\nQuantencomputing ist die Anwendung von Quanteneffekten (z.\u202fB. Superposition, Verschr\u00e4nkung und Nicht\u2011lokale Messung) auf die Verarbeitung von Informationen. W\u00e4hrend klassische Computer Bits verwenden, die ausschlie\u00dflich den Werten **0** oder **1** annehmen k\u00f6nnen, nutzt ein Quantencomputer Quantenbits (Qubits), die gleichzeitig in einer \u00dcberlagerung mehrerer Zust\u00e4nde sein k\u00f6nnen. Diese Eigenschaft er\u00f6ffnet v\u00f6llig neue Rechenparadigmen, die f\u00fcr bestimmte Aufgaben enorme Geschwindigkeitsvorteile gegen\u00fcber klassischen Algorithmen bieten k\u00f6nnen.\n\n---\n\n### 2. Grundprinzipien der Quantenmechanik, die dem Quantencomputing zugrunde liegen\n\n| Prinzip | Was es bedeutet | Relevanz f\u00fcr Quantencomputer |\n|---------|----------------|-----------------------------|\n| **Superposition** | Ein Qubit kann sich gleichzeitig in mehreren Basiszust\u00e4nden (|0\u27e9 und |1\u27e9) befinden. | Erlaubt parallele Rechenpfade. |\n| **Verschr\u00e4nkung (Entanglement)** | Zwei oder mehr Qubits teilen einen gemeinsamen quantenmechanischen Zustand; die Messung eines Qubits bestimmt sofort den Zustand des anderen, egal wie weit sie entfernt sind. | Macht komplexe Interaktionen und Koordination zwischen Qubits m\u00f6glich. |\n| **Quanteninterferenz** | Durch konstruktive und destruktive Interferenz k\u00f6nnen bestimmte Wahrscheinlichkeiten verst\u00e4rkt oder abgeschw\u00e4cht werden.",
+      "ttft_s": 0.35086624899997787,
+      "tpot_s": 0.017350966999999974,
+      "itl_p50_s": 3.512000000682747e-05,
+      "itl_p95_s": 0.10071303900002704,
+      "gen_tok_s": 56.94112211903134
+    }
+  ]
+}

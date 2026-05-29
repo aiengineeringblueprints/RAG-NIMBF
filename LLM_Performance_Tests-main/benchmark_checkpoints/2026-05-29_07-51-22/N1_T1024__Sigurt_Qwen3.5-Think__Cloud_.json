@@ -1,0 +1,46 @@
+{
+  "timestamp": "2026-05-29T08:11:48.196309",
+  "n_calls": 1,
+  "max_tokens": 1024,
+  "model_label": "Sigurt Qwen3.5-Think (Cloud)",
+  "seq_wall_s": 7.8920055520000005,
+  "par_wall_s": 7.879652114999999,
+  "results": [
+    {
+      "model": "Sigurt Qwen3.5-Think (Cloud)",
+      "provider": "openai_compatible",
+      "prompt_idx": 0,
+      "mode": "sequential",
+      "call_idx": 0,
+      "latency_s": 7.842291793999948,
+      "success": true,
+      "tokens_in": 23,
+      "tokens_out": 1024,
+      "error": null,
+      "output_text": "\n\n# Quantencomputing: Eine ausf\u00fchrliche Erkl\u00e4rung\n\nQuantencomputing ist ein sich schnell entwickelndes Forschungsgebiet, das die Prinzipien der Quantenmechanik nutzt, um Informationen zu verarbeiten und zu berechnen. Im Gegensatz zu klassischen Computern, die auf Bits (0 oder 1) basieren, verwenden Quantencomputer **Qubits**, die sich dank quantenmechanischer Effekte in mehreren Zust\u00e4nden gleichzeitig befinden k\u00f6nnen. Dies erm\u00f6glicht theoretisch eine enorme Beschleunigung bei bestimmten Problemklassen. Im Folgenden werden die Grundlagen, Funktionsweise, Algorithmen, Hardware-Ans\u00e4tze und der aktuelle Stand des Quantencomputings detailliert erl\u00e4utert.\n\n---\n\n## 1. Klassische vs. Quantencomputer\n\n### Klassische Computer\n- Verwenden **Bits** als kleinste Informationseinheit, die entweder den Zustand `0` oder `1` einnehmen.\n- Operationen werden durch logische Gatter (AND, OR, NOT, etc.) ausgef\u00fchrt, die auf diesen Bits wirken.\n- Die Berechnung ist deterministisch und schrittweise; parallele Verarbeitung erfordert mehrere Prozessoren oder Threads, aber grunds\u00e4tzlich wird ein Problem nacheinander abgearbeitet.\n\n### Quantencomputer\n- Nutzen **Qubits** (Quantenbits), die sich in einer **Superposition** von `|0\u27e9` und `|1\u27e9` befinden k\u00f6nnen.\n- Durch **Verschr\u00e4nkung** k\u00f6nnen Qubits korrelierte Zust\u00e4nde einnehmen, die nicht klassisch beschreibbar sind.\n- **Quantengatter** manipulieren Qubits unter Ausnutzung von Superposition, Verschr\u00e4nkung und Interferenz.\n- Ein Quantencomputer kann viele m\u00f6gliche L\u00f6sungen gleichzeitig erfassen und durch konstruktive/destruktive Interferenz die richtige L\u00f6sung hervorheben.\n\n---\n\n## 2. Grundkonzepte der Quanteninformatik\n\n### 2.1 Das Qubit\nEin Qubit ist ein zweistufiges Quantensystem, z. B. der Spin eines Elektrons, die Polarisation eines Photons oder der Energieniveau-Zustand eines Ions. Der Zustand eines Qubits wird durch einen Vektor im komplexen Hilbertraum dargestellt:\n\n\\[\n|\\psi\\rangle = \\alpha |0\\rangle + \\beta |1\\rangle\n\\]\n\nwobei \\(\\alpha, \\beta \\in \\mathbb{C}\\) und \\(|\\alpha|^2 + |\\beta|^2 = 1\\). Die Wahrscheinlichkeit, bei einer Messung `0` zu erhalten, ist \\(|\\alpha|^2\\), f\u00fcr `1` ist sie \\(|\\beta|^2\\).\n\n### 2.2 Superposition\nSuperposition bedeutet, dass ein Qubit nicht zwangsl\u00e4ufig nur `0` oder `1` ist, sondern eine \u00dcberlagerung beider Basiszust\u00e4nde. Erst bei der Messung kollabiert der Zustand zu einem der beiden. Ein System aus \\(n\\) Qubits kann sich in einer Superposition von \\(2^n\\) klassischen Zust\u00e4nden befinden, was exponentiell mehr Informationen gleichzeitig repr\u00e4sentiert. Allerdings ist der Zugriff auf diese Informationen durch die Messung begrenzt (nur ein Ergebnis).\n\n### 2.3 Verschr\u00e4nkung (Entanglement)\nVerschr\u00e4nkung beschreibt eine starke Korrelation zwischen zwei oder mehr Qubits, die nicht durch klassische",
+      "ttft_s": 2.785352227999965,
+      "tpot_s": 0.020232412858871018,
+      "itl_p50_s": 0.00036867599999368394,
+      "itl_p95_s": 0.09981164999999237,
+      "gen_tok_s": 130.57407539763457
+    },
+    {
+      "model": "Sigurt Qwen3.5-Think (Cloud)",
+      "provider": "openai_compatible",
+      "prompt_idx": 0,
+      "mode": "parallel",
+      "call_idx": 0,
+      "latency_s": 7.8335552769999595,
+      "success": true,
+      "tokens_in": 23,
+      "tokens_out": 1024,
+      "error": null,
+      "output_text": "\n\nQuantencomputing ist ein auf der Quantenmechanik basierender Rechenansatz, der es erm\u00f6glicht, bestimmte Probleme exponentiell schneller zu l\u00f6sen als herk\u00f6mmliche klassische Computer. Im Gegensatz zu klassischen Computern, die mit Bits (0 oder 1) arbeiten, nutzen Quantencomputer Quantenbits (Qubits), die quantenmechanische Eigenschaften wie Superposition, Verschr\u00e4nkung und Interferenz ausnutzen.\n\n### 1. Grundlegende Konzepte\n\n**Qubits**  \nEin Qubit ist die quantenmechanische Entsprechung eines klassischen Bits. W\u00e4hrend ein klassisches Bit entweder den Zustand 0 oder 1 einnimmt, kann ein Qubit in einer **Superposition** beider Zust\u00e4nde existieren. Mathematisch wird ein Qubit-Zustand beschrieben als:\n\n\\[\n|\\psi\\rangle = \\alpha |0\\rangle + \\beta |1\\rangle\n\\]\n\nwobei \\(\\alpha\\) und \\(\\beta\\) komplexe Zahlen",
+      "ttft_s": 6.494614619999993,
+      "tpot_s": 0.02064314347619132,
+      "itl_p50_s": 0.0005925289999595407,
+      "itl_p95_s": 0.09238148999997975,
+      "gen_tok_s": 130.71970054345036
+    }
+  ]
+}

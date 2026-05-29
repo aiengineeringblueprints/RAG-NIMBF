@@ -327,7 +327,7 @@ def _vector_store_count(vector_store: Any) -> int | None:
     return None
 
 
-@mlflow.trace(name="retrieve", span_type="func")
+@mlflow.trace(name="retrieve", span_type="RETRIEVER")
 def retrieve(
     vector_store: Any,
     query: str,

@@ -1,0 +1,46 @@
+{
+  "timestamp": "2026-05-29T07:52:05.530918",
+  "n_calls": 1,
+  "max_tokens": 512,
+  "model_label": "RTX5090 Qwen3-32B-AWQ (vLLM)",
+  "seq_wall_s": 8.794127061999973,
+  "par_wall_s": 8.795849453000017,
+  "results": [
+    {
+      "model": "RTX5090 Qwen3-32B-AWQ (vLLM)",
+      "provider": "openai_compatible",
+      "prompt_idx": 0,
+      "mode": "sequential",
+      "call_idx": 0,
+      "latency_s": 8.748028180999995,
+      "success": true,
+      "tokens_in": 22,
+      "tokens_out": 512,
+      "error": null,
+      "output_text": "<think>\nOkay, I need to explain quantum computing in detail. Let me start by recalling what I know. Quantum computing uses quantum mechanics principles, right? Unlike classical computers that use bits (0 or 1), quantum computers use qubits. Qubits can be in superposition, meaning they can be 0 and 1 at the same time. That allows for more parallel processing.\n\nWait, superposition is one key concept. Then there's entanglement. If qubits are entangled, the state of one affects the other instantly, no matter the distance. This could enable faster communication or processing. Also, quantum gates manipulate qubits, but they\u2019re different from classical logic gates. Quantum algorithms, like Shor's or Grover's, are designed to leverage these quantum properties for specific tasks, like factoring large numbers or searching databases faster.\n\nI should mention how quantum computers work. They use quantum bits (qubits) which can exist in multiple states simultaneously. This is different from classical bits. Then, when you measure a qubit, it collapses to a definite state, which is why quantum algorithms are probabilistic. The power comes from superposition and entanglement allowing the computer to process a vast number of possibilities at once.\n\nApplications are another important part. Quantum computing could revolutionize cryptography (breaking current encryption with Shor's algorithm), drug discovery by simulating molecules more efficiently, optimization problems in logistics, and machine learning. But there are challenges too, like error rates and qubit stability (decoherence). Current quantum computers are noisy and have limited qubits, so they\u2019re not yet outperforming classical computers in most tasks.\n\nI should structure this into sections: introduction, qubits and quantum states, quantum gates and algorithms, applications, challenges, and current state. Make sure to explain terms like superposition, entanglement, and decoherence in simple terms. Maybe give examples of quantum algorithms and their impact. Also, clarify the difference between quantum and classical computing. Need to check if I'm missing any key concepts or if there's a common misconception to address. For instance, quantum computers aren't just faster versions of classical ones; they solve specific problems exponentially faster. Also, mention that they're not replacing classical computers but complementing them for certain tasks.\n</think>\n\n**Quantencomputing: Eine ausf\u00fchrliche Erkl\u00e4rung**\n\nQuantencomputing ist ein revolution\u00e4res Feld der Informatik, das auf den Prinzipien der Quantenmechanik basiert. Im Geg",
+      "ttft_s": 0.2813068140000041,
+      "tpot_s": 0.016443292148727983,
+      "itl_p50_s": 0.000273892999985037,
+      "itl_p95_s": 0.09528571300000976,
+      "gen_tok_s": 58.527474924237474
+    },
+    {
+      "model": "RTX5090 Qwen3-32B-AWQ (vLLM)",
+      "provider": "openai_compatible",
+      "prompt_idx": 0,
+      "mode": "parallel",
+      "call_idx": 0,
+      "latency_s": 8.747094982000021,
+      "success": true,
+      "tokens_in": 22,
+      "tokens_out": 512,
+      "error": null,
+      "output_text": "<think>\nOkay, I need to explain what quantum computing is in detail. Let me start by recalling what I know. Quantum computing uses quantum mechanics principles, right? So unlike classical computers that use bits (0s and 1s), quantum computers use qubits. But I should explain what qubits are. Maybe start with the basics of classical computing first to contrast.\n\nWait, the user might not know much about classical computing, so maybe a brief overview. Classical computers process information using bits, which are either 0 or 1. All operations are based on these binary states. Now, quantum computing is different because it uses qubits, which can be in a superposition of states. So a qubit can be 0, 1, or both at the same time. That's a key point.\n\nBut how does superposition work? Maybe mention that it's a fundamental principle of quantum mechanics. Then there's entanglement, another key concept. When qubits are entangled, the state of one qubit is dependent on another, no matter the distance. This allows for faster processing of certain problems.\n\nI should also talk about quantum gates and how they manipulate qubits. Unlike classical logic gates (AND, OR, NOT), quantum gates perform operations on qubits through unitary transformations. This is part of the quantum circuit model.\n\nApplications are important too. Quantum computers can solve problems that are intractable for classical computers. For example, Shor's algorithm for factoring large numbers, which breaks RSA encryption. Grover's algorithm for searching unsorted databases. Also, quantum simulations for chemistry and materials science.\n\nBut I need to be careful not to get too technical. The user wants a detailed explanation, so maybe include some examples. Also, mention the current state of quantum computing\u2014still in early stages, with challenges like decoherence and error correction.\n\nWait, what about quantum supremacy? Google's claim in 2019. That could be a point to mention, but maybe after explaining the basics. Also, the difference between quantum advantage and supremacy.\n\nPotential applications: cryptography, optimization problems, drug discovery. But also note that quantum computers aren't going to replace classical ones; they'll be used for specific tasks.\n\nChallenges: maintaining qubit coherence, error rates, scalability. Current quantum computers have a limited number of qubits and are prone to errors. Error correction requires many physical qubits to create a logical qubit, which is a major hurdle.\n\nStructure-wise, maybe start with an introduction,",
+      "ttft_s": 0.29665049200002613,
+      "tpot_s": 0.01645341968101758,
+      "itl_p50_s": 0.00026925399998845023,
+      "itl_p95_s": 0.0978893219999577,
+      "gen_tok_s": 58.53371902941556
+    }
+  ]
+}

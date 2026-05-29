@@ -59,6 +59,8 @@ class TestPerSampleResult:
         assert r.question == "What?"
         assert r.contexts == ("ctx1", "ctx2")
         assert r.ragas_scores["faithfulness"] == 0.9
+        assert r.retrieved_doc_ids == ()
+        assert r.ground_truth_doc_ids == ()
 
     def test_frozen(self):
         r = PerSampleResult(
@@ -69,6 +71,18 @@ class TestPerSampleResult:
         )
         with pytest.raises(AttributeError):
             r.question = "new"
+
+    def test_retrieval_doc_ids(self):
+        r = PerSampleResult(
+            question="q", ground_truth="g", answer="a",
+            contexts=("ctx",), ttft_seconds=0, total_seconds=0,
+            token_count=0, tokens_per_second=0,
+            gpu_usage=None, ragas_scores={},
+            retrieved_doc_ids=("doc-1",),
+            ground_truth_doc_ids=("doc-2",),
+        )
+        assert r.retrieved_doc_ids == ("doc-1",)
+        assert r.ground_truth_doc_ids == ("doc-2",)
 
 
 class TestBenchmarkResultExtended:

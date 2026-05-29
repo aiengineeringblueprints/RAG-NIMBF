@@ -1,0 +1,46 @@
+{
+  "timestamp": "2026-05-29T07:52:22.830449",
+  "n_calls": 1,
+  "max_tokens": 512,
+  "model_label": "Sigurt Qwen3.5-Think (Cloud)",
+  "seq_wall_s": 4.067765274999999,
+  "par_wall_s": 3.78300816899997,
+  "results": [
+    {
+      "model": "Sigurt Qwen3.5-Think (Cloud)",
+      "provider": "openai_compatible",
+      "prompt_idx": 0,
+      "mode": "sequential",
+      "call_idx": 0,
+      "latency_s": 4.0217501980000065,
+      "success": true,
+      "tokens_in": 23,
+      "tokens_out": 512,
+      "error": null,
+      "output_text": "\n\n# Quantencomputing: Eine ausf\u00fchrliche Erkl\u00e4rung\n\nQuantencomputing ist ein revolution\u00e4res Berechnungsparadigma, das die Prinzipien der Quantenmechanik nutzt, um Informationen zu verarbeiten und komplexe Probleme zu l\u00f6sen, die f\u00fcr klassische Computer praktisch unl\u00f6sbar sind. Im Gegensatz zu klassischen Computern, die auf Bits basieren, arbeiten Quantencomputer mit **Qubits** (quantum bits), die sich in einem \u00dcberlagerungszustand befinden k\u00f6nnen und miteinander verschr\u00e4nkt sind. Diese Eigenschaften erm\u00f6glichen eine parallele Verarbeitung von Informationen und potenziell exponentielle Beschleunigungen bei bestimmten Aufgaben.\n\n## 1. Grundlagen der Quantenmechanik\n\n### Qubits\nEin klassisches Bit kann nur zwei Zust\u00e4nde annehmen: 0 oder 1. Ein Qubit hingegen kann sich in einer **Superposition** beider Zust\u00e4nde befinden, mathematisch dargestellt als:\n\\[\n|\\psi\\rangle = \\alpha|0\\rangle + \\beta|",
+      "ttft_s": 2.539245735999998,
+      "tpot_s": 0.01966442402739746,
+      "itl_p50_s": 0.00036033700001780744,
+      "itl_p95_s": 0.10119880799999237,
+      "gen_tok_s": 127.30775776541633
+    },
+    {
+      "model": "Sigurt Qwen3.5-Think (Cloud)",
+      "provider": "openai_compatible",
+      "prompt_idx": 0,
+      "mode": "parallel",
+      "call_idx": 0,
+      "latency_s": 3.7367548349999993,
+      "success": true,
+      "tokens_in": 23,
+      "tokens_out": 512,
+      "error": null,
+      "output_text": "",
+      "ttft_s": null,
+      "tpot_s": null,
+      "itl_p50_s": null,
+      "itl_p95_s": null,
+      "gen_tok_s": 137.01728441063221
+    }
+  ]
+}

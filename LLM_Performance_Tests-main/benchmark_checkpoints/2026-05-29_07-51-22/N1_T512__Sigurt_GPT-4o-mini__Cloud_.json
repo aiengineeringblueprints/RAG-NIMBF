@@ -1,0 +1,46 @@
+{
+  "timestamp": "2026-05-29T07:52:31.981708",
+  "n_calls": 1,
+  "max_tokens": 512,
+  "model_label": "Sigurt GPT-4o-mini (Cloud)",
+  "seq_wall_s": 4.365931165999996,
+  "par_wall_s": 4.244792234000045,
+  "results": [
+    {
+      "model": "Sigurt GPT-4o-mini (Cloud)",
+      "provider": "openai_compatible",
+      "prompt_idx": 0,
+      "mode": "sequential",
+      "call_idx": 0,
+      "latency_s": 4.320151351999982,
+      "success": true,
+      "tokens_in": 25,
+      "tokens_out": 512,
+      "error": null,
+      "output_text": "Quantencomputing ist ein sich schnell entwickelndes Feld der Informatik und Physik, das die Prinzipien der **Quantenmechanik** nutzt, um Informationen auf eine v\u00f6llig neue Weise zu verarbeiten als herk\u00f6mmliche Computer.\n\nUm Quantencomputing wirklich zu verstehen, ist es hilfreich, zun\u00e4chst den grundlegenden Unterschied zu klassischen Computern zu begreifen und dann die drei Kernprinzipien \u2013 **Superposition**, **Verschr\u00e4nkung** und **Interferenz** \u2013 zu erkl\u00e4ren.\n\n---\n\n### 1. Der fundamentale Unterschied: Bit vs. Qubit\n\n#### Klassische Computer\n*   Arbeiten mit **Bits** als kleinster Informationseinheit.\n*   Ein Bit hat genau zwei Zust\u00e4nde: **0** oder **1**.\n*   Jede Berechnung ist eine Folge von logischen Operationen (AND, OR, NOT) auf diesen Bits.\n*   Der Prozess ist **sequentiell** oder parallel, aber immer diskret und deterministisch.\n\n#### Quantencomputer\n*   Arbeiten mit **Qubits** (Quantenbits).\n*   Ein Qubit kann sich dank der Quantenmechanik in einem Zustand befinden, der **sowohl 0 als auch 1 gleichzeitig** ist (oder eine beliebige \u00dcberlagerung davon).\n*   Dies erm\u00f6glicht es, eine enorme Anzahl von Rechenpfaden **gleichzeitig** zu erkunden.\n\n> **Analogie:** Stellen Sie sich vor, Sie versuchen, den schnellsten Weg in einem Labyrinth zu finden.\n> *   Ein **klassischer Computer** probiert jeden Gang nacheinander aus.\n> *   Ein **Quantencomputer** kann theoretisch alle G\u00e4nge **gleichzeitig** testen und so sofort den Ausgang finden.\n\n---\n\n### 2. Die drei S\u00e4ulen des Quantencomputings\n\n#### A. Superposition (\u00dcberlagerung)\nIn der klassischen Welt ist eine M\u00fcnze entweder Kopf oder Zahl. In der Quantenwelt kann ein Qubit in einem Zustand sein, der eine Wahrscheinlichkeitsverteilung zwischen |0\u27e9 und |1\u27e9 darstellt.\n\n*   Mathematisch: Ein Qubit wird als Vektor in einem zweidimensionalen Hilbertraum dargestellt.\n*   Mit **n Qubits** kann ein Quantensystem \\(2^n\\) Zust\u00e4nde gleichzeitig repr\u00e4sentieren.\n    *   2 Qubits \u2192 4 Zust\u00e4nde\n    *   50 Qubits",
+      "ttft_s": 0.49861646400000836,
+      "tpot_s": 0.019918906805263172,
+      "itl_p50_s": 0.00031377300001622643,
+      "itl_p95_s": 0.09918914899998299,
+      "gen_tok_s": 118.51436634574698
+    },
+    {
+      "model": "Sigurt GPT-4o-mini (Cloud)",
+      "provider": "openai_compatible",
+      "prompt_idx": 0,
+      "mode": "parallel",
+      "call_idx": 0,
+      "latency_s": 4.198053919000017,
+      "success": true,
+      "tokens_in": 25,
+      "tokens_out": 512,
+      "error": null,
+      "output_text": "Quantencomputing ist ein aufstrebendes Gebiet der Informatik und Physik, das die Prinzipien der **Quantenmechanik** nutzt, um Informationen zu verarbeiten. Im Gegensatz zu klassischen Computern, die mit Bits arbeiten, nutzen Quantencomputer **Qubits**. Dies erm\u00f6glicht es ihnen, bestimmte Probleme exponentiell schneller zu l\u00f6sen als die leistungsf\u00e4higsten heutigen Supercomputer.\n\nHier ist eine ausf\u00fchrliche Erkl\u00e4rung, unterteilt in die wichtigsten Konzepte, Funktionsweise, Anwendungen und aktuelle Herausforderungen.\n\n---\n\n### 1. Der fundamentale Unterschied: Bits vs. Qubits\n\nUm Quantencomputing zu verstehen, muss man den Unterschied zur klassischen Datenverarbeitung begreifen.\n\n#### Klassische Computer\n- Bauen auf **Bits** auf.\n- Ein Bit kann nur **einen von zwei Zust\u00e4nden** haben: `0` oder `1`.\n- Berechnungen erfolgen schrittweise und sequenziell (oder parallel, aber immer in klaren Zust\u00e4nden).\n\n#### Quantencomputer\n- Bauen auf **Qubits** (Quantum Bits) auf.\n- Ein Qubit kann dank eines quantenmechanischen Ph\u00e4nomens namens **Superposition** gleichzeitig `0` **und** `1` sein.\n- Erst beim Messen \"kollabiert\" das Qubit in einen der beiden Zust\u00e4nde (`0` oder `1`).\n\n> **Analogie:**\n> Stellen Sie sich einen klassischen Bit wie eine M\u00fcnze vor, die entweder Kopf oder Zahl zeigt. Ein Qubit ist wie eine sich drehende M\u00fcnze: Solange sie sich dreht, ist sie in einem Zustand, der sowohl Kopf als auch Zahl ist. Erst wenn Sie sie stoppen (messen), zeigt sie einen definitiven Wert.\n\n---\n\n### 2. Die drei S\u00e4ulen der Quanteninformatik\n\nQuantencomputer nutzen drei zentrale quantenmechanische Effekte, um ihre Rechenkraft zu entfalten:\n\n#### A. Superposition\nWie oben erkl\u00e4rt, erlaubt Superposition es einem Quantencomputer, viele m\u00f6gliche Zust\u00e4nde gleichzeitig zu repr\u00e4sentieren. Mit nur 2 Qubits kann man 4 Zust\u00e4nde (00, 01, 10, 11) gleichzeitig kodieren. Mit *n* Qubits kann man $2^n$ Zust\u00e4nde gleichzeitig verarbeiten.\n- 50 Qubits \u2248 $10^{15}$ Zust\u00e4nde\n- 300 Qubits \u2248 mehr",
+      "ttft_s": 0.3479829190000032,
+      "tpot_s": 0.02029733502150528,
+      "itl_p50_s": 0.0004756374999885793,
+      "itl_p95_s": 0.09509380100001863,
+      "gen_tok_s": 121.96127298001907
+    }
+  ]
+}
