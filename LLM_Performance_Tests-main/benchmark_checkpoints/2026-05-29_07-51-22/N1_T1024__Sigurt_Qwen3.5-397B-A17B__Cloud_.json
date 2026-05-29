@@ -1,0 +1,46 @@
+{
+  "timestamp": "2026-05-29T08:11:31.822277",
+  "n_calls": 1,
+  "max_tokens": 1024,
+  "model_label": "Sigurt Qwen3.5-397B-A17B (Cloud)",
+  "seq_wall_s": 7.8679280129999825,
+  "par_wall_s": 8.007358487999909,
+  "results": [
+    {
+      "model": "Sigurt Qwen3.5-397B-A17B (Cloud)",
+      "provider": "openai_compatible",
+      "prompt_idx": 0,
+      "mode": "sequential",
+      "call_idx": 0,
+      "latency_s": 7.820489511999995,
+      "success": true,
+      "tokens_in": 23,
+      "tokens_out": 1024,
+      "error": null,
+      "output_text": "",
+      "ttft_s": null,
+      "tpot_s": null,
+      "itl_p50_s": null,
+      "itl_p95_s": null,
+      "gen_tok_s": 130.93809517022478
+    },
+    {
+      "model": "Sigurt Qwen3.5-397B-A17B (Cloud)",
+      "provider": "openai_compatible",
+      "prompt_idx": 0,
+      "mode": "parallel",
+      "call_idx": 0,
+      "latency_s": 7.9559858089999125,
+      "success": true,
+      "tokens_in": 23,
+      "tokens_out": 1024,
+      "error": null,
+      "output_text": "\n\nQuantencomputing ist ein rapidly wachsendes Forschungs- und Anwendungsfeld, das die Prinzipien der Quantenmechanik nutzt, um Informationsverarbeitung auf eine v\u00f6llig neue Weise zu betreiben. Im Folgenden finden Sie eine ausf\u00fchrliche Erkl\u00e4rung der Grundlagen, Technologien, Algorithmen, Anwendungen und des aktuellen Stands.\n\n---\n\n### 1. Was ist Quantencomputing?\nQuantencomputing bezeichnet die Nutzung von Quantenph\u00e4nomenen zur Verarbeitung von Informationen. Im Gegensatz zu klassischen Computern, die mit Bits (0 oder 1) arbeiten, verwenden Quantencomputer **Qubits** (quantum bits), die sich dank der Quantenmechanik in \u00dcberlagerungen von Zust\u00e4nden befinden k\u00f6nnen und miteinander verschr\u00e4nkt sein k\u00f6nnen. Dies erm\u00f6glicht es, bestimmte Probleme exponentiell schneller oder mit geringerer Komplexit\u00e4t zu l\u00f6sen als klassische Computer.\n\n---\n\n### 2. Grundlagen der Quantenmechanik\nDie Funktionsweise von Quantencomputern basiert auf mehreren Schl\u00fcsselkonzepten:\n\n- **Superposition (\u00dcberlagerung):** Ein Qubit kann sich nicht nur im Zustand |0\u27e9 oder |1\u27e9 befinden, sondern in einer linearen Kombination beider:  \n  \\(|\\psi\\rangle = \\alpha|0\\rangle + \\beta|1\\rangle\\), wobei \\(\\alpha, \\beta \\in \\mathbb{C}\\) und \\(|\\alpha|^2 + |\\beta|^2 = 1\\).  \n  Erst bei einer Messung kollabiert der Zustand zu entweder 0 oder 1 mit den entsprechenden Wahrscheinlichkeiten.\n\n- **Verschr\u00e4nkung (Entanglement):** Zwei oder mehr Qubits k\u00f6nnen so korreliert sein, dass der Zustand des gesamten Systems nicht als Produkt der Einzelzust\u00e4nde beschrieben werden kann. Eine Messung an einem verschr\u00e4nkten Qubit bestimmt instantan den Zustand des anderen, unabh\u00e4ngig vom Abstand. Dies erm\u00f6glicht starke Korrelationen, die f\u00fcr Quantenalgorithmen entscheidend sind.\n\n- **Interferenz:** Quantenzust\u00e4nde k\u00f6nnen wie Wellen konstruktiv oder destruktiv interferieren. Quantenalgorithmen nutzen Interferenz, um falsche L\u00f6sungswege auszuschalten und korrekte L\u00f6sungen zu verst\u00e4rken.\n\n- **Messung:** Die Messung eines Qubits liefert ein klassisches Bit und zerst\u00f6rt dabei die Superposition. Dies ist ein nicht-reversibler Prozess und stellt eine zentrale Herausforderung dar, da Informationen nur probabilistisch extrahiert werden k\u00f6nnen.\n\n---\n\n### 3. Qubits \u2013 die Grundeinheit der Quanteninformation\nEin Qubit ist das quantenmechanische \u00c4quivalent eines klassischen Bits. W\u00e4hrend ein klassisches Bit entweder 0 oder 1 ist, kann ein Qubit jeden Punkt auf der **Bloch-Kugel** darstellen. Die Pole repr\u00e4sentieren |0\u27e9 und |1\u27e9, w\u00e4hrend \u00c4quatorpunkte Superpositionen mit gleichen Amplituden darstellen.\n\nQubits k\u00f6nnen in verschiedenen physikalischen Systemen realisiert werden:\n- **Supraleitende Qubits** (z. B. Transmon): Kreise aus supraleitendem Material, die mit Mikrowellen gesteuert werden.\n- **Gefangene Ionen:** Ionen in elekt",
+      "ttft_s": 3.0994740199998887,
+      "tpot_s": 0.02014140579497937,
+      "itl_p50_s": 0.0003795759998865833,
+      "itl_p95_s": 0.09999982499994076,
+      "gen_tok_s": 128.70812298856015
+    }
+  ]
+}

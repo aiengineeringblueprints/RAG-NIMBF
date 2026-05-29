@@ -60,6 +60,8 @@ def _result_to_dict(r: BenchmarkResultExtended) -> dict:
             "ground_truth": s.ground_truth,
             "answer": s.answer,
             "contexts": list(s.contexts),
+            "retrieved_doc_ids": list(s.retrieved_doc_ids),
+            "ground_truth_doc_ids": list(s.ground_truth_doc_ids),
             "ragas_scores": s.ragas_scores,
             "custom_scores": s.custom_scores or {},
             "answer_valid": s.answer_valid,
@@ -181,6 +183,8 @@ def save_csv_report(
                 "context_recall": s.ragas_scores.get("context_recall"),
                 "semantic_similarity": s.ragas_scores.get("semantic_similarity"),
                 "answer_valid": s.answer_valid,
+                "retrieved_doc_ids": ";".join(s.retrieved_doc_ids),
+                "ground_truth_doc_ids": ";".join(s.ground_truth_doc_ids),
                 **{
                     f"custom_{k}": v
                     for k, v in (s.custom_scores or {}).items()

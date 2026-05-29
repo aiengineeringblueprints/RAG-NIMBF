@@ -2,11 +2,12 @@ import json
 import logging
 import time
 import hashlib
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from functools import lru_cache
 from datetime import datetime
 from pathlib import Path
 
+import mlflow
 from rich.console import Console
 
 from config import BenchmarkConfig, get_all_combinations
@@ -29,7 +30,6 @@ from benchmark.reporting.exports import _result_to_dict
 from benchmark.tracking import (
     setup_mlflow,
     log_benchmark_run,
-    log_genai_eval,
     log_aggregate_artifacts_to_mlflow,
 )
 from benchmark.tracing import setup_tracing
@@ -169,6 +169,15 @@ def _generation_result_from_adapter(adapter_result) -> GenerationResult:
         raw_reasoning=adapter_result.raw_reasoning,
         answer_valid=adapter_result.answer_valid,
     )
+
+
+def _metadata_doc_ids(metadata_list: list[dict]) -> tuple[str, ...]:
+    doc_ids: list[str] = []
+    for metadata in metadata_list:
+        doc_id = metadata.get("doc_id") if metadata else None
+        if doc_id is not None:
+            doc_ids.append(str(doc_id))
+    return tuple(doc_ids)
 
 
 def run_single_benchmark(
@@ -430,6 +439,14 @@ def run_single_benchmark(
 
     # 5. Build per-sample results
     per_sample_custom = custom_result.per_sample
+    all_retrieved_doc_ids = [
+        _metadata_doc_ids(metadata_list)
+        for metadata_list in all_retrieved_metadata
+    ]
+    all_ground_truth_doc_ids = [
+        (str(doc_id),) if doc_id else ()
+        for doc_id in gold_doc_ids
+    ]
     per_sample = tuple(
         PerSampleResult(
             question=q,
@@ -444,6 +461,12 @@ def run_single_benchmark(
             ragas_scores=per_sample_ragas[i] if i < len(per_sample_ragas) else {},
             custom_scores=per_sample_custom[i] if i < len(per_sample_custom) else {},
             answer_valid=gr.answer_valid,
+            retrieved_doc_ids=all_retrieved_doc_ids[i]
+            if i < len(all_retrieved_doc_ids)
+            else (),
+            ground_truth_doc_ids=all_ground_truth_doc_ids[i]
+            if i < len(all_ground_truth_doc_ids)
+            else (),
         )
         for i, (q, gt, ctx, gr) in enumerate(
             zip(questions, ground_truths, all_contexts, gen_results)
@@ -643,70 +666,83 @@ def run_all_benchmarks() -> list[BenchmarkResultExtended]:
     # requests serially. Parallel execution causes GPU memory thrashing,
     # request queuing, and timeouts that produce *lower* throughput.
     results: list[BenchmarkResultExtended] = []
-    for i, config in enumerate(configs):
-        console.print(f"\n[bold cyan]Config {i + 1}/{len(configs)}[/bold cyan]")
-        monitor = None
-        if resource_monitor_enabled():
-            safe_name = config.name.replace(":", "_").replace("/", "_")
-            trace_dir = run_dir / "resource_traces"
-            monitor = ResourceMonitor(
-                trace_dir / f"{safe_name}.csv",
-                trace_dir / f"{safe_name}_markers.csv",
-                interval_seconds=resource_monitor_interval(),
-                gpu_index=resource_monitor_gpu_index(),
-            )
+    parent_context = mlflow.start_run(
+        run_name=f"benchmark_env_matrix_{run_dir.name}",
+        tags={
+            "type": "benchmark_parent",
+            "experiment_name": "env-matrix",
+            "results_dir": str(run_dir),
+            "num_configs": str(len(configs)),
+        },
+    ) if configs else nullcontext()
+    with parent_context:
+        for i, config in enumerate(configs):
+            console.print(f"\n[bold cyan]Config {i + 1}/{len(configs)}[/bold cyan]")
+            monitor = None
+            if resource_monitor_enabled():
+                safe_name = config.name.replace(":", "_").replace("/", "_")
+                trace_dir = run_dir / "resource_traces"
+                monitor = ResourceMonitor(
+                    trace_dir / f"{safe_name}.csv",
+                    trace_dir / f"{safe_name}_markers.csv",
+                    interval_seconds=resource_monitor_interval(),
+                    gpu_index=resource_monitor_gpu_index(),
+                )
 
-        if monitor is None:
-            result = run_single_benchmark(
-                config,
-                data,
-                run_dir=run_dir,
-                corpus=corpus,
-                load_data_seconds=load_data_seconds,
-            )
-        else:
-            with monitor:
+            if monitor is None:
                 result = run_single_benchmark(
                     config,
                     data,
                     run_dir=run_dir,
                     corpus=corpus,
                     load_data_seconds=load_data_seconds,
-                    resource_monitor=monitor,
                 )
-            console.print(f"[dim]  Resource trace: {monitor.trace_path}[/dim]")
+            else:
+                with monitor:
+                    result = run_single_benchmark(
+                        config,
+                        data,
+                        run_dir=run_dir,
+                        corpus=corpus,
+                        load_data_seconds=load_data_seconds,
+                        resource_monitor=monitor,
+                    )
+                console.print(f"[dim]  Resource trace: {monitor.trace_path}[/dim]")
 
-        # Save to disk immediately (survives MLflow crashes)
-        _save_config_result(result, run_dir)
+            # Save to disk immediately (survives MLflow crashes)
+            _save_config_result(result, run_dir)
 
-        log_benchmark_run(result, reproducibility_dir=reproducibility_dir)
-        log_genai_eval(result)
-        results.append(result)
+            log_benchmark_run(
+                result,
+                reproducibility_dir=reproducibility_dir,
+                nested=True,
+            )
+            results.append(result)
 
-    store_path = ".chroma/" if configs[0].vector_db_backend == "chroma" else configs[0].lancedb_path
-    console.print(f"\n[dim]Vector stores persisted in {store_path}[/dim]")
+        store_path = ".chroma/" if configs[0].vector_db_backend == "chroma" else configs[0].lancedb_path
+        console.print(f"\n[dim]Vector stores persisted in {store_path}[/dim]")
 
-    wall_time = time.perf_counter() - wall_start
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        wall_time = time.perf_counter() - wall_start
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    console.print(f"[dim]Saving aggregated results to {run_dir}[/dim]")
+        console.print(f"[dim]Saving aggregated results to {run_dir}[/dim]")
 
-    generate_report(
-        results,
-        results_dir=run_dir,
-        timestamp=timestamp,
-        dataset_name=configs[0].dataset_name,
-        dataset_subset=configs[0].dataset_subset,
-        dataset_sample_size=configs[0].dataset_sample_size,
-        total_time=wall_time,
-    )
+        generate_report(
+            results,
+            results_dir=run_dir,
+            timestamp=timestamp,
+            dataset_name=configs[0].dataset_name,
+            dataset_subset=configs[0].dataset_subset,
+            dataset_sample_size=configs[0].dataset_sample_size,
+            total_time=wall_time,
+        )
 
-    # Log aggregate tables, reports, plots, and rerun metadata to MLflow.
-    log_aggregate_artifacts_to_mlflow(
-        run_dir,
-        run_name=f"summary_{run_dir.name}_{timestamp}",
-        reproducibility_dir=reproducibility_dir,
-    )
+        # Log aggregate tables, reports, plots, and rerun metadata to MLflow.
+        log_aggregate_artifacts_to_mlflow(
+            run_dir,
+            run_name=f"summary_{run_dir.name}_{timestamp}",
+            reproducibility_dir=reproducibility_dir,
+        )
 
     return results
 

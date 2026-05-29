@@ -2,9 +2,26 @@
 
 Source: [config.py](../config.py)
 
-`BenchmarkConfig` is the central immutable configuration object. `get_all_combinations()` loads `.env`, validates values, computes the grid product, and returns one config per combination.
+`BenchmarkConfig` is the central immutable configuration object. `get_all_combinations()` loads `.env` for runtime secrets/service endpoints and, when `BENCHMARK_CONFIG_FILE` or an explicit path is set, expands a JSON/YAML manifest into one config per combination. If no manifest is configured, it preserves the legacy `.env` matrix behavior.
 
-Core variables:
+
+Experiment manifests:
+
+- `BENCHMARK_CONFIG_FILE=experiments/full-grid-example.yaml python main.py` runs the normal benchmark entrypoint from YAML without requiring ClearML.
+- `python -m benchmark.worker plan <manifest>` loads the same JSON/YAML manifests through `benchmark.orchestration.matrix` for resumable worker runs.
+- Manifests can override `dataset`, `settings`, and `matrix` values while `.env` still supplies provider URLs, API keys, and defaults for omitted fields.
+- Common matrix aliases are `llm_models`, `embedding_models`, `chunking_strategies`, `chunk_sizes`, `chunk_overlaps`, `prompt_templates`, and `reranker_models`; direct `BenchmarkConfig` field names such as `retrieval_top_k`, `retrieval_strategy`, and `retrieval_use_hyde` are also accepted. Dataset lists under `dataset.name`, `dataset.subset`, or `dataset.sample_size` are treated as matrix axes.
+- `semantic` configs are deduplicated across chunk-size/overlap axes because those fields do not affect semantic chunking.
+- `retrieval_top_k` is included in config names when it differs from the default `5`, preventing result-file collisions during top-k sweeps.
+- Example: [full-grid-example.yaml](../experiments/full-grid-example.yaml).
+
+YAML-first workflow:
+
+- Put non-secret benchmark workflow values in `experiments/*.yaml`: models, embeddings, chunking, retrieval, dataset, evaluator, vector backend, stage, prompt templates, reranker, and adapter settings.
+- Keep `.env` for `BENCHMARK_CONFIG_FILE`, provider base URLs, API keys, ClearML credentials, LangFuse credentials, and other machine-local service endpoints.
+- `EXPERIMENT_MANIFEST` is accepted as a compatibility alias for `BENCHMARK_CONFIG_FILE`.
+
+Legacy `.env` variables, still supported when no YAML manifest is set:
 
 - `LLM_MODELS`: comma-separated generator models. Prefix with provider when needed, using [[Providers and Models]] parsing.
 - `EMBEDDING_MODELS`: comma-separated embedding models.
@@ -17,7 +34,7 @@ Core variables:
 - `PROMPT_TEMPLATES`
 - `RERANKER_MODELS`, `RERANKER_TOP_K`
 
-Provider URLs and keys:
+Provider URLs and keys stay in `.env` even in YAML-first runs:
 
 - Shared defaults: `OLLAMA_BASE_URL`, `OLLAMA_API_KEY`, `OPENAI_COMPAT_BASE_URL`, `OPENAI_COMPAT_API_KEY`
 - Generator overrides: `LLM_OLLAMA_BASE_URL`, `LLM_OLLAMA_API_KEY`, `LLM_OPENAI_COMPAT_BASE_URL`, `LLM_OPENAI_COMPAT_API_KEY`
@@ -35,6 +52,9 @@ Retrieval behavior:
 - `BENCHMARK_STAGE`: `all`, `index`, or `query`.
 - `VECTOR_DB_BACKEND`: `chroma` or `lancedb`.
 - `LANCEDB_PATH`: LanceDB storage path, default `.lancedb`.
+- `MLFLOW_CLASSIC_RETRIEVER_METRICS_ENABLED`: `true` by default. When retrieved and gold document IDs exist, `benchmark/tracking.py` logs MLflow `precision_at_k`, `recall_at_k`, and `ndcg_at_k` in the active config child run.
+- `MLFLOW_GENAI_JUDGES_ENABLED`: `false` by default. When enabled, `benchmark/tracking.py` replays stored per-sample answers and contexts through `mlflow.genai.evaluate()` with RAG judges.
+- `MLFLOW_GENAI_JUDGE_MODEL`: judge model identifier for MLflow RAG judges, default `openai:/gpt-4o-mini`. Requires the provider credentials expected by MLflow.
 
 Semantic chunking:
 
@@ -106,3 +126,9 @@ Resource monitor variables:
 - `BENCHMARK_RESOURCE_MONITOR`: `true`/`false`, default `false`. When enabled, records per-config resource traces for paper-style utilization plots.
 - `BENCHMARK_RESOURCE_MONITOR_INTERVAL_SECONDS`: sampling interval in seconds, default `1.0`.
 - `BENCHMARK_RESOURCE_MONITOR_GPU_INDEX`: GPU index passed to `nvidia-smi --id`, default `0`.
+
+## ClearML Parameters
+
+`benchmark.clearml_task` exposes the first `.env` or manifest-derived `BenchmarkConfig` as ClearML Hyperparameters and applies Web UI overrides before running the existing worker core. Common editable fields include `llm_model`, `llm_provider`, `embedding_model`, `chunk_size`, `chunk_overlap`, `chunking_strategy`, `retrieval_top_k`, `prompt_template`, `reranker_model`, dataset settings, vector backend settings, and HTTP adapter field mappings.
+
+Secret-bearing fields are intentionally excluded: API keys, auth header names/values, and raw HTTP headers. Keep those configured in the ClearML Agent runtime environment. A prefixed `llm_model` such as `openai:Qwen/Qwen3-32B-AWQ` updates both model and provider; an unprefixed model name preserves the separately configured `llm_provider`.

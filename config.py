@@ -1,6 +1,7 @@
 import os
 from dataclasses import dataclass
 from itertools import product
+from pathlib import Path
 from typing import cast
 
 from dotenv import load_dotenv
@@ -114,6 +115,8 @@ class BenchmarkConfig:
             )
         if self.reranker_model:
             parts += f"_rerank-{self.reranker_model}"
+        if self.retrieval_top_k != 5:
+            parts += f"_k{self.retrieval_top_k}"
         if self.retrieval_strategy != "similarity":
             parts += f"_mmr-l{self.retrieval_mmr_lambda}"
         if self.retrieval_use_hyde:
@@ -192,8 +195,39 @@ def _chunk_parameter_pairs_for_strategy(
     return list(product(chunk_sizes, chunk_overlaps))
 
 
-def get_all_combinations() -> list[BenchmarkConfig]:
+def get_all_combinations(config_path: str | Path | None = None) -> list[BenchmarkConfig]:
+    """Return benchmark configs from .env or an optional JSON/YAML manifest.
+
+    The manifest path can be passed explicitly or through BENCHMARK_CONFIG_FILE.
+    Environment variables still provide provider URLs, API keys, and defaults for
+    fields omitted by the manifest.
+    """
     load_dotenv()
+
+    manifest_env = os.getenv("BENCHMARK_CONFIG_FILE") or os.getenv(
+        "EXPERIMENT_MANIFEST"
+    )
+    manifest_path = Path(config_path) if config_path is not None else (
+        Path(manifest_env) if manifest_env else None
+    )
+    if manifest_path is not None:
+        from benchmark.orchestration.matrix import (
+            build_configs_from_spec,
+            load_experiment_spec,
+        )
+
+        return build_configs_from_spec(
+            load_experiment_spec(manifest_path),
+            base_configs=get_env_combinations(load_env=False),
+        )
+
+    return get_env_combinations(load_env=False)
+
+
+def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
+    """Return concrete configs from the legacy .env matrix."""
+    if load_env:
+        load_dotenv()
 
     llm_models = _parse_list(os.getenv("LLM_MODELS", "gemma3:4b"))
     embedding_models = _parse_list(os.getenv("EMBEDDING_MODELS", "nomic-embed-text:latest"))

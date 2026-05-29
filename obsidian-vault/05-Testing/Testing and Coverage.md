@@ -6,7 +6,7 @@ Current inspection found 14 test files under `tests/*.py`, including adapter, da
 
 Coverage map:
 
-- `test_config.py`: env parsing, validation, combinations, adapter/backend/stage variables, and early registry checks.
+- `test_config.py`: env parsing, validation, combinations, adapter/backend/stage variables, YAML manifest entrypoint, and early registry checks.
 - `test_dataset.py`: dataset loading, sample contract normalization, dataset adapter registry behavior, context builders, shared-corpus metadata, and RAGPerf-style loading.
 - `test_adapters.py`: RAG-system adapter dispatch and HTTP response normalization.
 - `test_chunking.py`: splitter creation and document chunking.
@@ -37,7 +37,7 @@ Thin or absent coverage:
 
 - LanceDB vector-store creation/query behavior with an actual temporary LanceDB database.
 - Full RAG-system adapter failure paths, including invalid JSON, non-object responses, bad header JSON, request failures, and empty-answer invalidation.
-- `benchmark/tracking.py` MLflow behavior.
+- `benchmark/tracking.py` MLflow behavior, including parent/child run nesting and optional `mlflow.genai.evaluate()` judge logging.
 - Custom metric helpers such as hit@k, nDCG, recall@k, ROUGE-L, BLEU, METEOR, and BERTScore.
 - Reporting analysis, exports, terminal output, and plot generation.
 - End-to-end `run_single_benchmark()` orchestration.
@@ -52,12 +52,12 @@ python -m py_compile main.py config.py benchmark/*.py agentic/*.py
 
 Risk-based testing guidance:
 
-- Config/env changes: run `tests/test_config.py`, especially when touching registry validation, stage restrictions, adapter variables, or vector backend variables.
+- Config/env/YAML changes: run `tests/test_config.py` and `tests/test_orchestration.py`, especially when touching registry validation, manifest expansion, stage restrictions, adapter variables, or vector backend variables.
 - Dataset adapter changes: run `tests/test_dataset.py`; add cases for required registry fields, malformed/missing source columns, metadata copying, shared-corpus `doc_id` / `gold_doc_id`, and datasets with intentionally empty per-question context.
 - RAG-system adapter changes: run `tests/test_adapters.py`; add failure-path tests for request errors, invalid JSON, non-object JSON, malformed headers, dotted-field misses, context coercion, metadata coercion, and empty answers setting `answer_valid=False`.
 - Retrieval/chunking changes: run chunking/retrieval tests and inspect `.chroma/` or `.lancedb/` cache behavior. Add backend-seam tests when changing `build_vector_store()`, cache keys, query-only behavior, or LanceDB compatibility.
 - Generation cleanup changes: run generation tests with thinking/refusal/numeric cases.
-- Reporting/tracking changes: run reporting/model tests and a tiny benchmark to ensure outputs still write.
+- Reporting/tracking changes: run reporting/model tests, `python -m py_compile main.py benchmark/tracking.py benchmark/orchestration/worker.py`, and a tiny benchmark to ensure outputs still write. Use `MLFLOW_GENAI_JUDGES_ENABLED=false` for local smoke tests unless judge credentials are configured.
 - Agentic changes: run unit checks plus `python -m agentic.cli --max-iterations 1 --sample-size 1` when models are available.
 
 Recommended next tests:

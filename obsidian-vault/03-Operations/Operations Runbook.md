@@ -6,17 +6,36 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
-Run the deterministic benchmark:
+Run the deterministic benchmark from the YAML configured in `.env`:
 
 ```bash
-python main.py
+BENCHMARK_CONFIG_FILE=experiments/full-grid-example.yaml python main.py
 ```
+
+If `BENCHMARK_CONFIG_FILE` is omitted, `python main.py` falls back to the legacy `.env` matrix variables.
+
+Plan and run a resumable experiment worker matrix:
+
+```bash
+python -m benchmark.worker plan experiments/full-grid-example.yaml
+python -m benchmark.worker run experiments/full-grid-example.yaml --keep-going
+```
+
+The worker writes `results/runN/worker_manifest.json`, `progress.json`, per-config JSON under `configs/`, the normal reproducibility bundle, and aggregate reports for configs executed in that invocation. It skips completed configs when `--run-dir results/runN` is reused unless `--no-resume` is passed. Omit the manifest to use the existing `.env` matrix.
 
 Enable MLflow system metrics for a run:
 
 ```bash
 MLFLOW_ENABLE_SYSTEM_METRICS=true python main.py
 ```
+
+Enable MLflow RAG judges for a run:
+
+```bash
+MLFLOW_GENAI_JUDGES_ENABLED=true MLFLOW_GENAI_JUDGE_MODEL=openai:/gpt-4o-mini python main.py
+```
+
+The judge path requires the provider credentials expected by MLflow, such as `OPENAI_API_KEY` for OpenAI models. Classic MLflow retriever metrics run by default when per-sample gold and retrieved document IDs are available; set `MLFLOW_CLASSIC_RETRIEVER_METRICS_ENABLED=false` to skip them.
 
 Build/reuse vector indexes in separate stages:
 
@@ -66,7 +85,8 @@ Important runtime folders:
 
 Before long runs:
 
-- Confirm `.env` values from [[Configuration Reference]].
+- Confirm `BENCHMARK_CONFIG_FILE` points to the intended YAML manifest.
+- Confirm `.env` contains only the required service URLs and secrets from [[Configuration Reference]].
 - Confirm required Ollama models are pulled.
 - Use small `DATASET_SAMPLE_SIZE` for smoke tests.
 - Be aware that RAGAS critic calls and BERTScore can dominate runtime.
@@ -89,3 +109,19 @@ python -m benchmark.reporting.resource_charts --trace-dir results/runN/resource_
 ```
 
 The monitor writes one CSV and one marker file per benchmark configuration under `results/runN/resource_traces/`. Replace `runN` with the run folder created by the benchmark. PCIe counters depend on `nvidia-smi` support for `pcie.rx_throughput` and `pcie.tx_throughput`; unsupported counters are left blank in the trace and omitted visually.
+
+## ClearML Remote Execution
+
+Create a ClearML baseline task from `.env` or the first config in a manifest:
+
+```bash
+python -m benchmark.clearml_task experiments/full-grid-example.yaml --project-name "RAG Benchmarking" --task-name rag_eval_baseline
+```
+
+Start a worker on the execution machine:
+
+```bash
+clearml-agent daemon --queue rag-benchmark-gpu
+```
+
+Clone the task in the ClearML Web UI, edit Hyperparameters, and enqueue the clone to the queue. The ClearML entrypoint publishes non-secret `BenchmarkConfig` fields only; API keys, auth values, and raw HTTP headers must remain in environment variables on the agent machine. Pass `--remote-queue rag-benchmark-gpu` only when the local process should enqueue itself and exit.

@@ -9,11 +9,17 @@ from pathlib import Path
 from typing import Any
 
 import mlflow
-from mlflow.entities import RunStatus
 
 from benchmark.reporting.models import BenchmarkResultExtended
 
 logger = logging.getLogger(__name__)
+
+
+def _env_flag(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in ("1", "true", "yes", "on")
 
 
 def setup_mlflow() -> str:
@@ -142,7 +148,9 @@ def _reproducibility_tags(reproducibility_dir: Path | None) -> dict[str, str]:
 def log_benchmark_run(
     result: BenchmarkResultExtended,
     reproducibility_dir: Path | None = None,
-) -> None:
+    *,
+    nested: bool | None = None,
+) -> str | None:
     """Log a single benchmark configuration as one MLflow run.
 
     Parameters
@@ -151,6 +159,9 @@ def log_benchmark_run(
         The fully aggregated benchmark result for one config.
     reproducibility_dir:
         Optional directory containing manifest/package artifacts for reruns.
+    nested:
+        Whether to create this as a nested child run. ``None`` auto-nests
+        when a parent MLflow run is already active.
     """
     experiment_name = "RAG-Benchmark"
     mlflow.set_experiment(experiment_name)
@@ -245,7 +256,8 @@ def log_benchmark_run(
             metrics[f"{prefix}_max"] = stats.max
 
     run_name = _make_run_name(result)
-    with mlflow.start_run(run_name=run_name, tags=tags) as run:
+    nested_run = bool(mlflow.active_run()) if nested is None else nested
+    with mlflow.start_run(run_name=run_name, tags=tags, nested=nested_run) as run:
         mlflow.log_params(params)
         mlflow.log_metrics(metrics)
 
@@ -259,9 +271,13 @@ def log_benchmark_run(
         if result.evaluation_error:
             mlflow.set_tag("evaluation_error", result.evaluation_error)
 
+        _log_classic_retriever_metrics(result)
+        _log_genai_rag_judges(result)
+
         logger.info(
             "Logged MLflow run %s for config '%s'", run.info.run_id, result.config_name
         )
+        return run.info.run_id
 
 
 def _log_per_sample_csv(result: BenchmarkResultExtended, run_id: str) -> None:
@@ -323,6 +339,132 @@ def _log_per_sample_csv(result: BenchmarkResultExtended, run_id: str) -> None:
     logger.debug("Logged per-sample CSV artifact to run %s", run_id)
 
 
+def _log_classic_retriever_metrics(result: BenchmarkResultExtended) -> None:
+    """Log MLflow retrieval metrics when gold and retrieved doc IDs exist."""
+    if not _env_flag("MLFLOW_CLASSIC_RETRIEVER_METRICS_ENABLED", True):
+        mlflow.set_tag("mlflow_classic_retriever_metrics", "disabled")
+        return
+    rows = [
+        {
+            "query": sample.question,
+            "retrieved_doc_ids": list(sample.retrieved_doc_ids),
+            "ground_truth_doc_ids": list(sample.ground_truth_doc_ids),
+        }
+        for sample in result.per_sample
+        if sample.retrieved_doc_ids and sample.ground_truth_doc_ids
+    ]
+    if not rows:
+        mlflow.set_tag("mlflow_classic_retriever_metrics", "skipped_no_doc_ids")
+        return
+
+    try:
+        import pandas as pd
+        from mlflow.metrics import ndcg_at_k, precision_at_k, recall_at_k
+
+        k = result.retrieval_top_k or max(len(row["retrieved_doc_ids"]) for row in rows)
+        eval_result = mlflow.evaluate(
+            data=pd.DataFrame(rows),
+            predictions="retrieved_doc_ids",
+            targets="ground_truth_doc_ids",
+            extra_metrics=[
+                precision_at_k(k),
+                recall_at_k(k),
+                ndcg_at_k(k),
+            ],
+        )
+        mlflow.set_tag("mlflow_classic_retriever_metrics", "logged")
+        logger.info(
+            "Logged classic retriever metrics: %s metrics",
+            len(eval_result.metrics),
+        )
+    except Exception as exc:
+        mlflow.set_tag("mlflow_classic_retriever_metrics", "failed")
+        logger.warning("Classic MLflow retriever metrics failed (non-fatal): %s", exc)
+
+
+def _log_genai_rag_judges(result: BenchmarkResultExtended) -> None:
+    """Replay per-sample RAG outputs through MLflow RAG judges.
+
+    The benchmark has already generated answers. This function avoids another
+    expensive RAG pass by replaying the stored answer and contexts while still
+    creating a RETRIEVER span that MLflow's RAG judges can inspect.
+    """
+    if not _env_flag("MLFLOW_GENAI_JUDGES_ENABLED", False):
+        mlflow.set_tag("mlflow_genai_judges", "disabled")
+        return
+    if not result.per_sample:
+        mlflow.set_tag("mlflow_genai_judges", "skipped_no_samples")
+        return
+
+    judge_model = os.getenv("MLFLOW_GENAI_JUDGE_MODEL", "openai:/gpt-4o-mini")
+    samples_by_query = {sample.question: sample for sample in result.per_sample}
+    eval_dataset = [
+        {
+            "inputs": {"query": sample.question},
+            "expectations": {"expected_facts": [sample.ground_truth]},
+        }
+        for sample in result.per_sample
+        if sample.ground_truth
+    ]
+    if not eval_dataset:
+        mlflow.set_tag("mlflow_genai_judges", "skipped_no_expectations")
+        return
+
+    try:
+        from mlflow.entities import Document
+        from mlflow.genai.scorers import (
+            RetrievalGroundedness,
+            RetrievalRelevance,
+            RetrievalSufficiency,
+        )
+
+        def coerce_query(query: Any = None, **kwargs: Any) -> str:
+            if isinstance(query, dict):
+                query = query.get("query")
+            if query is None:
+                query = kwargs.get("query")
+            return str(query)
+
+        @mlflow.trace(span_type="RETRIEVER")
+        def replay_retrieve_docs(query: Any = None, **kwargs: Any) -> list[Document]:
+            actual_query = coerce_query(query, **kwargs)
+            sample = samples_by_query[actual_query]
+            doc_ids = sample.retrieved_doc_ids
+            docs: list[Document] = []
+            for index, context in enumerate(sample.contexts):
+                doc_id = doc_ids[index] if index < len(doc_ids) else f"ctx_{index}"
+                docs.append(
+                    Document(
+                        id=str(doc_id),
+                        page_content=context,
+                        metadata={"rank": index + 1},
+                    )
+                )
+            return docs
+
+        @mlflow.trace
+        def replay_rag_app(query: Any = None, **kwargs: Any) -> dict[str, str]:
+            actual_query = coerce_query(query, **kwargs)
+            replay_retrieve_docs(actual_query)
+            return {"response": samples_by_query[actual_query].answer}
+
+        eval_result = mlflow.genai.evaluate(
+            data=eval_dataset,
+            predict_fn=replay_rag_app,
+            scorers=[
+                RetrievalRelevance(model=judge_model),
+                RetrievalGroundedness(model=judge_model),
+                RetrievalSufficiency(model=judge_model),
+            ],
+        )
+        mlflow.set_tag("mlflow_genai_judges", "logged")
+        mlflow.set_tag("mlflow_genai_judge_model", judge_model)
+        logger.info("Logged MLflow GenAI RAG judges: %s", type(eval_result).__name__)
+    except Exception as exc:
+        mlflow.set_tag("mlflow_genai_judges", "failed")
+        logger.warning("MLflow GenAI RAG judges failed (non-fatal): %s", exc)
+
+
 def log_genai_eval(result: BenchmarkResultExtended) -> None:
     """Log a GenAI evaluation dataset for the MLflow eval-monitor dashboard.
 
@@ -344,7 +486,11 @@ def log_genai_eval(result: BenchmarkResultExtended) -> None:
             "ground_truth": [s.ground_truth for s in result.per_sample],
         })
 
-        with mlflow.start_run(run_name=_make_run_name(result) + "_eval", tags=_make_tags(result)):
+        with mlflow.start_run(
+            run_name=_make_run_name(result) + "_eval",
+            tags=_make_tags(result),
+            nested=bool(mlflow.active_run()),
+        ):
             eval_result = mlflow.evaluate(
                 data=eval_data,
                 targets="ground_truth",
@@ -404,7 +550,11 @@ def log_aggregate_artifacts_to_mlflow(
     try:
         tags = {"type": "aggregate", "results_dir": str(results_dir)}
         tags.update(_reproducibility_tags(repro_dir))
-        with mlflow.start_run(run_name=run_name, tags=tags) as run:
+        with mlflow.start_run(
+            run_name=run_name,
+            tags=tags,
+            nested=bool(mlflow.active_run()),
+        ) as run:
             for path, artifact_path in artifact_groups:
                 mlflow.log_artifact(str(path), artifact_path=artifact_path)
             if repro_dir.exists():

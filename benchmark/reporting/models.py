@@ -21,6 +21,8 @@ class PerSampleResult:
     ragas_scores: dict[str, float | None]
     custom_scores: dict[str, float | None] = None
     answer_valid: bool = True
+    retrieved_doc_ids: tuple[str, ...] = ()
+    ground_truth_doc_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

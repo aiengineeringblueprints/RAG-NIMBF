@@ -1,0 +1,85 @@
+experiment_name: full-grid-example
+
+dataset:
+  name: 
+    - squad
+    - ragas-wikiqa
+    - ragbench
+  sample_size: 
+    - 100
+    - 200
+    - 300
+
+settings:
+  # General workflow settings. Keep service URLs and secrets in .env.
+  benchmark_stage: all
+  retrieval_mode: retrieval
+  vector_db_backend: chroma
+  lancedb_path: .lancedb
+  max_new_tokens: 512
+  eval_critic_llm: ollama:gemma3:12b
+  eval_critic_embedding: nomic-embed-text:latest
+  eval_critic_max_tokens: 4096
+  custom_metrics_bert_model: roberta-large
+  custom_retrieval_metrics_mode: heuristic
+  llm_answer_strip_mode: tags_only
+  llm_answer_value_fallback: true
+  semantic_breakpoint_type: percentile
+  semantic_breakpoint_amount: 95
+  rag_system_adapter: internal
+
+matrix:
+  llm_models:
+    - ollama:gpt-oss:20b
+    - ollama:gemma3:4b
+    - openai:gpt-4o-mini
+    - openai:qwen3.5-think
+    - openai:Qwen3.5-397B-AWQ
+  embedding_models:
+    - nomic-embed-text:latest
+    - sentence-transformers/all-MiniLM-L6-v2
+    - sentence-transformers/all-MiniLM-L12-v2
+    - sentence-transformers/all-MiniLM-L3-v2
+    - sentence-transformers/all-MiniLM-L5-v2
+    - sentence-transformers/all-mpnet-base-v2
+    - sentence-transformers/all-mpnet-base-v1
+    - sentence-transformers/natural-questions
+  chunking_strategies:
+    - recursive
+    - semantic
+    - sentence
+    - fixed
+    - token
+  chunk_sizes:
+    - 300
+    - 500
+    - 1000
+    - 1500
+    - 2000
+  chunk_overlaps:
+    - 50
+    - 100
+    - 150
+    - 200
+    - 250
+  retrieval_top_k:
+    - 3
+    - 5
+    - 10
+    - 12
+    - 15
+  retrieval_strategy:
+    - similarity
+    - mmr
+  retrieval_use_hyde:
+    - false
+    - true
+  prompt_templates:
+    - concise
+    - detailed
+  reranker_models: 
+    - null
+    - sentence-transformers/Qwen3-Reranker-8B
+    - sentence-transformers/Qwen3-Reranker-4B
+    - sentence-transformers/Qwen3-Reranker-0.6B
+
