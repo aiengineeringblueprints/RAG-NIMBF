@@ -102,6 +102,7 @@ def get_chat_model(
             api_key=api_key or "not-needed",
             max_tokens=max_tokens,
             temperature=temperature,
+            stream_usage=True,
             extra_body={"chat_template_kwargs": {"enable_thinking": False}},
         )
 

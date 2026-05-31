@@ -147,6 +147,15 @@ class HttpRagAdapter:
 
         total_seconds = float(timings.get("total_seconds") or total)
         token_count = int(raw.get("token_count") or timings.get("token_count") or 0)
+        input_tokens = int(raw.get("input_tokens") or timings.get("input_tokens") or 0)
+        output_tokens = int(raw.get("output_tokens") or timings.get("output_tokens") or token_count or 0)
+        total_tokens = int(raw.get("total_tokens") or timings.get("total_tokens") or input_tokens + output_tokens)
+        estimated_cost_raw = (
+            raw["estimated_cost_usd"]
+            if "estimated_cost_usd" in raw
+            else timings.get("estimated_cost_usd")
+        )
+        estimated_cost_usd = float(estimated_cost_raw) if estimated_cost_raw is not None else None
         tokens_per_second = float(
             raw.get("tokens_per_second")
             or timings.get("tokens_per_second")
@@ -164,6 +173,10 @@ class HttpRagAdapter:
             total_seconds=total_seconds,
             token_count=token_count,
             tokens_per_second=tokens_per_second,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            total_tokens=total_tokens,
+            estimated_cost_usd=estimated_cost_usd,
             raw_content=raw_content,
             raw_reasoning=raw.get("raw_reasoning"),
             answer_valid=bool(answer_text.strip()),

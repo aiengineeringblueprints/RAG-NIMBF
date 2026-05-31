@@ -18,6 +18,7 @@ _BASE_DELAY = 10  # seconds
 
 from benchmark.metrics import get_gpu_usage
 from benchmark.providers import get_chat_model
+from benchmark.costing import estimate_cost_usd
 
 # Matches <think ...>...</think > blocks (attributes + multiline content)
 _THINK_TAG_PATTERN = re.compile(r"<think[^>]*>.*?</think\s*>", re.DOTALL | re.IGNORECASE)
@@ -294,6 +295,10 @@ class GenerationResult:
     token_count: int
     tokens_per_second: float
     gpu_usage: dict | None
+    input_tokens: int = 0
+    output_tokens: int = 0
+    total_tokens: int = 0
+    estimated_cost_usd: float | None = None
     raw_content: str = ""
     raw_reasoning: str | None = None
     answer_valid: bool = True
@@ -394,8 +399,25 @@ def _call_with_invoke(
     reasoning_kw = response.additional_kwargs.get("reasoning_content")
     raw_reasoning = str(reasoning_kw) if reasoning_kw else None
     usage = getattr(response, "usage_metadata", None)
+    if not usage:
+        metadata = getattr(response, "response_metadata", {}) or {}
+        usage = metadata.get("token_usage")
 
     return raw_content, total, total, usage, raw_reasoning
+
+
+def _usage_int(usage: dict | None, *keys: str) -> int:
+    if not usage:
+        return 0
+    for key in keys:
+        value = usage.get(key)
+        if value is None:
+            continue
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            continue
+    return 0
 
 
 def _postprocess_answer(
@@ -450,6 +472,7 @@ def generate_answer(
     value_fallback: bool = True,
     ground_truth: str | None = None,
     prompt_template_name: str | None = None,
+    cost_model_name: str | None = None,
     callbacks: list | None = None,
 ) -> GenerationResult:
     from langchain_core.messages import HumanMessage, SystemMessage
@@ -501,10 +524,17 @@ def generate_answer(
     if not answer_valid:
         logger.warning("Empty/invalid answer for question: %s", question[:80])
 
-    # Token count
-    token_count = 0
-    if usage:
-        token_count = usage.get("output_tokens", 0)
+    input_tokens = _usage_int(usage, "input_tokens", "prompt_tokens")
+    output_tokens = _usage_int(usage, "output_tokens", "completion_tokens")
+    total_tokens = _usage_int(usage, "total_tokens")
+    if total_tokens == 0 and (input_tokens or output_tokens):
+        total_tokens = input_tokens + output_tokens
+    token_count = output_tokens
+    estimated_cost = estimate_cost_usd(
+        model_name=cost_model_name,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+    )
 
     gpu_interval = float(os.getenv("GPU_METRICS_INTERVAL_SECONDS", "30"))
     gpu = get_gpu_usage(cache_seconds=gpu_interval)
@@ -516,6 +546,10 @@ def generate_answer(
         token_count=token_count,
         tokens_per_second=token_count / total if total > 0 and token_count > 0 else 0,
         gpu_usage=gpu,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        total_tokens=total_tokens,
+        estimated_cost_usd=estimated_cost,
         raw_content=raw_content,
         raw_reasoning=raw_reasoning,
         answer_valid=answer_valid,

@@ -18,6 +18,10 @@ class RagSystemOutput:
     total_seconds: float = 0.0
     token_count: int = 0
     tokens_per_second: float = 0.0
+    input_tokens: int = 0
+    output_tokens: int = 0
+    total_tokens: int = 0
+    estimated_cost_usd: float | None = None
     gpu_usage: dict[str, float] | None = None
     raw_content: str = ""
     raw_reasoning: str | None = None

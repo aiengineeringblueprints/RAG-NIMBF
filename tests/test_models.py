@@ -61,6 +61,9 @@ class TestPerSampleResult:
         assert r.ragas_scores["faithfulness"] == 0.9
         assert r.retrieved_doc_ids == ()
         assert r.ground_truth_doc_ids == ()
+        assert r.input_tokens == 0
+        assert r.output_tokens == 0
+        assert r.estimated_cost_usd is None
 
     def test_frozen(self):
         r = PerSampleResult(
@@ -123,3 +126,6 @@ class TestBenchmarkResultExtended:
         assert r.evaluation_error is None
         assert r.ragas_valid_sample_counts is None
         assert r.per_sample == ()
+        assert r.total_input_tokens == 0
+        assert r.total_output_tokens == 0
+        assert r.total_estimated_cost_usd is None
