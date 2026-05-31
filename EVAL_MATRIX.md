@@ -167,6 +167,10 @@
 | 134      | gpt-4o-mini   | Semantic  | 500  | 100     | -          | Concise  |                 | No                  | nomic-embed-text | squad   | 0.847 | 0.718 | 0.596 | 0.573 | 0.864 | 0.737 | 100 | Getestet |
 | 135      | gpt-4o-mini   | Semantic  | 500  | 200     | -          | Detailed |                 | No                  | nomic-embed-text | squad   | 0.945 | 0.718 | 0.596 | 0.424 | 0.866 | 0.659 | 100 | Getestet |
 | 136      | gpt-4o-mini   | Semantic  | 500  | 200     | -          | Concise  |                 | No                  | nomic-embed-text | squad   | 0.847 | 0.718 | 0.596 | 0.573 | 0.864 | 0.737 | 100 | Getestet |
+| 137      | deepseek-v4-pro | Recursive | 500  | 100     | Similarity | Concise  | 12              | No                  | nomic-embed-text | squad   | 0.812 | 0.728 | 0.600 | 0.658 | 0.909 | 0.833 | 100 | Getestet |
+| 138      | deepseek-v4-pro | Recursive | 500  | 100     | Similarity | Detailed | 12              | No                  | nomic-embed-text | squad   | 0.938 | 0.728 | 0.600 | 0.448 | 0.914 | 0.670 | 100 | Getestet |
+| 139      | deepseek-v4-pro | Recursive | 1000 | 100     | Similarity | Concise  | 12              | No                  | nomic-embed-text | squad   | 0.845 | 0.675 | 0.574 | 0.665 | 0.919 | -     | 100 | Getestet |
+| 140      | deepseek-v4-pro | Recursive | 1000 | 100     | Similarity | Detailed | 12              | No                  | nomic-embed-text | squad   | 0.927 | 0.675 | 0.574 | 0.452 | 0.914 | -     | 100 | Getestet |
 
 
 
@@ -313,6 +317,10 @@ Für alle Metriken wird der mean Wert betrachtet
 | 134 | 0.75  | 0.75   | 0.223    | 0.86  | 0.704  | 0.401    | 0.90  | 0.718  | 0.542    | 0.596             | 0.474         | 0.311             | 0.485   | 0.092 | 0.573  | 0.859                | 0.869             | 0.864         |
 | 135 | 0.75  | 0.75   | 0.223    | 0.86  | 0.704  | 0.401    | 0.90  | 0.718  | 0.542    | 0.596             | 0.474         | 0.160             | 0.233   | 0.037 | 0.424  | 0.856                | 0.875             | 0.866         |
 | 136 | 0.75  | 0.75   | 0.223    | 0.86  | 0.704  | 0.401    | 0.90  | 0.718  | 0.542    | 0.596             | 0.474         | 0.311             | 0.485   | 0.092 | 0.573  | 0.859                | 0.869             | 0.864         |
+| 137 | 0.74  | 0.74   | 0.197    | 0.86  | 0.718  | 0.409    | 0.90  | 0.728  | 0.554    | 0.600             | 0.474         | 0.434             | 0.725   | 0.101 | 0.658  | 0.907                | 0.912             | 0.909         |
+| 138 | 0.74  | 0.74   | 0.197    | 0.86  | 0.718  | 0.409    | 0.90  | 0.728  | 0.554    | 0.600             | 0.474         | 0.179             | 0.262   | 0.039 | 0.448  | 0.904                | 0.924             | 0.914         |
+| 139 | 0.68  | 0.68   | 0.214    | 0.82  | 0.662  | 0.385    | 0.85  | 0.675  | 0.518    | 0.574             | 0.474         | 0.431             | 0.735   | 0.116 | 0.665  | 0.917                | 0.922             | 0.919         |
+| 140 | 0.68  | 0.68   | 0.214    | 0.82  | 0.662  | 0.385    | 0.85  | 0.675  | 0.518    | 0.574             | 0.474         | 0.168             | 0.248   | 0.035 | 0.452  | 0.904                | 0.924             | 0.914         |
 
 
 ### Empfohlene Scores:
@@ -349,6 +357,8 @@ Auswahl nach `Faith` innerhalb jedes LLMs. Bei sehr aehnlichen Scores werden Var
 | 118 | qwen3.5-think | Semantic | 1000 | 200 | Similarity | Detailed | 12 | No | nomic-embed-text | squad | 0.945 | 0.960 | 100 | Lange Semantic-Variante. |
 | 129 | gpt-4o-mini | Semantic | 1000 | 100 | - | Detailed | - | No | nomic-embed-text | squad | 0.945 | 0.960 | 100 | Bester gpt-4o-mini Lauf; Faith auf Qwen3.5-Niveau. |
 | 133 | gpt-4o-mini | Semantic | 500 | 100 | - | Detailed | - | No | nomic-embed-text | squad | 0.945 | 0.960 | 100 | Kleinere Chunks, identische Metriken zu ID 129. |
+| 138 | deepseek-v4-pro | Recursive | 500 | 100 | Similarity | Detailed | 12 | No | nomic-embed-text | squad | 0.938 | 0.930 | 100 | Bester deepseek-v4-pro Lauf; Faith auf hohem Niveau. |
+| 137 | deepseek-v4-pro | Recursive | 500 | 100 | Similarity | Concise | 12 | No | nomic-embed-text | squad | 0.812 | 0.930 | 100 | Concise-Variante; niedrigere Faith aber hoechste meteor-Scores. |
 
 
 ## Phase-2 Variantenmatrix
@@ -374,3 +384,12 @@ Ziel: Nicht die gesamte Matrix als Cartesian Product vergroessern, sondern die b
 2. Danach `P2.5` und `P2.6`: Reranker nur auf Gewinnern testen, weil er teuer ist.
 3. Danach `P2.3`, `P2.7`, `P2.8`, `P2.9`: Embedding, HyDE und MMR-Lambda erklaeren die Ursachen der Unterschiede.
 4. Zum Schluss `P2.10`: Finaler Stack fuer Paper-/Poster-Claims.
+
+## API-Kosten (Frontier-Modelle)
+
+Nur fuer Runs mit kostenpflichtigen API-Modellen (nicht lokale Ollama-Modelle).
+
+| Run | IDs | LLM | Kosten (USD) | Hinweis |
+| --- | --- | ------------ | ------------ | ------- |
+| 75 | 137, 138 | deepseek-v4-pro | $0.12 | API-Key, 2 Configs a 100 Samples |
+| 76 | 139, 140 | deepseek-v4-pro | $0.18 | API-Key, 2 Configs a 100 Samples |

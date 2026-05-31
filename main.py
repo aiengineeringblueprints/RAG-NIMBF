@@ -165,6 +165,10 @@ def _generation_result_from_adapter(adapter_result) -> GenerationResult:
         token_count=adapter_result.token_count,
         tokens_per_second=adapter_result.tokens_per_second,
         gpu_usage=adapter_result.gpu_usage,
+        input_tokens=getattr(adapter_result, "input_tokens", 0),
+        output_tokens=getattr(adapter_result, "output_tokens", adapter_result.token_count),
+        total_tokens=getattr(adapter_result, "total_tokens", 0),
+        estimated_cost_usd=getattr(adapter_result, "estimated_cost_usd", None),
         raw_content=adapter_result.raw_content,
         raw_reasoning=adapter_result.raw_reasoning,
         answer_valid=adapter_result.answer_valid,
@@ -339,6 +343,7 @@ def run_single_benchmark(
                     value_fallback=config.llm_answer_value_fallback,
                     ground_truth=sample["ground_truth"],
                     prompt_template_name=config.prompt_template,
+                    cost_model_name=config.llm_model,
                 )
 
         questions.append(sample["question"])
@@ -459,6 +464,10 @@ def run_single_benchmark(
             tokens_per_second=gr.tokens_per_second,
             gpu_usage=gr.gpu_usage,
             ragas_scores=per_sample_ragas[i] if i < len(per_sample_ragas) else {},
+            input_tokens=gr.input_tokens,
+            output_tokens=gr.output_tokens,
+            total_tokens=gr.total_tokens,
+            estimated_cost_usd=gr.estimated_cost_usd,
             custom_scores=per_sample_custom[i] if i < len(per_sample_custom) else {},
             answer_valid=gr.answer_valid,
             retrieved_doc_ids=all_retrieved_doc_ids[i]
@@ -507,6 +516,9 @@ def run_single_benchmark(
                 if v is not None:
                     vals.append(v)
         return vals
+
+    priced_costs = [s.estimated_cost_usd for s in per_sample if s.estimated_cost_usd is not None]
+    total_estimated_cost = sum(priced_costs) if priced_costs else None
 
     custom_means = custom_result.metric_means
     custom_stat_summaries = {
@@ -558,6 +570,13 @@ def run_single_benchmark(
         dataset_sample_size=config.dataset_sample_size,
         stage_timings=stage_timings,
         vector_db_backend=config.vector_db_backend,
+        total_input_tokens=sum(s.input_tokens for s in per_sample),
+        total_output_tokens=sum(s.output_tokens for s in per_sample),
+        total_tokens=sum(s.total_tokens for s in per_sample),
+        total_estimated_cost_usd=total_estimated_cost,
+        avg_estimated_cost_per_answer_usd=(
+            total_estimated_cost / len(priced_costs) if priced_costs else None
+        ),
     )
 
 

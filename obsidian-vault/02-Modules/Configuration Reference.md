@@ -41,6 +41,15 @@ Provider URLs and keys stay in `.env` even in YAML-first runs:
 - Critic overrides: `EVAL_CRITIC_OLLAMA_BASE_URL`, `EVAL_CRITIC_OLLAMA_API_KEY`, `EVAL_CRITIC_OPENAI_COMPAT_BASE_URL`, `EVAL_CRITIC_OPENAI_COMPAT_API_KEY`
 - Embedding overrides: `EMBEDDING_OLLAMA_BASE_URL`, `EMBEDDING_OLLAMA_API_KEY`
 
+API cost tracking:
+
+- Generator calls now preserve provider token usage as `input_tokens`, `output_tokens`, and `total_tokens` per sample. `token_count` remains the backward-compatible output-token count.
+- `LLM_MODEL_PRICING_USD_PER_1M`: optional JSON object mapping model names to USD prices per one million tokens, for example `{"deepseek-v4-pro": {"input": 0.0, "output": 0.0}}`. Replace the zeroes with the current provider pricing. Aliases `input_per_1m`/`output_per_1m` and `prompt`/`completion` are accepted.
+- `MODEL_PRICING_USD_PER_1M`: compatibility alias for the same JSON.
+- `LLM_INPUT_COST_PER_1M_USD` and `LLM_OUTPUT_COST_PER_1M_USD`: fallback pricing for single-model runs when no per-model JSON entry is configured.
+- Cost outputs are `estimated_cost_usd` per sample plus `total_estimated_cost_usd` and `avg_estimated_cost_per_answer_usd` per config in JSON, CSV, and MLflow. If no pricing is configured, token counts are still recorded and cost fields stay empty.
+- The current estimate covers answer-generation calls. RAGAS critic calls and HyDE query-expansion calls are separate paid LLM calls if configured against API models.
+
 Retrieval behavior:
 
 - `RETRIEVAL_STRATEGY`: `similarity` or `mmr`.

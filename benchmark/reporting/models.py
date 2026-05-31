@@ -19,6 +19,10 @@ class PerSampleResult:
     tokens_per_second: float
     gpu_usage: dict[str, float] | None
     ragas_scores: dict[str, float | None]
+    input_tokens: int = 0
+    output_tokens: int = 0
+    total_tokens: int = 0
+    estimated_cost_usd: float | None = None
     custom_scores: dict[str, float | None] = None
     answer_valid: bool = True
     retrieved_doc_ids: tuple[str, ...] = ()
@@ -80,6 +84,11 @@ class BenchmarkResultExtended:
     dataset_sample_size: int | None = None
     stage_timings: dict[str, float] | None = None
     vector_db_backend: str | None = None
+    total_input_tokens: int = 0
+    total_output_tokens: int = 0
+    total_tokens: int = 0
+    total_estimated_cost_usd: float | None = None
+    avg_estimated_cost_per_answer_usd: float | None = None
 
 
 @dataclass(frozen=True)

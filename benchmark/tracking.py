@@ -192,6 +192,9 @@ def log_benchmark_run(
         "avg_ttft_seconds": result.avg_ttft_seconds,
         "avg_tokens_per_second": result.avg_tokens_per_second,
         "total_time_seconds": result.total_time_seconds,
+        "total_input_tokens": result.total_input_tokens,
+        "total_output_tokens": result.total_output_tokens,
+        "total_tokens": result.total_tokens,
     }
 
     # Optional GPU metrics
@@ -199,6 +202,10 @@ def log_benchmark_run(
         metrics["avg_gpu_utilization_pct"] = result.avg_gpu_utilization_pct
     if result.avg_gpu_memory_used_mb is not None:
         metrics["avg_gpu_memory_used_mb"] = result.avg_gpu_memory_used_mb
+    if result.total_estimated_cost_usd is not None:
+        metrics["total_estimated_cost_usd"] = result.total_estimated_cost_usd
+    if result.avg_estimated_cost_per_answer_usd is not None:
+        metrics["avg_estimated_cost_per_answer_usd"] = result.avg_estimated_cost_per_answer_usd
 
     if result.stage_timings:
         for key, value in result.stage_timings.items():
@@ -318,6 +325,10 @@ def _log_per_sample_csv(result: BenchmarkResultExtended, run_id: str) -> None:
             "total_seconds",
             "token_count",
             "tokens_per_second",
+            "input_tokens",
+            "output_tokens",
+            "total_tokens",
+            "estimated_cost_usd",
         ] + [f"ragas_{k}" for k in ragas_keys] + [f"custom_{k}" for k in custom_keys]
         writer.writerow(header)
 
@@ -330,6 +341,10 @@ def _log_per_sample_csv(result: BenchmarkResultExtended, run_id: str) -> None:
                 sample.total_seconds,
                 sample.token_count,
                 sample.tokens_per_second,
+                sample.input_tokens,
+                sample.output_tokens,
+                sample.total_tokens,
+                sample.estimated_cost_usd if sample.estimated_cost_usd is not None else "",
             ] + [sample.ragas_scores.get(k, "") for k in ragas_keys] + [
                 (sample.custom_scores or {}).get(k, "") for k in custom_keys
             ]

@@ -243,11 +243,58 @@ class TestGenerateAnswer:
         assert isinstance(result, GenerationResult)
         assert result.answer == "Paris is the capital of France."
         assert result.token_count == 6
+        assert result.output_tokens == 6
         assert result.total_seconds > 0
         assert result.ttft_seconds > 0
         assert result.ttft_seconds <= result.total_seconds
         assert result.answer_valid is True
         assert result.gpu_usage == {"gpu_utilization_pct": 50.0, "memory_used_mb": 1000.0}
+
+
+    @patch("benchmark.generation.get_gpu_usage", return_value=None)
+    @patch.dict("os.environ", {
+        "LLM_MODEL_PRICING_USD_PER_1M": '{"deepseek-v4-pro": {"input": 1.0, "output": 2.0}}',
+    }, clear=False)
+    def test_token_split_and_cost_from_usage_metadata(self, mock_gpu):
+        mock_llm = MagicMock()
+        chunks = _mock_stream_chunks(
+            "answer",
+            usage={"input_tokens": 1000, "output_tokens": 500, "total_tokens": 1500},
+        )
+        mock_llm.stream.return_value = iter(chunks)
+
+        result = generate_answer(
+            mock_llm, "q", ["ctx"], cost_model_name="deepseek-v4-pro"
+        )
+
+        assert result.input_tokens == 1000
+        assert result.output_tokens == 500
+        assert result.total_tokens == 1500
+        assert result.token_count == 500
+        assert result.estimated_cost_usd == 0.002
+
+    @patch("benchmark.generation.get_gpu_usage", return_value=None)
+    def test_invoke_usage_falls_back_to_response_metadata(self, mock_gpu):
+        mock_llm = MagicMock()
+        mock_llm.stream.side_effect = NotImplementedError("no streaming")
+        mock_response = MagicMock()
+        mock_response.content = "Test answer"
+        mock_response.usage_metadata = None
+        mock_response.additional_kwargs = {}
+        mock_response.response_metadata = {
+            "token_usage": {
+                "prompt_tokens": 7,
+                "completion_tokens": 3,
+                "total_tokens": 10,
+            }
+        }
+        mock_llm.invoke.return_value = mock_response
+
+        result = generate_answer(mock_llm, "question", ["context"])
+
+        assert result.input_tokens == 7
+        assert result.output_tokens == 3
+        assert result.total_tokens == 10
 
     @patch("benchmark.generation.get_gpu_usage", return_value=None)
     def test_fallback_to_invoke(self, mock_gpu):

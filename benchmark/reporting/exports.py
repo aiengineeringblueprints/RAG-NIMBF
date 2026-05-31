@@ -42,6 +42,11 @@ def _result_to_dict(r: BenchmarkResultExtended) -> dict:
         d[key] = val
     d["stage_timings"] = r.stage_timings or {}
     d["vector_db_backend"] = r.vector_db_backend
+    d["total_input_tokens"] = r.total_input_tokens
+    d["total_output_tokens"] = r.total_output_tokens
+    d["total_tokens"] = r.total_tokens
+    d["total_estimated_cost_usd"] = r.total_estimated_cost_usd
+    d["avg_estimated_cost_per_answer_usd"] = r.avg_estimated_cost_per_answer_usd
 
     # Stats summary (quality metrics only)
     d["stats"] = {
@@ -65,6 +70,10 @@ def _result_to_dict(r: BenchmarkResultExtended) -> dict:
             "ragas_scores": s.ragas_scores,
             "custom_scores": s.custom_scores or {},
             "answer_valid": s.answer_valid,
+            "input_tokens": s.input_tokens,
+            "output_tokens": s.output_tokens,
+            "total_tokens": s.total_tokens,
+            "estimated_cost_usd": s.estimated_cost_usd,
         }
         for s in r.per_sample
     ]
@@ -132,6 +141,11 @@ def save_csv_report(
             "ragas_semantic_similarity": r.ragas_semantic_similarity,
             "total_time_seconds": r.total_time_seconds,
             "vector_db_backend": r.vector_db_backend,
+            "total_input_tokens": r.total_input_tokens,
+            "total_output_tokens": r.total_output_tokens,
+            "total_tokens": r.total_tokens,
+            "total_estimated_cost_usd": r.total_estimated_cost_usd,
+            "avg_estimated_cost_per_answer_usd": r.avg_estimated_cost_per_answer_usd,
         }
         if r.stage_timings:
             for key, val in r.stage_timings.items():
@@ -176,6 +190,10 @@ def save_csv_report(
                 "total_seconds": s.total_seconds,
                 "token_count": s.token_count,
                 "tokens_per_second": s.tokens_per_second,
+                "input_tokens": s.input_tokens,
+                "output_tokens": s.output_tokens,
+                "total_tokens": s.total_tokens,
+                "estimated_cost_usd": s.estimated_cost_usd,
                 "faithfulness": s.ragas_scores.get("faithfulness"),
                 "answer_relevancy": s.ragas_scores.get("answer_relevancy"),
                 "answer_correctness": s.ragas_scores.get("answer_correctness"),

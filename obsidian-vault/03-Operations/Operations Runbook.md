@@ -37,6 +37,14 @@ MLFLOW_GENAI_JUDGES_ENABLED=true MLFLOW_GENAI_JUDGE_MODEL=openai:/gpt-4o-mini py
 
 The judge path requires the provider credentials expected by MLflow, such as `OPENAI_API_KEY` for OpenAI models. Classic MLflow retriever metrics run by default when per-sample gold and retrieved document IDs are available; set `MLFLOW_CLASSIC_RETRIEVER_METRICS_ENABLED=false` to skip them.
 
+Track estimated generator API cost for paid models by configuring current provider prices per one million tokens:
+
+```bash
+LLM_MODEL_PRICING_USD_PER_1M={"deepseek-v4-pro":{"input":0.0,"output":0.0}} python main.py
+```
+
+Replace the zeroes with the current provider prices. Reports and MLflow record input/output/total tokens even when pricing is omitted; cost fields stay empty until pricing is configured. This covers answer-generation calls, not additional RAGAS critic or HyDE calls.
+
 Build/reuse vector indexes in separate stages:
 
 ```bash
