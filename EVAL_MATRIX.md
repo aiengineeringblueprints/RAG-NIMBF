@@ -183,6 +183,16 @@
 | 150      | Qwen3.6-27B     | Recursive | 500  | 100     | Similarity | Detailed | -               | No                  | nomic-embed-text | squad   | 0.934 | 0.723 | 0.600 | 0.428 | 0.875 | 0.655 | 100 | Getestet |
 | 151      | Qwen3.6-27B     | Semantic  | -    | -       | Similarity | Concise  | -               | No                  | nomic-embed-text | squad   | 0.872 | 0.714 | 0.596 | 0.584 | 0.903 | 0.741 | 100 | Getestet |
 | 152      | Qwen3.6-27B     | Semantic  | -    | -       | Similarity | Detailed | -               | No                  | nomic-embed-text | squad   | 0.950 | 0.714 | 0.596 | 0.447 | 0.895 | 0.662 | 100 | Getestet |
+| 153      | Qwen3.6-27B     | Recursive | 1000 | 200     | MMR        | Concise  | -               | No                  | nomic-embed-text | squad   | 0.800 | 0.772 | 0.645 | 0.543 | 0.834 | 0.729 | 100 | Getestet |
+| 154      | Qwen3.6-27B     | Recursive | 1000 | 100     | MMR        | Concise  | -               | No                  | nomic-embed-text | squad   | 0.815 | 0.767 | 0.645 | 0.540 | 0.843 | 0.725 | 100 | Getestet |
+| 155      | Qwen3.6-27B     | Recursive | 500  | 200     | MMR        | Concise  | -               | No                  | nomic-embed-text | squad   | 0.797 | 0.793 | 0.678 | 0.531 | 0.814 | 0.724 | 100 | Getestet |
+| 156      | Qwen3.6-27B     | Recursive | 500  | 100     | MMR        | Concise  | -               | No                  | nomic-embed-text | squad   | 0.787 | 0.802 | 0.672 | 0.544 | 0.825 | 0.742 | 100 | Getestet |
+| 157      | Qwen3.6-27B     | Recursive | 1000 | 200     | MMR        | Detailed | -               | No                  | nomic-embed-text | squad   | 0.940 | 0.772 | 0.645 | 0.422 | 0.865 | 0.652 | 100 | Getestet |
+| 158      | Qwen3.6-27B     | Recursive | 1000 | 100     | MMR        | Detailed | -               | No                  | nomic-embed-text | squad   | 0.933 | 0.767 | 0.645 | 0.416 | 0.865 | 0.649 | 100 | Getestet |
+| 159      | Qwen3.6-27B     | Recursive | 500  | 200     | MMR        | Detailed | -               | No                  | nomic-embed-text | squad   | 0.946 | 0.793 | 0.678 | 0.424 | 0.856 | 0.651 | 100 | Getestet |
+| 160      | Qwen3.6-27B     | Recursive | 500  | 100     | MMR        | Detailed | -               | No                  | nomic-embed-text | squad   | 0.933 | 0.802 | 0.672 | 0.412 | 0.855 | 0.650 | 100 | Getestet |
+| 161      | Qwen3.6-27B     | Semantic  | -    | -       | MMR        | Concise  | -               | No                  | nomic-embed-text | squad   | 0.822 | 0.804 | 0.671 | 0.558 | 0.834 | 0.732 | 100 | Getestet |
+| 162      | Qwen3.6-27B     | Semantic  | -    | -       | MMR        | Detailed | -               | No                  | nomic-embed-text | squad   | 0.940 | 0.804 | 0.671 | 0.411 | 0.856 | 0.648 | 100 | Getestet |
 
 
 
@@ -345,6 +355,16 @@ Für alle Metriken wird der mean Wert betrachtet
 | 150 | 0.73  | 0.73   | 0.196    | 0.86  | 0.713  | 0.409    | 0.90  | 0.723  | 0.554    | 0.600             | 0.474         | 0.173             | 0.239   | 0.038 | 0.428  | 0.865                | 0.885             | 0.875         |
 | 151 | 0.75  | 0.75   | 0.222    | 0.85  | 0.700  | 0.391    | 0.89  | 0.714  | 0.532    | 0.596             | 0.474         | 0.299             | 0.500   | 0.079 | 0.584  | 0.898                | 0.908             | 0.903         |
 | 152 | 0.75  | 0.75   | 0.222    | 0.85  | 0.700  | 0.391    | 0.89  | 0.714  | 0.532    | 0.596             | 0.474         | 0.166             | 0.247   | 0.041 | 0.447  | 0.885                | 0.905             | 0.895         |
+| 153 | 0.70  | 0.70   | 0.387    | 0.82  | 0.772  | 0.82     | 0.82  | 0.772  | 0.82     | 0.645             | 0.474         | 0.311             | 0.452   | 0.080 | 0.543  | 0.829                | 0.839             | 0.834         |
+| 154 | 0.68  | 0.68   | 0.382    | 0.82  | 0.767  | 0.82     | 0.82  | 0.767  | 0.82     | 0.645             | 0.474         | 0.306             | 0.450   | 0.087 | 0.540  | 0.838                | 0.849             | 0.843         |
+| 155 | 0.72  | 0.72   | 0.353    | 0.85  | 0.793  | 0.85     | 0.85  | 0.793  | 0.85     | 0.678             | 0.474         | 0.315             | 0.448   | 0.084 | 0.531  | 0.810                | 0.819             | 0.814         |
+| 156 | 0.73  | 0.73   | 0.365    | 0.86  | 0.802  | 0.86     | 0.86  | 0.802  | 0.86     | 0.672             | 0.474         | 0.319             | 0.466   | 0.077 | 0.544  | 0.820                | 0.830             | 0.825         |
+| 157 | 0.70  | 0.70   | 0.387    | 0.82  | 0.772  | 0.82     | 0.82  | 0.772  | 0.82     | 0.645             | 0.474         | 0.172             | 0.234   | 0.037 | 0.422  | 0.856                | 0.875             | 0.865         |
+| 158 | 0.68  | 0.68   | 0.382    | 0.82  | 0.767  | 0.82     | 0.82  | 0.767  | 0.82     | 0.645             | 0.474         | 0.174             | 0.230   | 0.041 | 0.416  | 0.856                | 0.875             | 0.865         |
+| 159 | 0.72  | 0.72   | 0.353    | 0.85  | 0.793  | 0.85     | 0.85  | 0.793  | 0.85     | 0.678             | 0.474         | 0.175             | 0.239   | 0.038 | 0.424  | 0.847                | 0.865             | 0.856         |
+| 160 | 0.73  | 0.73   | 0.365    | 0.86  | 0.802  | 0.86     | 0.86  | 0.802  | 0.86     | 0.672             | 0.474         | 0.171             | 0.235   | 0.035 | 0.412  | 0.846                | 0.865             | 0.855         |
+| 161 | 0.75  | 0.75   | 0.410    | 0.85  | 0.804  | 0.85     | 0.85  | 0.804  | 0.85     | 0.671             | 0.474         | 0.316             | 0.469   | 0.095 | 0.558  | 0.830                | 0.840             | 0.834         |
+| 162 | 0.75  | 0.75   | 0.410    | 0.85  | 0.804  | 0.85     | 0.85  | 0.804  | 0.85     | 0.671             | 0.474         | 0.166             | 0.226   | 0.035 | 0.411  | 0.846                | 0.866             | 0.856         |
 
 
 ### Empfohlene Scores:
@@ -387,6 +407,9 @@ Auswahl nach `Faith` innerhalb jedes LLMs. Bei sehr aehnlichen Scores werden Var
 | 148 | Qwen3.6-27B | Recursive | 1000 | 100 | Similarity | Detailed | - | No | nomic-embed-text | squad | 0.949 | 0.930 | 100 | Recursive-Variante fast identisch zu ID 152. |
 | 147 | Qwen3.6-27B | Recursive | 1000 | 200 | Similarity | Detailed | - | No | nomic-embed-text | squad | 0.942 | 0.930 | 100 | Overlap-Variante; marginal niedrigere Faith. |
 | 151 | Qwen3.6-27B | Semantic | - | - | Similarity | Concise | - | No | nomic-embed-text | squad | 0.872 | 0.930 | 100 | Beste Concise-Variante; hohe meteor und bert_f1. |
+| 159 | Qwen3.6-27B | Recursive | 500 | 200 | MMR | Detailed | - | No | nomic-embed-text | squad | 0.946 | 0.850 | 100 | Bester MMR-Lauf; hoechste Faith unter MMR-Konfigs. |
+| 162 | Qwen3.6-27B | Semantic | - | - | MMR | Detailed | - | No | nomic-embed-text | squad | 0.940 | 0.850 | 100 | Semantic MMR; hohe ndcg@5 bei guter Faith. |
+| 156 | Qwen3.6-27B | Recursive | 500 | 100 | MMR | Concise | - | No | nomic-embed-text | squad | 0.787 | 0.860 | 100 | Hoechste ndcg@5 (0.802) aller Qwen3.6-27B MMR Concise. |
 
 
 ## Phase-2 Variantenmatrix
