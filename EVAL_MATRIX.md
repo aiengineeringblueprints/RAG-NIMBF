@@ -171,6 +171,8 @@
 | 138      | deepseek-v4-pro | Recursive | 500  | 100     | Similarity | Detailed | 12              | No                  | nomic-embed-text | squad   | 0.938 | 0.728 | 0.600 | 0.448 | 0.914 | 0.670 | 100 | Getestet |
 | 139      | deepseek-v4-pro | Recursive | 1000 | 100     | Similarity | Concise  | 12              | No                  | nomic-embed-text | squad   | 0.845 | 0.675 | 0.574 | 0.665 | 0.919 | -     | 100 | Getestet |
 | 140      | deepseek-v4-pro | Recursive | 1000 | 100     | Similarity | Detailed | 12              | No                  | nomic-embed-text | squad   | 0.927 | 0.675 | 0.574 | 0.452 | 0.914 | -     | 100 | Getestet |
+| 141      | deepseek-v4-pro | Recursive | 1000 | 200     | Similarity | Concise  | 12              | No                  | nomic-embed-text | squad   | 0.855 | 0.678 | 0.574 | 0.744 | 0.919 | 0.837 | 100 | Getestet |
+| 142      | deepseek-v4-pro | Recursive | 1000 | 200     | Similarity | Detailed | 12              | No                  | nomic-embed-text | squad   | 0.929 | 0.678 | 0.574 | 0.263 | 0.914 | 0.673 | 100 | Getestet |
 
 
 
@@ -321,6 +323,8 @@ Für alle Metriken wird der mean Wert betrachtet
 | 138 | 0.74  | 0.74   | 0.197    | 0.86  | 0.718  | 0.409    | 0.90  | 0.728  | 0.554    | 0.600             | 0.474         | 0.179             | 0.262   | 0.039 | 0.448  | 0.904                | 0.924             | 0.914         |
 | 139 | 0.68  | 0.68   | 0.214    | 0.82  | 0.662  | 0.385    | 0.85  | 0.675  | 0.518    | 0.574             | 0.474         | 0.431             | 0.735   | 0.116 | 0.665  | 0.917                | 0.922             | 0.919         |
 | 140 | 0.68  | 0.68   | 0.214    | 0.82  | 0.662  | 0.385    | 0.85  | 0.675  | 0.518    | 0.574             | 0.474         | 0.168             | 0.248   | 0.035 | 0.452  | 0.904                | 0.924             | 0.914         |
+| 141 | 0.70  | 0.70   | 0.222    | 0.82  | 0.680  | 0.397    | 0.85  | 0.678  | 0.508    | 0.574             | 0.474         | 0.429             | 0.744   | 0.110 | 0.744  | 0.917                | 0.921             | 0.919         |
+| 142 | 0.70  | 0.70   | 0.222    | 0.82  | 0.680  | 0.397    | 0.85  | 0.678  | 0.508    | 0.574             | 0.474         | 0.175             | 0.263   | 0.039 | 0.263  | 0.905                | 0.924             | 0.914         |
 
 
 ### Empfohlene Scores:
@@ -393,3 +397,4 @@ Nur fuer Runs mit kostenpflichtigen API-Modellen (nicht lokale Ollama-Modelle).
 | --- | --- | ------------ | ------------ | ------- |
 | 75 | 137, 138 | deepseek-v4-pro | $0.12 | API-Key, 2 Configs a 100 Samples |
 | 76 | 139, 140 | deepseek-v4-pro | $0.18 | API-Key, 2 Configs a 100 Samples |
+| 77 | 141, 142 | deepseek-v4-pro | $0.19 | API-Key, 2 Configs a 100 Samples, cs1000/co200 |
