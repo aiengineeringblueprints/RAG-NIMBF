@@ -1,0 +1,702 @@
+[
+  {
+    "index": 0,
+    "question": "In what year did Massachusetts first require children to be educated in schools?",
+    "answer": "Massachusetts first required children to be educated in schools in 1852.",
+    "raw_content": "Massachusetts first required children to be educated in schools in 1852.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 1,
+    "question": "When were stromules discovered?",
+    "answer": "Stromules were first observed in 1962.",
+    "raw_content": "Stromules were first observed in 1962.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 2,
+    "question": "Which artist who had a major influence on the Gothic Revival is represented in the V&A's British galleries?",
+    "answer": "The provided text does not identify an artist who had a major influence on the Gothic Revival. Instead, it states that **Horace Walpole**, a patron, was a major influence on the Gothic Revival and is represented by works of art from his collection. The text lists several artists such as Sir James Thornhill, William Kent, and Robert Adam, but it does not attribute the influence on the Gothic Revival to any of them.",
+    "raw_content": "The provided text does not identify an artist who had a major influence on the Gothic Revival. Instead, it states that **Horace Walpole**, a patron, was a major influence on the Gothic Revival and is represented by works of art from his collection. The text lists several artists such as Sir James Thornhill, William Kent, and Robert Adam, but it does not attribute the influence on the Gothic Revival to any of them.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 3,
+    "question": "In 1890, who did the university decide to team up with?",
+    "answer": "The provided text does not state that the University of Chicago decided to team up with anyone in 1890. It specifies that in the 1890s, the university affiliated with Des Moines College, Kalamazoo College, Butler University, and Stetson University, and that in 1896, it affiliated with Shimer College.",
+    "raw_content": "The provided text does not state that the University of Chicago decided to team up with anyone in 1890. It specifies that in the 1890s, the university affiliated with Des Moines College, Kalamazoo College, Butler University, and Stetson University, and that in 1896, it affiliated with Shimer College.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 4,
+    "question": "Who got a touchdown making the score 10-7?",
+    "answer": "Jonathan Stewart got the touchdown, finishing the drive with a 1-yard run that cut the score to 10–7.",
+    "raw_content": "Jonathan Stewart got the touchdown, finishing the drive with a 1-yard run that cut the score to 10–7.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 5,
+    "question": "How many Examination Boards exist in India?",
+    "answer": "The provided context does not contain information regarding the number of Examination Boards in India. The text discusses the Amazon rainforest, Nikola's education, and the metropolitan areas of Southern California.",
+    "raw_content": "The provided context does not contain information regarding the number of Examination Boards in India. The text discusses the Amazon rainforest, Nikola's education, and the metropolitan areas of Southern California.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 6,
+    "question": "Who started rumors in 2008 that ABC would sell its ten owned-and-operated stations?",
+    "answer": "Caris & Co. started the rumors in 2008 that ABC would sell its ten owned-and-operated stations.",
+    "raw_content": "Caris & Co. started the rumors in 2008 that ABC would sell its ten owned-and-operated stations.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 7,
+    "question": "Which network broadcasted the 50th Super Bowl game? ",
+    "answer": "CBS broadcasted the 50th Super Bowl game in the U.S.",
+    "raw_content": "CBS broadcasted the 50th Super Bowl game in the U.S.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 8,
+    "question": "Why was this short termed organization created?",
+    "answer": "The short-term organization, the Federal Energy Office, was created to coordinate the response to the embargo.",
+    "raw_content": "The short-term organization, the Federal Energy Office, was created to coordinate the response to the embargo.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 9,
+    "question": "What does LGM stands for?",
+    "answer": "The provided context does not contain information about what \"LGM\" stands for. Therefore, the question cannot be answered based on the given text.",
+    "raw_content": "The provided context does not contain information about what \"LGM\" stands for. Therefore, the question cannot be answered based on the given text.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 10,
+    "question": "What is the paper written by Richard Karp in 1972 that ushered in a new era of understanding between intractability and NP-complete problems?",
+    "answer": "The paper written by Richard Karp in 1972 is titled \"Reducibility Among Combinatorial Problems.\"",
+    "raw_content": "The paper written by Richard Karp in 1972 is titled \"Reducibility Among Combinatorial Problems.\"",
+    "raw_reasoning": null
+  },
+  {
+    "index": 11,
+    "question": "What Lake in a German island Mainau receives a fraction of the Rhine's flow?",
+    "answer": "Lake Überlingen receives a small fraction of the Rhine's flow diverted from the island of Mainau.",
+    "raw_content": "Lake Überlingen receives a small fraction of the Rhine's flow diverted from the island of Mainau.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 12,
+    "question": "What studio does ABC own at 1500 Broadway in NYC?",
+    "answer": "ABC owns the Times Square Studios at 1500 Broadway in New York City.",
+    "raw_content": "ABC owns the Times Square Studios at 1500 Broadway in New York City.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 13,
+    "question": "How many fraternities are apart of the university?",
+    "answer": "There are fifteen fraternities at the University of Chicago.",
+    "raw_content": "There are fifteen fraternities at the University of Chicago.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 14,
+    "question": "At what address did Goldenson secure a new headquarters for ABC?",
+    "answer": "Goldenson secured a new headquarters for ABC at 1330 Avenue of the Americas in Manhattan, located at the corner of 54th Street.",
+    "raw_content": "Goldenson secured a new headquarters for ABC at 1330 Avenue of the Americas in Manhattan, located at the corner of 54th Street.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 15,
+    "question": "Who had established the Russian empire to its former glory prior to 1921?",
+    "answer": "Bolshevik leaders had effectively reestablished a polity with roughly the same extent as that empire by 1921.",
+    "raw_content": "Bolshevik leaders had effectively reestablished a polity with roughly the same extent as that empire by 1921.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 16,
+    "question": "What does the Riemann hypothesis state the source of irregularity in the distribution of points comes from?",
+    "answer": "The Riemann hypothesis states that the irregularity in the distribution of primes comes from random noise.",
+    "raw_content": "The Riemann hypothesis states that the irregularity in the distribution of primes comes from random noise.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 17,
+    "question": "Which work of Luther's is effective in teaching children?",
+    "answer": "Luther's Small Catechism is the work that proved especially effective in helping parents teach their children.",
+    "raw_content": "Luther's Small Catechism is the work that proved especially effective in helping parents teach their children.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 18,
+    "question": "How was the civil disobedience shown in Antigone?",
+    "answer": "In Sophocles' play *Antigone*, civil disobedience is shown through Antigone's defiance of King Creon, who attempts to stop her from giving her brother Polynices a proper burial. She justifies her actions by delivering a speech in which she states that she must obey her conscience rather than human law, and she remains unafraid of the death penalty he threatens and eventually carries out.",
+    "raw_content": "In Sophocles' play *Antigone*, civil disobedience is shown through Antigone's defiance of King Creon, who attempts to stop her from giving her brother Polynices a proper burial. She justifies her actions by delivering a speech in which she states that she must obey her conscience rather than human law, and she remains unafraid of the death penalty he threatens and eventually carries out.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 19,
+    "question": "Where do juvenile platyctenids live?",
+    "answer": "Juvenile platyctenids live among the plankton.",
+    "raw_content": "Juvenile platyctenids live among the plankton.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 20,
+    "question": "How often are elections held for the Victorian Parliament?",
+    "answer": "Elections for the Victorian Parliament are held every four years.",
+    "raw_content": "Elections for the Victorian Parliament are held every four years.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 21,
+    "question": "What magnetic and electric force acts on a charge?",
+    "answer": "The unified electromagnetic force that acts on a charge is the sum of the electrostatic force, which is due to the electric field, and the magnetic force, which is due to the magnetic field.",
+    "raw_content": "The unified electromagnetic force that acts on a charge is the sum of the electrostatic force, which is due to the electric field, and the magnetic force, which is due to the magnetic field.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 22,
+    "question": "What kinds of growth did Kublai encourage?",
+    "answer": "Kublai Khan encouraged commercial, scientific, and cultural growth.",
+    "raw_content": "Kublai Khan encouraged commercial, scientific, and cultural growth.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 23,
+    "question": "What was the name of the first episode of the new Doctor Who series?",
+    "answer": "The name of the first episode of the new Doctor Who series was \"Rose\".",
+    "raw_content": "The name of the first episode of the new Doctor Who series was \"Rose\".",
+    "raw_reasoning": null
+  },
+  {
+    "index": 24,
+    "question": "Each of the extended metropolitan areas has a population that exceeds what number?",
+    "answer": "Each of the extended metropolitan areas has a population that exceeds five million.",
+    "raw_content": "Each of the extended metropolitan areas has a population that exceeds five million.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 25,
+    "question": "Why is giving a defiant speech sometimes more harmful for the individual?",
+    "answer": "Giving a defiant speech can be more harmful for an individual because it may lead to an increased sentence. In the case of U.S. v. Burgos-Andujar, the judge increased the defendant's sentence from 40 to 60 days because her allocution was interpreted by the U.S. Court of Appeals for the First Circuit as suggesting a lack of remorse, an attempt to avoid responsibility for her actions, and a likelihood of repeating her illegal actions.",
+    "raw_content": "Giving a defiant speech can be more harmful for an individual because it may lead to an increased sentence. In the case of U.S. v. Burgos-Andujar, the judge increased the defendant's sentence from 40 to 60 days because her allocution was interpreted by the U.S. Court of Appeals for the First Circuit as suggesting a lack of remorse, an attempt to avoid responsibility for her actions, and a likelihood of repeating her illegal actions.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 26,
+    "question": "When were Joseph Schumpeter and Norman Angell at their most prolific writing period?",
+    "answer": "The provided context does not contain any information regarding Joseph Schumpeter, Norman Angell, or their writing periods. The text discusses television history, Super Bowl appearances, and European Union expansion.",
+    "raw_content": "The provided context does not contain any information regarding Joseph Schumpeter, Norman Angell, or their writing periods. The text discusses television history, Super Bowl appearances, and European Union expansion.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 27,
+    "question": "How do competing businesses attract workers?",
+    "answer": "Competing businesses attract workers by offering higher wages than their competitors.",
+    "raw_content": "Competing businesses attract workers by offering higher wages than their competitors.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 28,
+    "question": "How many teams up to Super Bowl 50 have been to the championship game eight times?",
+    "answer": "Up to Super Bowl 50, four teams had made eight appearances in the Super Bowl.",
+    "raw_content": "Up to Super Bowl 50, four teams had made eight appearances in the Super Bowl.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 29,
+    "question": "What plants create most electric power?",
+    "answer": "Most electric power is generated using steam turbine plants.",
+    "raw_content": "Most electric power is generated using steam turbine plants.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 30,
+    "question": "The epidemic in Newcastle was the most what in any British city at the time?",
+    "answer": "The epidemic in Newcastle was the most devastating loss in any British city at the time.",
+    "raw_content": "The epidemic in Newcastle was the most devastating loss in any British city at the time.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 31,
+    "question": "What additional srevice did BSkyB offer besides Video on Demand that they claimed offered \"substantially more value\"?",
+    "answer": "BSkyB offered HD channels in addition to Video On Demand content, which they claimed provided \"substantially more value\" compared to what was previously carried by cable.",
+    "raw_content": "BSkyB offered HD channels in addition to Video On Demand content, which they claimed provided \"substantially more value\" compared to what was previously carried by cable.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 32,
+    "question": "Who did Tesla think would run the world of the future?",
+    "answer": "Tesla believed that humanity's future would be run by \"Queen Bees,\" indicating that he thought women would become the dominant sex in the future.",
+    "raw_content": "Tesla believed that humanity's future would be run by \"Queen Bees,\" indicating that he thought women would become the dominant sex in the future.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 33,
+    "question": "What have many HT members graduated to joining?",
+    "answer": "Many HT members have gone on to join terrorist groups.",
+    "raw_content": "Many HT members have gone on to join terrorist groups.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 34,
+    "question": "Approximately how many items are in the costume collection of the V&A?",
+    "answer": "The costume collection of the V&A contains over 14,000 outfits plus accessories.",
+    "raw_content": "The costume collection of the V&A contains over 14,000 outfits plus accessories.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 35,
+    "question": "Which park is home to the Fresno Chafffee Zoo?",
+    "answer": "Roeding Park is home to the Fresno Chaffee Zoo.",
+    "raw_content": "Roeding Park is home to the Fresno Chaffee Zoo.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 36,
+    "question": "The point at which different radiometric isotopes stop diffusing into and out of the crystal lattice is called what?",
+    "answer": "The point at which different radiometric isotopes stop diffusing into and out of the crystal lattice is called the closure temperature.",
+    "raw_content": "The point at which different radiometric isotopes stop diffusing into and out of the crystal lattice is called the closure temperature.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 37,
+    "question": "What could someone be investigated for?",
+    "answer": "Based on the provided context, someone could be investigated for joining terrorist groups or for being a jihadi terrorist, as many members of HT have gone on to join terrorist groups and many jihadi terrorists have cited HT as their key influence.",
+    "raw_content": "Based on the provided context, someone could be investigated for joining terrorist groups or for being a jihadi terrorist, as many members of HT have gone on to join terrorist groups and many jihadi terrorists have cited HT as their key influence.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 38,
+    "question": "What are examples of economic actors?",
+    "answer": "Based on the provided context, examples of economic actors are workers, capitalists (or business owners), and landlords.",
+    "raw_content": "Based on the provided context, examples of economic actors are workers, capitalists (or business owners), and landlords.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 39,
+    "question": "What field involves the study of the immune system?",
+    "answer": "Immunology is the field that involves the study of all aspects of the immune system.",
+    "raw_content": "Immunology is the field that involves the study of all aspects of the immune system.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 40,
+    "question": "What are the phagocytes that are located in tissues in contact with the external environment called?",
+    "answer": "The phagocytes located in tissues that are in contact with the external environment are called dendritic cells.",
+    "raw_content": "The phagocytes located in tissues that are in contact with the external environment are called dendritic cells.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 41,
+    "question": "What did the merchants of Newcastle plot to do to Timothy Dexter?",
+    "answer": "The merchants of Newcastle plotted to ruin Timothy Dexter. They persuaded him to sail a shipment of coal to Newcastle, intending for this action to cause him financial harm, but instead, a local strike crippled production and allowed him to make a considerable profit.",
+    "raw_content": "The merchants of Newcastle plotted to ruin Timothy Dexter. They persuaded him to sail a shipment of coal to Newcastle, intending for this action to cause him financial harm, but instead, a local strike crippled production and allowed him to make a considerable profit.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 42,
+    "question": "What job did Tesla's father have in Gospic?",
+    "answer": "Tesla's father worked as a pastor in Gospić.",
+    "raw_content": "Tesla's father worked as a pastor in Gospić.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 43,
+    "question": "Which hotel did the Panthers stay at for the Super Bowl?",
+    "answer": "The Panthers stayed at the San Jose Marriott.",
+    "raw_content": "The Panthers stayed at the San Jose Marriott.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 44,
+    "question": "What are other alternative names for French and Indian War?",
+    "answer": "Other alternative names for the French and Indian War include the Seven Years' War, the Fourth Intercolonial War, and the Great War for the Empire.",
+    "raw_content": "Other alternative names for the French and Indian War include the Seven Years' War, the Fourth Intercolonial War, and the Great War for the Empire.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 45,
+    "question": "Outside of its use of automobiles, what else is southern California famous for using?",
+    "answer": "Southern California is famous for its use of highways.",
+    "raw_content": "Southern California is famous for its use of highways.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 46,
+    "question": "What was the last name of the designers of Newcastle's library?",
+    "answer": "The last name of the designers of Newcastle's library was Green. The building was designed by John and Benjamin Green.",
+    "raw_content": "The last name of the designers of Newcastle's library was Green. The building was designed by John and Benjamin Green.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 47,
+    "question": "How many people were on the test flight of the AS-206?",
+    "answer": "The test flight AS-206 was unmanned, so there were zero people on board.",
+    "raw_content": "The test flight AS-206 was unmanned, so there were zero people on board.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 48,
+    "question": "What is the state average growth rate?",
+    "answer": "The state average growth rate is 10.0%.",
+    "raw_content": "The state average growth rate is 10.0%.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 49,
+    "question": "When was the study on sequenced Y genomes published?",
+    "answer": "The study on sequenced Y. pestis genomes was published in October 2011.",
+    "raw_content": "The study on sequenced Y. pestis genomes was published in October 2011.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 50,
+    "question": "How many times prios has the Sun Life Stadium had Super Bowls?",
+    "answer": "The provided context does not contain information regarding the Sun Life Stadium or the number of Super Bowls held there. The text only mentions that the Carolina Panthers made their second Super Bowl appearance in franchise history, with their other appearance being Super Bowl XXXVIII, and that both the Panthers and the Broncos were coached by John Fox in their last Super Bowl appearance prior to Super Bowl 50.",
+    "raw_content": "The provided context does not contain information regarding the Sun Life Stadium or the number of Super Bowls held there. The text only mentions that the Carolina Panthers made their second Super Bowl appearance in franchise history, with their other appearance being Super Bowl XXXVIII, and that both the Panthers and the Broncos were coached by John Fox in their last Super Bowl appearance prior to Super Bowl 50.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 51,
+    "question": "What does Kitab Rudjdjar mean in English?",
+    "answer": "The provided context does not contain any information regarding the meaning of \"Kitab Rudjdjar\" in English. The text discusses Nikola's education, the etymology of the name Warsaw, and Roman legions, but does not mention the term in question.",
+    "raw_content": "The provided context does not contain any information regarding the meaning of \"Kitab Rudjdjar\" in English. The text discusses Nikola's education, the etymology of the name Warsaw, and Roman legions, but does not mention the term in question.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 52,
+    "question": "Name one country that banned boating, driving and flying on Sundays.",
+    "answer": "The United Kingdom banned flying, driving, and boating on Sundays. Other countries that implemented this ban included Germany, Italy, Switzerland, and Norway.",
+    "raw_content": "The United Kingdom banned flying, driving, and boating on Sundays. Other countries that implemented this ban included Germany, Italy, Switzerland, and Norway.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 53,
+    "question": "For how long did the plague stick around?",
+    "answer": "The plague recurred occasionally in Europe until the 19th century.",
+    "raw_content": "The plague recurred occasionally in Europe until the 19th century.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 54,
+    "question": "What channels were removed from the network in March of 2007?",
+    "answer": "In March 2007, Virgin Media removed the basic Sky channels from its network. This action was taken after the failure to renew existing carriage agreements with BSkyB, which had previously been negotiated with NTL and Telewest.",
+    "raw_content": "In March 2007, Virgin Media removed the basic Sky channels from its network. This action was taken after the failure to renew existing carriage agreements with BSkyB, which had previously been negotiated with NTL and Telewest.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 55,
+    "question": "How many total touchdowns did Cam Newton score?",
+    "answer": "Cam Newton scored a total of 45 touchdowns. This total consists of 35 passing touchdowns and 10 rushing touchdowns.",
+    "raw_content": "Cam Newton scored a total of 45 touchdowns. This total consists of 35 passing touchdowns and 10 rushing touchdowns.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 56,
+    "question": "How many original treaties establishing the EU protected fundamental rights?",
+    "answer": "None of the original treaties establishing the European Union protected fundamental rights.",
+    "raw_content": "None of the original treaties establishing the European Union protected fundamental rights.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 57,
+    "question": "What did BSkyB name their interactive service?",
+    "answer": "BSkyB named their interactive service Open, which is now called Sky Active.",
+    "raw_content": "BSkyB named their interactive service Open, which is now called Sky Active.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 58,
+    "question": "How many inhabitants does the Los Angeles area contain?",
+    "answer": "The Los Angeles area contains over 12 million inhabitants.",
+    "raw_content": "The Los Angeles area contains over 12 million inhabitants.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 59,
+    "question": "During what period did the Tower Theatre re-open?",
+    "answer": "The Tower Theatre re-opened in the late 1970s.",
+    "raw_content": "The Tower Theatre re-opened in the late 1970s.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 60,
+    "question": "What did Warsz own?",
+    "answer": "The provided text does not state what Warsz owned. It identifies Warsz as a 12th/13th-century nobleman and mentions a folk legend in which he was a fisherman who fell in love with a mermaid named Sawa, but it does not list any specific possessions.",
+    "raw_content": "The provided text does not state what Warsz owned. It identifies Warsz as a 12th/13th-century nobleman and mentions a folk legend in which he was a fisherman who fell in love with a mermaid named Sawa, but it does not list any specific possessions.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 61,
+    "question": "Who formed the government in Kenya?",
+    "answer": "The Kenya African National Union (KANU), led by Jomo Kenyatta, formed the government in Kenya.",
+    "raw_content": "The Kenya African National Union (KANU), led by Jomo Kenyatta, formed the government in Kenya.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 62,
+    "question": "What tool has measured the amount of dust that travels from the Sahara to the Amazon?",
+    "answer": "NASA's CALIPSO satellite has measured the amount of dust transported by wind from the Sahara to the Amazon.",
+    "raw_content": "NASA's CALIPSO satellite has measured the amount of dust transported by wind from the Sahara to the Amazon.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 63,
+    "question": "Who sacked Newton with 11 seconds left in the first half?",
+    "answer": "DeMarcus Ware sacked Newton with 11 seconds left in the first half.",
+    "raw_content": "DeMarcus Ware sacked Newton with 11 seconds left in the first half.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 64,
+    "question": "What was the hymn meant to examine students on?",
+    "answer": "The hymn was meant to examine candidates on specific catechism questions.",
+    "raw_content": "The hymn was meant to examine candidates on specific catechism questions.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 65,
+    "question": "In Nepalese private schools, what is the primary language of instruction?",
+    "answer": "The primary language of instruction in Nepalese private schools is English. While Nepali and/or the state's official language are also taught as compulsory subjects, the medium of education is English.",
+    "raw_content": "The primary language of instruction in Nepalese private schools is English. While Nepali and/or the state's official language are also taught as compulsory subjects, the medium of education is English.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 66,
+    "question": "What topic do private bills typically have?",
+    "answer": "Private bills typically relate to large-scale development projects, such as infrastructure projects that require the use of land or property.",
+    "raw_content": "Private bills typically relate to large-scale development projects, such as infrastructure projects that require the use of land or property.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 67,
+    "question": "To where did Ethelred flee?",
+    "answer": "Ethelred fled to Normandy.",
+    "raw_content": "Ethelred fled to Normandy.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 68,
+    "question": "What future Revolutionary key figures participated in this attack?",
+    "answer": "The provided context does not describe an attack involving future Revolutionary key figures. Instead, it states that George Washington and Thomas Gage played key roles in organizing the retreat of 500 British troops to Virginia. The text identifies Washington and Gage as future opponents in the American Revolutionary War, but it does not mention them participating in an attack.",
+    "raw_content": "The provided context does not describe an attack involving future Revolutionary key figures. Instead, it states that George Washington and Thomas Gage played key roles in organizing the retreat of 500 British troops to Virginia. The text identifies Washington and Gage as future opponents in the American Revolutionary War, but it does not mention them participating in an attack.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 69,
+    "question": "What style of lace is erroneously believed by some to have Huguenot influence?",
+    "answer": "The style of lace erroneously believed by some to have Huguenot influence is 'Bucks Point'.",
+    "raw_content": "The style of lace erroneously believed by some to have Huguenot influence is 'Bucks Point'.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 70,
+    "question": "What did the number of legions in Roman times depend on?",
+    "answer": "The actual number of legions present at any base or in total depended on whether a state of war or a threat of war existed.",
+    "raw_content": "The actual number of legions present at any base or in total depended on whether a state of war or a threat of war existed.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 71,
+    "question": "Before dinner what were Tesla's working hours?",
+    "answer": "Tesla worked every day from 9:00 a.m. until 6:00 p.m. or later before dinner.",
+    "raw_content": "Tesla worked every day from 9:00 a.m. until 6:00 p.m. or later before dinner.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 72,
+    "question": "What house was the site of a weaving school in Canterbury?",
+    "answer": "The Weavers, a half-timbered house by the river, was the site of a weaving school in Canterbury from the late 16th century to about 1830.",
+    "raw_content": "The Weavers, a half-timbered house by the river, was the site of a weaving school in Canterbury from the late 16th century to about 1830.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 73,
+    "question": "What is strongly linked to good student-teacher relationships?",
+    "answer": "Student motivation and attitudes towards school are strongly linked to good student-teacher relationships.",
+    "raw_content": "Student motivation and attitudes towards school are strongly linked to good student-teacher relationships.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 74,
+    "question": "What does the First Company Law Directive article 11 require?",
+    "answer": "The First Company Law Directive article 11 requires that incorporations would only be nullified for a fixed list of reasons.",
+    "raw_content": "The First Company Law Directive article 11 requires that incorporations would only be nullified for a fixed list of reasons.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 75,
+    "question": "What are two examples of cytotoxic or immunosuppressive drugs?",
+    "answer": "Two examples of cytotoxic or immunosuppressive drugs are methotrexate and azathioprine.",
+    "raw_content": "Two examples of cytotoxic or immunosuppressive drugs are methotrexate and azathioprine.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 76,
+    "question": "What caused the need for principal Treaties that ended up forming the EU?",
+    "answer": "The provided context does not contain information regarding the causes of the principal treaties that formed the European Union. The text discusses Martin Luther's catechisms, Roman legions, and educational administration, but does not address European history or the formation of the EU.",
+    "raw_content": "The provided context does not contain information regarding the causes of the principal treaties that formed the European Union. The text discusses Martin Luther's catechisms, Roman legions, and educational administration, but does not address European history or the formation of the EU.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 77,
+    "question": "Who originally led the Space Task Group?",
+    "answer": "The provided context does not contain information about who originally led the Space Task Group. The text discusses Roman legions, British troops led by George Washington, and naming conventions for the Seven Years' War.",
+    "raw_content": "The provided context does not contain information about who originally led the Space Task Group. The text discusses Roman legions, British troops led by George Washington, and naming conventions for the Seven Years' War.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 78,
+    "question": "Which female anchor from Today joined Hugh Downs on 20/20?",
+    "answer": "Barbara Walters joined Hugh Downs on 20/20. She was his former colleague from the Today show.",
+    "raw_content": "Barbara Walters joined Hugh Downs on 20/20. She was his former colleague from the Today show.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 79,
+    "question": "What is the estimate for the amount of tree species in the amazon tropical rain forest?",
+    "answer": "The Amazon tropical rainforest is estimated to have 16,000 tree species.",
+    "raw_content": "The Amazon tropical rainforest is estimated to have 16,000 tree species.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 80,
+    "question": "What type of homes is Fresno known for?",
+    "answer": "Fresno is known for its early twentieth-century homes, many of which have been restored in recent decades. These homes feature various architectural styles, including California Bungalow, American Craftsman, Spanish Colonial Revival, Mediterranean Revival, Mission Revival, and Storybook houses designed by the architects Hilliard, Taylor & Wheeler.",
+    "raw_content": "Fresno is known for its early twentieth-century homes, many of which have been restored in recent decades. These homes feature various architectural styles, including California Bungalow, American Craftsman, Spanish Colonial Revival, Mediterranean Revival, Mission Revival, and Storybook houses designed by the architects Hilliard, Taylor & Wheeler.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 81,
+    "question": "What team had the best start ever in the NFL?",
+    "answer": "The Carolina Panthers had the best start ever in the NFL. They started the season 14–0, breaking the previous 13–0 record that was shared with the 2009 New Orleans Saints and the 2011 Green Bay Packers. This achievement marked the best start to a season by an NFC team in NFL history.",
+    "raw_content": "The Carolina Panthers had the best start ever in the NFL. They started the season 14–0, breaking the previous 13–0 record that was shared with the 2009 New Orleans Saints and the 2011 Green Bay Packers. This achievement marked the best start to a season by an NFC team in NFL history.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 82,
+    "question": "Which organic compounds contain the greatest amount of oxygen by mass?",
+    "answer": "Carbohydrates contain the largest proportion by mass of oxygen among organic compounds with biological relevance.",
+    "raw_content": "Carbohydrates contain the largest proportion by mass of oxygen among organic compounds with biological relevance.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 83,
+    "question": "What did Stiglitz present in 2009 regarding global inequality?",
+    "answer": "In 2009, economist Joseph Stiglitz presented evidence that both global inequality and inequality within countries prevent growth by limiting aggregate demand.",
+    "raw_content": "In 2009, economist Joseph Stiglitz presented evidence that both global inequality and inequality within countries prevent growth by limiting aggregate demand.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 84,
+    "question": "Of what hollywood film company was UPT a subsidiary of when it merged with ABC?",
+    "answer": "UPT was a subsidiary of Paramount Pictures when it merged with ABC.",
+    "raw_content": "UPT was a subsidiary of Paramount Pictures when it merged with ABC.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 85,
+    "question": "When did the NFL announce that it would not use Roman numbers to designate the Super Bowl number?",
+    "answer": "The NFL announced that it would not use Roman numerals to designate the Super Bowl number on June 4, 2014.",
+    "raw_content": "The NFL announced that it would not use Roman numerals to designate the Super Bowl number on June 4, 2014.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 86,
+    "question": "How many Huguenots were killed in Toulouse?",
+    "answer": "Nearly 3,000 Protestants were slaughtered in Toulouse alone.",
+    "raw_content": "Nearly 3,000 Protestants were slaughtered in Toulouse alone.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 87,
+    "question": "What is 'grey literature'?",
+    "answer": "Grey literature refers to non-peer-reviewed sources. Examples of such sources include model results and reports from government agencies.",
+    "raw_content": "Grey literature refers to non-peer-reviewed sources. Examples of such sources include model results and reports from government agencies.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 88,
+    "question": "What's the name of Newcastle's speedway team?",
+    "answer": "Newcastle's speedway team is called the Newcastle Diamonds.",
+    "raw_content": "Newcastle's speedway team is called the Newcastle Diamonds.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 89,
+    "question": "What was the main reason for the show's suspension in 1989?",
+    "answer": "The main reason for the show's suspension in 1989 was its poor late 1980s performance, which resulted in viewership figures of only three to five million. According to the BBC Board of Control, this low performance was a leading cause of the suspension.",
+    "raw_content": "The main reason for the show's suspension in 1989 was its poor late 1980s performance, which resulted in viewership figures of only three to five million. According to the BBC Board of Control, this low performance was a leading cause of the suspension.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 90,
+    "question": "What is the name of the port city that was created?",
+    "answer": "The port city that was created is Mombasa. The Swahili built Mombasa into a major port city and established trade links with other nearby city-states, as well as commercial centres in Persia, Arabia, and India.",
+    "raw_content": "The port city that was created is Mombasa. The Swahili built Mombasa into a major port city and established trade links with other nearby city-states, as well as commercial centres in Persia, Arabia, and India.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 91,
+    "question": "When did Martin Luther receive his Doctor of Theology?",
+    "answer": "The provided context does not contain information about when Martin Luther received his Doctor of Theology. The text mentions that \"Nikola\" was awarded his Doctor of Theology on 19 October 1512, but it does not identify Nikola as Martin Luther.",
+    "raw_content": "The provided context does not contain information about when Martin Luther received his Doctor of Theology. The text mentions that \"Nikola\" was awarded his Doctor of Theology on 19 October 1512, but it does not identify Nikola as Martin Luther.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 92,
+    "question": "Which phylum is more complex than sponges?",
+    "answer": "Ctenophores form an animal phylum that is more complex than sponges.",
+    "raw_content": "Ctenophores form an animal phylum that is more complex than sponges.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 93,
+    "question": "What other scientist influence Frank Burnet when he was formulating his theory of immunity?",
+    "answer": "Niels Jerne influenced Frank Burnet when he was formulating the clonal selection theory of immunity, as Burnet was inspired by a suggestion made by Jerne.",
+    "raw_content": "Niels Jerne influenced Frank Burnet when he was formulating the clonal selection theory of immunity, as Burnet was inspired by a suggestion made by Jerne.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 94,
+    "question": "How many volumes are contained in the library?",
+    "answer": "The Harvard Library contains over 18 million volumes.",
+    "raw_content": "The Harvard Library contains over 18 million volumes.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 95,
+    "question": "What does co-teaching get the students to focus on?",
+    "answer": "Co-teaching focuses the students on learning.",
+    "raw_content": "Co-teaching focuses the students on learning.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 96,
+    "question": "Of what mountain system are the Victorian Alps a part?",
+    "answer": "The provided context does not contain information about the Victorian Alps or the mountain system they are part of. The text only discusses a park in the Fresno region, the Amazon rainforest, and dendritic cells.",
+    "raw_content": "The provided context does not contain information about the Victorian Alps or the mountain system they are part of. The text only discusses a park in the Fresno region, the Amazon rainforest, and dendritic cells.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 97,
+    "question": "What body part did Thomas Davis break during the NFC Championship Game?",
+    "answer": "Thomas Davis broke his arm during the NFC Championship Game.",
+    "raw_content": "Thomas Davis broke his arm during the NFC Championship Game.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 98,
+    "question": "Whose First Law of Motion says that unless acted upon be forces, objects would continue to move at a constant velocity?",
+    "answer": "Newton's First Law of Motion states that objects continue to move in a state of constant velocity unless acted upon by an external net force.",
+    "raw_content": "Newton's First Law of Motion states that objects continue to move in a state of constant velocity unless acted upon by an external net force.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 99,
+    "question": "How was scarcity managed in many countries?",
+    "answer": "Scarcity was addressed by rationing in many countries.",
+    "raw_content": "Scarcity was addressed by rationing in many countries.",
+    "raw_reasoning": null
+  }
+]
