@@ -6,9 +6,6 @@ from benchmark.reporting.models import BenchmarkResultExtended, BenchmarkRun, co
 from benchmark.reporting.analysis import compute_rankings
 from benchmark.reporting.terminal import display_report
 from benchmark.reporting.exports import save_json_report, save_csv_report, save_markdown_report
-from benchmark.reporting.visualization import generate_plots
-
-
 def generate_report(
     results: list[BenchmarkResultExtended],
     results_dir: Path = Path("results"),
@@ -22,7 +19,6 @@ def generate_report(
     save_json: bool = True,
     save_csv: bool = True,
     save_markdown: bool = True,
-    save_plots: bool = True,
 ) -> None:
     rankings = compute_rankings(results)
     system_info = collect_system_info()
