@@ -54,20 +54,19 @@ class ProgressStore:
             self.data = json.loads(path.read_text(encoding="utf-8"))
             self.data.setdefault("configs", {})
 
-    def is_completed(self, config: BenchmarkConfig, result_path: Path) -> bool:
+    def is_completed(self, config: BenchmarkConfig) -> bool:
         record = self.data["configs"].get(config.name)
-        return bool(record and record.get("status") == "completed" and result_path.exists())
+        return bool(record and record.get("status") == "completed")
 
     def mark_running(self, config: BenchmarkConfig) -> None:
         self._set(config, {"status": "running", "started_at": _now()})
 
-    def mark_completed(self, config: BenchmarkConfig, result_path: Path) -> None:
+    def mark_completed(self, config: BenchmarkConfig) -> None:
         self._set(
             config,
             {
                 "status": "completed",
                 "completed_at": _now(),
-                "result_path": str(result_path),
             },
         )
 
@@ -140,10 +139,9 @@ class ExperimentWorker:
         )
         with parent_context:
             for index, config in enumerate(self.configs, start=1):
-                result_path = config_result_path(run_dir, config)
                 console.print(f"\n[bold cyan]Worker config {index}/{len(self.configs)}[/bold cyan]")
 
-                if self.options.resume and progress.is_completed(config, result_path):
+                if self.options.resume and progress.is_completed(config):
                     console.print(f"[dim]Skipping completed config: {config.name}[/dim]")
                     continue
 
@@ -170,8 +168,8 @@ class ExperimentWorker:
                             )
                         console.print(f"[dim]  Resource trace: {monitor.trace_path}[/dim]")
 
-                    save_config_result(result, run_dir)
-                    progress.mark_completed(config, result_path)
+
+                    progress.mark_completed(config)
                     if self.options.log_mlflow:
                         log_benchmark_run(
                             result,
@@ -206,18 +204,6 @@ class ExperimentWorker:
         return results
 
 
-def save_config_result(result: BenchmarkResultExtended, run_dir: Path) -> Path:
-    path = config_result_path(run_dir, result)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(_result_to_dict(result), indent=2, default=str), encoding="utf-8")
-    console.print(f"[dim]  Saved config result to {path}[/dim]")
-    return path
-
-
-def config_result_path(run_dir: Path, config_or_result: BenchmarkConfig | BenchmarkResultExtended) -> Path:
-    name = config_or_result.name if isinstance(config_or_result, BenchmarkConfig) else config_or_result.config_name
-    safe_name = name.replace(":", "_").replace("/", "_")
-    return run_dir / "configs" / f"{safe_name}.json"
 
 
 def _load_data_once(config: BenchmarkConfig) -> tuple[list[dict], list[dict] | None, float]:

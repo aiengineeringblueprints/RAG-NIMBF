@@ -637,15 +637,6 @@ def _next_run_dir(base: Path = Path("results")) -> Path:
     return run_dir
 
 
-def _save_config_result(result: BenchmarkResultExtended, run_dir: Path) -> None:
-    """Persist a single config result to disk immediately."""
-    config_dir = run_dir / "configs"
-    config_dir.mkdir(parents=True, exist_ok=True)
-    safe_name = result.config_name.replace(":", "_").replace("/", "_")
-    path = config_dir / f"{safe_name}.json"
-    path.write_text(json.dumps(_result_to_dict(result), indent=2, default=str))
-    console.print(f"[dim]  Saved config result to {path}[/dim]")
-
 
 def run_all_benchmarks() -> list[BenchmarkResultExtended]:
     configs = get_all_combinations()
@@ -728,8 +719,6 @@ def run_all_benchmarks() -> list[BenchmarkResultExtended]:
                     )
                 console.print(f"[dim]  Resource trace: {monitor.trace_path}[/dim]")
 
-            # Save to disk immediately (survives MLflow crashes)
-            _save_config_result(result, run_dir)
 
             log_benchmark_run(
                 result,

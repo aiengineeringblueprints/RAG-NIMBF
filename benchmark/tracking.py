@@ -542,23 +542,9 @@ def log_aggregate_artifacts_to_mlflow(
         return
 
     artifact_groups: list[tuple[Path, str]] = []
-    for filename in ("results_summary.csv", "results_per_sample.csv"):
-        path = results_dir / filename
-        if path.exists():
-            artifact_groups.append((path, "tables"))
 
     for path in sorted(results_dir.glob("benchmark_*.json")):
         artifact_groups.append((path, "reports"))
-    for filename in ("report.md",):
-        path = results_dir / filename
-        if path.exists():
-            artifact_groups.append((path, "reports"))
-
-    plots_dir = results_dir / "results_plots"
-    if plots_dir.exists():
-        for pattern in ("*.html", "*.png", "*.jpg", "*.jpeg", "*.svg"):
-            for path in sorted(plots_dir.glob(pattern)):
-                artifact_groups.append((path, "plots"))
 
     repro_dir = reproducibility_dir or (results_dir / "reproducibility")
 

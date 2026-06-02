@@ -207,7 +207,8 @@ marimo/_lsp/
 __marimo__/
 
 # Benchmark results
-results/
+# results/
+cross_run_plots/
 
 # MLflow
 mlflow.db
