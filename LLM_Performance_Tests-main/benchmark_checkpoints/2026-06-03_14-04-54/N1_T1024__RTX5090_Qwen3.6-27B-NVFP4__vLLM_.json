@@ -1,0 +1,46 @@
+{
+  "timestamp": "2026-06-03T14:07:11.068102",
+  "n_calls": 1,
+  "max_tokens": 1024,
+  "model_label": "RTX5090 Qwen3.6-27B-NVFP4 (vLLM)",
+  "seq_wall_s": 8.682697183452547,
+  "par_wall_s": 8.632908480241895,
+  "results": [
+    {
+      "model": "RTX5090 Qwen3.6-27B-NVFP4 (vLLM)",
+      "provider": "openai_compatible",
+      "prompt_idx": 0,
+      "mode": "sequential",
+      "call_idx": 0,
+      "latency_s": 8.67023963201791,
+      "success": true,
+      "tokens_in": 23,
+      "tokens_out": 1024,
+      "error": null,
+      "output_text": "",
+      "ttft_s": null,
+      "tpot_s": null,
+      "itl_p50_s": null,
+      "itl_p95_s": null,
+      "gen_tok_s": 118.10515550441302
+    },
+    {
+      "model": "RTX5090 Qwen3.6-27B-NVFP4 (vLLM)",
+      "provider": "openai_compatible",
+      "prompt_idx": 0,
+      "mode": "parallel",
+      "call_idx": 0,
+      "latency_s": 8.611325391568244,
+      "success": true,
+      "tokens_in": 23,
+      "tokens_out": 1024,
+      "error": null,
+      "output_text": "\n\n## Quantencomputing: Eine ausf\u00fchrliche Erkl\u00e4rung\n\nQuantencomputing ist ein Forschungsgebiet, das die Prinzipien der Quantenmechanik nutzt, um Informationen zu verarbeiten und zu berechnen. Im Gegensatz zu klassischen Computern, die auf Bits (0 oder 1) basieren, verwenden Quantencomputer **Qubits** (Quantenbits), die dank quantenmechanischer Effekte wie Superposition und Verschr\u00e4nkung v\u00f6llig neue Rechenm\u00f6glichkeiten er\u00f6ffnen.\n\n### 1. Klassische Computer vs. Quantencomputer\n\n**Klassische Computer** verarbeiten Informationen in Form von Bits, die entweder den Zustand 0 oder 1 einnehmen. Jeder Rechenschritt ist deterministisch, und die Geschwindigkeit wird durch die Taktfrequenz und die Anzahl der Prozessoren begrenzt.\n\n**Quantencomputer** nutzen Quantensysteme (z. B. Atome, Ionen, Photonen oder supraleitende Schaltkreise), um Qubits zu realisieren. Ein Qubit kann sich gleichzeitig in einer \u00dcberlagerung (Superposition) der Zust\u00e4nde |0\u27e9 und |1\u27e9 befinden. Dadurch kann ein Quantencomputer bestimmte Probleme viel effizienter l\u00f6sen als der beste klassische Computer.\n\n### 2. Qubits und Superposition\n\nEin Qubit wird mathematisch als Vektor in einem zweidimensionalen komplexen Vektorraum beschrieben:  \n|\u03c8\u27e9 = \u03b1|0\u27e9 + \u03b2|1\u27e9,  \nwobei \u03b1 und \u03b2 komplexe Wahrscheinlichkeitsamplituden sind und |\u03b1|\u00b2 + |\u03b2|\u00b2 = 1 gilt.  \nBeim Messen kollabiert das Qubit zu einem der Basiszust\u00e4nde |0\u27e9 oder |1\u27e9 mit den jeweiligen Wahrscheinlichkeiten. Die Superposition erm\u00f6glicht es, viele Zust\u00e4nde gleichzeitig zu repr\u00e4sentieren, was den Begriff des **Quantenparallelismus** begr\u00fcndet.\n\n### 3. Quantenverschr\u00e4nkung\n\nVerschr\u00e4nkung beschreibt eine starke Korrelation zwischen zwei oder mehr Qubits, bei der der Zustand eines Qubits instantan den Zustand eines anderen beeinflusst, unabh\u00e4ngig von der Entfernung. Ein verschr\u00e4nktes Paar kann nicht als Produkt einzelner Zust\u00e4nde geschrieben werden (z. B. |00\u27e9 + |11\u27e9). Verschr\u00e4nkung ist eine zentrale Ressource f\u00fcr Quantenalgorithmen und Quantenkommunikation.\n\n### 4. Quantenoperationen: Gatter und unit\u00e4re Transformationen\n\nInformation wird auf Qubits durch **Quantengatter** manipuliert. Diese sind unit\u00e4re Transformationen (erhalten die Norm) und umkehrbar. Wichtige Gatter sind:\n- **Pauli-Gatter** (X, Y, Z)\n- **Hadamard-Gatter** (H): erzeugt Superposition\n- **CNOT**: kontrollierte Negation, erzeugt Verschr\u00e4nkung\n- **Toffoli, T-Gatter** f\u00fcr universelle Quantenberechnung\n\nEin Quantenschaltkreis besteht aus einer Abfolge solcher Gatter, die auf ein Register von Qubits angewendet werden.\n\n### 5. Quant",
+      "ttft_s": 3.2974845431745052,
+      "tpot_s": 0.022320311868704167,
+      "itl_p50_s": 0.02233098354190588,
+      "itl_p95_s": 0.02295915223658085,
+      "gen_tok_s": 118.9131699752801
+    }
+  ]
+}
