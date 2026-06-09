@@ -5,7 +5,7 @@ Sources:
 - [benchmark/dataset.py](../benchmark/dataset.py)
 - [benchmark/dataset_adapters.py](../benchmark/dataset_adapters.py)
 
-Dataset adapters normalize Hugging Face datasets into records consumed by the rest of the framework:
+Dataset adapters normalize Hugging Face and local JSONL/CSV datasets into records consumed by the rest of the framework:
 
 ```text
 {
@@ -20,7 +20,7 @@ Adapter registry and contracts:
 
 - `benchmark/dataset_adapters.py` owns `REGISTRY`, `register()`, and `get_adapter()`. Config validation and dataset loading both use that registry, so a new dataset name must be registered before it can run.
 - `DatasetAdapter` records the Hugging Face ID, question and ground-truth column names, context builder, preferred split, metadata keys, subset requirement, optional ground-truth transform, and whether the dataset has a shared corpus.
-- `load_benchmark_data()` selects the adapter, loads the preferred split, applies deterministic sample shuffling, converts ground truth to text, builds context, and copies declared metadata keys only.
+- `load_benchmark_data()` selects the adapter. Hugging Face adapters load the preferred split, apply deterministic sample shuffling, convert ground truth to text, build context, and copy declared metadata keys only. Local `jsonl`/`csv` adapters read `DATASET_PATH` and field mappings directly.
 - `load_corpus_and_questions()` is the shared-corpus path. It deduplicates contexts for adapters with `has_shared_corpus` and adds stable `metadata.doc_id` / `metadata.gold_doc_id` pairs where labels are available.
 
 Sample validation surface:
@@ -33,6 +33,8 @@ Sample validation surface:
 
 Built-in adapters:
 
+- `jsonl`: local newline-delimited JSON file controlled by `DATASET_PATH` and `DATASET_*_FIELD` mappings.
+- `csv`: local CSV file controlled by `DATASET_PATH` and `DATASET_*_FIELD` mappings.
 - `t2-ragbench`: Hugging Face `G4KMU/t2-ragbench`, requires subset, default target is FinQA in config.
 - `ragbench`: Hugging Face `rungalileo/ragbench`, requires subset.
 - `squad`: Hugging Face `rajpurkar/squad`, validation split, shared corpus mode.
@@ -49,6 +51,8 @@ Shared corpus behavior:
 - `ragperf-wikipedia-nq` has answer ground truth, but no gold Wikipedia document or chunk IDs. Retrieval precision/recall should be treated as proxy/judge-based rather than labeled retrieval evaluation.
 
 Extension pattern:
+
+For most custom evaluation sets, use `DATASET_NAME=jsonl` or `DATASET_NAME=csv` instead of writing code. Add a new adapter only when the source needs custom loading or normalization logic.
 
 1. Add a `DatasetAdapter`.
 2. Implement a context builder and optional ground-truth transformer.

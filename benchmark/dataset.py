@@ -1,6 +1,9 @@
+import csv
 import hashlib
+import json
 import os
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Mapping
 
 from datasets import load_dataset
@@ -90,8 +93,24 @@ def load_benchmark_data(
     dataset_name: str = "t2-ragbench",
     subset: str | None = None,
     sample_size: int = 50,
+    dataset_path: str | None = None,
+    question_field: str | None = None,
+    ground_truth_field: str | None = None,
+    context_field: str | None = None,
+    metadata_field: str | None = None,
 ) -> list[dict]:
     adapter = get_adapter(dataset_name)
+
+    if dataset_name in ("jsonl", "csv"):
+        return _load_local_dataset(
+            dataset_name=dataset_name,
+            dataset_path=dataset_path,
+            sample_size=sample_size,
+            question_field=question_field or os.getenv("DATASET_QUESTION_FIELD", "question"),
+            ground_truth_field=ground_truth_field or os.getenv("DATASET_GROUND_TRUTH_FIELD", "ground_truth"),
+            context_field=context_field or os.getenv("DATASET_CONTEXT_FIELD", "context"),
+            metadata_field=metadata_field or os.getenv("DATASET_METADATA_FIELD", "metadata"),
+        )
 
     label = subset or "default"
     console.print(f"[bold blue]Loading {adapter.hf_id} ({label})...[/bold blue]")
@@ -144,6 +163,11 @@ def load_corpus_and_questions(
     dataset_name: str = "squad",
     subset: str | None = None,
     sample_size: int = 50,
+    dataset_path: str | None = None,
+    question_field: str | None = None,
+    ground_truth_field: str | None = None,
+    context_field: str | None = None,
+    metadata_field: str | None = None,
 ) -> tuple[list[dict], list[dict]]:
     """Load data and split into a deduplicated corpus and per-question entries.
 
@@ -155,7 +179,16 @@ def load_corpus_and_questions(
         return _load_ragperf_wikipedia_nq(sample_size=sample_size)
 
     samples = normalize_samples(
-        load_benchmark_data(dataset_name, subset, sample_size),
+        load_benchmark_data(
+            dataset_name,
+            subset,
+            sample_size,
+            dataset_path=dataset_path,
+            question_field=question_field,
+            ground_truth_field=ground_truth_field,
+            context_field=context_field,
+            metadata_field=metadata_field,
+        ),
         source=dataset_name,
     )
 
@@ -186,6 +219,88 @@ def load_corpus_and_questions(
     )
     return corpus, samples
 
+
+
+def _load_local_dataset(
+    dataset_name: str,
+    dataset_path: str | None,
+    sample_size: int,
+    question_field: str,
+    ground_truth_field: str,
+    context_field: str,
+    metadata_field: str,
+) -> list[dict]:
+    path_value = dataset_path or os.getenv("DATASET_PATH")
+    if not path_value:
+        raise ValueError("DATASET_PATH is required when DATASET_NAME=jsonl or csv")
+
+    path = Path(path_value)
+    if not path.exists():
+        raise ValueError(f"DATASET_PATH does not exist: {path}")
+
+    if dataset_name == "jsonl":
+        rows = _read_jsonl(path)
+    elif dataset_name == "csv":
+        rows = _read_csv(path)
+    else:
+        raise ValueError(f"Unsupported local dataset type: {dataset_name}")
+
+    if sample_size and sample_size < len(rows):
+        rows = rows[:sample_size]
+
+    samples = []
+    for index, row in enumerate(rows):
+        metadata = row.get(metadata_field, {})
+        if isinstance(metadata, str) and metadata.strip():
+            try:
+                metadata = json.loads(metadata)
+            except json.JSONDecodeError:
+                metadata = {metadata_field: metadata}
+        elif metadata in (None, ""):
+            metadata = {}
+
+        samples.append(
+            normalize_sample(
+                {
+                    "question": _require_field(row, question_field, index),
+                    "ground_truth": _require_field(row, ground_truth_field, index),
+                    "context": row.get(context_field, ""),
+                    "metadata": metadata,
+                },
+                source=f"{dataset_name}:{path}[{index}]",
+            )
+        )
+
+    console.print(f"[green]Loaded {len(samples)} local samples from {path}[/green]")
+    return samples
+
+
+def _read_jsonl(path: Path) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    with path.open("r", encoding="utf-8") as handle:
+        for line_number, line in enumerate(handle, start=1):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError as exc:
+                raise ValueError(f"Invalid JSON on {path}:{line_number}: {exc}") from exc
+            if not isinstance(row, dict):
+                raise ValueError(f"JSONL row {path}:{line_number} must be an object")
+            rows.append(row)
+    return rows
+
+
+def _read_csv(path: Path) -> list[dict[str, Any]]:
+    with path.open("r", encoding="utf-8", newline="") as handle:
+        return [dict(row) for row in csv.DictReader(handle)]
+
+
+def _require_field(row: Mapping[str, Any], field: str, index: int) -> Any:
+    if field not in row:
+        raise ValueError(f"Local dataset row {index} is missing required field {field!r}")
+    return row[field]
 
 def _context_text(context: str | list[str]) -> str:
     if isinstance(context, list):

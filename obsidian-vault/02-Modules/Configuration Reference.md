@@ -30,6 +30,8 @@ Legacy `.env` variables, still supported when no YAML manifest is set:
 - `RETRIEVAL_TOP_K`
 - `MAX_NEW_TOKENS`
 - `DATASET_NAME`, `DATASET_SUBSET`, `DATASET_SAMPLE_SIZE`
+- `DATASET_PATH`, `DATASET_QUESTION_FIELD`, `DATASET_GROUND_TRUTH_FIELD`, `DATASET_CONTEXT_FIELD`, `DATASET_METADATA_FIELD` for local `jsonl`/`csv` datasets.
+- `RAGAS_ENABLED`, `CUSTOM_METRICS_ENABLED` can disable model-based evaluation blocks for smoke tests or answer-only runs.
 - `EVAL_CRITIC_LLM`, `EVAL_CRITIC_EMBEDDING`, `EVAL_CRITIC_MAX_TOKENS`
 - `PROMPT_TEMPLATES`
 - `RERANKER_MODELS`, `RERANKER_TOP_K`
@@ -74,11 +76,13 @@ Semantic chunking:
 RAG system adapters:
 
 - `RAG_SYSTEM_ADAPTER`: `internal` keeps the built-in chunk/retrieve/generate pipeline; `http` evaluates an external RAG service through JSON HTTP POST.
+- `RAG_ADAPTER_MODULES`: optional comma-separated Python module list imported before adapter validation. Use this for native adapter plugins that call `register_rag_adapter()`.
 - `RAG_HTTP_ENDPOINT_URL`: required for `RAG_SYSTEM_ADAPTER=http`. The framework sends `{question, metadata, ground_truth, config}` and expects a JSON object.
 - `RAG_HTTP_ANSWER_FIELD`, `RAG_HTTP_CONTEXTS_FIELD`, `RAG_HTTP_METADATA_FIELD`, `RAG_HTTP_TIMINGS_FIELD`: dotted response field paths. Defaults are `answer`, `contexts`, `metadata`, and `timings`.
 - `RAG_HTTP_TIMEOUT_SECONDS`: request timeout, default `60`.
 - `RAG_HTTP_HEADERS`: optional JSON object of static request headers.
 - `RAG_HTTP_AUTH_HEADER`, `RAG_HTTP_AUTH_VALUE`: optional single auth header without committing secrets to source.
+- `examples/http_rag_server.py` and `examples/sample_dataset.jsonl` provide a minimal smoke-test endpoint and dataset for HTTP adapter onboarding.
 - `BENCHMARK_STAGE=index` is only supported by the internal adapter, because black-box HTTP systems own their own indexing lifecycle.
 
 Answer post-processing:
@@ -98,12 +102,13 @@ Validation notes:
 
 Adapter registries:
 
-- Dataset adapters live in `benchmark/dataset_adapters.py` and register themselves in `REGISTRY` with short names such as `t2-ragbench`, `ragbench`, `squad`, `ragas-wikiqa`, and `ragperf-wikipedia-nq`.
+- Dataset adapters live in `benchmark/dataset_adapters.py` and register themselves in `REGISTRY` with short names such as `jsonl`, `csv`, `t2-ragbench`, `ragbench`, `squad`, `ragas-wikiqa`, and `ragperf-wikipedia-nq`.
 - RAG-system adapters live under `benchmark/adapters/`. `register_rag_adapter()` is the extension seam and `get_rag_adapter()` dispatches through the registry: `internal` returns `None`, while `http` returns `HttpRagAdapter.from_config(config)`.
 - Prompt templates are a separate registry in `benchmark/prompt_templates/__init__.py`; config validation checks names before benchmark execution.
 
 Dataset notes:
 
+- `jsonl` and `csv` load local files through `DATASET_PATH`. Field mapping is controlled by `DATASET_QUESTION_FIELD`, `DATASET_GROUND_TRUTH_FIELD`, `DATASET_CONTEXT_FIELD`, and `DATASET_METADATA_FIELD`. JSONL rows must be objects; CSV metadata can be blank, plain text, or a JSON object string.
 - `ragperf-wikipedia-nq` mirrors RAGPerf's Wikipedia evaluation setup: it indexes
   `wikimedia/wikipedia` config `20231101.en` and uses
   `sentence-transformers/natural-questions` train rows for questions and answer

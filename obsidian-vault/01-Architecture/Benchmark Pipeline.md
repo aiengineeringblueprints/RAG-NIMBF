@@ -10,7 +10,7 @@ Source entrypoint: [main.py](../main.py)
 `run_single_benchmark()` stages:
 
 1. Prepare per-config QA logging under `results/runN/configs/`.
-2. Select a RAG system adapter. `RAG_SYSTEM_ADAPTER=internal` uses the built-in pipeline; `http` calls an external JSON RAG endpoint as a black-box system.
+2. Optionally import modules from `RAG_ADAPTER_MODULES`, then select a RAG system adapter. `RAG_SYSTEM_ADAPTER=internal` uses the built-in pipeline; `http` calls an external JSON RAG endpoint as a black-box system; custom plugin adapters can register themselves with `register_rag_adapter()`.
 3. For the internal adapter, if `retrieval_mode == "retrieval"`, build chunks and a vector store.
 4. For the internal adapter, if `retrieval_mode == "direct"`, skip vector store work and use each sample's supplied context.
 5. For the HTTP adapter, skip internal chunking/retrieval/generation and normalize the endpoint response into answer, contexts, metadata, and timings.

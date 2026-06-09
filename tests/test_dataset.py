@@ -1,6 +1,7 @@
 """Tests for benchmark.dataset and benchmark.dataset_adapters."""
 
 import pytest
+import json
 from unittest.mock import patch, MagicMock
 
 from benchmark.dataset_adapters import (
@@ -350,3 +351,64 @@ class TestGoldDocMetadata:
         assert questions[0]["question"] == "1"
         assert questions[0]["ground_truth"] == "2"
         assert questions[0]["metadata"]["gold_doc_id"] == corpus[0]["metadata"]["doc_id"]
+
+
+class TestLocalDatasets:
+    def test_jsonl_dataset_loads_with_custom_fields(self, tmp_path):
+        path = tmp_path / "samples.jsonl"
+        path.write_text(
+            json.dumps({
+                "q": "Question?",
+                "a": "Answer",
+                "ctx": ["one", "two"],
+                "meta": {"id": "1"},
+            }) + "\n",
+            encoding="utf-8",
+        )
+
+        samples = load_benchmark_data(
+            dataset_name="jsonl",
+            dataset_path=str(path),
+            sample_size=10,
+            question_field="q",
+            ground_truth_field="a",
+            context_field="ctx",
+            metadata_field="meta",
+        )
+
+        assert samples == [{
+            "question": "Question?",
+            "ground_truth": "Answer",
+            "context": ["one", "two"],
+            "metadata": {"id": "1"},
+        }]
+
+    def test_csv_dataset_parses_metadata_json_string(self, tmp_path):
+        path = tmp_path / "samples.csv"
+        path.write_text(
+            'question,ground_truth,context,metadata\n'
+            'Q,A,C,"{""id"":""row-1""}"\n',
+            encoding="utf-8",
+        )
+
+        samples = load_benchmark_data(
+            dataset_name="csv",
+            dataset_path=str(path),
+            sample_size=10,
+        )
+
+        assert samples[0]["question"] == "Q"
+        assert samples[0]["ground_truth"] == "A"
+        assert samples[0]["context"] == "C"
+        assert samples[0]["metadata"] == {"id": "row-1"}
+
+    def test_local_dataset_requires_path(self):
+        with pytest.raises(ValueError, match="DATASET_PATH is required"):
+            load_benchmark_data(dataset_name="jsonl", dataset_path=None)
+
+    def test_local_dataset_reports_missing_field(self, tmp_path):
+        path = tmp_path / "samples.jsonl"
+        path.write_text('{"question":"Q","context":"C","metadata":{}}\n', encoding="utf-8")
+
+        with pytest.raises(ValueError, match="missing required field 'ground_truth'"):
+            load_benchmark_data(dataset_name="jsonl", dataset_path=str(path))

@@ -64,6 +64,13 @@ Use an external HTTP RAG system as a black-box benchmark target:
 RAG_SYSTEM_ADAPTER=http RAG_HTTP_ENDPOINT_URL=http://localhost:8000/query RAG_HTTP_ANSWER_FIELD=answer RAG_HTTP_CONTEXTS_FIELD=contexts python main.py
 ```
 
+Smoke-test the adapter without model-based metrics:
+
+```bash
+python examples/http_rag_server.py
+RAG_SYSTEM_ADAPTER=http RAG_HTTP_ENDPOINT_URL=http://localhost:8000/query DATASET_NAME=jsonl DATASET_PATH=examples/sample_dataset.jsonl RAGAS_ENABLED=false CUSTOM_METRICS_ENABLED=false python main.py
+```
+
 The HTTP adapter sends a JSON object with `question`, `metadata`, `ground_truth`, and `config`. The endpoint should return at least an answer field and should return contexts when RAGAS/context metrics are needed.
 
 Run the autonomous agent:

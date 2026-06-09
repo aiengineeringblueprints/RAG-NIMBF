@@ -23,8 +23,11 @@ Benchmark matrix snapshot:
 - Fixed parameters noted there include `nomic-embed-text:latest`, no HyDE, often no reranker, `squad`, and a Qwen3.5 critic model.
 - The matrix compares chunking strategy, chunk size/overlap, retrieval method, prompt template, top-k, reranker use, embedding, dataset, and RAGAS/custom metrics.
 - Treat this as historical/manual state unless reconciled with generated `results/` and MLflow.
-- Subagent inspection counted 128 planned configurations, with roughly 62 full `N=100` tested rows, 2 `N=50` test rows, and 64 open rows. Recount before using this in reports because the matrix is manually edited.
-- Observed pattern from the matrix: detailed prompts often improve Qwen3.5 faithfulness; MMR sometimes improves deterministic recall but can reduce faithfulness/precision depending on setup.
+- Recount on 2026-06-09 for the poster update: `results/run*/benchmark_*.json` contains 82 report JSON files with 234 aggregate configuration rows; 217 rows have `N >= 100`.
+- Recount on 2026-06-09 for `EVAL_MATRIX.md`: the manual matrix reaches configuration ID 182 and marks 172 full `N=100` rows as tested, with 2 open rows in the parsed matrix. Treat this as manually maintained evidence and reconcile with generated `results/` before publication.
+- Current observed pattern from generated results: detailed prompts improve mean faithfulness across full runs (0.901 vs. 0.833); similarity retrieval improves mean faithfulness (0.881 vs. 0.849), while MMR improves nDCG@5 (0.789 vs. 0.703) and recall@5 (0.839 vs. 0.544).
+- Current strongest observed lenses: faithfulness 0.959 in `run68` (Qwen3.5-397B-A17B, detailed, recursive 500/100, similarity, `N=300`); BERT-F1 0.969 and nDCG@5/recall@5 1.000 in `run1` (Qwen/Qwen3-32B-AWQ, concise, semantic, MMR, `N=100`); METEOR 0.665 in `run76` (deepseek-v4-pro, concise, recursive 1000/100, similarity, `N=100`).
+- Poster runtime baseline on 2026-06-09 now comes from `LLM_Performance_Tests-main/benchmark_checkpoints/`, using the common `N=1`, `max_tokens=1024`, sequential comparison point. The poster table now reports latency and generation throughput only, avoiding blank TTFT cells and the constant output-token cap. Observed generation throughput ranges from 56.5 tok/s for Spark gpt-oss-20B via Ollama to 130.9 tok/s for Sigurt Qwen3.5-397B-A17B Cloud; Qwen3.6-27B-NVFP4 on vLLM RTX5090 reaches 118.1 tok/s.
 - Suggested score lenses in the notes: retrieval via `ndcg@5`, context via `context_relevance`, and generation via `bert_score_f1 + meteor`.
 
 Paper:
@@ -34,6 +37,7 @@ Paper:
   2026, including a `beamerposter` source, build Makefile, starter
   bibliography, and notes about current evidence and remaining placeholders.
 - Keep high-level experimental claims aligned with `results/`, `EVAL_MATRIX.md`, and [[Evaluation and Metrics]].
+- 2026-06-09 NGEN-AI paper update: shortened from 19 to 15 pages by removing redundant result/runtime figures, moving runtime evidence to a compact table sourced from `LLM_Performance_Tests-main` N=6/T=1024 checkpoints, compressing related work, and shortening the conclusion.
 - The results section currently appears placeholder-like and should be reconciled before publication claims.
 - The discussion already flags validity threats: dataset size, evaluator reliability, domain mismatch, stochasticity, and external provider changes.
 

@@ -227,7 +227,12 @@ def _coerce_field_value(key: str, value: Any) -> Any:
         "semantic_breakpoint_amount",
     }:
         return None if value is None else int(value)
-    if key in {"retrieval_use_hyde", "llm_answer_value_fallback"}:
+    if key in {
+        "retrieval_use_hyde",
+        "llm_answer_value_fallback",
+        "ragas_enabled",
+        "custom_metrics_enabled",
+    }:
         return _to_bool(value)
     if key in {"retrieval_mmr_lambda", "rag_http_timeout_seconds"}:
         return float(value)
@@ -237,6 +242,11 @@ def _coerce_field_value(key: str, value: Any) -> Any:
         "rag_http_headers",
         "rag_http_auth_header",
         "rag_http_auth_value",
+        "dataset_path",
+        "dataset_question_field",
+        "dataset_ground_truth_field",
+        "dataset_context_field",
+        "dataset_metadata_field",
     }:
         return None if value is None else str(value)
     if key in {

@@ -21,7 +21,7 @@ from benchmark.retrieval import (
 )
 from benchmark.generation import get_llm, generate_answer, GenerationResult
 from benchmark.prompt_templates import get_template
-from benchmark.evaluation import evaluate_results
+from benchmark.evaluation import EvaluationResult, evaluate_results
 from benchmark.custom_metrics import CustomMetricsResult, compute_custom_metrics
 from benchmark.gold_retrieval_metrics import compute_gold_doc_retrieval_metrics
 from benchmark.reranker import get_reranker
@@ -371,72 +371,84 @@ def run_single_benchmark(
     console.print(f"  [dim]Generated {len(gen_results)} answers[/dim]       ")
 
     # 4. Evaluate with RAGAS using a separate critic model
-    console.print(f"  [dim]Running RAGAS evaluation (critic: {config.eval_critic_llm})...[/dim]")
-    with _stage_timer(stage_timings, "ragas_eval", resource_monitor):
-        eval_result = evaluate_results(
-            questions, ground_truths,
-            [r.answer for r in gen_results],
-            all_contexts,
-            llm_model=config.llm_model,
-            embedding_model=config.embedding_model,
-            critic_llm_model=config.eval_critic_llm,
-            critic_embedding_model=config.eval_critic_embedding,
-            ollama_base_url=config.ollama_base_url,
-            ollama_api_key=config.ollama_api_key,
-            openai_compat_base_url=config.openai_compat_base_url,
-            openai_compat_api_key=config.openai_compat_api_key,
-            critic_ollama_base_url=config.eval_critic_ollama_base_url,
-            critic_ollama_api_key=config.eval_critic_ollama_api_key,
-            critic_openai_compat_base_url=config.eval_critic_openai_compat_base_url,
-            critic_openai_compat_api_key=config.eval_critic_openai_compat_api_key,
-            critic_max_tokens=config.eval_critic_max_tokens,
-        )
+    if config.ragas_enabled:
+        console.print(f"  [dim]Running RAGAS evaluation (critic: {config.eval_critic_llm})...[/dim]")
+        with _stage_timer(stage_timings, "ragas_eval", resource_monitor):
+            eval_result = evaluate_results(
+                questions, ground_truths,
+                [r.answer for r in gen_results],
+                all_contexts,
+                llm_model=config.llm_model,
+                embedding_model=config.embedding_model,
+                critic_llm_model=config.eval_critic_llm,
+                critic_embedding_model=config.eval_critic_embedding,
+                ollama_base_url=config.ollama_base_url,
+                ollama_api_key=config.ollama_api_key,
+                openai_compat_base_url=config.openai_compat_base_url,
+                openai_compat_api_key=config.openai_compat_api_key,
+                critic_ollama_base_url=config.eval_critic_ollama_base_url,
+                critic_ollama_api_key=config.eval_critic_ollama_api_key,
+                critic_openai_compat_base_url=config.eval_critic_openai_compat_base_url,
+                critic_openai_compat_api_key=config.eval_critic_openai_compat_api_key,
+                critic_max_tokens=config.eval_critic_max_tokens,
+            )
 
-    if eval_result.error:
-        console.print(f"  [red]RAGAS evaluation failed: {eval_result.error}[/red]")
+        if eval_result.error:
+            console.print(f"  [red]RAGAS evaluation failed: {eval_result.error}[/red]")
+        else:
+            console.print(f"  [dim]RAGAS evaluation complete[/dim]")
     else:
-        console.print(f"  [dim]RAGAS evaluation complete[/dim]")
+        console.print("  [dim]RAGAS evaluation disabled[/dim]")
+        eval_result = EvaluationResult(metric_means={}, per_sample_scores=[])
 
     ragas_means = eval_result.metric_means
     per_sample_ragas = eval_result.per_sample_scores
 
     # 4b. Compute custom (non-RAGAS) metrics
-    console.print("  [dim]Computing custom metrics (IR + NLG)...[/dim]")
-    
-    # Reuse or create embedding model for IR relevance detection + context_relevance
-    from benchmark.embedding import get_embedding_model
-    with _stage_timer(stage_timings, "custom_metrics", resource_monitor):
-        _emb_model = get_embedding_model(
-            config.embedding_model,
-            config.embedding_base_url(),
-            config.embedding_api_key(),
-            provider=config.embedding_provider,
-        )
-        _embed_fn = _emb_model.embed_query
+    if config.custom_metrics_enabled:
+        console.print("  [dim]Computing custom metrics (IR + NLG)...[/dim]")
 
-        _bert_model = (
-            _get_bert_model(config.custom_metrics_bert_model)
-            if config.custom_metrics_bert_model
-            else None
-        )
-
-        custom_result = compute_custom_metrics(
-            questions, ground_truths,
-            [r.answer for r in gen_results],
-            all_contexts,
-            embed_fn=_embed_fn,
-            bert_model=_bert_model,
-        )
-        if config.custom_retrieval_metrics_mode == "gold_doc":
-            custom_result = _with_gold_doc_retrieval_metrics(
-                custom_result,
-                gold_doc_ids,
-                all_retrieved_metadata,
+        # Reuse or create embedding model for IR relevance detection + context_relevance
+        from benchmark.embedding import get_embedding_model
+        with _stage_timer(stage_timings, "custom_metrics", resource_monitor):
+            _emb_model = get_embedding_model(
+                config.embedding_model,
+                config.embedding_base_url(),
+                config.embedding_api_key(),
+                provider=config.embedding_provider,
             )
-    if custom_result.error:
-        console.print(f"  [yellow]Custom metrics error: {custom_result.error}[/yellow]")
+            _embed_fn = _emb_model.embed_query
+
+            _bert_model = (
+                _get_bert_model(config.custom_metrics_bert_model)
+                if config.custom_metrics_bert_model
+                else None
+            )
+
+            custom_result = compute_custom_metrics(
+                questions, ground_truths,
+                [r.answer for r in gen_results],
+                all_contexts,
+                embed_fn=_embed_fn,
+                bert_model=_bert_model,
+            )
+            if config.custom_retrieval_metrics_mode == "gold_doc":
+                custom_result = _with_gold_doc_retrieval_metrics(
+                    custom_result,
+                    gold_doc_ids,
+                    all_retrieved_metadata,
+                )
+        if custom_result.error:
+            console.print(f"  [yellow]Custom metrics error: {custom_result.error}[/yellow]")
+        else:
+            console.print(f"  [dim]Custom metrics computed: {', '.join(custom_result.metric_means.keys())}[/dim]")
     else:
-        console.print(f"  [dim]Custom metrics computed: {', '.join(custom_result.metric_means.keys())}[/dim]")
+        console.print("  [dim]Custom metrics disabled[/dim]")
+        custom_result = CustomMetricsResult(
+            metric_means={},
+            per_sample=[{} for _ in questions],
+            samples_with_valid_scores={},
+        )
 
     total_time = time.perf_counter() - run_start
     stage_timings["total"] = total_time
@@ -656,12 +668,22 @@ def run_all_benchmarks() -> list[BenchmarkResultExtended]:
                 dataset_name=configs[0].dataset_name,
                 subset=configs[0].dataset_subset or None,
                 sample_size=configs[0].dataset_sample_size,
+                dataset_path=configs[0].dataset_path,
+                question_field=configs[0].dataset_question_field,
+                ground_truth_field=configs[0].dataset_ground_truth_field,
+                context_field=configs[0].dataset_context_field,
+                metadata_field=configs[0].dataset_metadata_field,
             )
         else:
             data = load_benchmark_data(
                 dataset_name=configs[0].dataset_name,
                 subset=configs[0].dataset_subset or None,
                 sample_size=configs[0].dataset_sample_size,
+                dataset_path=configs[0].dataset_path,
+                question_field=configs[0].dataset_question_field,
+                ground_truth_field=configs[0].dataset_ground_truth_field,
+                context_field=configs[0].dataset_context_field,
+                metadata_field=configs[0].dataset_metadata_field,
             )
     load_data_seconds = load_stage.get("load_data")
 
@@ -720,11 +742,15 @@ def run_all_benchmarks() -> list[BenchmarkResultExtended]:
                 console.print(f"[dim]  Resource trace: {monitor.trace_path}[/dim]")
 
 
-            log_benchmark_run(
-                result,
-                reproducibility_dir=reproducibility_dir,
-                nested=True,
-            )
+            try:
+                log_benchmark_run(
+                    result,
+                    reproducibility_dir=reproducibility_dir,
+                    nested=True,
+                )
+            except Exception as exc:
+                console.print(f"[red]MLflow logging failed for {config.name}: {exc}[/red]")
+                logger.warning("MLflow logging failed for %s: %s", config.name, exc)
             results.append(result)
 
         store_path = ".chroma/" if configs[0].vector_db_backend == "chroma" else configs[0].lancedb_path

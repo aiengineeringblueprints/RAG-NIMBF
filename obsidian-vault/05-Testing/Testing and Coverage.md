@@ -7,7 +7,7 @@ Current inspection found 14 test files under `tests/*.py`, including adapter, da
 Coverage map:
 
 - `test_config.py`: env parsing, validation, combinations, adapter/backend/stage variables, YAML manifest entrypoint, and early registry checks.
-- `test_dataset.py`: dataset loading, sample contract normalization, dataset adapter registry behavior, context builders, shared-corpus metadata, and RAGPerf-style loading.
+- `test_dataset.py`: dataset loading, sample contract normalization, dataset adapter registry behavior, local JSONL/CSV loading, context builders, shared-corpus metadata, and RAGPerf-style loading.
 - `test_adapters.py`: RAG-system adapter dispatch and HTTP response normalization.
 - `test_chunking.py`: splitter creation and document chunking.
 - `test_retrieval.py`: vector-store/retrieval behavior.
@@ -27,7 +27,7 @@ Standalone:
 
 Strengths:
 
-- Config/env parsing and validation are heavily covered.
+- Config/env parsing and validation are heavily covered, including HTTP adapter variables, local dataset variables, adapter-module autoload, and metric toggles.
 - Generation cleanup and fallback behavior have detailed tests.
 - Dataset adapter transforms and sample contract normalization are tested with mocked loading.
 - Retrieval tests cover cache keys, provider/dataset fingerprinting, backend key separation, routing, HyDE fallback behavior, Chroma cleanup, and query-mode fail-closed behavior.

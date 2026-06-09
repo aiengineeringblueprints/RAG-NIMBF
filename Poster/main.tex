@@ -62,7 +62,7 @@
 
 \title{Evaluating Retrieval-Augmented Generation Pipelines}
 \author{Niclas Hart}
-\institute{TODO: affiliation}
+\institute{Hochschule fuer Angewandte Wissenschaften Ansbach}
 \date{July 2026}
 
 \begin{document}
@@ -158,7 +158,7 @@ Retrieval & similarity, MMR \\
 Reranking & none, MiniLM cross-encoder \\
 Embedding & \texttt{nomic-embed-text:latest} snapshot \\
 Datasets & SQuAD / WikiQA-style QA adapters \\
-Models & Qwen3, Qwen3.5, GPT-OSS local runs \\
+Models & Qwen3, Qwen3.5, Qwen3.6, GPT-OSS, GPT-4o-mini, DeepSeek \\
 \bottomrule
 \end{tabular}
 \end{block}
@@ -175,10 +175,10 @@ Models & Qwen3, Qwen3.5, GPT-OSS local runs \\
 
 \begin{block}{\blockheading{lightbulb}{Observed Answers}}
 \begin{itemize}\setlength\itemsep{0.04cm}
-  \item \metric{Prompting:}{detailed prompts improve mean faithfulness (0.885 vs. 0.827); the best faithfulness run is detailed (0.955).}
-  \item \metric{Retrieval:}{similarity is stronger for faithfulness (0.870 vs. 0.843), while MMR improves nDCG@5 (0.796 vs. 0.715) and recall@5 (0.847 vs. 0.554).}
-  \item \metric{Chunking:}{chunk size and overlap have smaller faithfulness effects than prompt or retrieval choice (500: 0.854, 1000: 0.857; overlap 100: 0.854, 200: 0.858).}
-  \item \metric{Winner:}{no single configuration dominates: faithfulness, BERT-F1, nDCG@5, and recall@5 select different runs.}
+  \item \metric{Prompting:}{detailed prompts improve mean faithfulness across full runs (0.901 vs. 0.833), while BERT-F1 stays nearly unchanged (0.863 vs. 0.864).}
+  \item \metric{Retrieval:}{similarity is stronger for faithfulness (0.881 vs. 0.849), while MMR improves nDCG@5 (0.789 vs. 0.703) and recall@5 (0.839 vs. 0.544).}
+  \item \metric{Chunking:}{recursive and semantic chunking are tied on mean faithfulness (0.866), but semantic chunking improves mean nDCG@5 (0.756 vs. 0.733).}
+  \item \metric{Winner:}{no single configuration dominates: faithfulness, BERT-F1, nDCG@5, recall@5, METEOR, and runtime select different runs.}
 \end{itemize}
 \end{block}
 
@@ -234,24 +234,31 @@ Human template for both: Context:\textbackslash n\texttt{\{context\}}\textbacksl
 
 \begin{block}{\blockheading{chart-bar}{Current Results Snapshot}}
 \justifying
-The current state of the project covers 128 benchmarked configurations, more are planned for future work. 
-The table below highlights the strongest configuration observed for each of the three main evaluation lenses, demonstrating that different configurations can excel in different metrics, 
+The current result corpus contains 234 JSON configuration rows across 82 benchmark reports, with 217 rows at \(N \geq 100\). 
+The manual evaluation matrix tracks configuration IDs up to 182 and currently marks 172 full \(N=100\) rows as tested.
+The table below highlights the strongest observed configurations for three evaluation lenses, demonstrating that different configurations can excel in different metrics,
 underscoring the importance of multi-metric evaluation in RAG benchmarking.
-\vspace{0.6cm}
-\begin{tabular}{p{0.45\linewidth}ccc}
+\vspace{0.25cm}
+{\scriptsize
+\setlength{\tabcolsep}{0.12cm}
+\renewcommand{\arraystretch}{1.02}
+\noindent\resizebox{0.98\linewidth}{!}{%
+\begin{tabular}{p{0.42\linewidth}cccc}
 \toprule
-Observed strongest configuration & Faith. & BERT-F1 & nDCG@5 \\
+Observed strongest configuration & Faith. & BERT-F1 & nDCG@5 & N \\
 \midrule
-Qwen3.5-397B-A17B, detailed prompt, recursive chunks &
-0.955 & -- & -- \\
-Qwen/Qwen3-32B-AWQ, concise prompt, semantic chunks, MMR &
-0.871 & 0.969 & 1.000 \\
-Qwen3.5-397B-A17B, detailed prompt, semantic chunks &
-0.948 & -- & -- \\
+Qwen3.5-397B, detailed, recursive 500/100, similarity &
+0.959 & 0.835 & 0.702 & 300 \\
+Qwen3-32B-AWQ, concise, semantic, MMR &
+0.871 & 0.969 & 1.000 & 100 \\
+deepseek-v4-pro, concise, recursive 1000/100, similarity &
+0.845 & 0.919 & 0.675 & 100 \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
+}
 
-\vspace{0.5cm}
+\vspace{0.25cm}
 \textbf{Interpretation:} the best run depends on the metric. Strong
 faithfulness, strong retrieval ranking, and strong lexical/semantic answer
 similarity do not always select the same configuration.
@@ -259,12 +266,12 @@ similarity do not always select the same configuration.
 
 \begin{block}{\blockheading{sort-amount-up}{Quality Ranking}}
 \centering
-\includegraphics[width=0.96\linewidth]{paper_quality_ranking_top10.png}
+\includegraphics[width=0.88\linewidth]{ranking_top20.png}
 \end{block}
 
 \begin{block}{\blockheading{robot}{Prompt and Model Effects}}
 \centering
-\includegraphics[width=0.96\linewidth]{paper_faithfulness_by_llm_prompt.png}
+\includegraphics[width=0.88\linewidth]{paper_llm_metric_heatmap.png}
 \end{block}
 
 \end{column}
@@ -273,9 +280,9 @@ similarity do not always select the same configuration.
 
 \begin{block}{\blockheading{balance-scale}{Retrieval Trade-Offs}}
 \centering
-\includegraphics[width=0.96\linewidth]{paper_retrieval_by_strategy.png}
+\includegraphics[width=0.88\linewidth]{paper_grouped_ragas_context_recall.png}
 
-\vspace{0.4cm}
+\vspace{0.2cm}
 \justifying
 MMR can improve diversity-sensitive retrieval metrics in some runs, while
 plain similarity can preserve higher faithfulness in others. Reranking helps in
@@ -283,22 +290,38 @@ selected settings, but adds latency and should be judged jointly with answer
 quality.
 \end{block}
 
-\begin{block}{\blockheading{tachometer-alt}{Runtime and Engineering}}
+\begin{block}{\blockheading{tachometer-alt}{LLM Runtime Baseline}}
 \centering
-\includegraphics[width=0.96\linewidth]{stage_timing_breakdown.png}
+{\footnotesize
+\setlength{\tabcolsep}{0.10cm}
+\renewcommand{\arraystretch}{1.10}
+\begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}p{0.60\linewidth}rr@{}}
+\toprule
+Model / backend & Latency & Gen tok/s \\
+\midrule
+Qwen3.5-397B / Cloud & 7.82s & 130.9 \\
+Qwen3.5-Think / Cloud & 7.84s & 130.6 \\
+Qwen3.6-27B / RTX5090 vLLM & 8.67s & 118.1 \\
+GPT-4o-mini / Cloud & 10.12s & 101.1 \\
+Qwen3-32B / RTX5090 vLLM & 17.36s & 59.0 \\
+gpt-oss-20B / Spark Ollama & 18.13s & 56.5 \\
+\bottomrule
+\end{tabular*}
+}
 
-\vspace{0.4cm}
-\begin{itemize}
-  \item Persisted vector-store collections avoid unnecessary re-embedding.
-  \item Stage-level timings separate indexing, retrieval, generation, and
-        evaluation bottlenecks.
-  \item Sequential execution matches local GPU constraints and reduces
-        resource contention.
-\end{itemize}
+\vspace{0.22cm}
+\justifying
+{\footnotesize Independent LLM performance baseline from
+\texttt{LLM\_Performance\_Tests-main}: sequential single-call runs with
+\(N=1\), max output 1024 tokens. Throughput is generated output tokens per
+second. TTFT is omitted from the table because two traces are non-streamed;
+output-token count is a fixed benchmark cap rather than a differentiating
+metric.}
 \end{block}
 
 \begin{block}{\blockheading{exclamation-triangle}{Limitations}}
-\begin{itemize}
+\normalsize
+\begin{itemize}\setlength\itemsep{0.05cm}
   \item Current results are local, hardware-dependent, and partly duplicated by
         reruns.
   \item SQuAD/WikiQA-style corpora may not transfer to domain RAG workloads.

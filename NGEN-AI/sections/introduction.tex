@@ -15,13 +15,13 @@ We address this gap with \toolname{} (Non-Invasive Modular Benchmarking Framewor
   \item \textbf{Hybrid evaluation.} Each run is assessed through LLM-based quality metrics (faithfulness, context recall, semantic similarity via RAGAS), established IR measures (nDCG@k, Hit@k, Recall@k), NLG metrics (BERTScore, METEOR, ROUGE-L, BLEU), and runtime indicators (time-to-first-token, tokens per second).
 \end{enumerate}
 
-We validate \toolname{} by benchmarking 136 configurations across four locally-served open-weight models (Qwen3-32B, Qwen3.5-397B, GPT-OSS-20B, Qwen3.5-think) and one frontier model (GPT-4o-mini) on 100-question samples from the SQuAD dataset~\cite{rajpurkar2016squad}. All experiments are tracked via MLflow for full reproducibility.
+We validate \toolname{} by benchmarking 182 configurations across seven generation models spanning local, cloud-hosted, and API deployments on 100-question samples from the SQuAD dataset~\cite{rajpurkar2016squad}. All experiments are tracked via MLflow for full reproducibility.
 
 The main contributions are:
 \begin{itemize}
   \item A modular, non-invasive benchmarking framework for systematic RAG configuration analysis.
   \item A hybrid evaluation methodology combining LLM-based, IR, and NLG metrics with runtime measurements.
-  \item An empirical study of 136 configurations revealing non-obvious interactions between chunking, retrieval, prompting, and generation components.
+  \item An empirical study of 182 configurations revealing non-obvious interactions between chunking, retrieval, prompting, and generation components.
 \end{itemize}
 
-The remainder of this paper is structured as follows. Section~\ref{sec:related} surveys related work. Section~\ref{sec:methodology} describes the framework architecture. Section~\ref{sec:setup} details the experimental setup. Section~\ref{sec:results} presents results. Section~\ref{sec:discussion} discusses findings and threats to validity. Section~\ref{sec:conclusion} concludes.
+The remainder of this paper covers related work, framework architecture, experimental setup, results, validity threats, and conclusions.

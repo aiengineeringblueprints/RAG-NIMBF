@@ -54,21 +54,34 @@ class ProgressStore:
             self.data = json.loads(path.read_text(encoding="utf-8"))
             self.data.setdefault("configs", {})
 
-    def is_completed(self, config: BenchmarkConfig) -> bool:
+    def is_completed(
+        self,
+        config: BenchmarkConfig,
+        result_path: Path | None = None,
+    ) -> bool:
         record = self.data["configs"].get(config.name)
-        return bool(record and record.get("status") == "completed")
+        if not (record and record.get("status") == "completed"):
+            return False
+        if result_path is not None:
+            return result_path.exists()
+        recorded_path = record.get("result_path")
+        return Path(recorded_path).exists() if recorded_path else True
 
     def mark_running(self, config: BenchmarkConfig) -> None:
         self._set(config, {"status": "running", "started_at": _now()})
 
-    def mark_completed(self, config: BenchmarkConfig) -> None:
-        self._set(
-            config,
-            {
-                "status": "completed",
-                "completed_at": _now(),
-            },
-        )
+    def mark_completed(
+        self,
+        config: BenchmarkConfig,
+        result_path: Path | None = None,
+    ) -> None:
+        patch: dict[str, Any] = {
+            "status": "completed",
+            "completed_at": _now(),
+        }
+        if result_path is not None:
+            patch["result_path"] = str(result_path)
+        self._set(config, patch)
 
     def mark_failed(self, config: BenchmarkConfig, error: str) -> None:
         self._set(
@@ -206,6 +219,11 @@ class ExperimentWorker:
 
 
 
+def config_result_path(run_dir: Path, config: BenchmarkConfig) -> Path:
+    safe_name = config.name.replace(":", "_").replace("/", "_")
+    return run_dir / "configs" / f"{safe_name}.json"
+
+
 def _load_data_once(config: BenchmarkConfig) -> tuple[list[dict], list[dict] | None, float]:
     from benchmark.dataset import load_benchmark_data, load_corpus_and_questions
     from benchmark.dataset_adapters import get_adapter
@@ -219,6 +237,11 @@ def _load_data_once(config: BenchmarkConfig) -> tuple[list[dict], list[dict] | N
                 dataset_name=config.dataset_name,
                 subset=config.dataset_subset or None,
                 sample_size=config.dataset_sample_size,
+                dataset_path=config.dataset_path,
+                question_field=config.dataset_question_field,
+                ground_truth_field=config.dataset_ground_truth_field,
+                context_field=config.dataset_context_field,
+                metadata_field=config.dataset_metadata_field,
             )
         else:
             corpus = None
@@ -226,6 +249,11 @@ def _load_data_once(config: BenchmarkConfig) -> tuple[list[dict], list[dict] | N
                 dataset_name=config.dataset_name,
                 subset=config.dataset_subset or None,
                 sample_size=config.dataset_sample_size,
+                dataset_path=config.dataset_path,
+                question_field=config.dataset_question_field,
+                ground_truth_field=config.dataset_ground_truth_field,
+                context_field=config.dataset_context_field,
+                metadata_field=config.dataset_metadata_field,
             )
     return data, corpus, load_stage.get("load_data", 0.0)
 

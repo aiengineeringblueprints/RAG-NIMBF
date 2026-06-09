@@ -52,6 +52,26 @@ def get_adapter(name: str) -> DatasetAdapter:
 # ---------------------------------------------------------------------------
 
 
+register(DatasetAdapter(
+    name="jsonl",
+    hf_id="local-jsonl",
+    question_key="question",
+    ground_truth_key="ground_truth",
+    build_context=lambda row: str(row.get("context", "")),
+    preferred_split="local",
+))
+
+
+register(DatasetAdapter(
+    name="csv",
+    hf_id="local-csv",
+    question_key="question",
+    ground_truth_key="ground_truth",
+    build_context=lambda row: str(row.get("context", "")),
+    preferred_split="local",
+))
+
+
 def _t2_ragbench_context(row: dict) -> str:
     parts = []
     if row.get("pre_text"):

@@ -596,3 +596,44 @@ class TestGetAllCombinations:
         finally:
             ret_mod._VECTOR_STORE_BACKENDS.clear()
             ret_mod._VECTOR_STORE_BACKENDS.update(original_backends)
+
+
+def test_local_dataset_and_metric_toggle_config_loaded():
+    with patch.dict(os.environ, {
+        "DATASET_NAME": "jsonl",
+        "DATASET_PATH": "examples/sample_dataset.jsonl",
+        "DATASET_QUESTION_FIELD": "q",
+        "DATASET_GROUND_TRUTH_FIELD": "a",
+        "DATASET_CONTEXT_FIELD": "ctx",
+        "DATASET_METADATA_FIELD": "meta",
+        "RAGAS_ENABLED": "false",
+        "CUSTOM_METRICS_ENABLED": "0",
+    }, clear=False):
+        configs = get_all_combinations()
+
+    assert configs[0].dataset_name == "jsonl"
+    assert configs[0].dataset_path == "examples/sample_dataset.jsonl"
+    assert configs[0].dataset_question_field == "q"
+    assert configs[0].dataset_ground_truth_field == "a"
+    assert configs[0].dataset_context_field == "ctx"
+    assert configs[0].dataset_metadata_field == "meta"
+    assert configs[0].ragas_enabled is False
+    assert configs[0].custom_metrics_enabled is False
+
+
+def test_rag_adapter_module_autoload(tmp_path, monkeypatch):
+    plugin = tmp_path / "my_rag_plugin.py"
+    plugin.write_text(
+        "from benchmark.adapters import register_rag_adapter\n"
+        "register_rag_adapter('autoloaded', lambda config: None)\n",
+        encoding="utf-8",
+    )
+    monkeypatch.syspath_prepend(str(tmp_path))
+
+    with patch.dict(os.environ, {
+        "RAG_ADAPTER_MODULES": "my_rag_plugin",
+        "RAG_SYSTEM_ADAPTER": "autoloaded",
+    }, clear=False):
+        configs = get_all_combinations()
+
+    assert configs[0].rag_system_adapter == "autoloaded"

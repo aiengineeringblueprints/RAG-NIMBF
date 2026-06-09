@@ -1,0 +1,2 @@
+{"question":"What does the demo server return?","ground_truth":"A demo answer","context":"The demo server returns a simple generated answer.","metadata":{"id":"sample-1"}}
+{"question":"Why return contexts?","ground_truth":"Contexts allow RAG metrics","context":"RAG evaluation benefits from retrieved contexts.","metadata":{"id":"sample-2"}}

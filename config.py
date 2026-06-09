@@ -1,4 +1,5 @@
 import os
+import importlib
 from dataclasses import dataclass
 from itertools import product
 from pathlib import Path
@@ -64,6 +65,13 @@ class BenchmarkConfig:
     eval_critic_llm: str
     eval_critic_embedding: str
     custom_metrics_bert_model: str | None = None
+    dataset_path: str | None = None
+    dataset_question_field: str = "question"
+    dataset_ground_truth_field: str = "ground_truth"
+    dataset_context_field: str = "context"
+    dataset_metadata_field: str = "metadata"
+    ragas_enabled: bool = True
+    custom_metrics_enabled: bool = True
     # Prompt template
     prompt_template: str = "concise"
     # Reranker
@@ -174,6 +182,13 @@ class BenchmarkConfig:
         return self.embedding_ollama_api_key or self.ollama_api_key
 
 
+
+def _env_bool(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in ("1", "true", "yes", "on")
+
 def _validate_positive_int(value: int, name: str) -> None:
     if value <= 0:
         raise ValueError(f"{name} must be a positive non-zero integer, got {value}")
@@ -243,6 +258,11 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
     dataset_name = os.getenv("DATASET_NAME", "t2-ragbench")
     dataset_subset = os.getenv("DATASET_SUBSET", "FinQA")
     dataset_sample_size = int(os.getenv("DATASET_SAMPLE_SIZE", "50"))
+    dataset_path = os.getenv("DATASET_PATH") or None
+    dataset_question_field = os.getenv("DATASET_QUESTION_FIELD", "question").strip() or "question"
+    dataset_ground_truth_field = os.getenv("DATASET_GROUND_TRUTH_FIELD", "ground_truth").strip() or "ground_truth"
+    dataset_context_field = os.getenv("DATASET_CONTEXT_FIELD", "context").strip() or "context"
+    dataset_metadata_field = os.getenv("DATASET_METADATA_FIELD", "metadata").strip() or "metadata"
 
     # Validate dataset name against registry
     from benchmark.dataset_adapters import REGISTRY
@@ -260,6 +280,8 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
     _bert_enabled = os.getenv("CUSTOM_METRICS_BERTSCORE_ENABLED", "true").strip().lower()
     if _bert_enabled in ("0", "false", "no", "off"):
         custom_metrics_bert_model = None
+    ragas_enabled = _env_bool("RAGAS_ENABLED", True)
+    custom_metrics_enabled = _env_bool("CUSTOM_METRICS_ENABLED", True)
 
     # Per-role URLs (fall back to shared defaults when not set)
     llm_ollama_base_url = os.getenv("LLM_OLLAMA_BASE_URL") or None
@@ -363,6 +385,10 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
     if benchmark_stage == "index" and retrieval_mode == "direct":
         raise ValueError("BENCHMARK_STAGE=index requires RETRIEVAL_MODE=retrieval")
 
+    adapter_modules = _parse_list(os.getenv("RAG_ADAPTER_MODULES", ""))
+    for module_name in adapter_modules:
+        importlib.import_module(module_name)
+
     from benchmark.adapters import RAG_ADAPTER_REGISTRY
 
     rag_system_adapter = os.getenv("RAG_SYSTEM_ADAPTER", "internal").strip().lower()
@@ -459,9 +485,16 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
                     dataset_name=dataset_name,
                     dataset_subset=dataset_subset,
                     dataset_sample_size=dataset_sample_size,
+                    dataset_path=dataset_path,
+                    dataset_question_field=dataset_question_field,
+                    dataset_ground_truth_field=dataset_ground_truth_field,
+                    dataset_context_field=dataset_context_field,
+                    dataset_metadata_field=dataset_metadata_field,
                     eval_critic_llm=eval_critic_llm,
                     eval_critic_embedding=eval_critic_embedding,
                     custom_metrics_bert_model=custom_metrics_bert_model,
+                    ragas_enabled=ragas_enabled,
+                    custom_metrics_enabled=custom_metrics_enabled,
                     reranker_model=reranker,
                     reranker_top_k=reranker_top_k,
                     prompt_template=tmpl,
