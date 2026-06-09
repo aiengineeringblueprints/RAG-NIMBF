@@ -195,6 +195,16 @@
 | 170      | gpt-4o-mini     | Recursive | 500  | 100     | MMR        | Detailed | 12              | No                  | nomic-embed-text | squad   | 0.934 | 0.802 | 0.672 | 0.413 | 0.846 | 0.653 | 100 | Getestet |
 | 171      | gpt-4o-mini     | Semantic  | -    | -       | MMR        | Concise  | 12              | No                  | nomic-embed-text | squad   | 0.787 | 0.804 | 0.671 | 0.519 | 0.785 | 0.710 | 100 | Getestet |
 | 172      | gpt-4o-mini     | Semantic  | -    | -       | MMR        | Detailed | 12              | No                  | nomic-embed-text | squad   | 0.940 | 0.804 | 0.671 | 0.414 | 0.837 | 0.652 | 100 | Getestet |
+| 173      | gpt-4o-mini     | Recursive | 1000 | 200     | Similarity | Concise  | 12              | No                  | nomic-embed-text | squad   | 0.865 | 0.678 | 0.574 | 0.558 | 0.873 | -     | 100 | Getestet |
+| 174      | gpt-4o-mini     | Recursive | 1000 | 100     | Similarity | Concise  | 12              | No                  | nomic-embed-text | squad   | 0.87  | 0.675 | 0.574 | 0.552 | 0.873 | -     | 100 | Getestet |
+| 175      | gpt-4o-mini     | Recursive | 500  | 200     | Similarity | Concise  | 12              | No                  | nomic-embed-text | squad   | 0.807 | 0.723 | 0.605 | 0.558 | 0.854 | -     | 100 | Getestet |
+| 176      | gpt-4o-mini     | Recursive | 500  | 100     | Similarity | Concise  | 12              | No                  | nomic-embed-text | squad   | 0.827 | 0.723 | 0.6   | 0.545 | 0.853 | -     | 100 | Getestet |
+| 177      | gpt-4o-mini     | Recursive | 1000 | 200     | Similarity | Detailed | 12              | No                  | nomic-embed-text | squad   | 0.942 | 0.678 | 0.574 | 0.436 | 0.885 | -     | 100 | Getestet |
+| 178      | gpt-4o-mini     | Recursive | 1000 | 100     | Similarity | Detailed | 12              | No                  | nomic-embed-text | squad   | 0.951 | 0.675 | 0.574 | 0.432 | 0.885 | -     | 100 | Getestet |
+| 179      | gpt-4o-mini     | Recursive | 500  | 200     | Similarity | Detailed | 12              | No                  | nomic-embed-text | squad   | 0.914 | 0.723 | 0.605 | 0.431 | 0.866 | -     | 100 | Getestet |
+| 180      | gpt-4o-mini     | Recursive | 500  | 100     | Similarity | Detailed | 12              | No                  | nomic-embed-text | squad   | 0.945 | 0.723 | 0.6   | 0.419 | 0.865 | -     | 100 | Getestet |
+| 181      | gpt-4o-mini     | Semantic  | -    | -       | Similarity | Concise  | 12              | No                  | nomic-embed-text | squad   | 0.852 | 0.714 | 0.596 | 0.573 | 0.864 | -     | 100 | Getestet |
+| 182      | gpt-4o-mini     | Semantic  | -    | -       | Similarity | Detailed | 12              | No                  | nomic-embed-text | squad   | 0.947 | 0.714 | 0.596 | 0.422 | 0.866 | -     | 100 | Getestet |
 
 
 
@@ -377,6 +387,16 @@ Für alle Metriken wird der mean Wert betrachtet
 | 170 | 0.73  | 0.73   | 0.365    | 0.86  | 0.802  | 0.86     | 0.86  | 0.802  | 0.86     | 0.672             | 0.474         | 0.164             | 0.230   | 0.037 | 0.413  | 0.837                | 0.855             | 0.846         |
 | 171 | 0.75  | 0.75   | 0.410    | 0.85  | 0.804  | 0.85     | 0.85  | 0.804  | 0.85     | 0.671             | 0.474         | 0.326             | 0.429   | 0.082 | 0.519  | 0.780                | 0.790             | 0.785         |
 | 172 | 0.75  | 0.75   | 0.410    | 0.85  | 0.804  | 0.85     | 0.85  | 0.804  | 0.85     | 0.671             | 0.474         | 0.160             | 0.234   | 0.038 | 0.414  | 0.828                | 0.846             | 0.837         |
+| 173 | 0.7   | 0.7    | 0.222    | 0.82  | 0.682  | 0.398    | 0.85  | 0.678  | 0.508    | 0.574             | 0.474         | 0.288             | 0.442   | 0.078 | 0.558  | 0.867                | 0.879             | 0.873         |
+| 174 | 0.68  | 0.68   | 0.214    | 0.82  | 0.662  | 0.385    | 0.85  | 0.675  | 0.518    | 0.574             | 0.474         | 0.287             | 0.44    | 0.077 | 0.552  | 0.867                | 0.879             | 0.873         |
+| 175 | 0.72  | 0.72   | 0.203    | 0.85  | 0.721  | 0.412    | 0.89  | 0.723  | 0.552    | 0.605             | 0.474         | 0.304             | 0.466   | 0.093 | 0.558  | 0.849                | 0.859             | 0.854         |
+| 176 | 0.73  | 0.73   | 0.196    | 0.86  | 0.713  | 0.409    | 0.9   | 0.723  | 0.554    | 0.6               | 0.474         | 0.297             | 0.444   | 0.087 | 0.545  | 0.848                | 0.859             | 0.853         |
+| 177 | 0.7   | 0.7    | 0.222    | 0.82  | 0.682  | 0.398    | 0.85  | 0.678  | 0.508    | 0.574             | 0.474         | 0.165             | 0.243   | 0.04  | 0.436  | 0.876                | 0.895             | 0.885         |
+| 178 | 0.68  | 0.68   | 0.214    | 0.82  | 0.662  | 0.385    | 0.85  | 0.675  | 0.518    | 0.574             | 0.474         | 0.166             | 0.239   | 0.04  | 0.432  | 0.875                | 0.895             | 0.885         |
+| 179 | 0.72  | 0.72   | 0.203    | 0.85  | 0.721  | 0.412    | 0.89  | 0.723  | 0.552    | 0.605             | 0.474         | 0.167             | 0.242   | 0.042 | 0.431  | 0.857                | 0.875             | 0.866         |
+| 180 | 0.73  | 0.73   | 0.196    | 0.86  | 0.713  | 0.409    | 0.9   | 0.723  | 0.554    | 0.6               | 0.474         | 0.166             | 0.233   | 0.038 | 0.419  | 0.856                | 0.875             | 0.865         |
+| 181 | 0.75  | 0.75   | 0.222    | 0.85  | 0.7    | 0.391    | 0.89  | 0.714  | 0.532    | 0.596             | 0.474         | 0.311             | 0.485   | 0.092 | 0.573  | 0.859                | 0.869             | 0.864         |
+| 182 | 0.75  | 0.75   | 0.222    | 0.85  | 0.7    | 0.391    | 0.89  | 0.714  | 0.532    | 0.596             | 0.474         | 0.161             | 0.232   | 0.037 | 0.422  | 0.856                | 0.875             | 0.866         |
 
 
 ### Empfohlene Scores:
@@ -422,6 +442,11 @@ Auswahl nach `Faith` innerhalb jedes LLMs. Bei sehr aehnlichen Scores werden Var
 | 159 | Qwen3.6-27B | Recursive | 500 | 200 | MMR | Detailed | - | No | nomic-embed-text | squad | 0.946 | 0.850 | 100 | Bester MMR-Lauf; hoechste Faith unter MMR-Konfigs. |
 | 162 | Qwen3.6-27B | Semantic | - | - | MMR | Detailed | - | No | nomic-embed-text | squad | 0.940 | 0.850 | 100 | Semantic MMR; hohe ndcg@5 bei guter Faith. |
 | 156 | Qwen3.6-27B | Recursive | 500 | 100 | MMR | Concise | - | No | nomic-embed-text | squad | 0.787 | 0.860 | 100 | Hoechste ndcg@5 (0.802) aller Qwen3.6-27B MMR Concise. |
+| 178 | gpt-4o-mini | Recursive | 1000 | 100 | Similarity | Detailed | 12 | No | nomic-embed-text | squad | 0.951 | 0.960 | 100 | Bester gpt-4o-mini Similarity Lauf; hoechste Faith ueberhaupt. |
+| 180 | gpt-4o-mini | Recursive | 500 | 100 | Similarity | Detailed | 12 | No | nomic-embed-text | squad | 0.945 | 0.930 | 100 | Kleinere Chunks, immer noch hohe Faith. |
+| 182 | gpt-4o-mini | Semantic  | -    | -   | Similarity | Detailed | 12 | No | nomic-embed-text | squad | 0.947 | 0.960 | 100 | Semantic Similarity; hohe Faith. |
+| 177 | gpt-4o-mini | Recursive | 1000 | 200 | Similarity | Detailed | 12 | No | nomic-embed-text | squad | 0.942 | 0.960 | 100 | Overlap-Variante; marginal niedrigere Faith als ID 178. |
+| 173 | gpt-4o-mini | Recursive | 1000 | 200 | Similarity | Concise | 12 | No | nomic-embed-text | squad | 0.865 | 0.960 | 100 | Beste Concise-Variante; starker meteor-Score. |
 
 
 ## Phase-2 Variantenmatrix

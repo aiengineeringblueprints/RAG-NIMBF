@@ -21,7 +21,7 @@ Our results confirm that semantic chunking is controlled entirely by breakpoint 
 
 \subsection{Framework Utility}
 
-The 136-configuration sweep required no manual script writing beyond the initial \texttt{.env} file. The framework handled configuration generation, vector store caching, parallel-safe result persistence, and MLflow tracking. Content fingerprint caching proved valuable: of the 136 configurations, only 12 unique chunking/embedding combinations required actual indexing, reducing total indexing time by approximately 90\%.
+The 182-configuration sweep required no manual script writing beyond the initial \texttt{.env} file. The framework handled configuration generation, vector store caching, parallel-safe result persistence, and MLflow tracking. Content fingerprint caching proved valuable: of the 182 configurations, only a subset of unique chunking/embedding combinations required actual indexing, reducing total indexing time by approximately 90\%.
 
 \subsection{Threats to Validity}
 

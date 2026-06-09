@@ -3,14 +3,16 @@
 
 \subsection{Models}
 
-We benchmark five generation models spanning different sizes, architectures, and deployment configurations. The selection covers dense transformers, mixture-of-experts architectures, and both local and cloud-hosted deployments, allowing us to assess how model scale and serving infrastructure interact with RAG pipeline quality.
+We benchmark seven generation models spanning different sizes, architectures, and deployment configurations. The selection covers dense transformers, mixture-of-experts architectures, and both local and cloud-hosted deployments, allowing us to assess how model scale and serving infrastructure interact with RAG pipeline quality.
 
 \begin{itemize}
   \item \textbf{Qwen3-32B} --- A 32B dense transformer, served locally on an RTX 5090 with 4-bit AWQ quantization via Ollama.
   \item \textbf{Qwen3.5-397B-A17B} --- A MoE model with 397B total and 17B active parameters~\cite{qwen2025qwen3}. Served via vLLM on an H100 cluster.
   \item \textbf{GPT-OSS-20B} --- A 20B open-source MoE model (5B active)~\cite{gptoss2024}, served locally via Ollama on an NVIDIA DGX Spark.
   \item \textbf{Qwen3.5-think} --- A reasoning variant of Qwen3.5 with chain-of-thought traces, served via vLLM on an H100 cluster.
-  \item \textbf{GPT-4o-mini} --- OpenAI's frontier model via API, included as an upper-bound reference.
+  \item \textbf{GPT-4o-mini} --- OpenAI's compact frontier model via API, included as an upper-bound reference.
+  \item \textbf{DeepSeek-V4-Pro} --- DeepSeek's latest flagship model, served via API with similarity retrieval only.
+  \item \textbf{Qwen3.6-27B} --- A 27B model with NVFP4 quantization, served locally on an RTX 5090 via vLLM.
 \end{itemize}
 
 Table~\ref{tab:perf} reports the raw inference performance of each model under controlled conditions (6 sequential prompts, 1024 max output tokens, German technical prompts), measured independently from the RAG pipeline using a separate benchmarking harness. These numbers establish the throughput and latency baseline that underlies the RAG quality results in Section~\ref{sec:results}.
@@ -28,6 +30,7 @@ Qwen3-32B-AWQ  & 0.41\,s & 14.4\,s & 58.2  & RTX 5090 / vLLM \\
 Qwen3.5-397B   & 2.95\,s & 6.2\,s  & 131.7 & H100 Cluster / vLLM \\
 Qwen3.5-think  & 3.11\,s & 6.7\,s  & 132.0 & H100 Cluster / vLLM \\
 GPT-4o-mini    & 0.41\,s & 5.8\,s  & 105.6 & OpenAI API \\
+Qwen3.6-27B    & 1.86\,s & 6.4\,s  & 123.6 & RTX 5090 / vLLM \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -42,7 +45,7 @@ We use the Stanford Question Answering Dataset (SQuAD)~\cite{rajpurkar2016squad}
 
 \subsection{Configuration Space}
 
-Table~\ref{tab:config-space} summarizes the parameters swept in our experiments. The cartesian product yields 136 unique configurations for the four open-weight models (128) plus 8 configurations for GPT-4o-mini (semantic chunking only, since the API model does not participate in the retrieval pipeline). For semantic chunking, chunk size and overlap do not affect segment boundaries, so all size/overlap combinations produce identical results; we report the full sweep for transparency and note the redundancy in Section~\ref{sec:results}.
+Table~\ref{tab:config-space} summarizes the parameters swept in our experiments. The cartesian product yields 182 unique configurations across all seven models. For semantic chunking, chunk size and overlap do not affect segment boundaries, so all size/overlap combinations produce identical results; we report the full sweep for transparency and note the redundancy in Section~\ref{sec:results}.
 
 \begin{table}[t]
 \centering
@@ -53,7 +56,7 @@ Table~\ref{tab:config-space} summarizes the parameters swept in our experiments.
 \textbf{Parameter} & \textbf{Values} \\
 \midrule
 LLM Models & Qwen3-32B, Qwen3.5-397B, GPT-OSS-20B, \\
-           & Qwen3.5-think, GPT-4o-mini \\
+           & Qwen3.5-think, GPT-4o-mini, DeepSeek-V4-Pro, Qwen3.6-27B \\
 Chunking Strategies & Recursive, Semantic \\
 Chunk Sizes & 500, 1000 \\
 Chunk Overlaps & 100, 200 \\
