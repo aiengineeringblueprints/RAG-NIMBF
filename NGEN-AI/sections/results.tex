@@ -20,13 +20,15 @@ Qwen3-32B        & 0.86 (0.92) & 0.74 (0.81) & 0.90 (0.94) & 0.49 (0.60) \\
 Qwen3.5-397B     & 0.90 (0.95) & 0.76 (0.83) & 0.85 (0.89) & 0.47 (0.58) \\
 GPT-OSS-20B      & 0.81 (0.84) & 0.74 (0.80) & 0.90 (0.96) & 0.48 (0.60) \\
 Qwen3.5-think    & 0.89 (0.95) & 0.74 (0.81) & 0.84 (0.87) & 0.49 (0.57) \\
-GPT-4o-mini      & 0.90 (0.95) & 0.72 (0.72) & 0.87 (0.87) & 0.50 (0.57) \\
+GPT-4o-mini      & 0.88 (0.95) & 0.75 (0.80) & 0.84 (0.89) & 0.48 (0.57) \\
+DeepSeek-V4-Pro  & 0.88 (0.94) & 0.69 (0.73) & 0.91 (0.92) & 0.54 (0.74) \\
+Qwen3.6-27B      & 0.88 (0.95) & 0.75 (0.80) & 0.86 (0.90) & 0.49 (0.58) \\
 \bottomrule
 \end{tabular}%
 }
 \end{table}
 
-Qwen3.5-397B achieves the highest mean faithfulness (0.90) and matches GPT-4o-mini on the best single configuration (0.955). GPT-OSS-20B, the smallest model, trails on faithfulness but reaches competitive BERTScore F1 values (up to 0.96), suggesting that its generated text closely matches the reference style despite lower factual grounding. Notably, the 17B-active-parameter MoE model (Qwen3.5-397B) consistently outperforms the 32B dense Qwen3-32B, demonstrating the efficiency of mixture-of-experts architectures for RAG tasks.
+Qwen3.5-397B achieves the highest mean faithfulness (0.90) alongside the best single configuration (0.955). Three additional models---GPT-4o-mini, DeepSeek-V4-Pro, and Qwen3.6-27B---achieve comparable mean faithfulness (0.88) with best configurations reaching 0.95, demonstrating that strong factual grounding is attainable across diverse architectures and deployments. GPT-OSS-20B, the smallest model, trails on faithfulness but reaches competitive BERTScore F1 values (up to 0.96), suggesting that its generated text closely matches the reference style despite lower factual grounding. Notably, the 17B-active-parameter MoE model (Qwen3.5-397B) consistently outperforms the 32B dense Qwen3-32B, demonstrating the efficiency of mixture-of-experts architectures for RAG tasks. DeepSeek-V4-Pro achieves the highest METEOR scores (mean 0.54, best 0.74), indicating strong lexical overlap with SQuAD references.
 
 Figure~\ref{fig:model-comparison} visualizes the model comparison across four key metrics, confirming that no single model dominates all dimensions.
 
@@ -55,6 +57,10 @@ Table~\ref{tab:retrieval} compares similarity search and MMR retrieval across al
                                & MMR        & 0.88 & 0.80 & 0.83 & 0.45 \\
 \multirow{2}{*}{GPT-OSS-20B}  & Similarity & 0.82 & 0.70 & 0.92 & 0.49 \\
                                & MMR        & 0.79 & 0.79 & 0.89 & 0.49 \\
+\multirow{2}{*}{GPT-4o-mini}  & Similarity & 0.89 & 0.70 & 0.86 & 0.52 \\
+                               & MMR        & 0.86 & 0.79 & 0.83 & 0.46 \\
+\multirow{2}{*}{Qwen3.6-27B}  & Similarity & 0.91 & 0.70 & 0.88 & 0.52 \\
+                               & MMR        & 0.86 & 0.79 & 0.84 & 0.48 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -104,6 +110,10 @@ The choice of prompt template produces the most consistent effect across all mod
                                & Detailed & 0.93 & 0.76 & 0.86 & 0.42 \\
 \multirow{2}{*}{GPT-OSS-20B}  & Concise  & 0.81 & 0.74 & 0.91 & 0.56 \\
                                & Detailed & 0.81 & 0.74 & 0.91 & 0.34 \\
+\multirow{2}{*}{GPT-4o-mini}  & Concise  & 0.82 & 0.75 & 0.83 & 0.53 \\
+                               & Detailed & 0.93 & 0.75 & 0.85 & 0.42 \\
+\multirow{2}{*}{Qwen3.6-27B}  & Concise  & 0.82 & 0.76 & 0.84 & 0.55 \\
+                               & Detailed & 0.94 & 0.75 & 0.88 & 0.43 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -156,7 +166,7 @@ For smaller models (GPT-OSS-20B), the Detailed template has negligible effect on
 \label{fig:interaction-heatmap}
 \end{figure}
 
-The best overall configuration achieves 0.955 faithfulness: Qwen3.5-397B with recursive chunking (500/100), similarity retrieval, and the Detailed template (configuration \#42). The best nDCG@5 achieves 0.825: the same model with recursive chunking (500/200), MMR retrieval, and the Detailed template (configuration \#46).
+The best overall configuration achieves 0.955 faithfulness: Qwen3.5-397B with recursive chunking (500/100), similarity retrieval, and the Detailed template (configuration \#42). GPT-4o-mini achieves a comparable best of 0.951 with recursive chunking (1000/100) and similarity retrieval (configuration \#178). The best nDCG@5 achieves 0.825: Qwen3.5-397B with recursive chunking (500/200), MMR retrieval, and the Detailed template (configuration \#46).
 
 \subsection{RQ6: Performance--Quality Tradeoffs}
 
@@ -175,15 +185,16 @@ Qwen3-32B-AWQ     & 58.2  & 0.41 & 0.86 & 0.92 \\
 GPT-4o-mini       & 105.6 & 0.41 & 0.90 & 0.95 \\
 Qwen3.5-397B      & 131.7 & 2.95 & 0.90 & 0.95 \\
 Qwen3.5-think     & 132.0 & 3.11 & 0.89 & 0.95 \\
+Qwen3.6-27B       & 123.6 & 1.86 & 0.88 & 0.95 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Three observations stand out. First, the locally-served models on consumer hardware (GPT-OSS-20B at 52.8 TPS, Qwen3-32B at 58.2 TPS) achieve 40--56\% of the cloud models' throughput, yet their faithfulness remains within 5--9pp of the best cloud configurations. For latency-tolerant batch evaluation, local deployment is a viable alternative.
+Three observations stand out. First, the locally-served models on consumer hardware (GPT-OSS-20B at 52.8 TPS, Qwen3-32B at 58.2 TPS, Qwen3.6-27B at 123.6 TPS) achieve 40--94\% of the cloud models' throughput, yet their faithfulness remains within 2--9pp of the best cloud configurations. The locally-served Qwen3.6-27B is a notable outlier, achieving throughput comparable to cloud models (123.6 TPS) while running on consumer hardware.
 
 Second, the Qwen3.5-397B MoE model achieves the highest throughput (131.7 TPS) despite being the largest model, because only 17B of its 397B parameters are active per token. This architectural efficiency translates directly into RAG quality: it achieves the highest mean faithfulness (0.90) while processing answers faster than any local alternative.
 
-Third, TTFT varies by an order of magnitude across deployment configurations. The local models and GPT-4o-mini deliver sub-second TTFT (0.41--0.49s), while the cloud-hosted Qwen3.5 models show 2.95--3.11s TTFT due to network round-trip overhead. For interactive RAG applications, this latency gap may outweigh the throughput advantage of cloud deployment. For batch benchmarking, where throughput dominates, cloud deployment is preferable.
+Third, TTFT varies by an order of magnitude across deployment configurations. The local models and GPT-4o-mini deliver sub-second TTFT (0.41--0.49s), while the cloud-hosted Qwen3.5 models show 2.95--3.11s TTFT due to network round-trip overhead. Qwen3.6-27B on the RTX 5090 achieves 1.86s TTFT, a middle ground between local sub-second and cloud multi-second latency. For interactive RAG applications, this latency gap may outweigh the throughput advantage of cloud deployment. For batch benchmarking, where throughput dominates, cloud deployment is preferable.
 
 \begin{figure}[t]
 \centering
