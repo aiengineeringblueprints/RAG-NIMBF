@@ -6,7 +6,21 @@
 \usepackage{booktabs}
 \usepackage{multirow}
 \usepackage{array}
-\usepackage{color}
+\usepackage{xcolor}
+\usepackage{listings}
+\lstdefinestyle{promptstyle}{
+  basicstyle=\scriptsize\ttfamily,
+  breaklines=true,
+  breakatwhitespace=false,
+  frame=single,
+  framesep=3pt,
+  framerule=0.3pt,
+  rulecolor=\color{gray!50},
+  xleftmargin=4pt,
+  xrightmargin=4pt,
+  aboveskip=2pt,
+  belowskip=2pt,
+}
 %
 \graphicspath{{figures/}}
 %
@@ -36,7 +50,13 @@
 \input{sections/discussion}
 \input{sections/conclusion}
 %
+\input{sections/declarations}
+%
+{\footnotesize
+\setlength{\parskip}{0pt}
+\renewcommand{\baselinestretch}{0.95}\selectfont
 \bibliographystyle{splncs04}
 \bibliography{references}
+}
 %
 \end{document}

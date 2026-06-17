@@ -14,14 +14,20 @@ Banerjee, S., Lavie, A.: {METEOR}: An automatic metric for {MT} evaluation with
   Intrinsic and Extrinsic Evaluation Measures for Machine Translation and/or
   Summarization pp. 65--72 (2005)
 
-\bibitem{spanakis2018similarity}
-Carbonell, J., Goldstein, J.: Maximal marginal relevance to re-rank diversified
-  search results. In: Proceedings of the 21st Annual International ACM SIGIR
-  Conference. pp. 335--336 (1998)
+\bibitem{carbonell1998mmr}
+Carbonell, J., Goldstein, J.: The use of {MMR}, diversity-based reranking for
+  reordering documents and producing summaries. In: Proceedings of the 21st
+  Annual International ACM SIGIR Conference on Research and Development in
+  Information Retrieval. pp. 335--336 (1998)
 
 \bibitem{chen2024benchmarking}
 Chen, J., Lin, H., Han, X., Sun, L.: Benchmarking large language models on
   retrieval-augmented generation. arXiv preprint arXiv:2404.14405  (2024)
+
+\bibitem{deepeval2024}
+{Confident AI}: {DeepEval}: The {LLM} evaluation framework.
+  \url{https://github.com/confident-ai/deepeval} (2024), software, accessed
+  2026-06
 
 \bibitem{edge2024local}
 Edge, D., Trinh, H., , Cheng, N., Bradley, J., Chao, A., et~al.: From local to
@@ -43,10 +49,6 @@ Guu, K., Lee, K., Tung, Z., Pasupat, P., Chang, M.W.: {REALM}:
   Retrieval-augmented language model pre-training. In: International Conference
   on Machine Learning. pp. 3929--3938 (2020)
 
-\bibitem{izrailovsky2024rag}
-Izrailovsky, A., et~al.: {RAGChecker}: A fine-grained framework for diagnosing
-  retrieval-augmented generation. In: arXiv preprint arXiv:2408.08067 (2024)
-
 \bibitem{jiang2024active}
 Jiang, Y., et~al.: Active retrieval augmented generation. In: Proceedings of
   the 2024 Conference on Empirical Methods in Natural Language Processing
@@ -57,6 +59,14 @@ Karpukhin, V., {\"O}guz, B., Min, S., Lewis, P., Wu, L., Edunov, S., Chen, D.,
   Yih, W.t.: Dense passage retrieval for open-domain question answering. In:
   Proceedings of the 2020 Conference on Empirical Methods in Natural Language
   Processing. pp. 6769--6781 (2020)
+
+\bibitem{langsmith2024}
+{LangChain Inc.}: {LangSmith}: Tracing and evaluation for {LLM} applications.
+  \url{https://docs.smith.langchain.com} (2024), software, accessed 2026-06
+
+\bibitem{langfuse2024}
+{Langfuse GmbH}: {Langfuse}: Open-source {LLM} engineering platform.
+  \url{https://langfuse.com} (2024), software, accessed 2026-06
 
 \bibitem{lewis2020retrieval}
 Lewis, P., Perez, E., Piktus, A., Petroni, F., Karpukhin, V., Goyal, N.,
@@ -116,10 +126,15 @@ Reimers, N., Gurevych, I.: Sentence-{BERT}: Sentence embeddings using siamese
   {BERT}-networks. In: Proceedings of the 2019 Conference on Empirical Methods
   in Natural Language Processing. pp. 3982--3992 (2019)
 
-\bibitem{esphandiary2024areval}
-Saad-Falcon, J., Khramtsova, O., et~al.: {ARES}: An automated evaluation
-  framework for retrieval-augmented generation systems. arXiv preprint
-  arXiv:2311.09476  (2024)
+\bibitem{ragchecker2024}
+Ru, D., Qiu, L., Huang, X., Feng, J., Wang, Q., et~al.: {RAGChecker}: A
+  fine-grained framework for diagnosing retrieval-augmented generation. arXiv
+  preprint arXiv:2408.08067  (2024)
+
+\bibitem{saadfalcon2024ares}
+Saad-Falcon, J., Khramtsova, O., Lin, M.O., Cristian, A.R., Khashabi, D.:
+  {ARES}: An automated evaluation framework for retrieval-augmented generation
+  systems. arXiv preprint arXiv:2311.09476  (2024)
 
 \bibitem{shuster2021retrieval}
 Shuster, K., Poff, S., Chen, M., Kiela, D., Weston, J.: Retrieval augmentation
@@ -129,6 +144,10 @@ Shuster, K., Poff, S., Chen, M., Kiela, D., Weston, J.: Retrieval augmentation
 \bibitem{song2024bench}
 Song, S., et~al.: Benchmarking retrieval-augmented generation for medicine.
   arXiv preprint arXiv:2402.13178  (2024)
+
+\bibitem{trulens2023}
+{TruEra}: {TruLens}: Evaluation and tracking for {LLM} experiments.
+  \url{https://github.com/truera/trulens} (2023), software, accessed 2026-06
 
 \bibitem{wolf2020transformers}
 Wolf, T., Debut, L., Sanh, V., Chaumond, J., Delangue, C., Moi, A., Cistac, P.,

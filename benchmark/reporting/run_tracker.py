@@ -447,7 +447,7 @@ def plot_overview_grid(df: pd.DataFrame, output_dir: Path) -> Path | None:
         return path
 
 
-def plot_ranking(df: pd.DataFrame, output_dir: Path, top_k: int = 20) -> Path | None:
+def plot_ranking(df: pd.DataFrame, output_dir: Path, top_k: int = 10) -> Path | None:
     """Generate a paper-ready composite ranking bar chart."""
     ragas_cols = {
         "ragas_faithfulness": 0.30,
@@ -482,36 +482,50 @@ def plot_ranking(df: pd.DataFrame, output_dir: Path, top_k: int = 20) -> Path | 
     top["label"] = top.apply(_short_config_label, axis=1)
     top = top.sort_values("composite", ascending=True)
 
-    with plt.rc_context(_paper_rc()):
-        fig, ax = plt.subplots(figsize=(10, max(6, len(top) * 0.4)))
+    # Poster palette gradient: navy -> teal -> gold
+    from matplotlib.colors import LinearSegmentedColormap
+    poster_cmap = LinearSegmentedColormap.from_list(
+        "poster_rank",
+        ["#F2A541", "#0E7C7B", "#233142"],
+    )
+    norm = (top["composite"].values - top["composite"].min()) / (
+        top["composite"].max() - top["composite"].min() + 1e-9
+    )
+    colors = [poster_cmap(v) for v in norm]
 
-        colors = sns.color_palette("YlOrRd_r", n_colors=len(top))
+    with plt.rc_context(_paper_rc()):
+        fig, ax = plt.subplots(figsize=(8, max(4.5, len(top) * 0.42)))
 
         ax.barh(
             range(len(top)),
             top["composite"],
             color=colors,
             edgecolor="white",
-            linewidth=0.5,
+            linewidth=0.8,
+            height=0.72,
         )
 
         for i, (_, row) in enumerate(top.iterrows()):
             ax.text(
-                row["composite"] + 0.005,
+                row["composite"] + 0.004,
                 i,
                 f"{row['composite']:.3f}",
                 va="center",
-                fontsize=8,
+                ha="left",
+                fontsize=9,
                 fontweight="bold",
+                color="#172026",
             )
 
         ax.set_yticks(range(len(top)))
-        ax.set_yticklabels(top["label"], fontsize=8)
-        ax.set_xlabel("Composite Score", fontsize=11, fontweight="bold")
-        ax.set_title(f"Top-{len(top)} Configuration Ranking", fontsize=12, fontweight="bold", pad=10)
-        ax.set_xlim(0, top["composite"].max() * 1.1)
+        ax.set_yticklabels(top["label"], fontsize=9)
+        ax.set_xlabel("Composite Score (weighted RAGAS blend)", fontsize=10, fontweight="bold")
+        ax.set_title(f"Top-{len(top)} Configurations by Composite Quality", fontsize=11, fontweight="bold", pad=8)
+        ax.set_xlim(0, top["composite"].max() * 1.12)
         ax.invert_yaxis()
         ax.grid(axis="x", alpha=0.25, linestyle="--")
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
 
         fig.tight_layout()
         path = output_dir / "ranking_top20.png"

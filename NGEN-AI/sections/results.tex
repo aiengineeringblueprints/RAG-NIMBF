@@ -1,7 +1,7 @@
 \section{Results}
 \label{sec:results}
 
-We organize the analysis around six research questions. All metric values are means over 100 SQuAD questions.
+We organize the analysis around six research questions. All metric values are means over 50 SQuAD questions per configuration; per-question bootstrap analyses and paired significance tests are reported in Section~\ref{subsec:stats}.
 
 \subsection{RQ1: How Do Generation Models Compare?}
 
@@ -28,7 +28,7 @@ Qwen3.6-27B      & 0.88 (0.95) & 0.75 (0.80) & 0.86 (0.90) & 0.49 (0.58) \\
 }
 \end{table}
 
-Qwen3.5-397B achieves the highest mean faithfulness (0.90) alongside the best single configuration (0.955). Three additional models---GPT-4o-mini, DeepSeek-V4-Pro, and Qwen3.6-27B---achieve comparable mean faithfulness (0.88) with best configurations reaching 0.95, demonstrating that strong factual grounding is attainable across diverse architectures and deployments. GPT-OSS-20B, the smallest model, trails on faithfulness but reaches competitive BERTScore F1 values (up to 0.96), suggesting that its generated text closely matches the reference style despite lower factual grounding. Notably, the 17B-active-parameter MoE model (Qwen3.5-397B) consistently outperforms the 32B dense Qwen3-32B, demonstrating the efficiency of mixture-of-experts architectures for RAG tasks. DeepSeek-V4-Pro achieves the highest METEOR scores (mean 0.54, best 0.74), indicating strong lexical overlap with SQuAD references.
+Qwen3.5-397B achieves the highest mean faithfulness (0.90) and best single configuration (0.955). GPT-4o-mini, DeepSeek-V4-Pro, and Qwen3.6-27B reach comparable mean faithfulness (0.88), showing that strong factual grounding is attainable across diverse architectures. GPT-OSS-20B trails on faithfulness but reaches competitive BERTScore F1 (up to 0.96). The 17B-active MoE (Qwen3.5-397B) consistently outperforms the 32B dense Qwen3-32B, confirming the efficiency of mixture-of-experts architectures for RAG. DeepSeek-V4-Pro leads METEOR (mean 0.54, best 0.74).
 
 \subsection{RQ2: Retrieval Strategy --- Similarity vs.\ MMR}
 
@@ -36,7 +36,7 @@ Table~\ref{tab:retrieval} compares similarity search and MMR retrieval across al
 
 \begin{table}[t]
 \centering
-\caption{Retrieval strategy comparison: mean over all chunk sizes, overlaps, and templates.}
+\caption{Retrieval strategy comparison: mean over all chunk sizes, overlaps, and templates. We report the five models with full coverage across both strategies; DeepSeek-V4-Pro runs similarity retrieval only (API constraint) and Qwen3.5-think is excluded from this table because its chain-of-thought traces produce a non-comparable token economy. Both are retained in the aggregate Table~\ref{tab:model-comparison}.}
 \label{tab:retrieval}
 \begin{tabular}{llcccc}
 \toprule
@@ -56,9 +56,9 @@ Table~\ref{tab:retrieval} compares similarity search and MMR retrieval across al
 \end{tabular}
 \end{table}
 
-MMR retrieval improves nDCG@5 by 9--12 percentage points across all models, reflecting its ability to reduce redundancy in the retrieved context. The diversity benefit is consistent: Hit@1 remains unchanged (retrieval is deterministic for the top-1), but Recall@k improves substantially because MMR surfaces a broader set of relevant documents.
+MMR retrieval improves nDCG@5 by 9--12pp across all models by reducing redundancy. Hit@1 is unchanged (top-1 retrieval is deterministic), but Recall@k improves substantially because MMR surfaces a broader set of relevant documents.
 
-However, MMR slightly reduces faithfulness (1--3 percentage points). This occurs because the diversified context includes some less-relevant passages alongside the core evidence, diluting the signal for the generation model. Table~\ref{tab:ir-metrics} illustrates the retrieval quality underpinning these generation results: MMR improves Recall@5 from 0.55 to 0.86 (500/100 chunks), meaning 86\% of relevant context is retrieved in the top-5, compared to only 55\% with similarity search.
+MMR slightly reduces faithfulness (1--3pp) because the diversified context mixes less-relevant passages with core evidence, diluting the signal for the generation model. Table~\ref{tab:ir-metrics} shows the underlying retrieval quality: MMR improves Recall@5 from 0.55 to 0.86 (500/100 chunks)---86\% of relevant context retrieved in the top-5 vs.\ 55\% with similarity search.
 
 \begin{table}[t]
 \centering
@@ -78,11 +78,11 @@ However, MMR slightly reduces faithfulness (1--3 percentage points). This occurs
 
 \subsection{RQ3: Prompt Template Effects}
 
-The choice of prompt template produces the most consistent effect across all models. Table~\ref{tab:template} shows that the Detailed template raises faithfulness by 6--11 percentage points over the Concise template.
+The choice of prompt template produces the most consistent effect across all models. Table~\ref{tab:template} shows that the Detailed template raises faithfulness by up to 12 percentage points for capable models, while smaller models (GPT-OSS-20B) show no measurable faithfulness gain.
 
 \begin{table}[t]
 \centering
-\caption{Prompt template comparison: mean over all chunk sizes, overlaps, and retrieval strategies.}
+\caption{Prompt template comparison: mean over all chunk sizes, overlaps, and retrieval strategies. Same five-model subset as Table~\ref{tab:retrieval}; the aggregate trends hold for the two omitted models (Qwen3.5-think, DeepSeek-V4-Pro).}
 \label{tab:template}
 \begin{tabular}{llcccc}
 \toprule
@@ -102,33 +102,11 @@ The choice of prompt template produces the most consistent effect across all mod
 \end{tabular}
 \end{table}
 
-The faithfulness gain comes at a cost: METEOR drops by 10--22 percentage points with the Detailed template. This inversion is expected. The Detailed template instructs the model to produce thorough answers with supporting evidence, which aligns answers more closely with the retrieved context (higher faithfulness) but diverges from the brief ground-truth answers in SQuAD (lower METEOR). The Concise template produces shorter outputs that better match SQuAD's reference style.
-
-BERTScore F1 is less affected, indicating that the semantic content remains similar regardless of template choice. This divergence between lexical (METEOR) and semantic (BERTScore) metrics highlights the importance of multi-metric evaluation: optimizing for METEOR alone would misleadingly favor concise, potentially under-specified answers.
+The faithfulness gain comes at a cost: METEOR drops by 10--22pp with Detailed for models where the template takes effect. This inversion is expected---Detailed produces thorough answers with supporting evidence, aligning with retrieved context (higher faithfulness) but diverging from the brief SQuAD references (lower METEOR). BERTScore F1 is less affected (1--3pp), confirming semantic stability. This lexical-vs-semantic divergence highlights the importance of multi-metric evaluation: optimizing for METEOR alone would misleadingly favor concise, under-specified answers.
 
 \subsection{RQ4: Chunk Size and Overlap}
 
-We test four chunk size/overlap combinations: (500, 100), (500, 200), (1000, 100), and (1000, 200). For recursive chunking, the effects are modest but consistent.
-
-\begin{table}[t]
-\centering
-\caption{Chunk parameter effects for Qwen3-32B with recursive chunking and similarity retrieval. Values are means over both templates.}
-\label{tab:chunking}
-\begin{tabular}{ccc}
-\toprule
-\textbf{Size / Overlap} & \textbf{Faith.} & \textbf{nDCG@5} \\
-\midrule
-500 / 100  & 0.89 & 0.73 \\
-500 / 200  & 0.86 & 0.73 \\
-1000 / 100 & 0.89 & 0.68 \\
-1000 / 200 & 0.91 & 0.68 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-Smaller chunks (500) produce slightly higher nDCG@5 (+5pp) because finer granularity improves retrieval precision: a 500-character chunk is more likely to contain only the relevant passage, reducing noise in the generation context. Larger chunks (1000) achieve marginally higher faithfulness, likely because broader context provides more grounding material.
-
-For semantic chunking, all size/overlap combinations produce identical results, as expected: the SemanticChunker determines boundaries based on embedding similarity breakpoints, not fixed character counts. This confirms that the chunk size and overlap parameters are irrelevant for semantic chunking and should not be swept in semantic configurations.
+We test four chunk size/overlap combinations---(500, 100), (500, 200), (1000, 100), (1000, 200)---on Qwen3-32B with recursive chunking and similarity retrieval (means over both templates). Effects are modest: faithfulness spans 0.86--0.91 and nDCG@5 spans 0.68--0.73. Smaller chunks (500) produce slightly higher nDCG@5 (+5pp) via finer granularity; larger chunks (1000) marginally raise faithfulness via broader grounding context. Semantic chunking yields identical results across all size/overlap combinations, as expected: boundaries follow embedding-similarity breakpoints, not character counts.
 
 \subsection{RQ5: Interaction Effects}
 
@@ -141,13 +119,13 @@ The most striking finding is the interaction between prompt template and model s
 \label{fig:interaction}
 \end{figure}
 
-For smaller models (GPT-OSS-20B), the Detailed template has negligible effect on faithfulness (+0.0pp mean). For larger models (Qwen3.5-397B, Qwen3.5-think), the Detailed template increases faithfulness by 7--9 percentage points. This suggests that larger models are better able to follow complex instructions to ground their answers in context, while smaller models default to parametric knowledge regardless of prompt wording.
+For GPT-OSS-20B, the Detailed template has negligible effect on faithfulness (+0.0pp). For larger models (Qwen3.5-397B, Qwen3.5-think), Detailed adds 7--9pp. This suggests that larger models better follow complex instructions to ground their answers in context, while smaller models default to parametric knowledge regardless of prompt wording.
 
-The best overall configuration achieves 0.955 faithfulness: Qwen3.5-397B with recursive chunking (500/100), similarity retrieval, and the Detailed template (configuration \#42). GPT-4o-mini achieves a comparable best of 0.951 with recursive chunking (1000/100) and similarity retrieval (configuration \#178). The best nDCG@5 achieves 0.825: Qwen3.5-397B with recursive chunking (500/200), MMR retrieval, and the Detailed template (configuration \#46).
+The best configuration achieves 0.955 faithfulness: Qwen3.5-397B with recursive chunking (500/100), similarity retrieval, Detailed (configuration \#42). GPT-4o-mini reaches 0.951 with (1000/100) and similarity retrieval (\#178). The best nDCG@5 (0.825): Qwen3.5-397B with (500/200), MMR, Detailed (\#46).
 
 \subsection{RQ6: Performance--Quality Tradeoffs}
 
-Table~\ref{tab:perf-quality} reports raw inference measurements from the separate \texttt{LLM\_Performance\_Tests-main} harness using six prompts, 1024 maximum output tokens, and both sequential and parallel execution. DeepSeek-V4-Pro is omitted from this table because no comparable checkpoint was available.
+Table~\ref{tab:perf-quality} reports raw inference measurements from the separate \texttt{LLM\_Performance\_Tests-main} harness using six prompts, 1024 maximum output tokens, and both sequential and parallel execution. DeepSeek-V4-Pro is served via a third-party API and is excluded from the runtime table: its latency is dominated by network round-trip rather than model throughput and is not directly comparable to the other checkpoints, which run on identical hardware.
 
 \begin{table}[t]
 \centering
@@ -169,4 +147,50 @@ Qwen3.6-27B-NVFP4 / vLLM    & 38.59 & 24.80 & 127.5 & 70.5 & 1.86 \\
 }
 \end{table}
 
-The fastest sequential throughput is achieved by Qwen3.6-27B-NVFP4 on the RTX 5090 (127.5 TPS), while the best parallel throughput among comparable checkpoints is achieved by Qwen3.5-397B-A17B (79.1 TPS). The local Qwen3.6 model combines high throughput with 0.88 mean RAG faithfulness, making it the strongest local performance--quality candidate in this study. TTFT remains deployment-sensitive: local and API models start below two seconds, while the cloud-hosted thinking model reaches 3.50 seconds.
+Qwen3.6-27B-NVFP4 on the RTX 5090 leads sequential throughput (127.5 TPS); Qwen3.5-397B-A17B leads parallel throughput (79.1 TPS). The local Qwen3.6 model pairs high throughput with 0.88 mean faithfulness, making it the strongest local performance--quality candidate. TTFT is deployment-sensitive: local and API models start below two seconds; the cloud thinking model reaches 3.50\,s.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.85\textwidth]{figures/pareto.pdf}
+\caption{Faithfulness vs.\ median generation throughput from the external \texttt{LLM\_Performance\_Tests} harness. The dashed line marks the Pareto frontier: no single model dominates on both axes, and the frontier trades quality for speed across architectures and deployments.}
+\label{fig:pareto}
+\end{figure}
+
+Figure~\ref{fig:pareto} plots external throughput (x-axis) against mean faithfulness (y-axis). Qwen3.6-27B-NVFP4 anchors the high-throughput end of the frontier; Qwen3.5-397B-A17B and GPT-4o-mini anchor the high-quality end. GPT-OSS-20B sits off the frontier: moderate throughput is not redeemed by faithfulness.
+
+\subsection{Statistical Significance and Confidence Intervals}
+\label{subsec:stats}
+
+Table~\ref{tab:stat-significance} reports 95\% bootstrap CIs (2000 resamples, 50 questions per configuration) on per-question faithfulness and paired Wilcoxon signed-rank tests for the two principal within-model contrasts.
+
+\begin{table}[t]
+\centering
+\caption{Per-question bootstrap 95\% CIs and paired Wilcoxon $p$-values for template (Detailed$-$Concise) and retrieval (MMR$-$Similarity) effects. ***$p<0.001$, **$p<0.01$, *$p<0.05$, ns not significant.}
+\label{tab:stat-significance}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Model} & \textbf{Faith.\ [95\% CI]} & $\boldsymbol{\Delta_{\text{tmpl}}}$ & \textbf{$p$} & $\boldsymbol{\Delta_{\text{retr}}}$ & \textbf{$p$} \\
+\midrule
+Qwen3.5-397B     & 0.897 [0.890, 0.905] & $+0.055$ & 0.0035 ** & $+0.049$ & 0.006 ** \\
+Qwen3.6-27B      & 0.891 [0.882, 0.900] & $+0.092$ & $<\!\!0.001$ *** & $+0.012$ & 0.27 ns \\
+GPT-4o-mini      & 0.889 [0.880, 0.898] & $+0.128$ & $<\!\!0.001$ *** & $-0.042$ & 0.001 *** \\
+DeepSeek-V4-Pro  & 0.881 [0.861, 0.902] & $+0.074$ & 0.031 *   & ---      & --- \\
+Qwen3.5-think    & 0.878 [0.867, 0.888] & $+0.126$ & $<\!\!0.001$ *** & $-0.006$ & 0.63 ns \\
+Qwen3-32B        & 0.843 [0.833, 0.853] & $+0.121$ & $<\!\!0.001$ *** & $+0.053$ & 0.014 * \\
+GPT-OSS-20B      & 0.786 [0.774, 0.799] & $-0.040$ & 0.069 ns  & $+0.002$ & 0.98 ns \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+The faithfulness ranking is robust: 95\% CIs are tight ($\pm 0.01$) and the top four models overlap, so sub-0.01 differences among them are not meaningful. The Detailed template produces significant faithfulness gains for five of seven models (largest on GPT-4o-mini, Qwen3.5-think, Qwen3-32B); GPT-OSS-20B shows no effect, consistent with RQ5. The MMR-vs-similarity effect is smaller, significant for only three models, with GPT-4o-mini showing a significant faithfulness \emph{decrease} under MMR---supporting the RQ2 grounding-dilution observation.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.75\textwidth]{figures/ci_faithfulness_by_prompt.pdf}
+\caption{Per-question bootstrap 95\% CIs (2000 resamples) on faithfulness, pooled across all configurations by prompt template. The Detailed template raises faithfulness significantly (paired Wilcoxon $p<0.001$, $\star\star\star$); CIs do not overlap.}
+\label{fig:ci-prompt}
+\end{figure}
+
+Figure~\ref{fig:ci-prompt} visualises the headline template effect with bootstrap CIs. The 0.082 absolute gap between concise and detailed templates dwarfs the CI half-widths, confirming that the effect is large enough to be practically meaningful, not merely statistically detectable.

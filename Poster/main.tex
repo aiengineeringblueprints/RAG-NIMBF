@@ -60,7 +60,7 @@
 \newcommand{\todo}[1]{\textcolor{PosterGold}{\textbf{TODO:} #1}}
 \newcommand{\blockheading}[2]{\faIcon{#1}\hspace{0.45em}#2}
 
-\title{Evaluating Retrieval-Augmented Generation Pipelines}
+\title{RAG-NIMBF: A Non-Invasive, Modular Benchmarking Framework for Automated RAG Configuration Analysis}
 \author{Niclas Hart}
 \institute{Hochschule fuer Angewandte Wissenschaften Ansbach}
 \date{July 2026}
@@ -175,9 +175,9 @@ Models & Qwen3, Qwen3.5, Qwen3.6, GPT-OSS, GPT-4o-mini, DeepSeek \\
 
 \begin{block}{\blockheading{lightbulb}{Observed Answers}}
 \begin{itemize}\setlength\itemsep{0.04cm}
-  \item \metric{Prompting:}{detailed prompts improve mean faithfulness across full runs (0.901 vs. 0.833), while BERT-F1 stays nearly unchanged (0.863 vs. 0.864).}
-  \item \metric{Retrieval:}{similarity is stronger for faithfulness (0.881 vs. 0.849), while MMR improves nDCG@5 (0.789 vs. 0.703) and recall@5 (0.839 vs. 0.544).}
-  \item \metric{Chunking:}{recursive and semantic chunking are tied on mean faithfulness (0.866), but semantic chunking improves mean nDCG@5 (0.756 vs. 0.733).}
+  \item \metric{Prompting:}{across \(N \geq 100\) rows, detailed prompts raise mean faithfulness (0.908, \(n=125\)) over concise (0.838, \(n=132\)), while BERT-F1 stays nearly unchanged (0.873 vs. 0.871).}
+  \item \metric{Retrieval:}{similarity is stronger for faithfulness (0.886, \(n=146\)) vs. MMR (0.854, \(n=111\)), while MMR improves nDCG@5 (0.779 vs. 0.686) and recall@5 (0.826 vs. 0.559).}
+  \item \metric{Chunking:}{recursive and semantic chunking are close on mean faithfulness (0.875, \(n=158\) vs. 0.867, \(n=99\)), while semantic improves mean nDCG@5 (0.747 vs. 0.713).}
   \item \metric{Winner:}{no single configuration dominates: faithfulness, BERT-F1, nDCG@5, recall@5, METEOR, and runtime select different runs.}
 \end{itemize}
 \end{block}
@@ -205,8 +205,8 @@ Models & Qwen3, Qwen3.5, Qwen3.6, GPT-OSS, GPT-4o-mini, DeepSeek \\
 \setlength{\tabcolsep}{0.35cm}
 \renewcommand{\arraystretch}{1.08}
 \begin{tabular}{@{}p{0.48\linewidth}p{0.48\linewidth}@{}}
-\textbf{\textcolor{PosterTeal}{Concise Prompt}} &
-\textbf{\textcolor{PosterTeal}{Detailed Prompt}} \\
+\textbf{\textcolor{PosterTeal}{Concise Answer Prompt}} &
+\textbf{\textcolor{PosterTeal}{Detailed Answer Prompt}} \\
 \midrule
 \raggedright
 \scriptsize\ttfamily
@@ -226,16 +226,12 @@ Q: Who wrote the music for Star Wars? \(\rightarrow\) John Williams.
 Answer the question based only on the provided context. Provide a clear, complete answer in full sentences. Include relevant calculations or reasoning steps when applicable. Do not start your answer with phrases like 'Based on the provided context' or 'Based on the given context'. Answer directly.
 \end{tabular}
 
-\vspace{0.28cm}
-{\scriptsize\ttfamily
-Human template for both: Context:\textbackslash n\texttt{\{context\}}\textbackslash n\textbackslash nQuestion: \texttt{\{question\}}\textbackslash n\textbackslash nAnswer:
-}
 \end{block}
 
 \begin{block}{\blockheading{chart-bar}{Current Results Snapshot}}
 \justifying
-The current result corpus contains 234 JSON configuration rows across 82 benchmark reports, with 217 rows at \(N \geq 100\). 
-The manual evaluation matrix tracks configuration IDs up to 182 and currently marks 172 full \(N=100\) rows as tested.
+The current result corpus contains 274 JSON configuration rows across 86 benchmark reports, with 257 rows at \(N \geq 100\).
+The manual evaluation matrix tracks configuration IDs up to 222 and currently marks 212 full \(N=100\) rows as tested.
 The table below highlights the strongest observed configurations for three evaluation lenses, demonstrating that different configurations can excel in different metrics,
 underscoring the importance of multi-metric evaluation in RAG benchmarking.
 \vspace{0.25cm}
@@ -264,9 +260,15 @@ faithfulness, strong retrieval ranking, and strong lexical/semantic answer
 similarity do not always select the same configuration.
 \end{block}
 
-\begin{block}{\blockheading{sort-amount-up}{Quality Ranking}}
+\begin{block}{\blockheading{sort-amount-up}{Quality vs. Speed}}
 \centering
-\includegraphics[width=0.88\linewidth]{ranking_top20.png}
+\includegraphics[width=0.92\linewidth]{paper_quality_vs_speed.png}
+
+\vspace{0.1cm}
+\justifying
+{\footnotesize Faithfulness vs. throughput; dashed line = Pareto frontier.
+No single config dominates — frontier trades quality for speed across
+LLMs.}
 \end{block}
 
 \begin{block}{\blockheading{robot}{Prompt and Model Effects}}
@@ -343,31 +345,43 @@ metric.}
 \end{enumerate}
 \end{block}
 
-\begin{block}{\blockheading{table}{Measured Outputs}}
-\setlength{\tabcolsep}{0.18cm}
-\renewcommand{\arraystretch}{1.08}
-\begin{tabular}{p{0.27\linewidth}p{0.62\linewidth}}
-\toprule
-Lens & Captured outputs \\
-\midrule
-Answer & faithfulness, recall, semantic similarity \\
-Retrieval & hit@k, nDCG@k, recall@k, relevance \\
-Runtime & total time, stage timings, TTFT, tokens/s \\
-Artifacts & JSON, CSV, Markdown, plots, MLflow, traces \\
-\bottomrule
-\end{tabular}
+\begin{block}{\blockheading{road}{Future Work}}
+\begin{itemize}\setlength\itemsep{0.05cm}
+  \item \metric{Datasets:}{extend beyond SQuAD/WikiQA to domain corpora
+        (legal, medical, enterprise KB).}
+  \item \metric{Scale:}{raise \(N\) per config and add significance tests
+        so single-run noise is visible.}
+  \item \metric{Retrieval ablation:}{full HyDE and cross-encoder sweep,
+        plus hybrid lexical+dense retrieval.}
+  \item \metric{Backends:} compare Chroma vs. LanceDB on index time,
+        memory, and query latency at fixed corpus size.
+\end{itemize}
+\end{block}
+
+\begin{block}{\blockheading{chart-line}{Statistical Robustness}}
+\centering
+\includegraphics[width=0.66\linewidth]{ci_faithfulness_by_prompt.png}
+
+\vspace{0.06cm}
+{\footnotesize Bootstrap 95\% CI, paired Wilcoxon \(p<0.001\).}
 \end{block}
 
 \begin{block}{\blockheading{book}{References}}
 \begin{columns}[T,totalwidth=\linewidth]
   \begin{column}{0.68\linewidth}
-    Lewis et al. (2020), Es et al. (2023), Rajpurkar et al. (2016),
-    Lin (2004), Zhang et al. (2020). 
+    \scriptsize
+    \begin{enumerate}\setlength\itemsep{0.0cm}
+      \item Lewis et al. \emph{RAG for Knowledge-Intensive NLP Tasks.} NeurIPS 2020.
+      \item Es et al. \emph{RAGAS: Automated Evaluation of RAG.} arXiv:2309.15217, 2023.
+      \item Rajpurkar et al. \emph{SQuAD: 100{,}000+ Questions for Machine Comprehension.} EMNLP 2016.
+      \item Lin. \emph{ROUGE: A Package for Automatic Evaluation of Summaries.} 2004.
+      \item Zhang et al. \emph{BERTScore: Evaluating Text Generation with BERT.} ICLR 2020.
+    \end{enumerate}
   \end{column}
   \begin{column}{0.24\linewidth}
     \centering
-    \href{https://github.com/niclashart/Benchmarking-Framework}{\includegraphics[width=\linewidth]{qr-code.png}}\\[-0.05cm]
-    {scan for code}
+    \href{https://github.com/niclashart/Benchmarking-Framework}{\includegraphics[width=0.95\linewidth]{qr-code.png}}\\[-0.05cm]
+    {\scriptsize scan for code}
   \end{column}
 \end{columns}
 \end{block}

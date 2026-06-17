@@ -38,6 +38,13 @@ _RAGAS_METRICS = [
     ("ragas_semantic_similarity", "Semantic Similarity"),
 ]
 
+# Subset for poster heatmap — drop redundant LLM-judged metrics
+_HEATMAP_METRICS = [
+    ("ragas_faithfulness", "Faithfulness"),
+    ("ragas_context_recall", "Context Recall"),
+    ("ragas_semantic_similarity", "Semantic Similarity"),
+]
+
 _SPEED_METRICS = [
     ("avg_ttft_seconds", "TTFT (s)", True),
     ("avg_tokens_per_second", "Throughput (tok/s)", False),
@@ -90,7 +97,7 @@ def _clean_df(df: pd.DataFrame, col: str) -> pd.DataFrame:
 
 def plot_llm_metric_heatmap(df: pd.DataFrame, out: Path) -> Path | None:
     """Heatmap: LLM models x RAGAS metrics, values = mean score."""
-    cols = [(c, l) for c, l in _RAGAS_METRICS if c in df.columns]
+    cols = [(c, l) for c, l in _HEATMAP_METRICS if c in df.columns]
     if not cols:
         return None
 
