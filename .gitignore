@@ -220,3 +220,20 @@ mlruns/
 
 # Graphify generated graph output
 graphify-out/
+
+# Local manuscripts, posters, and publication drafts
+/NGEN-AI/
+/NGEN AI/
+/Paper/
+/Poster/
+
+# Local reference clones / private working copies
+/Enterprise_RAG_Blueprint/
+/Enterprise/
+
+# Local run outputs and machine-specific workspace files
+/results/
+/mlflow_start.txt
+/texput.log
+/.claude/
+/.obsidian/

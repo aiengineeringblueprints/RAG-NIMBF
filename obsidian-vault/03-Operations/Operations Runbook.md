@@ -146,6 +146,7 @@ Run the Enterprise RAG Blueprint adapter against the dataset selected in YAML:
 
 ```bash
 set -a
+source .env
 source Enterprise_RAG_Blueprint/.env
 set +a
 
@@ -155,4 +156,4 @@ BENCHMARK_CONFIG_FILE=experiments/enterprise_rag_demo.yaml \
 python main.py
 ```
 
-The adapter rebuilds the Blueprint Chroma collection from the manifest dataset at run time, so do not run `scripts/index_blueprint_corpus.py` unless you explicitly want to test the Blueprint sample documents outside this benchmark path.
+The adapter rebuilds the Blueprint Chroma collection from the manifest dataset at run time, so do not run `scripts/index_blueprint_corpus.py` unless you explicitly want to test the Blueprint sample documents outside this benchmark path. Full runbook: [Enterprise_RAG_Blueprint_Benchmark.md](../../doc/Enterprise_RAG_Blueprint_Benchmark.md). Generic external-RAG user guide: [Benchmark_Your_RAG.md](../../doc/Benchmark_Your_RAG.md).

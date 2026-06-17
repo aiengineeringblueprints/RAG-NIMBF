@@ -61,6 +61,8 @@ def test_inject_components_called_when_adapter_supports():
     assert "bundle" in captured
     assert captured["bundle"].llm == "FAKE_LLM"
     bc_mock.assert_called_once()
+    assert bc_mock.call_args.args[0].rag_adapter_accepts == "chunker,llm"
+    assert cfg.rag_adapter_accepts == "llm,chunker"
 
 
 def test_set_components_not_called_when_adapter_lacks_method():

@@ -2,9 +2,11 @@ import json
 import logging
 import time
 import hashlib
+import copy
 from contextlib import contextmanager, nullcontext
 from functools import lru_cache
 from datetime import datetime
+from dataclasses import replace
 from pathlib import Path
 
 import mlflow
@@ -194,13 +196,18 @@ def _maybe_inject_components(rag_adapter, config, console) -> None:
     if not hasattr(rag_adapter, "set_components"):
         return
 
+    component_config = config
     if hasattr(rag_adapter, "supports_components"):
         capabilities = rag_adapter.supports_components() or {}
         accepted = ",".join(sorted(k for k, v in capabilities.items() if v))
         if accepted:
-            config.rag_adapter_accepts = accepted
+            try:
+                component_config = replace(config, rag_adapter_accepts=accepted)
+            except TypeError:
+                component_config = copy.copy(config)
+                component_config.rag_adapter_accepts = accepted
 
-    bundle = build_components(config)
+    bundle = build_components(component_config)
     populated = {
         k: v for k, v in {
             "chunker": bundle.chunker,

@@ -148,6 +148,22 @@ def test_answer_normalizes_tuple_output(fake_blueprint):
     assert out.total_seconds >= 0
 
 
+def test_answer_returns_invalid_output_on_chain_failure(fake_blueprint):
+    from examples.enterprise_rag_plugin.adapter import EnterpriseRagAdapter
+
+    fake_blueprint["rag_chain"].side_effect = RuntimeError("upstream timeout")
+    adapter = EnterpriseRagAdapter(MagicMock())
+    adapter._replace_blueprint_index = MagicMock()
+    adapter.prepare(MagicMock(), data=[])
+
+    out = adapter.answer({"question": "x"}, MagicMock())
+
+    assert out.answer == ""
+    assert out.answer_valid is False
+    assert out.metadata[0]["error_type"] == "RuntimeError"
+    assert "upstream timeout" in out.metadata[0]["error"]
+
+
 def test_answer_raises_if_not_prepared(fake_blueprint):
     from examples.enterprise_rag_plugin.adapter import EnterpriseRagAdapter
     adapter = EnterpriseRagAdapter(MagicMock())

@@ -217,12 +217,23 @@ class EnterpriseRagAdapter:
 
         question = sample.get("question") or sample.get("query") or ""
         t0 = time.perf_counter()
-        answer_str, sources = rag_chain(
-            question=question,
-            chain=self.chain,
-            retriever=self.retriever,
-            show_sources=True,
-        )
+        try:
+            answer_str, sources = rag_chain(
+                question=question,
+                chain=self.chain,
+                retriever=self.retriever,
+                show_sources=True,
+            )
+        except Exception as exc:
+            elapsed = time.perf_counter() - t0
+            log.warning("Enterprise RAG answer failed: %s", exc)
+            return RagSystemOutput(
+                answer="",
+                contexts=[],
+                metadata=[{"error": str(exc), "error_type": type(exc).__name__}],
+                total_seconds=elapsed,
+                answer_valid=False,
+            )
         elapsed = time.perf_counter() - t0
 
         # sources is list[str] formatted as "src->content" (or None)

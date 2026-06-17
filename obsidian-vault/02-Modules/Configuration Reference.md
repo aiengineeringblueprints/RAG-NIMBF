@@ -153,3 +153,4 @@ Enterprise RAG Blueprint adapter notes:
 - `examples.enterprise_rag_plugin.adapter` registers `RAG_SYSTEM_ADAPTER=enterprise_rag`.
 - On `prepare()`, the adapter replaces the Blueprint Chroma collection named by `INDEX_NAME` under `VECTORDB_DIR` with the YAML-selected benchmark dataset corpus. No separately pre-indexed `Enterprise_RAG_Blueprint/test_documents` corpus is required or mixed into evaluation.
 - The adapter accepts framework-built `chunker`, `embedder`, and `llm` components. Blueprint still owns its Chroma retriever and PromptKey prompt selection.
+- Adapter component capability overrides are applied on a copied `BenchmarkConfig`, because the config dataclass is frozen; runtime injection must not mutate the original config.
