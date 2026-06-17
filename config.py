@@ -96,6 +96,7 @@ class BenchmarkConfig:
     benchmark_stage: str = "all"  # all | index | query
     # RAG system adapter
     rag_system_adapter: str = "internal"  # internal | http
+    rag_adapter_accepts: str = ""  # comma-separated: chunker,embedder,retriever,reranker,llm,prompt
     rag_http_endpoint_url: str | None = None
     rag_http_timeout_seconds: float = 60.0
     rag_http_answer_field: str = "answer"
@@ -392,6 +393,7 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
     from benchmark.adapters import RAG_ADAPTER_REGISTRY
 
     rag_system_adapter = os.getenv("RAG_SYSTEM_ADAPTER", "internal").strip().lower()
+    rag_adapter_accepts = os.getenv("RAG_ADAPTER_ACCEPTS", "")
     valid_rag_adapters = tuple(sorted(RAG_ADAPTER_REGISTRY))
     if rag_system_adapter not in valid_rag_adapters:
         raise ValueError(
@@ -508,6 +510,7 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
                     lancedb_path=lancedb_path,
                     benchmark_stage=benchmark_stage,
                     rag_system_adapter=rag_system_adapter,
+                    rag_adapter_accepts=rag_adapter_accepts,
                     rag_http_endpoint_url=rag_http_endpoint_url,
                     rag_http_timeout_seconds=rag_http_timeout_seconds,
                     rag_http_answer_field=rag_http_answer_field,
