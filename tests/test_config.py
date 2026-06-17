@@ -220,6 +220,10 @@ class TestBenchmarkConfig:
         cfg = _make_config(rag_system_adapter="http")
         assert cfg.name.endswith("_http")
 
+    def test_rag_adapter_accepts_defaults_to_empty(self):
+        cfg = _make_config()
+        assert cfg.rag_adapter_accepts == ""
+
 
 class TestChunkParameterPairs:
     def test_semantic_ignores_size_and_overlap_grid(self):
