@@ -2,7 +2,9 @@
 
 Test folder: [tests/](../tests)
 
-Current inspection found 14 test files under `tests/*.py`, including adapter, dataset, config, retrieval, generation, evaluation, metrics, model, provider, prompt, reranker, and chunking coverage.
+Root `pytest.ini` sets `testpaths = tests` so local ignored workspaces such as `Enterprise_RAG_Blueprint/`, manuscript folders, and benchmark artifacts are not collected by default.
+
+Current inspection found 19 test files under `tests/*.py`, including adapter, component injection, dataset, config, retrieval, generation, evaluation, metrics, model, provider, prompt, reranker, and chunking coverage.
 
 Coverage map:
 
@@ -46,8 +48,8 @@ Thin or absent coverage:
 Recommended verification commands:
 
 ```bash
-python -m unittest
-python -m py_compile main.py config.py benchmark/*.py agentic/*.py
+.venv/bin/python -m pytest
+.venv/bin/python -m py_compile main.py config.py benchmark/*.py agentic/*.py
 ```
 
 Risk-based testing guidance:
