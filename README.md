@@ -88,6 +88,11 @@ The ClearML task still runs the existing worker core, writes `results/runN/`,
 logs scalar benchmark metrics to ClearML, and keeps MLflow logging enabled unless
 `--no-mlflow` is passed.
 
+## Benchmark RAG Systems
+
+- Enterprise RAG Blueprint: see [doc/Enterprise_RAG_Blueprint_Benchmark.md](doc/Enterprise_RAG_Blueprint_Benchmark.md).
+- Your own RAG system: see [doc/Benchmark_Your_RAG.md](doc/Benchmark_Your_RAG.md).
+
 ## Use an External RAG System
 
 Use this mode when your RAG system already exists and you want this framework to

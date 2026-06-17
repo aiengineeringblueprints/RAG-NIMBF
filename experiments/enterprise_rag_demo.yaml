@@ -8,14 +8,14 @@ settings:
   rag_system_adapter: enterprise_rag
   rag_adapter_accepts: "chunker,embedder,llm"
   retrieval_top_k: 5
-  eval_critic_llm: openai:Qwen3.5-397-A17B
+  eval_critic_llm: openai:Qwen3.5-397B-A17B_No_Thinking
   eval_critic_embedding: nomic-embed-text:latest
   ragas_enabled: true
   custom_metrics_enabled: true
   vector_db_backend: chroma
 
 matrix:
-  llm_models: ["gpt-oss:20b"]
+  llm_models: ["openai:qwen3.5-think"]
   embedding_models: ["nomic-embed-text:latest"]
   chunking_strategies: ["recursive"]
   chunk_sizes: [512]
