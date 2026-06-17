@@ -33,7 +33,7 @@ from benchmark.tracking import (
     log_aggregate_artifacts_to_mlflow,
 )
 from benchmark.tracing import setup_tracing
-from benchmark.adapters import get_rag_adapter
+from benchmark.adapters import build_components, get_rag_adapter
 from benchmark.reproducibility import write_reproducibility_bundle
 from benchmark.resource_monitor import (
     ResourceMonitor,
@@ -184,6 +184,42 @@ def _metadata_doc_ids(metadata_list: list[dict]) -> tuple[str, ...]:
     return tuple(doc_ids)
 
 
+def _maybe_inject_components(rag_adapter, config, console) -> None:
+    """Hand Framework-built components to an external adapter, if it accepts them.
+
+    Pure black-box adapters (no ``set_components``) are skipped. If the adapter
+    declares ``supports_components()``, that overrides ``RAG_ADAPTER_ACCEPTS``
+    from .env — the adapter knows best which slots it can consume.
+    """
+    if not hasattr(rag_adapter, "set_components"):
+        return
+
+    if hasattr(rag_adapter, "supports_components"):
+        capabilities = rag_adapter.supports_components() or {}
+        accepted = ",".join(sorted(k for k, v in capabilities.items() if v))
+        if accepted:
+            config.rag_adapter_accepts = accepted
+
+    bundle = build_components(config)
+    populated = {
+        k: v for k, v in {
+            "chunker": bundle.chunker,
+            "embedder": bundle.embedder,
+            "retriever": bundle.retriever_factory,
+            "reranker": bundle.reranker,
+            "llm": bundle.llm,
+            "prompt": bundle.prompt_template,
+        }.items() if v is not None
+    }
+    if not populated:
+        return
+
+    rag_adapter.set_components(bundle)
+    console.print(
+        f"  [dim]Injected components: {', '.join(sorted(populated))}[/dim]"
+    )
+
+
 def run_single_benchmark(
     config: BenchmarkConfig, data: list[dict], run_dir: Path | None = None,
     corpus: list[dict] | None = None,
@@ -210,6 +246,7 @@ def run_single_benchmark(
     # 1. Chunk + 2. Embed (only in retrieval mode)
     vector_store = None
     if rag_adapter is not None:
+        _maybe_inject_components(rag_adapter, config, console)
         with _stage_timer(stage_timings, "adapter_prepare", resource_monitor):
             rag_adapter.prepare(config, data, corpus=corpus)
         console.print(f"  [dim]Using external RAG adapter: {rag_adapter.name}[/dim]")
