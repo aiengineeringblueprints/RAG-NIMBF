@@ -79,3 +79,8 @@ python -m benchmark.reporting.resource_charts --scenario label:path/to/trace.csv
 ```
 
 Current coverage does not include automated assertions for resource monitor CSV sampling or resource chart rendering.
+
+
+Enterprise RAG adapter coverage:
+
+- `tests/test_enterprise_rag_adapter.py` verifies that the adapter advertises `chunker`, `embedder`, and `llm` component injection, calls the dataset-index replacement step before creating the Blueprint retriever, routes injected components into Blueprint APIs, and normalizes `rag_chain` answer/source output.

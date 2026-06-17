@@ -146,3 +146,10 @@ Resource monitor variables:
 `benchmark.clearml_task` exposes the first `.env` or manifest-derived `BenchmarkConfig` as ClearML Hyperparameters and applies Web UI overrides before running the existing worker core. Common editable fields include `llm_model`, `llm_provider`, `embedding_model`, `chunk_size`, `chunk_overlap`, `chunking_strategy`, `retrieval_top_k`, `prompt_template`, `reranker_model`, dataset settings, vector backend settings, and HTTP adapter field mappings.
 
 Secret-bearing fields are intentionally excluded: API keys, auth header names/values, and raw HTTP headers. Keep those configured in the ClearML Agent runtime environment. A prefixed `llm_model` such as `openai:Qwen/Qwen3-32B-AWQ` updates both model and provider; an unprefixed model name preserves the separately configured `llm_provider`.
+
+
+Enterprise RAG Blueprint adapter notes:
+
+- `examples.enterprise_rag_plugin.adapter` registers `RAG_SYSTEM_ADAPTER=enterprise_rag`.
+- On `prepare()`, the adapter replaces the Blueprint Chroma collection named by `INDEX_NAME` under `VECTORDB_DIR` with the YAML-selected benchmark dataset corpus. No separately pre-indexed `Enterprise_RAG_Blueprint/test_documents` corpus is required or mixed into evaluation.
+- The adapter accepts framework-built `chunker`, `embedder`, and `llm` components. Blueprint still owns its Chroma retriever and PromptKey prompt selection.

@@ -76,7 +76,7 @@ def test_supports_components(fake_blueprint):
     caps = adapter.supports_components()
     assert caps["embedder"] is True
     assert caps["llm"] is True
-    assert caps["chunker"] is False
+    assert caps["chunker"] is True
     assert caps["retriever"] is False
     assert caps["reranker"] is False
     assert caps["prompt"] is False
@@ -91,11 +91,17 @@ def test_prepare_routes_bundle_and_config(fake_blueprint):
     cfg.retriever_similarity_threshold = 0.4
 
     adapter = EnterpriseRagAdapter(cfg)
+    adapter._replace_blueprint_index = MagicMock()
     adapter.set_components(ComponentBundle(
+        chunker="FAKE_CHUNKER",
         embedder="FAKE_EMBEDDER",
         llm="FAKE_LLM",
     ))
     adapter.prepare(cfg, data=[], corpus=[{"context": "doc1"}])
+
+    adapter._replace_blueprint_index.assert_called_once_with(
+        cfg, data=[], corpus=[{"context": "doc1"}]
+    )
 
     # create_retriever received embedder + top_k from config
     fake_blueprint["create_retriever"].assert_called_once()
@@ -117,6 +123,7 @@ def test_prepare_defaults_top_k_when_missing(fake_blueprint):
     cfg.retrieval_top_k = None
     cfg.retriever_similarity_threshold = None
     adapter = EnterpriseRagAdapter(cfg)
+    adapter._replace_blueprint_index = MagicMock()
     adapter.prepare(cfg, data=[])
     _, kwargs = fake_blueprint["create_retriever"].call_args
     assert kwargs["returned_docs"] == 3
@@ -127,6 +134,7 @@ def test_answer_normalizes_tuple_output(fake_blueprint):
     from examples.enterprise_rag_plugin.adapter import EnterpriseRagAdapter
 
     adapter = EnterpriseRagAdapter(MagicMock())
+    adapter._replace_blueprint_index = MagicMock()
     adapter.prepare(MagicMock(), data=[])
     out = adapter.answer({"question": "What is the capital of France?"}, MagicMock())
 
