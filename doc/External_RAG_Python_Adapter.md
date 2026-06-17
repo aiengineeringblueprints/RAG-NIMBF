@@ -3,6 +3,11 @@
 Wie du ein bestehendes RAG-System (in Unterordner / eigener Codebasis) ans
 Framework anbindest, ohne den HTTP-Adapter zu nutzen.
 
+> **Referenz-Impl:** `examples/python_rag_plugin/demo_adapter.py` — lauffähig,
+> keine Dependencies außer stdlib. Copy-paste起点. Dazugehöriger Test:
+> `tests/test_demo_python_rag_plugin.py`. Manifest:
+> `experiments/external_rag_demo.yaml`.
+
 ---
 
 ## TL;DR
@@ -60,6 +65,10 @@ Adapter das explizit ausliest.
 
 ## 3. Adapter-Plugin schreiben
 
+Siehe das lauffähige Referenz-Beispiel in
+`examples/python_rag_plugin/demo_adapter.py` — Retrieval = TF-Cosinus, Generation
+= extraktiv, alle `RagSystemOutput`-Felder gefüllt. Skeleton für eigenes RAG:
+
 `my_rag_pkg/my_adapter.py`:
 
 ```python
@@ -92,7 +101,17 @@ class MyRagAdapter:
 register_rag_adapter("myrag", lambda config: MyRagAdapter(config))
 ```
 
-Ausführen:
+Ausführen (Referenz-Beispiel):
+
+```bash
+PYTHONPATH=examples \
+RAG_ADAPTER_MODULES=python_rag_plugin.demo_adapter \
+RAG_SYSTEM_ADAPTER=demo_python \
+BENCHMARK_CONFIG_FILE=experiments/external_rag_demo.yaml \
+python main.py
+```
+
+Ausführen (eigenes Plugin):
 
 ```bash
 RAG_ADAPTER_MODULES=my_rag_pkg.my_adapter \
@@ -187,5 +206,48 @@ bauen (z.B. eigenen Retriever in `benchmark/retrieval.py` registrieren).
 - `doc/External_RAG_System_Usage.md` — HTTP-Adapter-Variante
 - `benchmark/adapters/base.py` — `RagSystemAdapter` Protocol + `RagSystemOutput` Dataclass
 - `benchmark/adapters/__init__.py` — `register_rag_adapter` Registry
+- `benchmark/adapters/components.py` — `ComponentBundle` + `build_components`
 - `main.py:199-300` — Adapter-Wiring im Benchmark-Loop
 - `examples/http_rag_server.py` — Beispiel-Endpoint (HTTP)
+- `examples/enterprise_rag_plugin/adapter.py` — Referenz-Adapter mit Component Injection
+
+---
+
+## 8. Component Injection (optional)
+
+Wenn dein RAG Framework-gebaute Komponenten (Chunker, Embedder, LLM, ...)
+übernehmen kann, implementiere zwei zusätzliche Methoden auf deiner
+Adapter-Klasse:
+
+```python
+def supports_components(self) -> dict[str, bool]:
+    return {
+        "chunker": True, "embedder": True, "retriever": False,
+        "reranker": False, "llm": True, "prompt": False,
+    }
+
+def set_components(self, bundle: ComponentBundle) -> None:
+    self.bundle = bundle
+```
+
+Das Framework ruft `supports_components()` auf, baut die angeforderten Slots
+aus `.env`/YAML, und ruft `set_components()` einmal vor `prepare()` auf. Slots
+mit `False` werden nicht gebaut; Slots mit `True`, aber in `.env` nicht
+gesetzt, kommen als `None` an.
+
+`.env` des Users:
+
+```env
+RAG_SYSTEM_ADAPTER=myrag
+RAG_ADAPTER_MODULES=my_pkg.my_adapter
+RAG_ADAPTER_ACCEPTS=chunker,embedder,llm
+CHUNKING_STRATEGIES=recursive
+EMBEDDING_MODELS=ollama:nomic-embed-text
+LLM_MODELS=ollama:gemma3:4b
+```
+
+Implementiert dein Adapter nur `set_components()` (ohne `supports_components()`),
+ist `RAG_ADAPTER_ACCEPTS` aus `.env` alleinige Wahrheitsquelle.
+
+Referenz-Implementierung: `examples/enterprise_rag_plugin/adapter.py`.
+Manifest: `experiments/enterprise_rag_demo.yaml`.

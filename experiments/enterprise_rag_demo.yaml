@@ -1,0 +1,23 @@
+experiment_name: enterprise-rag-demo
+
+dataset:
+  name: squad
+  sample_size: [5]
+
+settings:
+  rag_system_adapter: enterprise_rag
+  rag_adapter_accepts: "chunker,embedder,llm"
+  retrieval_top_k: 5
+  eval_critic_llm: ollama:gemma3:12b
+  eval_critic_embedding: nomic-embed-text:latest
+  ragas_enabled: true
+  custom_metrics_enabled: true
+  vector_db_backend: chroma
+
+matrix:
+  llm_models: ["ollama:gemma3:4b"]
+  embedding_models: ["ollama:nomic-embed-text:latest"]
+  chunking_strategies: ["recursive"]
+  chunk_sizes: [512]
+  chunk_overlaps: [64]
+  prompt_templates: ["concise"]
