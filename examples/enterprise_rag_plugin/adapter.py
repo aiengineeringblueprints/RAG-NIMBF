@@ -1,30 +1,38 @@
 """Reference adapter for Enterprise_RAG_Blueprint.
 
-Demonstrates the component-injection contract: accepts Framework chunker,
-embedder, reranker, and LLM, but keeps its own retriever and prompt.
+Demonstrates component-injection contract with the real Blueprint API:
+- Framework-built ``embedder`` is passed as ``existing_embeddings`` to
+  ``create_retriever``.
+- Framework-built ``llm`` is passed as ``model`` to ``load_chain``.
+- Blueprint's own chunker / prompt / reranker are kept (Blueprint has
+  opinionated PromptKey + Chroma-only stack), so those slots are False.
+- Retrieval ``top_k`` is read from ``config.retrieval_top_k``.
 
 Activation (bash):
 
-    PYTHONPATH=examples \\
+    PYTHONPATH=.:Enterprise_RAG_Blueprint \\
     RAG_ADAPTER_MODULES=enterprise_rag_plugin.adapter \\
     RAG_SYSTEM_ADAPTER=enterprise_rag \\
-    RAG_ADAPTER_ACCEPTS=chunker,embedder,llm,reranker \\
+    RAG_ADAPTER_ACCEPTS=embedder,llm \\
     BENCHMARK_CONFIG_FILE=experiments/enterprise_rag_demo.yaml \\
     python main.py
 
-NOTE: import paths ``chain.retriever.EnterpriseRetriever`` and
-``chain.load_chain.build_chain`` must match the actual Enterprise_RAG_Blueprint
-codebase at integration time. Adjust the imports below if they differ.
+Requires the Blueprint env (``EMBEDDING_MODEL``, ``INDEX_NAME``,
+``VECTORDB_DIR``, ``RETRIEVER_DISABLE_FILTER`` etc.) so the Blueprint's own
+``os.environ.get`` calls inside ``chain.retriever`` resolve.
 """
 
 from __future__ import annotations
 
+import logging
 import time
 from typing import Any
 
 from benchmark.adapters import register_rag_adapter
 from benchmark.adapters.base import RagSystemOutput
 from benchmark.adapters.components import ComponentBundle
+
+log = logging.getLogger(__name__)
 
 
 class EnterpriseRagAdapter:
@@ -35,15 +43,16 @@ class EnterpriseRagAdapter:
         self.bundle: ComponentBundle = ComponentBundle()
         self.chain = None
         self.retriever = None
+        self.prompt_key = None
 
     def supports_components(self) -> dict[str, bool]:
         return {
-            "chunker": True,
-            "embedder": True,
-            "retriever": False,
-            "reranker": True,
-            "llm": True,
-            "prompt": False,
+            "chunker": False,   # Blueprint chunkt im loader
+            "embedder": True,   # bundle.embedder -> existing_embeddings
+            "retriever": False, # Blueprint baut eigenen Chroma-Retriever
+            "reranker": False,  # Blueprint hat keinen separaten Reranker-Slot
+            "llm": True,        # bundle.llm -> model
+            "prompt": False,    # Blueprint nutzt PromptKey-System
         }
 
     def set_components(self, bundle: ComponentBundle) -> None:
@@ -55,36 +64,65 @@ class EnterpriseRagAdapter:
         data: list[dict],
         corpus: list[dict] | None = None,
     ) -> None:
-        from chain.retriever import EnterpriseRetriever
-        from chain.load_chain import build_chain
+        from chain.load_chain import load_chain
+        from chain.prompts.promt_manager import PromptKey
+        from chain.retriever import create_retriever
 
-        docs = corpus if corpus is not None else data
-        self.retriever = EnterpriseRetriever(corpus=docs)
+        top_k = int(getattr(config, "retrieval_top_k", 3) or 3)
 
-        if self.bundle.chunker is not None:
-            self.retriever.chunker = self.bundle.chunker
-        if self.bundle.embedder is not None:
-            self.retriever.embedder = self.bundle.embedder
-        if self.bundle.reranker is not None:
-            self.retriever.reranker = self.bundle.reranker
+        self.retriever = create_retriever(
+            returned_docs=top_k,
+            similarity_threshold=float(
+                getattr(config, "retriever_similarity_threshold", 0.5) or 0.5
+            ),
+            existing_embeddings=self.bundle.embedder,
+        )
 
-        llm = self.bundle.llm
-        self.chain = build_chain(llm=llm, retriever=self.retriever)
+        self.prompt_key = PromptKey.SOURCE
+        self.chain = load_chain(
+            context=self.retriever,
+            prompt_key=self.prompt_key,
+            model=self.bundle.llm,
+            include_doc_names=True,
+        )
 
     def answer(self, sample: dict, config: Any) -> RagSystemOutput:
-        if self.chain is None:
+        from chain.load_chain import rag_chain
+
+        if self.chain is None or self.retriever is None:
             raise RuntimeError("EnterpriseRagAdapter.prepare() was not called")
+
+        question = sample.get("question") or sample.get("query") or ""
         t0 = time.perf_counter()
-        result = self.chain.invoke(sample["question"])
+        answer_str, sources = rag_chain(
+            question=question,
+            chain=self.chain,
+            retriever=self.retriever,
+            show_sources=True,
+        )
         elapsed = time.perf_counter() - t0
 
-        docs = result.get("source_documents", []) if isinstance(result, dict) else []
+        # sources is list[str] formatted as "src->content" (or None)
+        contexts: list[str] = []
+        metadata: list[dict] = []
+        if sources:
+            for entry in sources:
+                if isinstance(entry, str) and "->" in entry:
+                    src, _, content = entry.partition("->")
+                    contexts.append(content)
+                    metadata.append({"source": src})
+                elif isinstance(entry, str):
+                    contexts.append(entry)
+                    metadata.append({"source": "unknown"})
+                else:
+                    doc = entry
+                    contexts.append(getattr(doc, "page_content", str(doc)))
+                    metadata.append(getattr(doc, "metadata", {}) or {})
+
         return RagSystemOutput(
-            answer=result.get("answer", "") if isinstance(result, dict) else str(result),
-            contexts=[getattr(d, "page_content", str(d)) for d in docs],
-            metadata=[
-                getattr(d, "metadata", {}) or {"doc_id": None} for d in docs
-            ],
+            answer=str(answer_str or ""),
+            contexts=contexts,
+            metadata=metadata,
             total_seconds=elapsed,
         )
 
