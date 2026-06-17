@@ -42,6 +42,8 @@ def _base_cfg(**overrides):
     cfg.retrieval_mode = "retrieval"
     cfg.rag_adapter_accepts = ""
     cfg.rag_system_adapter = "fake"
+    cfg.ragas_enabled = False
+    cfg.custom_metrics_enabled = False
     for k, v in overrides.items():
         setattr(cfg, k, v)
     return cfg
