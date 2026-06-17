@@ -6,6 +6,7 @@ from collections.abc import Callable
 from typing import Any
 
 from benchmark.adapters.base import RagSystemAdapter, RagSystemOutput
+from benchmark.adapters.components import ComponentBundle, build_components
 from benchmark.adapters.http import HttpRagAdapter
 
 RagAdapterFactory = Callable[[Any], RagSystemAdapter | None]
@@ -13,11 +14,13 @@ RagAdapterFactory = Callable[[Any], RagSystemAdapter | None]
 RAG_ADAPTER_REGISTRY: dict[str, RagAdapterFactory] = {}
 
 __all__ = [
+    "ComponentBundle",
     "HttpRagAdapter",
     "RAG_ADAPTER_REGISTRY",
     "RagAdapterFactory",
     "RagSystemAdapter",
     "RagSystemOutput",
+    "build_components",
     "get_rag_adapter",
     "register_rag_adapter",
 ]

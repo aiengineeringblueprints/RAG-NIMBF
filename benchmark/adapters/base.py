@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
+
+if TYPE_CHECKING:
+    from benchmark.adapters.components import ComponentBundle
 
 
 @dataclass(frozen=True)
@@ -29,9 +32,30 @@ class RagSystemOutput:
 
 
 class RagSystemAdapter(Protocol):
-    """A black-box RAG system that can answer benchmark samples."""
+    """A black-box RAG system that can answer benchmark samples.
+
+    Two optional methods support component injection. Adapters that do not
+    implement them are treated as pure black-box — the Framework will not
+    attempt to inject components.
+    """
 
     name: str
+
+    def supports_components(self) -> dict[str, bool]:
+        """Declare which ComponentBundle slots this adapter accepts.
+
+        Keys: any of {chunker, embedder, retriever, reranker, llm, prompt}.
+        Value True means the adapter will use a Framework-provided slot if
+        given one. Method is optional; absence = accepts nothing.
+        """
+        ...
+
+    def set_components(self, bundle: "ComponentBundle") -> None:
+        """Receive Framework-built components. Called once before prepare().
+
+        Optional; absence = pure black-box adapter.
+        """
+        ...
 
     def prepare(
         self,
