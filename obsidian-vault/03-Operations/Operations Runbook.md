@@ -140,3 +140,19 @@ clearml-agent daemon --queue rag-benchmark-gpu
 ```
 
 Clone the task in the ClearML Web UI, edit Hyperparameters, and enqueue the clone to the queue. The ClearML entrypoint publishes non-secret `BenchmarkConfig` fields only; API keys, auth values, and raw HTTP headers must remain in environment variables on the agent machine. Pass `--remote-queue rag-benchmark-gpu` only when the local process should enqueue itself and exit.
+
+
+Run the Enterprise RAG Blueprint adapter against the dataset selected in YAML:
+
+```bash
+set -a
+source Enterprise_RAG_Blueprint/.env
+set +a
+
+PYTHONPATH=.:Enterprise_RAG_Blueprint:Enterprise_RAG_Blueprint/chain \
+RAG_ADAPTER_MODULES=examples.enterprise_rag_plugin.adapter \
+BENCHMARK_CONFIG_FILE=experiments/enterprise_rag_demo.yaml \
+python main.py
+```
+
+The adapter rebuilds the Blueprint Chroma collection from the manifest dataset at run time, so do not run `scripts/index_blueprint_corpus.py` unless you explicitly want to test the Blueprint sample documents outside this benchmark path.

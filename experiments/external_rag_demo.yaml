@@ -1,0 +1,23 @@
+experiment_name: external-rag-demo
+
+dataset:
+  name: squad
+  sample_size: [20]
+
+settings:
+  rag_system_adapter: demo_python
+  retrieval_top_k: 5
+  vector_db_backend: chroma        # ignored by plugin, but schema-required
+  eval_critic_llm: ollama:gemma3:12b
+  eval_critic_embedding: nomic-embed-text:latest
+  ragas_enabled: true
+  custom_metrics_enabled: true
+  custom_retrieval_metrics_mode: heuristic
+
+matrix:
+  llm_models: ["n/a"]
+  embedding_models: ["n/a"]
+  chunking_strategies: ["none"]
+  chunk_sizes: [0]
+  chunk_overlaps: [0]
+  prompt_templates: ["concise"]
