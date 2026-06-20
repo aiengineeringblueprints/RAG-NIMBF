@@ -86,12 +86,19 @@ def _normalize_llm(llm_short: str) -> str:
 
 
 def scan_data(results_dir: Path) -> pd.DataFrame:
-    """Scan benchmark JSONs and return DataFrame with normalized LLM names."""
+    """Scan benchmark JSONs and return DataFrame with normalized LLM names.
+
+    Drops rows whose generator LLM is reserved for the critic role
+    (Qwen3.5-397B-A17B variants), so it never appears as a generator
+    in the charts.
+    """
     from benchmark.reporting.run_tracker import scan_all_results
     df = scan_all_results(results_dir)
     if df.empty:
         return df
     df["model"] = df["llm_short"].apply(_normalize_llm)
+    critic_pattern = "397B"
+    df = df[~df["llm_short"].astype(str).str.contains(critic_pattern, case=False, na=False)]
     return df
 
 

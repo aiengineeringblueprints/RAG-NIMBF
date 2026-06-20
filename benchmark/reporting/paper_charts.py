@@ -183,19 +183,23 @@ def plot_grouped_bars(df: pd.DataFrame, out: Path) -> list[Path]:
             continue
 
         agg = sub.groupby("llm_short")[col].agg(["mean", "std"]).sort_values("mean", ascending=False)
+        # RAGAS metrics bounded in [0,1] — clip whiskers so mean±std stays within [0,1]
+        std = agg["std"].fillna(0)
+        err_lo = np.minimum(std, agg["mean"]).tolist()
+        err_hi = np.minimum(std, 1.0 - agg["mean"]).tolist()
 
         with plt.rc_context(_paper_style()):
             fig, ax = plt.subplots(figsize=(8, max(3, len(agg) * 0.6)))
             x = range(len(agg))
             bars = ax.bar(
                 x, agg["mean"],
-                yerr=agg["std"].fillna(0), capsize=4,
+                yerr=[err_lo, err_hi], capsize=4,
                 color=PALETTE[:len(agg)], edgecolor="white", linewidth=0.5,
                 width=0.6,
             )
             # Value labels
             for i, (idx, row) in enumerate(agg.iterrows()):
-                ax.text(i, row["mean"] + row.get("std", 0) + 0.01,
+                ax.text(i, row["mean"] + err_hi[i] + 0.01,
                         f"{row['mean']:.3f}", ha="center", fontsize=9, fontweight="bold")
 
             ax.set_xticks(x)
