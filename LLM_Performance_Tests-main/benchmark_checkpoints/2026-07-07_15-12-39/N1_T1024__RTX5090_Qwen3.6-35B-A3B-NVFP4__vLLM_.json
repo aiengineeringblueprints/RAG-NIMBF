@@ -1,0 +1,46 @@
+{
+  "timestamp": "2026-07-07T15:13:49.572472",
+  "n_calls": 1,
+  "max_tokens": 1024,
+  "model_label": "RTX5090 Qwen3.6-35B-A3B-NVFP4 (vLLM)",
+  "seq_wall_s": 3.7466396640520543,
+  "par_wall_s": 3.5865186399314553,
+  "results": [
+    {
+      "model": "RTX5090 Qwen3.6-35B-A3B-NVFP4 (vLLM)",
+      "provider": "openai_compatible",
+      "prompt_idx": 0,
+      "mode": "sequential",
+      "call_idx": 0,
+      "latency_s": 3.734395584091544,
+      "success": true,
+      "tokens_in": 23,
+      "tokens_out": 1024,
+      "error": null,
+      "output_text": "",
+      "ttft_s": null,
+      "tpot_s": null,
+      "itl_p50_s": null,
+      "itl_p95_s": null,
+      "gen_tok_s": 274.20769357221315
+    },
+    {
+      "model": "RTX5090 Qwen3.6-35B-A3B-NVFP4 (vLLM)",
+      "provider": "openai_compatible",
+      "prompt_idx": 0,
+      "mode": "parallel",
+      "call_idx": 0,
+      "latency_s": 3.5647307839244604,
+      "success": true,
+      "tokens_in": 23,
+      "tokens_out": 1024,
+      "error": null,
+      "output_text": "",
+      "ttft_s": null,
+      "tpot_s": null,
+      "itl_p50_s": null,
+      "itl_p95_s": null,
+      "gen_tok_s": 287.25871940115053
+    }
+  ]
+}
