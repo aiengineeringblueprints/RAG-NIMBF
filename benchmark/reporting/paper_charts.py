@@ -97,6 +97,8 @@ def _clean_df(df: pd.DataFrame, col: str) -> pd.DataFrame:
 
 def plot_llm_metric_heatmap(df: pd.DataFrame, out: Path) -> Path | None:
     """Heatmap: LLM models x RAGAS metrics, values = mean score."""
+    # Exclude critic model from generation sweep visualisation
+    df = df[~df["llm_short"].astype(str).str.contains("Qwen3.5-397B", na=False, regex=False)]
     cols = [(c, l) for c, l in _HEATMAP_METRICS if c in df.columns]
     if not cols:
         return None
@@ -141,7 +143,7 @@ def plot_quality_vs_speed(df: pd.DataFrame, out: Path) -> Path | None:
         return None
 
     with plt.rc_context(_paper_style()):
-        fig, ax = plt.subplots(figsize=(9, 6))
+        fig, ax = plt.subplots(figsize=(10, 4.6))
 
         llms = sorted(sub["llm_short"].unique())
         colors = dict(zip(llms, PALETTE[:len(llms)]))
@@ -151,21 +153,25 @@ def plot_quality_vs_speed(df: pd.DataFrame, out: Path) -> Path | None:
             d = sub[mask]
             ax.scatter(
                 d["avg_tokens_per_second"], d["ragas_faithfulness"],
-                s=80, alpha=0.75, label=llm,
-                color=colors[llm], edgecolors="white", linewidths=0.5,
+                s=110, alpha=0.85, label=llm,
+                color=colors[llm], edgecolors="white", linewidths=0.6,
             )
-
-        # Pareto frontier line
-        sub_sorted = sub.sort_values("avg_tokens_per_second")
-        pareto_y = sub_sorted["ragas_faithfulness"].cummax()
-        ax.plot(sub_sorted["avg_tokens_per_second"], pareto_y,
-                "--", color="gray", alpha=0.5, linewidth=1, label="Pareto frontier")
 
         ax.set_xlabel("Throughput (tokens/s)")
         ax.set_ylabel("Faithfulness")
         ax.set_title("Quality vs. Speed Trade-off")
-        ax.legend(loc="lower right", frameon=True)
         ax.set_ylim(0, 1.05)
+        ax.legend(
+            loc="upper center",
+            bbox_to_anchor=(0.5, -0.18),
+            ncol=min(len(llms), 6),
+            frameon=False,
+            fontsize=9,
+            handlelength=1.2,
+            columnspacing=1.0,
+        )
+        fig.tight_layout()
+        fig.subplots_adjust(bottom=0.30)
 
     return _save(fig, out / "paper_quality_vs_speed")
 
