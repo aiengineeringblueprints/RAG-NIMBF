@@ -27,7 +27,6 @@ OUT_PATH = REPO / "results" / "cross_run_plots" / "paper_quality_vs_speed.png"
 EXPLICIT = {
     "qwen3-32b-awq": "Qwen3-32B-AWQ",
     "qwen3.6-27b-nvfp4": "Qwen3.6-27B-Text-NVFP4-MTP",
-    "qwen3.5-397b-a17b": "Qwen3.5-397B-A17B",
     "qwen3.5-think": "qwen3.5-think",
     "gpt-4o-mini": "gpt-4o-mini",
     "gpt-oss-20b": "gpt-oss_20b",
@@ -82,6 +81,7 @@ def collect_rag_faithfulness() -> dict[str, dict]:
     df = scan_all_results(REPO / "results")
     df = df.dropna(subset=["ragas_faithfulness"])
     df = df[df["ragas_faithfulness"] > 0]
+    df = df[~df["llm_short"].astype(str).str.contains("397B", case=False, na=False)]
     g = df.groupby("llm_short")["ragas_faithfulness"].agg(["mean", "std", "count"])
     return {
         idx: {"mean": r["mean"], "std": r["std"] or 0.0, "n": int(r["count"])}
@@ -130,24 +130,10 @@ def main() -> None:
             label=r["label"],
         )
 
-    # Pareto frontier: configs not dominated on both axes
-    xs_sorted = sorted([r["x"] for r in rows])
-    sorted_pairs = sorted([(r["x"], r["y"]) for r in rows])
-    frontier_x, frontier_y = [], []
-    best_y = -1.0
-    for x, y in sorted_pairs:
-        if y > best_y:
-            frontier_x.append(x)
-            frontier_y.append(y)
-            best_y = y
-    if len(frontier_x) >= 2:
-        ax.plot(frontier_x, frontier_y,
-                "--", color="gray", alpha=0.5, linewidth=1, label="Pareto frontier")
-
     ax.set_xlabel("Throughput — median gen tok/s (LLM_Performance_Tests)", fontsize=11, fontweight="bold")
     ax.set_ylabel("Faithfulness", fontsize=11, fontweight="bold")
     ax.set_title("Quality vs. Speed Trade-off", fontsize=12, fontweight="bold", pad=8)
-    ax.set_ylim(0, 1.05)
+    ax.set_ylim(0.6, 1.0)
     ax.grid(True, linestyle="--", alpha=0.3)
     ax.legend(loc="lower right", frameon=True, fontsize=9)
     ax.spines["top"].set_visible(False)
