@@ -226,6 +226,7 @@ graphify-out/
 /NGEN AI/
 /Paper/
 /Poster/
+/bericht/
 
 # Local reference clones / private working copies
 /Enterprise_RAG_Blueprint/
@@ -237,3 +238,9 @@ graphify-out/
 /texput.log
 /.claude/
 /.obsidian/
+/agentic/
+/obsidian-vault/
+
+CLAUDE.md
+AGENTS.md
+PROJECT_STATUS.md

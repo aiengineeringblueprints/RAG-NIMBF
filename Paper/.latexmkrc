@@ -1,4 +1,0 @@
-$pdf_mode = 1;
-$interaction = 'nonstopmode';
-$synctex = 1;
-$bibtex_use = 2;
