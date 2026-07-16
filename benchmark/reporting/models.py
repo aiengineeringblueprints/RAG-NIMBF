@@ -89,6 +89,11 @@ class BenchmarkResultExtended:
     total_tokens: int = 0
     total_estimated_cost_usd: float | None = None
     avg_estimated_cost_per_answer_usd: float | None = None
+    avg_gpu_power_w: float | None = None
+    gpu_power_stats: StatSummary | None = None
+    energy_kwh: float | None = None
+    host_energy_kwh: float | None = None
+    estimated_energy_cost_usd: float | None = None
 
 
 @dataclass(frozen=True)

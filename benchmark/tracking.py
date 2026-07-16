@@ -206,6 +206,23 @@ def log_benchmark_run(
         metrics["total_estimated_cost_usd"] = result.total_estimated_cost_usd
     if result.avg_estimated_cost_per_answer_usd is not None:
         metrics["avg_estimated_cost_per_answer_usd"] = result.avg_estimated_cost_per_answer_usd
+    if result.avg_gpu_power_w is not None:
+        metrics["avg_gpu_power_w"] = result.avg_gpu_power_w
+    if result.energy_kwh is not None:
+        metrics["energy_kwh"] = result.energy_kwh
+    if result.host_energy_kwh is not None:
+        metrics["host_energy_kwh"] = result.host_energy_kwh
+    if result.estimated_energy_cost_usd is not None:
+        metrics["estimated_energy_cost_usd"] = result.estimated_energy_cost_usd
+    if result.gpu_power_stats is not None:
+        for stat_name, stat_value in [
+            ("gpu_power_mean", result.gpu_power_stats.mean),
+            ("gpu_power_std", result.gpu_power_stats.std),
+            ("gpu_power_median", result.gpu_power_stats.median),
+            ("gpu_power_min", result.gpu_power_stats.min),
+            ("gpu_power_max", result.gpu_power_stats.max),
+        ]:
+            metrics[stat_name] = stat_value
 
     if result.stage_timings:
         for key, value in result.stage_timings.items():

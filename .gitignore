@@ -233,7 +233,6 @@ graphify-out/
 /Enterprise/
 
 # Local run outputs and machine-specific workspace files
-/results/
 /mlflow_start.txt
 /texput.log
 /.claude/

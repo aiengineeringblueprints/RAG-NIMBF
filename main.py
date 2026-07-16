@@ -1,6 +1,7 @@
 import json
 import logging
 import time
+import os
 import hashlib
 import copy
 from contextlib import contextmanager, nullcontext
@@ -27,6 +28,7 @@ from benchmark.evaluation import EvaluationResult, evaluate_results
 from benchmark.custom_metrics import CustomMetricsResult, compute_custom_metrics
 from benchmark.gold_retrieval_metrics import compute_gold_doc_retrieval_metrics
 from benchmark.reranker import get_reranker
+from benchmark.metrics import read_host_energy_joules, estimate_energy_cost_usd
 from benchmark.reporting import generate_report
 from benchmark.reporting.exports import _result_to_dict
 from benchmark.tracking import (
@@ -51,6 +53,29 @@ from benchmark.reporting.models import (
 
 console = Console()
 logger = logging.getLogger(__name__)
+
+
+def _energy_price_usd() -> float | None:
+    """Return configured electricity price per kWh (USD or EUR).
+
+    Reads ``ELECTRICITY_PRICE_EUR_PER_KWH`` first, then
+    ``ELECTRICITY_PRICE_USD_PER_KWH``. The returned cost inherits the
+    currency of the configured price. Returns ``None`` when unset, in which
+    case energy is still measured but no cost is estimated.
+    """
+    eur = os.getenv("ELECTRICITY_PRICE_EUR_PER_KWH")
+    if eur:
+        try:
+            return float(eur)
+        except ValueError:
+            pass
+    usd = os.getenv("ELECTRICITY_PRICE_USD_PER_KWH")
+    if usd:
+        try:
+            return float(usd)
+        except ValueError:
+            pass
+    return None
 
 
 @contextmanager
@@ -237,6 +262,8 @@ def run_single_benchmark(
     stage_timings: dict[str, float] = {}
     if load_data_seconds is not None:
         stage_timings["load_data"] = load_data_seconds
+
+    host_energy_start = read_host_energy_joules()
     console.print(f"\n[bold yellow]>>> Starting: {config.name}[/bold yellow]")
     chunks = []
     rag_adapter = get_rag_adapter(config)
@@ -274,6 +301,14 @@ def run_single_benchmark(
         console.print(
             f"[bold green]<<< Indexed: {config.name} in {total_time:.1f}s[/bold green]"
         )
+        host_energy_end = read_host_energy_joules()
+        host_energy_kwh = (
+            (host_energy_end - host_energy_start) / 3.6e6
+            if host_energy_end is not None and host_energy_start is not None
+            else None
+        )
+        energy_price = _energy_price_usd()
+        energy_kwh = host_energy_kwh  # GPU idle/host-only during indexing
         return BenchmarkResultExtended(
             config_name=config.name,
             llm_model=config.llm_model,
@@ -288,6 +323,8 @@ def run_single_benchmark(
             avg_tokens_per_second=0,
             avg_gpu_utilization_pct=None,
             avg_gpu_memory_used_mb=None,
+            avg_gpu_power_w=None,
+            gpu_power_stats=None,
             ragas_faithfulness=None,
             ragas_answer_relevancy=None,
             ragas_answer_correctness=None,
@@ -312,6 +349,9 @@ def run_single_benchmark(
             dataset_sample_size=config.dataset_sample_size,
             stage_timings=stage_timings,
             vector_db_backend=config.vector_db_backend,
+            energy_kwh=energy_kwh,
+            host_energy_kwh=host_energy_kwh,
+            estimated_energy_cost_usd=estimate_energy_cost_usd(energy_kwh, energy_price),
         )
 
     # 3. Generate answers
@@ -555,6 +595,11 @@ def run_single_benchmark(
         for s in per_sample
         if s.gpu_usage and "memory_used_mb" in s.gpu_usage
     ]
+    gpu_powers = [
+        s.gpu_usage["power_draw_w"]
+        for s in per_sample
+        if s.gpu_usage and s.gpu_usage.get("power_draw_w") is not None
+    ]
 
     def _ragas_stat_samples(key: str) -> list[float]:
         vals = []
@@ -576,6 +621,27 @@ def run_single_benchmark(
     priced_costs = [s.estimated_cost_usd for s in per_sample if s.estimated_cost_usd is not None]
     total_estimated_cost = sum(priced_costs) if priced_costs else None
 
+    # Energy / cost (local models): GPU power sampled per sample + host RAPL delta
+    avg_gpu_power_w = sum(gpu_powers) / len(gpu_powers) if gpu_powers else None
+    host_energy_end = read_host_energy_joules()
+    host_energy_kwh = (
+        (host_energy_end - host_energy_start) / 3.6e6
+        if host_energy_end is not None and host_energy_start is not None
+        else None
+    )
+    gpu_energy_kwh = (
+        avg_gpu_power_w * total_time / 3600 / 1000
+        if avg_gpu_power_w is not None
+        else 0.0
+    )
+    energy_kwh = (
+        gpu_energy_kwh + host_energy_kwh
+        if host_energy_kwh is not None
+        else gpu_energy_kwh
+    ) or None
+    energy_price = _energy_price_usd()
+    estimated_energy_cost = estimate_energy_cost_usd(energy_kwh, energy_price)
+
     custom_means = custom_result.metric_means
     custom_stat_summaries = {
         key: compute_stats(_custom_stat_samples(key))
@@ -596,6 +662,8 @@ def run_single_benchmark(
         avg_tokens_per_second=sum(tps_list) / len(tps_list) if tps_list else 0,
         avg_gpu_utilization_pct=sum(gpu_utils) / len(gpu_utils) if gpu_utils else None,
         avg_gpu_memory_used_mb=sum(gpu_mems) / len(gpu_mems) if gpu_mems else None,
+        avg_gpu_power_w=avg_gpu_power_w,
+        gpu_power_stats=compute_stats(gpu_powers),
         ragas_faithfulness=ragas_means.get("faithfulness"),
         ragas_answer_relevancy=ragas_means.get("answer_relevancy"),
         ragas_answer_correctness=ragas_means.get("answer_correctness"),
@@ -633,6 +701,9 @@ def run_single_benchmark(
         avg_estimated_cost_per_answer_usd=(
             total_estimated_cost / len(priced_costs) if priced_costs else None
         ),
+        energy_kwh=energy_kwh,
+        host_energy_kwh=host_energy_kwh,
+        estimated_energy_cost_usd=estimated_energy_cost,
     )
 
 
