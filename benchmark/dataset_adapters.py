@@ -7,8 +7,16 @@ format consumed by the rest of the framework.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import os
+from dataclasses import dataclass, replace
 from typing import Any, Callable
+
+
+# Sentinel hf_id / key values that mark an adapter as env-driven. The loader
+# resolves these at call time from os.getenv so users can point at arbitrary
+# HuggingFace datasets without registering a dedicated adapter.
+ENV_HF_ID_SENTINEL = "__env__"
+ENV_KEY_SENTINEL = "__env_field__"
 
 
 @dataclass(frozen=True)
@@ -45,6 +53,38 @@ def get_adapter(name: str) -> DatasetAdapter:
             f"Available: {', '.join(sorted(REGISTRY))}"
         )
     return REGISTRY[name]
+
+
+def resolve_adapter(name: str) -> DatasetAdapter:
+    """Return the adapter for ``name``, resolving env-driven fields at call time.
+
+    Adapters whose ``hf_id`` is the ``ENV_HF_ID_SENTINEL`` mark themselves as
+    env-driven: their hf_id / question_key / ground_truth_key / split / subset
+    are read from environment variables so users can target arbitrary
+    HuggingFace datasets without registering a dedicated adapter.
+    """
+    adapter = get_adapter(name)
+    if adapter.hf_id != ENV_HF_ID_SENTINEL:
+        return adapter
+
+    hf_id = os.getenv("DATASET_HF_ID")
+    if not hf_id:
+        raise ValueError(
+            f"Adapter '{name}' is env-driven but DATASET_HF_ID is not set. "
+            f"Set it to a HuggingFace dataset id (e.g. 'hotpotqa/hotpot_qa')."
+        )
+
+    subset = os.getenv("DATASET_SUBSET", "").strip()
+    return replace(
+        adapter,
+        hf_id=hf_id,
+        question_key=os.getenv("DATASET_QUESTION_FIELD", adapter.question_key),
+        ground_truth_key=os.getenv(
+            "DATASET_GROUND_TRUTH_FIELD", adapter.ground_truth_key
+        ),
+        preferred_split=os.getenv("DATASET_SPLIT", adapter.preferred_split),
+        requires_subset=bool(subset),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -179,5 +219,89 @@ register(DatasetAdapter(
     build_context=_ragperf_wikipedia_nq_context,
     preferred_split="train",
     metadata_keys=(),
+    has_shared_corpus=True,
+))
+
+
+# ---------------------------------------------------------------------------
+# Env-driven generic adapters
+# ---------------------------------------------------------------------------
+# These let users target arbitrary HuggingFace datasets purely via .env vars
+# without registering a dedicated adapter. Set DATASET_NAME=hf-generic (or
+# multihop-generic) plus the DATASET_HF_ID / DATASET_*_FIELD / DATASET_SPLIT
+# variables documented in .env.example.
+
+
+def _hf_generic_context(row: dict) -> str:
+    """Flatten the column named by DATASET_CONTEXT_FIELD into a string.
+
+    Accepts str, list[str], or list[list[str]] (some HF datasets nest rows).
+    """
+    field = os.getenv("DATASET_CONTEXT_FIELD", "context")
+    raw = row.get(field, "")
+    if isinstance(raw, list):
+        parts = []
+        for item in raw:
+            if isinstance(item, list):
+                parts.append(" ".join(str(s) for s in item))
+            else:
+                parts.append(str(item))
+        return "\n\n".join(parts)
+    return str(raw) if raw else ""
+
+
+register(DatasetAdapter(
+    name="hf-generic",
+    hf_id=ENV_HF_ID_SENTINEL,
+    question_key=ENV_KEY_SENTINEL,
+    ground_truth_key=ENV_KEY_SENTINEL,
+    build_context=_hf_generic_context,
+    preferred_split="test",
+    metadata_keys=("id",),
+))
+
+
+def _multihop_context(row: dict) -> str:
+    """Flatten multi-hop context (list of titles or list[title, sentences])."""
+    ctx = row.get("context", "")
+    if isinstance(ctx, list):
+        parts = []
+        for item in ctx:
+            if isinstance(item, list):
+                parts.append(" ".join(str(s) for s in item))
+            elif isinstance(item, dict):
+                title = item.get("title") or item.get("paragraph_id") or ""
+                text = item.get("paragraph_text") or item.get("sentences") or ""
+                if isinstance(text, list):
+                    text = " ".join(str(s) for s in text)
+                parts.append(f"{title}\n{text}" if title else str(text))
+            else:
+                parts.append(str(item))
+        return "\n\n".join(parts)
+    return str(ctx) if ctx else ""
+
+
+def _multihop_ground_truth(raw: Any) -> str:
+    if isinstance(raw, list):
+        return " | ".join(str(x) for x in raw)
+    return str(raw)
+
+
+register(DatasetAdapter(
+    name="multihop-generic",
+    hf_id=ENV_HF_ID_SENTINEL,
+    question_key=ENV_KEY_SENTINEL,
+    ground_truth_key=ENV_KEY_SENTINEL,
+    build_context=_multihop_context,
+    ground_truth_transform=_multihop_ground_truth,
+    preferred_split="validation",
+    metadata_keys=(
+        "id",
+        "type",
+        "level",
+        "context",
+        "supporting_facts",
+        "supporting_contexts",
+    ),
     has_shared_corpus=True,
 ))

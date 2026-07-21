@@ -9,7 +9,7 @@ from typing import Any, Mapping
 from datasets import load_dataset
 from rich.console import Console
 
-from benchmark.dataset_adapters import get_adapter
+from benchmark.dataset_adapters import resolve_adapter
 
 console = Console()
 
@@ -99,7 +99,7 @@ def load_benchmark_data(
     context_field: str | None = None,
     metadata_field: str | None = None,
 ) -> list[dict]:
-    adapter = get_adapter(dataset_name)
+    adapter = resolve_adapter(dataset_name)
 
     if dataset_name in ("jsonl", "csv"):
         return _load_local_dataset(

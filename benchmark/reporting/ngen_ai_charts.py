@@ -105,10 +105,14 @@ def scan_data(results_dir: Path) -> pd.DataFrame:
 # ── 1. Model Comparison: Grouped Bar Chart ────────────────────────────────
 
 def plot_model_comparison(df: pd.DataFrame, out: Path) -> Path | None:
-    """Grouped bar chart: 4 key metrics x models (matches reference image style)."""
+    """Grouped bar chart: 3 generator-dependent metrics x models.
+
+    nDCG@5 dropped from per-model bars — generator-invariant by construction
+    (pure function of retrieved ctx + gold doc at fixed config). Drawn as
+    single horizontal reference line with the global mean across all runs.
+    """
     metrics = [
         ("ragas_faithfulness", "Faithfulness"),
-        ("custom_ndcg_at_5", "nDCG@5"),
         ("custom_bert_score_f1", "BERTScore F1"),
         ("custom_meteor", "METEOR"),
     ]
@@ -121,6 +125,14 @@ def plot_model_comparison(df: pd.DataFrame, out: Path) -> Path | None:
     n_models = len(models)
     bar_width = 0.15
     x = np.arange(n_metrics)
+
+    # Generator-invariant retrieval metric: single global mean over all runs.
+    ndcg_col = "custom_ndcg_at_5"
+    ndcg_global = None
+    if ndcg_col in df.columns:
+        ndcg_series = df[ndcg_col].dropna()
+        if len(ndcg_series) > 0:
+            ndcg_global = float(ndcg_series.mean())
 
     with plt.rc_context(_paper_rc()):
         fig, ax = plt.subplots(figsize=(7, 3.2))
@@ -157,13 +169,22 @@ def plot_model_comparison(df: pd.DataFrame, out: Path) -> Path | None:
                             f"{v:.2f}", ha="center", va="bottom",
                             fontsize=6, fontweight="bold", rotation=0)
 
+        # Generator-invariant nDCG@5 reference line.
+        if ndcg_global is not None:
+            ax.axhline(ndcg_global, color="#444444", linestyle=":",
+                       linewidth=1.0, zorder=1)
+            ax.text(n_metrics - 0.5, ndcg_global + 0.015,
+                    f"nDCG@5 = {ndcg_global:.2f} (all runs, generator-invariant)",
+                    ha="right", va="bottom", fontsize=6, color="#444444",
+                    style="italic")
+
         ax.set_xticks(x)
         ax.set_xticklabels([l for _, l in metrics])
         ax.set_ylim(0, 1.08)
         ax.set_ylabel("Score")
         ax.yaxis.set_major_locator(mticker.MultipleLocator(0.2))
         ax.legend(loc="upper right", ncol=3, columnspacing=1)
-        ax.set_title("RQ1: Model Comparison Across Key Metrics")
+        ax.set_title("RQ1: Model Comparison Across Generator-Dependent Metrics")
 
     return _save(fig, out / "fig_model_comparison")
 
