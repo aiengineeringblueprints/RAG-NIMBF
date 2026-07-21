@@ -200,6 +200,7 @@ def load_corpus_and_questions(
         ctx_key = _context_text(ctx)
         if ctx_key not in seen:
             doc_id = _stable_doc_id(dataset_name, ctx_key, len(corpus))
+            seen[ctx_key] = doc_id
             corpus.append({
                 "context": ctx,
                 "metadata": _chroma_safe_metadata({

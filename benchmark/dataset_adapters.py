@@ -262,8 +262,25 @@ register(DatasetAdapter(
 
 
 def _multihop_context(row: dict) -> str:
-    """Flatten multi-hop context (list of titles or list[title, sentences])."""
+    """Flatten multi-hop context into a single string.
+
+    Handles three HF schemas:
+      - ``list[list[str]]``  — list of paragraphs, each a sentence list
+      - ``list[dict]``       — each dict has ``title`` + ``sentences``/``paragraph_text``
+      - ``dict``             — HotpotQA form: ``{'title': [...], 'sentences': [[...]]}``
+    """
     ctx = row.get("context", "")
+    if isinstance(ctx, dict):
+        titles = ctx.get("title") or []
+        sents = ctx.get("sentences") or []
+        if isinstance(titles, list) and isinstance(sents, list):
+            parts = []
+            for title, paragraph in zip(titles, sents):
+                if isinstance(paragraph, list):
+                    paragraph = " ".join(str(s) for s in paragraph)
+                parts.append(f"{title}\n{paragraph}" if title else str(paragraph))
+            return "\n\n".join(parts)
+        return str(ctx) if ctx else ""
     if isinstance(ctx, list):
         parts = []
         for item in ctx:
