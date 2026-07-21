@@ -68,9 +68,9 @@ class EnterpriseRagAdapter:
         data: list[dict],
         corpus: list[dict] | None = None,
     ) -> None:
-        from chain.load_chain import load_chain
-        from chain.prompts.promt_manager import PromptKey
-        from chain.retriever import create_retriever
+        from Enterprise_RAG_Blueprint.chain.load_chain import load_chain
+        from Enterprise_RAG_Blueprint.chain.prompts.promt_manager import PromptKey
+        from Enterprise_RAG_Blueprint.chain.retriever import create_retriever
 
         self._replace_blueprint_index(config, data=data, corpus=corpus)
 

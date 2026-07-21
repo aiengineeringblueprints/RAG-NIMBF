@@ -374,6 +374,7 @@ def run_single_benchmark(
     all_contexts: list[list[str]] = []
     all_retrieved_metadata: list[list[dict]] = []
     gold_doc_ids: list[str | None] = []
+    all_sample_metadata: list[dict] = []
     gen_results: list[GenerationResult] = []
 
     for i, sample in enumerate(data):
@@ -439,6 +440,7 @@ def run_single_benchmark(
             if config.retrieval_mode == "retrieval"
             else None
         )
+        all_sample_metadata.append(sample.get("metadata", {}) or {})
         gen_results.append(result)
 
         # Stream QA pair to log file after each answer
@@ -521,6 +523,7 @@ def run_single_benchmark(
                     custom_result,
                     gold_doc_ids,
                     all_retrieved_metadata,
+                    sample_metadata=all_sample_metadata,
                 )
         if custom_result.error:
             console.print(f"  [yellow]Custom metrics error: {custom_result.error}[/yellow]")
@@ -711,10 +714,12 @@ def _with_gold_doc_retrieval_metrics(
     custom_result: CustomMetricsResult,
     gold_doc_ids: list[str | None],
     retrieved_metadata: list[list[dict]],
+    sample_metadata: list[dict] | None = None,
 ) -> CustomMetricsResult:
     gold_result = compute_gold_doc_retrieval_metrics(
         gold_doc_ids,
         retrieved_metadata,
+        sample_metadata=sample_metadata,
     )
     metric_means = dict(custom_result.metric_means)
     metric_means.update(gold_result.metric_means)
@@ -775,8 +780,8 @@ def run_all_benchmarks() -> list[BenchmarkResultExtended]:
     # Load data — use shared corpus for datasets that support it
     load_stage: dict[str, float] = {}
     with _stage_timer(load_stage, "load_data"):
-        from benchmark.dataset_adapters import get_adapter
-        adapter = get_adapter(configs[0].dataset_name)
+        from benchmark.dataset_adapters import resolve_adapter
+        adapter = resolve_adapter(configs[0].dataset_name)
         corpus: list[dict] | None = None
         if adapter.has_shared_corpus:
             corpus, data = load_corpus_and_questions(

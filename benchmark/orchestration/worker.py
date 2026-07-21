@@ -226,12 +226,12 @@ def config_result_path(run_dir: Path, config: BenchmarkConfig) -> Path:
 
 def _load_data_once(config: BenchmarkConfig) -> tuple[list[dict], list[dict] | None, float]:
     from benchmark.dataset import load_benchmark_data, load_corpus_and_questions
-    from benchmark.dataset_adapters import get_adapter
+    from benchmark.dataset_adapters import resolve_adapter
     from main import _stage_timer
 
     load_stage: dict[str, float] = {}
     with _stage_timer(load_stage, "load_data"):
-        adapter = get_adapter(config.dataset_name)
+        adapter = resolve_adapter(config.dataset_name)
         if adapter.has_shared_corpus:
             corpus, data = load_corpus_and_questions(
                 dataset_name=config.dataset_name,
