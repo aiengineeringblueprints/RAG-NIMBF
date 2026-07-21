@@ -50,12 +50,17 @@ def get_chunker(strategy: str, chunk_size: int, chunk_overlap: int, **kwargs):
 
 @mlflow.trace(name="chunk_documents", span_type="func")
 def chunk_documents(chunker, documents: list[dict], min_chunk_length: int = 50) -> list[Document]:
+    from benchmark.dataset import _chroma_safe_metadata
+
     docs = []
     for doc in documents:
         context = doc["context"]
         if isinstance(context, list):
             context = "\n".join(str(c) for c in context)
-        docs.append(Document(page_content=context, metadata=doc.get("metadata", {})))
+        docs.append(Document(
+            page_content=context,
+            metadata=_chroma_safe_metadata(doc.get("metadata", {}) or {}),
+        ))
 
     chunks = chunker.split_documents(docs)
     # Filter out near-empty fragments (bibliography lines, citations, etc.)
