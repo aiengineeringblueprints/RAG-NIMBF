@@ -200,13 +200,12 @@ def load_corpus_and_questions(
         ctx_key = _context_text(ctx)
         if ctx_key not in seen:
             doc_id = _stable_doc_id(dataset_name, ctx_key, len(corpus))
-            seen[ctx_key] = doc_id
             corpus.append({
                 "context": ctx,
-                "metadata": {
+                "metadata": _chroma_safe_metadata({
                     **sample.get("metadata", {}),
                     "doc_id": doc_id,
-                },
+                }),
             })
         sample["metadata"] = {
             **sample.get("metadata", {}),
@@ -306,6 +305,32 @@ def _context_text(context: str | list[str]) -> str:
     if isinstance(context, list):
         return "\n".join(context)
     return context
+
+
+_CHROMA_PRIMITIVES = (str, int, float, bool)
+
+
+def _chroma_safe_metadata(metadata: Mapping[str, Any]) -> dict[str, Any]:
+    """Coerce metadata values into Chroma's accepted types.
+
+    Chroma only stores str/int/float/bool/None and lists of those. Multi-hop
+    datasets stash rich structures (raw ``context`` dicts, ``supporting_facts``
+    nested lists) in sample metadata for downstream gold-scoring. Serialise
+    anything richer to a JSON string so Chroma's upsert accepts it. Downstream
+    readers recover the original via ``json.loads``.
+    """
+    safe: dict[str, Any] = {}
+    for key, value in metadata.items():
+        if value is None or isinstance(value, _CHROMA_PRIMITIVES):
+            safe[key] = value
+            continue
+        if isinstance(value, list) and all(
+            item is None or isinstance(item, _CHROMA_PRIMITIVES) for item in value
+        ):
+            safe[key] = value
+            continue
+        safe[key] = json.dumps(value, ensure_ascii=False)
+    return safe
 
 
 def _stable_doc_id(dataset_name: str, context: str, index: int) -> str:
