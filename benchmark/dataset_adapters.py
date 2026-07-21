@@ -320,5 +320,5 @@ register(DatasetAdapter(
         "supporting_facts",
         "supporting_contexts",
     ),
-    has_shared_corpus=True,
+    has_shared_corpus=False,
 ))
