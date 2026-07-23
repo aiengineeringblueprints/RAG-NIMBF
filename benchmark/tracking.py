@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import math
 import os
 from pathlib import Path
 from typing import Any
@@ -390,28 +391,52 @@ def _log_classic_retriever_metrics(result: BenchmarkResultExtended) -> None:
         return
 
     try:
-        import pandas as pd
-        from mlflow.metrics import ndcg_at_k, precision_at_k, recall_at_k
-
         k = result.retrieval_top_k or max(len(row["retrieved_doc_ids"]) for row in rows)
-        eval_result = mlflow.evaluate(
-            data=pd.DataFrame(rows),
-            predictions="retrieved_doc_ids",
-            targets="ground_truth_doc_ids",
-            extra_metrics=[
-                precision_at_k(k),
-                recall_at_k(k),
-                ndcg_at_k(k),
-            ],
-        )
+        metric_values = _classic_retriever_metric_means(rows, k)
+        mlflow.log_metrics(metric_values)
         mlflow.set_tag("mlflow_classic_retriever_metrics", "logged")
         logger.info(
             "Logged classic retriever metrics: %s metrics",
-            len(eval_result.metrics),
+            len(metric_values),
         )
     except Exception as exc:
         mlflow.set_tag("mlflow_classic_retriever_metrics", "failed")
         logger.warning("Classic MLflow retriever metrics failed (non-fatal): %s", exc)
+
+
+def _classic_retriever_metric_means(rows: list[dict[str, Any]], k: int) -> dict[str, float]:
+    """Compute retrieval metrics without MLflow's deprecated evaluator API."""
+    if k <= 0:
+        raise ValueError("k must be positive for retriever metrics")
+
+    precision_scores: list[float] = []
+    recall_scores: list[float] = []
+    ndcg_scores: list[float] = []
+
+    for row in rows:
+        retrieved = [str(doc_id) for doc_id in row["retrieved_doc_ids"][:k]]
+        targets = {str(doc_id) for doc_id in row["ground_truth_doc_ids"]}
+        if not targets:
+            continue
+
+        hits = [1.0 if doc_id in targets else 0.0 for doc_id in retrieved]
+        hit_count = sum(hits)
+        precision_scores.append(hit_count / k)
+        recall_scores.append(hit_count / len(targets))
+
+        dcg = sum(hit / math.log2(rank + 2) for rank, hit in enumerate(hits))
+        ideal_hits = min(len(targets), k)
+        idcg = sum(1.0 / math.log2(rank + 2) for rank in range(ideal_hits))
+        ndcg_scores.append(dcg / idcg if idcg else 0.0)
+
+    def mean(values: list[float]) -> float:
+        return sum(values) / len(values) if values else 0.0
+
+    return {
+        f"classic_precision_at_{k}": mean(precision_scores),
+        f"classic_recall_at_{k}": mean(recall_scores),
+        f"classic_ndcg_at_{k}": mean(ndcg_scores),
+    }
 
 
 def _log_genai_rag_judges(result: BenchmarkResultExtended) -> None:
