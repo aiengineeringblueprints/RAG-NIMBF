@@ -106,6 +106,12 @@ class BenchmarkConfig:
     rag_http_headers: str | None = None
     rag_http_auth_header: str | None = None
     rag_http_auth_value: str | None = None
+    # Optional load test of the selected generator LLM
+    llm_performance_enabled: bool = False
+    llm_performance_call_counts: tuple[int, ...] = (1, 3, 6, 10)
+    llm_performance_warmup: bool = True
+    llm_performance_timeout_seconds: float = 60.0
+    llm_performance_source: str = "generation"  # generation | load_test
 
     @property
     def name(self) -> str:
@@ -416,6 +422,30 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
     if rag_system_adapter == "http" and not rag_http_endpoint_url:
         raise ValueError("RAG_HTTP_ENDPOINT_URL is required when RAG_SYSTEM_ADAPTER=http")
 
+    # Integrated LLM load/performance benchmark
+    llm_performance_enabled = _env_bool("LLM_PERFORMANCE_ENABLED", False)
+    llm_performance_call_counts = tuple(
+        _parse_int_list(
+            os.getenv("LLM_PERFORMANCE_CALL_COUNTS", "1,3,6,10"),
+            "LLM_PERFORMANCE_CALL_COUNTS",
+        )
+    )
+    llm_performance_warmup = _env_bool("LLM_PERFORMANCE_WARMUP", True)
+    llm_performance_timeout_seconds = float(
+        os.getenv("LLM_PERFORMANCE_TIMEOUT_SECONDS", "60")
+    )
+    llm_performance_source = os.getenv(
+        "LLM_PERFORMANCE_SOURCE", "generation"
+    ).strip().lower()
+    if llm_performance_source not in ("generation", "load_test"):
+        raise ValueError(
+            "LLM_PERFORMANCE_SOURCE must be 'generation' or 'load_test'"
+        )
+    for count in llm_performance_call_counts:
+        _validate_positive_int(count, "LLM_PERFORMANCE_CALL_COUNTS value")
+    if llm_performance_timeout_seconds <= 0:
+        raise ValueError("LLM_PERFORMANCE_TIMEOUT_SECONDS must be positive")
+
     # Validate integer values
     for cs in chunk_sizes:
         _validate_positive_int(cs, "CHUNK_SIZES value")
@@ -520,6 +550,11 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
                     rag_http_headers=rag_http_headers,
                     rag_http_auth_header=rag_http_auth_header,
                     rag_http_auth_value=rag_http_auth_value,
+                    llm_performance_enabled=llm_performance_enabled,
+                    llm_performance_call_counts=llm_performance_call_counts,
+                    llm_performance_warmup=llm_performance_warmup,
+                    llm_performance_timeout_seconds=llm_performance_timeout_seconds,
+                    llm_performance_source=llm_performance_source,
                 )
             )
     return configs

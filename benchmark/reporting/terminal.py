@@ -84,6 +84,7 @@ def display_report(
 
     # --- Performance Metrics Table ---
     _display_performance_table(results, rankings)
+    _display_llm_load_table(results)
 
     # --- RAGAS Scores Table ---
     _display_ragas_table(results, rankings)
@@ -165,6 +166,62 @@ def _display_performance_table(results: list[BenchmarkResultExtended], rankings:
             style=row_style or None,
         )
 
+    console.print(table)
+
+
+def _display_llm_load_table(results: list[BenchmarkResultExtended]) -> None:
+    """Show the highest configured concurrency profile for each unique LLM."""
+    with_metrics = [r for r in results if r.llm_performance_metrics]
+    if not with_metrics:
+        return
+
+    table = Table(title="Integrated LLM Load Test", show_lines=True)
+    table.add_column("LLM / Config", style="cyan")
+    table.add_column("Source")
+    table.add_column("Calls", justify="right")
+    table.add_column("Seq P95 (s)", justify="right")
+    table.add_column("Par P95 (s)", justify="right")
+    table.add_column("Par req/s", justify="right")
+    table.add_column("Par tok/s", justify="right")
+    table.add_column("Speedup", justify="right")
+    table.add_column("Success", justify="right")
+
+    seen: set[tuple[str, int]] = set()
+    for result in with_metrics:
+        metrics = result.llm_performance_metrics or {}
+        if "generation_actual_calls" in metrics:
+            count = int(metrics["generation_actual_calls"])
+            prefix = "generation"
+            source = "RAG generation"
+            label = f"{result.llm_model}\n{result.config_name}"
+            identity = (result.config_name, count)
+        else:
+            counts = [
+                int(key[1:].split("_", 1)[0])
+                for key in metrics
+                if key.startswith("n") and key.endswith("_actual_calls")
+            ]
+            if not counts:
+                continue
+            count = max(counts)
+            prefix = f"n{count}"
+            source = "Load test"
+            label = result.llm_model
+            identity = (result.llm_model, count)
+        if identity in seen:
+            continue
+        seen.add(identity)
+        table.add_row(
+            label,
+            source,
+            str(int(metrics.get(f"{prefix}_actual_calls", count))),
+            _fmt(metrics.get(f"{prefix}_sequential_latency_p95_s")),
+            _fmt(metrics.get(f"{prefix}_parallel_latency_p95_s")),
+            _fmt(metrics.get(f"{prefix}_parallel_request_throughput_rps"), ".2f"),
+            _fmt(metrics.get(f"{prefix}_parallel_output_tokens_per_s"), ".1f"),
+            _fmt(metrics.get(f"{prefix}_speedup"), ".2f"),
+            _fmt(metrics.get(f"{prefix}_parallel_success_rate"), ".1%"),
+        )
     console.print(table)
 
 

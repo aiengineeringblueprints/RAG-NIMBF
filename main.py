@@ -45,6 +45,13 @@ from benchmark.resource_monitor import (
     gpu_index_from_env as resource_monitor_gpu_index,
     interval_from_env as resource_monitor_interval,
 )
+from benchmark.llm_performance import (
+    LLMPerformanceResult,
+    performance_from_generation,
+    performance_cache_key,
+    run_llm_performance_benchmark,
+    save_llm_performance_result,
+)
 from benchmark.reporting.models import (
     BenchmarkResultExtended,
     PerSampleResult,
@@ -818,6 +825,7 @@ def run_all_benchmarks() -> list[BenchmarkResultExtended]:
     # requests serially. Parallel execution causes GPU memory thrashing,
     # request queuing, and timeouts that produce *lower* throughput.
     results: list[BenchmarkResultExtended] = []
+    llm_performance_cache: dict[tuple, tuple[LLMPerformanceResult, Path]] = {}
     parent_context = mlflow.start_run(
         run_name=f"benchmark_env_matrix_{run_dir.name}",
         tags={
@@ -861,6 +869,86 @@ def run_all_benchmarks() -> list[BenchmarkResultExtended]:
                     )
                 console.print(f"[dim]  Resource trace: {monitor.trace_path}[/dim]")
 
+            if (
+                config.llm_performance_enabled
+                and config.benchmark_stage != "index"
+                and config.rag_system_adapter == "internal"
+            ):
+                if config.llm_performance_source == "generation":
+                    console.print(
+                        "  [bold magenta]LLM performance:[/bold magenta] "
+                        "reusing measured RAG answer-generation calls"
+                    )
+                    perf_result = performance_from_generation(
+                        config,
+                        result.per_sample,
+                        generation_wall_s=(result.stage_timings or {}).get("generate"),
+                    )
+                    perf_path = save_llm_performance_result(
+                        perf_result,
+                        run_dir / "llm_performance",
+                        label=config.name,
+                    )
+                    console.print(
+                        f"  [dim]Generation performance metrics: {perf_path}[/dim]"
+                    )
+                else:
+                    perf_key = performance_cache_key(config)
+                    cached = llm_performance_cache.get(perf_key)
+                    if cached is None:
+                        console.print(
+                            f"  [bold magenta]LLM load test:[/bold magenta] "
+                            f"{config.llm_model} at "
+                            f"{config.llm_performance_call_counts}"
+                        )
+                        perf_result = run_llm_performance_benchmark(
+                            config,
+                            [str(sample["question"]) for sample in data],
+                        )
+                        perf_path = save_llm_performance_result(
+                            perf_result,
+                            run_dir / "llm_performance",
+                        )
+                        cached = (perf_result, perf_path)
+                        llm_performance_cache[perf_key] = cached
+                        if perf_result.error:
+                            console.print(
+                                f"  [yellow]LLM load test incomplete: "
+                                f"{perf_result.error}[/yellow]"
+                            )
+                        else:
+                            console.print(
+                                f"  [dim]LLM load metrics: {perf_path}[/dim]"
+                            )
+                    else:
+                        console.print(
+                            f"  [dim]Reusing LLM load metrics for "
+                            f"{config.llm_model}[/dim]"
+                        )
+
+                    perf_result, perf_path = cached
+                result = replace(
+                    result,
+                    llm_performance_metrics=perf_result.metrics or None,
+                    llm_performance_artifact=str(perf_path),
+                    llm_performance_error=perf_result.error,
+                )
+            elif config.llm_performance_enabled and config.benchmark_stage == "index":
+                result = replace(
+                    result,
+                    llm_performance_error=(
+                        "Skipped for benchmark_stage=index because that stage does "
+                        "not exercise the generator LLM."
+                    ),
+                )
+            elif config.llm_performance_enabled and config.rag_system_adapter != "internal":
+                result = replace(
+                    result,
+                    llm_performance_error=(
+                        "Skipped for external RAG adapter because its configured "
+                        "generator endpoint is not guaranteed to be the RAG service LLM."
+                    ),
+                )
 
             try:
                 log_benchmark_run(

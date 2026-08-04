@@ -224,6 +224,13 @@ class TestBenchmarkConfig:
         cfg = _make_config()
         assert cfg.rag_adapter_accepts == ""
 
+    def test_llm_performance_defaults(self):
+        cfg = _make_config()
+        assert cfg.llm_performance_enabled is False
+        assert cfg.llm_performance_call_counts == (1, 3, 6, 10)
+        assert cfg.llm_performance_warmup is True
+        assert cfg.llm_performance_source == "generation"
+
 
 class TestChunkParameterPairs:
     def test_semantic_ignores_size_and_overlap_grid(self):

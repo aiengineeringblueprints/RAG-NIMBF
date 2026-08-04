@@ -225,16 +225,26 @@ def _coerce_field_value(key: str, value: Any) -> Any:
         "dataset_sample_size",
         "eval_critic_max_tokens",
         "semantic_breakpoint_amount",
+        "llm_performance_call_counts",
     }:
+        if key == "llm_performance_call_counts":
+            values = value if isinstance(value, (list, tuple)) else str(value).split(",")
+            return tuple(int(item) for item in values)
         return None if value is None else int(value)
     if key in {
         "retrieval_use_hyde",
         "llm_answer_value_fallback",
         "ragas_enabled",
         "custom_metrics_enabled",
+        "llm_performance_enabled",
+        "llm_performance_warmup",
     }:
         return _to_bool(value)
-    if key in {"retrieval_mmr_lambda", "rag_http_timeout_seconds"}:
+    if key in {
+        "retrieval_mmr_lambda",
+        "rag_http_timeout_seconds",
+        "llm_performance_timeout_seconds",
+    }:
         return float(value)
     if key in {
         "reranker_model",
@@ -258,6 +268,7 @@ def _coerce_field_value(key: str, value: Any) -> Any:
         "vector_db_backend",
         "rag_system_adapter",
         "llm_answer_strip_mode",
+        "llm_performance_source",
     }:
         return str(value).lower()
     if key == "dataset_subset":
