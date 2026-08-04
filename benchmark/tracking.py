@@ -229,6 +229,11 @@ def log_benchmark_run(
         for key, value in result.stage_timings.items():
             metrics[f"stage_{key}_seconds"] = value
 
+    if result.llm_performance_metrics:
+        for key, value in result.llm_performance_metrics.items():
+            if math.isfinite(value):
+                metrics[f"llm_perf_{key}"] = value
+
     # RAGAS mean metrics
     for key, value in [
         ("ragas_faithfulness", result.ragas_faithfulness),
@@ -295,6 +300,12 @@ def log_benchmark_run(
 
         if result.evaluation_error:
             mlflow.set_tag("evaluation_error", result.evaluation_error)
+        if result.llm_performance_error:
+            mlflow.set_tag("llm_performance_error", result.llm_performance_error[:5000])
+        if result.llm_performance_artifact:
+            artifact_path = Path(result.llm_performance_artifact)
+            if artifact_path.exists():
+                mlflow.log_artifact(str(artifact_path), artifact_path="llm_performance")
 
         _log_classic_retriever_metrics(result)
         _log_genai_rag_judges(result)

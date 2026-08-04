@@ -47,6 +47,9 @@ def _result_to_dict(r: BenchmarkResultExtended) -> dict:
     d["total_tokens"] = r.total_tokens
     d["total_estimated_cost_usd"] = r.total_estimated_cost_usd
     d["avg_estimated_cost_per_answer_usd"] = r.avg_estimated_cost_per_answer_usd
+    d["llm_performance_metrics"] = r.llm_performance_metrics or {}
+    d["llm_performance_artifact"] = r.llm_performance_artifact
+    d["llm_performance_error"] = r.llm_performance_error
 
     # Stats summary (quality metrics only)
     d["stats"] = {
@@ -150,7 +153,12 @@ def save_csv_report(
             "total_tokens": r.total_tokens,
             "total_estimated_cost_usd": r.total_estimated_cost_usd,
             "avg_estimated_cost_per_answer_usd": r.avg_estimated_cost_per_answer_usd,
+            "llm_performance_artifact": r.llm_performance_artifact,
+            "llm_performance_error": r.llm_performance_error,
         }
+        if r.llm_performance_metrics:
+            for key, val in r.llm_performance_metrics.items():
+                row[f"llm_perf_{key}"] = val
         if r.stage_timings:
             for key, val in r.stage_timings.items():
                 row[f"stage_{key}_seconds"] = val

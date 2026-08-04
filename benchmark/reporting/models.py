@@ -94,6 +94,9 @@ class BenchmarkResultExtended:
     energy_kwh: float | None = None
     host_energy_kwh: float | None = None
     estimated_energy_cost_usd: float | None = None
+    llm_performance_metrics: dict[str, float] | None = None
+    llm_performance_artifact: str | None = None
+    llm_performance_error: str | None = None
 
 
 @dataclass(frozen=True)
