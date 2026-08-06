@@ -1,0 +1,98 @@
+{
+  "model": "qwen2.5:0.5b",
+  "provider": "ollama",
+  "base_url": "http://localhost:11434",
+  "max_tokens": 128,
+  "call_counts": [
+    5
+  ],
+  "metrics": {
+    "generation_sequential_calls": 5.0,
+    "generation_sequential_success_rate": 1.0,
+    "generation_sequential_wall_s": 57.6802532170002,
+    "generation_sequential_request_throughput_rps": 0.08668477895180844,
+    "generation_sequential_output_tokens_per_s": 1.6827357399140994,
+    "generation_sequential_latency_mean_s": 11.528845284399996,
+    "generation_sequential_latency_median_s": 0.18781002300011096,
+    "generation_sequential_latency_p95_s": 56.81611387099997,
+    "generation_sequential_latency_std_s": 25.31654603834959,
+    "generation_sequential_ttft_mean_s": 11.433225085599997,
+    "generation_sequential_ttft_p95_s": 56.7211012759999,
+    "generation_sequential_tpot_mean_s": 0.004958851037493635,
+    "generation_actual_calls": 5.0,
+    "generation_tpot_is_estimated": 1.0
+  },
+  "calls": [
+    {
+      "source": "rag_generation",
+      "mode": "sequential",
+      "call_index": 0,
+      "latency_s": 56.81611387099997,
+      "success": true,
+      "tokens_in": 383,
+      "tokens_out": 17,
+      "ttft_s": 56.7211012759999,
+      "tpot_s": 0.005938287187504443,
+      "itl_p50_s": null,
+      "itl_p95_s": null,
+      "error": null
+    },
+    {
+      "source": "rag_generation",
+      "mode": "sequential",
+      "call_index": 1,
+      "latency_s": 0.37305019599989464,
+      "success": true,
+      "tokens_in": 341,
+      "tokens_out": 49,
+      "ttft_s": 0.11749175499994635,
+      "tpot_s": 0.005324134187498923,
+      "itl_p50_s": null,
+      "itl_p95_s": null,
+      "error": null
+    },
+    {
+      "source": "rag_generation",
+      "mode": "sequential",
+      "call_index": 2,
+      "latency_s": 0.18781002300011096,
+      "success": true,
+      "tokens_in": 361,
+      "tokens_out": 17,
+      "ttft_s": 0.11380267399999866,
+      "tpot_s": 0.004625459312507019,
+      "itl_p50_s": null,
+      "itl_p95_s": null,
+      "error": null
+    },
+    {
+      "source": "rag_generation",
+      "mode": "sequential",
+      "call_index": 3,
+      "latency_s": 0.14837142400006087,
+      "success": true,
+      "tokens_in": 311,
+      "tokens_out": 9,
+      "ttft_s": 0.11257720200001131,
+      "tpot_s": 0.004474277750006195,
+      "itl_p50_s": null,
+      "itl_p95_s": null,
+      "error": null
+    },
+    {
+      "source": "rag_generation",
+      "mode": "sequential",
+      "call_index": 4,
+      "latency_s": 0.11888090799993734,
+      "success": true,
+      "tokens_in": 278,
+      "tokens_out": 5,
+      "ttft_s": 0.10115252100013095,
+      "tpot_s": 0.004432096749951597,
+      "itl_p50_s": null,
+      "itl_p95_s": null,
+      "error": null
+    }
+  ],
+  "error": null
+}

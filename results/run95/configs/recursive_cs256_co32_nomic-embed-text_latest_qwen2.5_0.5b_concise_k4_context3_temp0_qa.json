@@ -1,0 +1,37 @@
+[
+  {
+    "index": 0,
+    "question": "What are both IFV and RSV infections shown to do?",
+    "answer": "Both RSV and IFV infections show the potential for inducing RLRs.",
+    "raw_content": "Both RSV and IFV infections show the potential for inducing RLRs.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 1,
+    "question": "What were the differences in immune responses?",
+    "answer": "The unpaired Student's t-test was used to determine if the differences in influenza-specific responses observed between groups of mice were significant. A p value of p < 0.05 was considered significant. Spearman correlation analysis was performed.",
+    "raw_content": "The unpaired Student's t-test was used to determine if the differences in influenza-specific responses observed between groups of mice were significant. A p value of p < 0.05 was considered significant. Spearman correlation analysis was performed.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 2,
+    "question": "What is a conclusion of this report?",
+    "answer": "The conclusion of this report is that RSV infection can induce RLRs.",
+    "raw_content": "The conclusion of this report is that RSV infection can induce RLRs.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 3,
+    "question": "What reduces the antimicrobial activities of alveolar macrophages?",
+    "answer": "Immunoproteasome dysfunction.",
+    "raw_content": "Immunoproteasome dysfunction.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 4,
+    "question": "How may this \"Achilles Heel\" be safely targeted?",
+    "answer": "Calcitonin.",
+    "raw_content": "Calcitonin.",
+    "raw_reasoning": null
+  }
+]

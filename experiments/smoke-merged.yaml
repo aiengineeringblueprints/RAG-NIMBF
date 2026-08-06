@@ -1,0 +1,37 @@
+experiment_name: smoke-merged-features
+
+dataset:
+  name: ragbench_covidqa
+  split: test
+  max_examples: 5
+
+settings:
+  rag_system_adapter: internal
+  ingestion_method: naive
+  ingestion_options_json:
+    chunk_token_num: 256
+  retrieval_mode: retrieval
+  retrieval_top_k: 4
+  generation_context_k: 3
+  max_new_tokens: 128
+  prompt_template: concise
+  generation_temperature: 0.0
+  custom_retrieval_metrics_mode: gold_doc
+  ragas_enabled: false
+  custom_metrics_enabled: false
+  trace_metrics_enabled: true
+  vector_db_backend: chroma
+
+matrix:
+  llm_models:
+    - ollama:qwen2.5:0.5b
+  embedding_models:
+    - nomic-embed-text:latest
+  chunking_strategies:
+    - recursive
+  chunk_sizes:
+    - 256
+  chunk_overlaps:
+    - 32
+  reranker_models:
+    - null
