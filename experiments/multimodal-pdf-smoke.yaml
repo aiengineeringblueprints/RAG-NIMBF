@@ -1,0 +1,40 @@
+# Multi-modal PDF smoke test (RAGPerf §3.3.1 / §4.1).
+#
+# Two ingestion paths are supported for PDF corpora:
+#   1. OCR path  : Docling -> per-page text -> standard text pipeline
+#   2. Visual path: ColPali -> multi-vector embeddings -> ColBERT max-sim
+#
+# This manifest exercises path #1 (Docling OCR). Path #2 (ColPali) requires
+# the optional `colpali-engine` dep — see NOTES_G_Multimodal.md.
+#
+# Install the optional dep before running:
+#   pip install docling
+#
+# Run:
+#   BENCHMARK_CONFIG_FILE=experiments/multimodal-pdf-smoke.yaml python main.py
+
+experiment_name: multimodal-pdf-smoke
+
+dataset:
+  name: jsonl                       # any local dataset adapter for the QA pairs
+  path: ./datasets/sample_pdfs/questions.jsonl
+  corpus_path: ./datasets/sample_pdfs
+  corpus_type: pdf                  # text | pdf | image | audio
+
+chunking:
+  strategy: pdf_ocr_docling         # registered multimodal chunker
+  # size/overlap are ignored at ingestion time; Docling produces one chunk
+  # per page. The OCR output is re-chunked by the markdown splitter before
+  # embedding, using the env defaults (CHUNK_SIZES / CHUNK_OVERLAPS).
+
+settings:
+  multimodal_backend: docling       # docling | colpali (colpali = visual path)
+  ragas_enabled: false              # turn off for smoke runs without a judge LLM
+  custom_metrics_enabled: false
+  vector_db_backend: chroma
+  retrieval_top_k: 5
+
+matrix:
+  llm_models: ["openai:gpt-4o-mini"]
+  embedding_models: ["nomic-embed-text:latest"]
+  prompt_templates: ["concise"]

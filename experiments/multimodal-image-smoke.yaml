@@ -1,0 +1,32 @@
+# Multi-modal image smoke test (RAGPerf §3.3.1).
+#
+# Docling OCR -> per-image text -> standard text pipeline.
+# Requires the optional `docling` dep.
+#
+#   pip install docling
+#
+# Run:
+#   BENCHMARK_CONFIG_FILE=experiments/multimodal-image-smoke.yaml python main.py
+
+experiment_name: multimodal-image-smoke
+
+dataset:
+  name: jsonl
+  path: ./datasets/sample_images/questions.jsonl
+  corpus_path: ./datasets/sample_images
+  corpus_type: image
+
+chunking:
+  strategy: image_ocr_docling
+
+settings:
+  multimodal_backend: docling
+  ragas_enabled: false
+  custom_metrics_enabled: false
+  vector_db_backend: chroma
+  retrieval_top_k: 5
+
+matrix:
+  llm_models: ["openai:gpt-4o-mini"]
+  embedding_models: ["nomic-embed-text:latest"]
+  prompt_templates: ["concise"]
