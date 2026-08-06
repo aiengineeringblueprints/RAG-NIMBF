@@ -100,6 +100,12 @@ class BenchmarkConfig:
     ragas_enabled: bool = True
     custom_metrics_enabled: bool = True
     trace_metrics_enabled: bool = False
+    # Evaluator selection: "ragas" (default, LLM-judge), "roberta_trace"
+    # (finetuned RoBERTa-TRACe classifier), or "both" (run side-by-side).
+    evaluator: str = "ragas"
+    roberta_trace_model_path: str | None = None
+    roberta_trace_model_hub_id: str | None = None
+    roberta_trace_device: str = "cpu"
     # Prompt template
     prompt_template: str = "concise"
     # Reranker
@@ -665,6 +671,23 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
     custom_metrics_enabled = _env_bool("CUSTOM_METRICS_ENABLED", True)
     trace_metrics_enabled = _env_bool("TRACE_METRICS_ENABLED", False)
 
+    # Evaluator selection: ragas | roberta_trace | both. When roberta_trace
+    # or both, the RoBERTa-TRACe classifier replaces (or runs alongside)
+    # the Ragas LLM-judge. See benchmark/roberta_evaluator/.
+    evaluator = os.getenv("EVALUATOR", "ragas").strip().lower()
+    if evaluator not in {"ragas", "roberta_trace", "both"}:
+        raise ValueError(
+            f"Invalid EVALUATOR={evaluator!r}. "
+            "Must be one of: ragas, roberta_trace, both."
+        )
+    roberta_trace_model_path = (
+        os.getenv("ROBERTA_TRACE_MODEL_PATH") or None
+    )
+    roberta_trace_model_hub_id = (
+        os.getenv("ROBERTA_TRACE_MODEL_HUB_ID") or None
+    )
+    roberta_trace_device = os.getenv("ROBERTA_TRACE_DEVICE", "cpu").strip()
+
     # Per-role URLs (fall back to shared defaults when not set)
     llm_ollama_base_url = os.getenv("LLM_OLLAMA_BASE_URL") or None
     llm_ollama_api_key = os.getenv("LLM_OLLAMA_API_KEY") or None
@@ -1087,6 +1110,10 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
                     ragas_enabled=ragas_enabled,
                     custom_metrics_enabled=custom_metrics_enabled,
                     trace_metrics_enabled=trace_metrics_enabled,
+                    evaluator=evaluator,
+                    roberta_trace_model_path=roberta_trace_model_path,
+                    roberta_trace_model_hub_id=roberta_trace_model_hub_id,
+                    roberta_trace_device=roberta_trace_device,
                     reranker_model=reranker,
                     reranker_top_k=reranker_top_k,
                     prompt_template=tmpl,
