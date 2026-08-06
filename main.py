@@ -28,6 +28,7 @@ from benchmark.prompt_templates import get_template
 from benchmark.evaluation import EvaluationResult, evaluate_results
 from benchmark.custom_metrics import CustomMetricsResult, compute_custom_metrics
 from benchmark.gold_retrieval_metrics import compute_gold_doc_retrieval_metrics
+from benchmark.trace_metrics import TraceMetricsResult, compute_trace_metrics
 from benchmark.reranker import get_reranker
 from benchmark.metrics import read_host_energy_joules, estimate_energy_cost_usd
 from benchmark.reporting import generate_report
@@ -706,6 +707,55 @@ def _run_single_benchmark_impl(
             per_sample=[{} for _ in questions],
             samples_with_valid_scores={},
         )
+
+    # 4c. TRACe framework metrics (Utilization + Completeness). Opt-in;
+    # reuses the same critic LLM wiring as RAGAS so a separate endpoint
+    # is never required. Results merge into custom_metric_means so MLflow,
+    # CSV/JSON export, and visualization pick them up automatically.
+    if config.trace_metrics_enabled and config.benchmark_stage != "retrieve":
+        console.print("  [dim]Computing TRACe metrics (Utilization + Completeness)...[/dim]")
+        with _stage_timer(stage_timings, "trace_metrics", resource_monitor):
+            trace_result = compute_trace_metrics(
+                questions,
+                all_contexts,
+                [r.answer for r in gen_results],
+                llm_model=config.llm_model,
+                critic_llm_model=config.eval_critic_llm,
+                ollama_base_url=config.ollama_base_url,
+                ollama_api_key=config.ollama_api_key,
+                openai_compat_base_url=config.openai_compat_base_url,
+                openai_compat_api_key=config.openai_compat_api_key,
+                critic_ollama_base_url=config.eval_critic_ollama_base_url,
+                critic_ollama_api_key=config.eval_critic_ollama_api_key,
+                critic_openai_compat_base_url=config.eval_critic_openai_compat_base_url,
+                critic_openai_compat_api_key=config.eval_critic_openai_compat_api_key,
+                critic_max_tokens=max(config.eval_critic_max_tokens, 512),
+            )
+        if trace_result.error:
+            console.print(f"  [yellow]TRACe metrics note: {trace_result.error}[/yellow]")
+        else:
+            console.print(
+                f"  [dim]TRACe computed: {', '.join(trace_result.metric_means.keys())}[/dim]"
+            )
+
+        merged_means = dict(custom_result.metric_means)
+        merged_means.update(trace_result.metric_means)
+        merged_per_sample: list[dict[str, float | None]] = []
+        for base, trace in zip(custom_result.per_sample, trace_result.per_sample_scores):
+            merged = dict(base) if base else {}
+            if trace:
+                merged.update(trace)
+            merged_per_sample.append(merged)
+        merged_valid = dict(custom_result.samples_with_valid_scores)
+        merged_valid.update(trace_result.samples_with_valid_scores)
+        custom_result = CustomMetricsResult(
+            metric_means=merged_means,
+            per_sample=merged_per_sample,
+            samples_with_valid_scores=merged_valid,
+            error=custom_result.error or trace_result.error,
+        )
+    else:
+        console.print("  [dim]TRACe metrics disabled[/dim]")
 
     total_time = time.perf_counter() - run_start
     stage_timings["total"] = total_time
