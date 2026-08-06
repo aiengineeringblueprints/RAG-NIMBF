@@ -165,6 +165,19 @@ class BenchmarkConfig:
     llm_performance_warmup: bool = True
     llm_performance_timeout_seconds: float = 60.0
     llm_performance_source: str = "generation"  # generation | load_test
+    # RAGPerf-style concurrent workload generator (opt-in). When enabled,
+    # replaces the sequential query loop with a mixed Query/Insert/Update/Remove
+    # stream against the live vector store + generator. See benchmark.workload.
+    workload_enabled: bool = False
+    workload_op_mix_query: float = 0.7
+    workload_op_mix_insert: float = 0.15
+    workload_op_mix_update: float = 0.1
+    workload_op_mix_remove: float = 0.05
+    workload_distribution: str = "uniform"  # uniform | zipfian
+    workload_zipf_theta: float = 0.8
+    workload_target_qps: float = 5.0
+    workload_concurrency: int = 8
+    workload_total_ops: int = 500
 
     @property
     def name(self) -> str:
@@ -848,6 +861,38 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
     if llm_performance_timeout_seconds <= 0:
         raise ValueError("LLM_PERFORMANCE_TIMEOUT_SECONDS must be positive")
 
+    # RAGPerf-style workload generator (opt-in).
+    workload_enabled = _env_bool("WORKLOAD_ENABLED", False)
+    workload_op_mix_query = float(os.getenv("WORKLOAD_OP_MIX_QUERY", "0.7"))
+    workload_op_mix_insert = float(os.getenv("WORKLOAD_OP_MIX_INSERT", "0.15"))
+    workload_op_mix_update = float(os.getenv("WORKLOAD_OP_MIX_UPDATE", "0.1"))
+    workload_op_mix_remove = float(os.getenv("WORKLOAD_OP_MIX_REMOVE", "0.05"))
+    workload_distribution = (
+        os.getenv("WORKLOAD_DISTRIBUTION", "uniform").strip().lower()
+    )
+    if workload_distribution not in ("uniform", "zipfian"):
+        raise ValueError(
+            "WORKLOAD_DISTRIBUTION must be 'uniform' or 'zipfian'"
+        )
+    workload_zipf_theta = float(os.getenv("WORKLOAD_ZIPF_THETA", "0.8"))
+    workload_target_qps = float(os.getenv("WORKLOAD_TARGET_QPS", "5"))
+    workload_concurrency = int(os.getenv("WORKLOAD_CONCURRENCY", "8"))
+    workload_total_ops = int(os.getenv("WORKLOAD_TOTAL_OPS", "500"))
+    _validate_positive_int(workload_concurrency, "WORKLOAD_CONCURRENCY")
+    _validate_positive_int(workload_total_ops, "WORKLOAD_TOTAL_OPS")
+    if workload_target_qps <= 0:
+        raise ValueError("WORKLOAD_TARGET_QPS must be positive")
+    if workload_zipf_theta <= 0:
+        raise ValueError("WORKLOAD_ZIPF_THETA must be positive")
+    for value, name in (
+        (workload_op_mix_query, "WORKLOAD_OP_MIX_QUERY"),
+        (workload_op_mix_insert, "WORKLOAD_OP_MIX_INSERT"),
+        (workload_op_mix_update, "WORKLOAD_OP_MIX_UPDATE"),
+        (workload_op_mix_remove, "WORKLOAD_OP_MIX_REMOVE"),
+    ):
+        if not 0.0 <= value <= 1.0:
+            raise ValueError(f"{name} must be between 0 and 1")
+
     # Validate integer values
     for cs in chunk_sizes:
         _validate_positive_int(cs, "CHUNK_SIZES value")
@@ -1002,6 +1047,16 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
                     llm_performance_warmup=llm_performance_warmup,
                     llm_performance_timeout_seconds=llm_performance_timeout_seconds,
                     llm_performance_source=llm_performance_source,
+                    workload_enabled=workload_enabled,
+                    workload_op_mix_query=workload_op_mix_query,
+                    workload_op_mix_insert=workload_op_mix_insert,
+                    workload_op_mix_update=workload_op_mix_update,
+                    workload_op_mix_remove=workload_op_mix_remove,
+                    workload_distribution=workload_distribution,
+                    workload_zipf_theta=workload_zipf_theta,
+                    workload_target_qps=workload_target_qps,
+                    workload_concurrency=workload_concurrency,
+                    workload_total_ops=workload_total_ops,
                 )
             )
     return configs

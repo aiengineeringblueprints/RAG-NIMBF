@@ -49,6 +49,7 @@ from benchmark.adapters import (
     retrieve_adapter,
 )
 from benchmark.reproducibility import write_reproducibility_bundle
+from benchmark.workload.integration import run_workload_phase
 from benchmark.resource_monitor import (
     ResourceMonitor,
     enabled_from_env as resource_monitor_enabled,
@@ -489,117 +490,171 @@ def _run_single_benchmark_impl(
     all_adapter_diagnostics: list[dict[str, Any]] = []
     gen_results: list[GenerationResult] = []
 
-    for i, sample in enumerate(data):
-        console.print(f"  [cyan]({i + 1}/{len(data)})[/cyan] {sample['question'][:80]}{'...' if len(sample['question']) > 80 else ''}")
-
-        if rag_adapter is not None:
-            with _stage_timer(stage_timings, "external_rag", resource_monitor):
-                if prepared_target is None:
-                    raise RuntimeError("External RAG adapter target was not prepared.")
-                if config.benchmark_stage == "retrieve":
-                    retrieval_result = retrieve_adapter(
-                        rag_adapter, prepared_target, sample, config
-                    )
-                    adapter_result = RagSystemOutput(
-                        answer="",
-                        contexts=retrieval_result.contexts,
-                        metadata=retrieval_result.metadata,
-                        raw_response=(
-                            retrieval_result.raw_response
-                            if isinstance(retrieval_result.raw_response, dict)
-                            else None
-                        ),
-                        total_seconds=retrieval_result.total_seconds,
-                        answer_valid=True,
-                    )
-                else:
-                    adapter_result = generate_adapter(
-                        rag_adapter, prepared_target, sample, config
-                    )
-            context_texts = adapter_result.contexts
-            retrieved_metadata = adapter_result.metadata
-            result = _generation_result_from_adapter(adapter_result)
-            adapter_diagnostics = dict(getattr(adapter_result, "diagnostics", {}) or {})
-            if adapter_diagnostics:
-                stage_timings["mcp_connection"] = stage_timings.get(
-                    "mcp_connection", 0.0
-                ) + float(adapter_diagnostics.get("connection_seconds", 0.0))
-                stage_timings["mcp_tool"] = stage_timings.get("mcp_tool", 0.0) + sum(
-                    float(call.get("total_seconds", 0.0))
-                    for call in adapter_diagnostics.get("tool_calls", [])
-                )
-                stage_timings["mcp_generation"] = stage_timings.get(
-                    "mcp_generation", 0.0
-                ) + float(adapter_diagnostics.get("generation_seconds", 0.0))
-        else:
-            adapter_diagnostics = {}
-            if llm is None or prompt_tmpl is None:
-                raise RuntimeError("Internal RAG pipeline was not initialized.")
-
-            # HyDE query expansion: replace the raw question with a hypothetical answer
-            query = sample["question"]
-            if config.retrieval_mode == "direct":
-                context_texts = [sample["context"]]
-                retrieved_metadata = []
-            else:
-                if config.retrieval_use_hyde:
-                    with _stage_timer(stage_timings, "hyde", resource_monitor):
-                        query = expand_query_with_hyde(llm, sample["question"])
-
-                if vector_store is None:
-                    raise RuntimeError("Vector store missing in retrieval mode.")
-                with _stage_timer(stage_timings, "retrieve", resource_monitor):
-                    retrieved_docs = retrieve(
-                        vector_store, query, config.retrieval_top_k,
-                        retrieval_strategy=config.retrieval_strategy,
-                        fetch_k=config.retrieval_fetch_k,
-                        mmr_lambda=config.retrieval_mmr_lambda,
-                    )
-
-                if reranker is not None:
-                    with _stage_timer(stage_timings, "rerank", resource_monitor):
-                        retrieved_docs = reranker.rerank(
-                            sample["question"], retrieved_docs, config.reranker_top_k,
-                        )
-
-                context_texts = [doc.page_content for doc in retrieved_docs]
-                retrieved_metadata = [dict(doc.metadata) for doc in retrieved_docs]
-
-            with _stage_timer(stage_timings, "generate", resource_monitor):
-                result = generate_answer(
-                    llm, sample["question"], context_texts,
-                    system_prompt=prompt_tmpl.system_prompt,
-                    human_template=prompt_tmpl.human_template,
-                    strip_mode=config.llm_answer_strip_mode,
-                    value_fallback=config.llm_answer_value_fallback,
-                    ground_truth=sample["ground_truth"],
-                    prompt_template_name=config.prompt_template,
-                    cost_model_name=config.llm_model,
-                )
-
-        questions.append(sample["question"])
-        ground_truths.append(sample["ground_truth"])
-        all_contexts.append(context_texts)
-        all_retrieved_metadata.append(retrieved_metadata)
-        gold_doc_ids.append(
-            sample.get("metadata", {}).get("gold_doc_id")
-            if config.retrieval_mode == "retrieval"
-            else None
+    # Workload mode (RAGPerf §3.2): when enabled, replace the sequential
+    # query loop with a concurrent mixed-operation stream against the
+    # live vector store + generator. The same output lists are populated
+    # so Ragas evaluation downstream keeps working.
+    if (
+        config.workload_enabled
+        and config.benchmark_stage not in ("index", "retrieve")
+        and rag_adapter is None
+    ):
+        if llm is None or prompt_tmpl is None:
+            raise RuntimeError(
+                "Workload mode requires the internal RAG pipeline (llm + prompt)."
+            )
+        if vector_store is None:
+            raise RuntimeError(
+                "Workload mode requires a built vector store."
+            )
+        workload_result = run_workload_phase(
+            config=config,
+            data=data,
+            corpus=corpus,
+            vector_store=vector_store,
+            llm=llm,
+            prompt_tmpl=prompt_tmpl,
+            reranker=reranker,
+            run_dir=run_dir,
         )
-        all_sample_metadata.append(sample.get("metadata", {}) or {})
-        all_adapter_diagnostics.append(adapter_diagnostics)
-        gen_results.append(result)
-
-        # Stream QA pair to log file after each answer
-        if qa_log_path is not None:
-            qa_log.append({
-                "index": i,
-                "question": sample["question"],
-                "answer": result.answer,
-                "raw_content": result.raw_content,
-                "raw_reasoning": result.raw_reasoning,
-            })
-            qa_log_path.write_text(json.dumps(qa_log, indent=2, ensure_ascii=False))
+        questions = workload_result.questions
+        ground_truths = workload_result.ground_truths
+        all_contexts = workload_result.contexts
+        all_retrieved_metadata = workload_result.retrieved_metadata
+        gold_doc_ids = workload_result.gold_doc_ids
+        all_sample_metadata = workload_result.sample_metadata
+        all_adapter_diagnostics = workload_result.adapter_diagnostics
+        gen_results = workload_result.gen_results
+        # Stash the workload summary on stage_timings so MLflow loggers
+        # downstream can pick it up.
+        stage_timings["workload_total_ops"] = float(
+            workload_result.summary_dict.get("total_submitted", 0)
+        )
+        stage_timings["workload_observed_qps"] = float(
+            workload_result.summary_dict.get("observed_qps", 0.0)
+        )
+        stage_timings["workload_error_rate"] = float(
+            workload_result.summary_dict.get("error_rate", 0.0)
+        )
+        try:
+            if workload_result.mlflow_metrics:
+                mlflow.log_metrics(workload_result.mlflow_metrics)
+        except Exception as exc:
+            console.print(
+                f"[yellow]Workload MLflow logging failed: {exc}[/yellow]"
+            )
+    else:
+        for i, sample in enumerate(data):
+            console.print(f"  [cyan]({i + 1}/{len(data)})[/cyan] {sample['question'][:80]}{'...' if len(sample['question']) > 80 else ''}")
+    
+            if rag_adapter is not None:
+                with _stage_timer(stage_timings, "external_rag", resource_monitor):
+                    if prepared_target is None:
+                        raise RuntimeError("External RAG adapter target was not prepared.")
+                    if config.benchmark_stage == "retrieve":
+                        retrieval_result = retrieve_adapter(
+                            rag_adapter, prepared_target, sample, config
+                        )
+                        adapter_result = RagSystemOutput(
+                            answer="",
+                            contexts=retrieval_result.contexts,
+                            metadata=retrieval_result.metadata,
+                            raw_response=(
+                                retrieval_result.raw_response
+                                if isinstance(retrieval_result.raw_response, dict)
+                                else None
+                            ),
+                            total_seconds=retrieval_result.total_seconds,
+                            answer_valid=True,
+                        )
+                    else:
+                        adapter_result = generate_adapter(
+                            rag_adapter, prepared_target, sample, config
+                        )
+                context_texts = adapter_result.contexts
+                retrieved_metadata = adapter_result.metadata
+                result = _generation_result_from_adapter(adapter_result)
+                adapter_diagnostics = dict(getattr(adapter_result, "diagnostics", {}) or {})
+                if adapter_diagnostics:
+                    stage_timings["mcp_connection"] = stage_timings.get(
+                        "mcp_connection", 0.0
+                    ) + float(adapter_diagnostics.get("connection_seconds", 0.0))
+                    stage_timings["mcp_tool"] = stage_timings.get("mcp_tool", 0.0) + sum(
+                        float(call.get("total_seconds", 0.0))
+                        for call in adapter_diagnostics.get("tool_calls", [])
+                    )
+                    stage_timings["mcp_generation"] = stage_timings.get(
+                        "mcp_generation", 0.0
+                    ) + float(adapter_diagnostics.get("generation_seconds", 0.0))
+            else:
+                adapter_diagnostics = {}
+                if llm is None or prompt_tmpl is None:
+                    raise RuntimeError("Internal RAG pipeline was not initialized.")
+    
+                # HyDE query expansion: replace the raw question with a hypothetical answer
+                query = sample["question"]
+                if config.retrieval_mode == "direct":
+                    context_texts = [sample["context"]]
+                    retrieved_metadata = []
+                else:
+                    if config.retrieval_use_hyde:
+                        with _stage_timer(stage_timings, "hyde", resource_monitor):
+                            query = expand_query_with_hyde(llm, sample["question"])
+    
+                    if vector_store is None:
+                        raise RuntimeError("Vector store missing in retrieval mode.")
+                    with _stage_timer(stage_timings, "retrieve", resource_monitor):
+                        retrieved_docs = retrieve(
+                            vector_store, query, config.retrieval_top_k,
+                            retrieval_strategy=config.retrieval_strategy,
+                            fetch_k=config.retrieval_fetch_k,
+                            mmr_lambda=config.retrieval_mmr_lambda,
+                        )
+    
+                    if reranker is not None:
+                        with _stage_timer(stage_timings, "rerank", resource_monitor):
+                            retrieved_docs = reranker.rerank(
+                                sample["question"], retrieved_docs, config.reranker_top_k,
+                            )
+    
+                    context_texts = [doc.page_content for doc in retrieved_docs]
+                    retrieved_metadata = [dict(doc.metadata) for doc in retrieved_docs]
+    
+                with _stage_timer(stage_timings, "generate", resource_monitor):
+                    result = generate_answer(
+                        llm, sample["question"], context_texts,
+                        system_prompt=prompt_tmpl.system_prompt,
+                        human_template=prompt_tmpl.human_template,
+                        strip_mode=config.llm_answer_strip_mode,
+                        value_fallback=config.llm_answer_value_fallback,
+                        ground_truth=sample["ground_truth"],
+                        prompt_template_name=config.prompt_template,
+                        cost_model_name=config.llm_model,
+                    )
+    
+            questions.append(sample["question"])
+            ground_truths.append(sample["ground_truth"])
+            all_contexts.append(context_texts)
+            all_retrieved_metadata.append(retrieved_metadata)
+            gold_doc_ids.append(
+                sample.get("metadata", {}).get("gold_doc_id")
+                if config.retrieval_mode == "retrieval"
+                else None
+            )
+            all_sample_metadata.append(sample.get("metadata", {}) or {})
+            all_adapter_diagnostics.append(adapter_diagnostics)
+            gen_results.append(result)
+    
+            # Stream QA pair to log file after each answer
+            if qa_log_path is not None:
+                qa_log.append({
+                    "index": i,
+                    "question": sample["question"],
+                    "answer": result.answer,
+                    "raw_content": result.raw_content,
+                    "raw_reasoning": result.raw_reasoning,
+                })
+                qa_log_path.write_text(json.dumps(qa_log, indent=2, ensure_ascii=False))
 
     console.print(f"  [dim]Generated {len(gen_results)} answers[/dim]       ")
 
