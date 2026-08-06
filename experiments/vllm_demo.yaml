@@ -1,0 +1,37 @@
+experiment_name: vllm-demo
+
+dataset:
+  name: squad
+  sample_size: [5]
+
+settings:
+  # The model id embeds the deployment URL: ``vllm:<model>@<server>``.
+  # ``llm_openai_compat_base_url`` is the optional fallback when the URL
+  # is omitted from the id.
+  rag_system_adapter: internal
+  retrieval_top_k: 5
+  eval_critic_llm: openai:Qwen/Qwen3-32B-AWQ
+  eval_critic_embedding: nomic-embed-text:latest
+  ragas_enabled: true
+  custom_metrics_enabled: true
+  vector_db_backend: chroma
+  max_new_tokens: 256
+  # vLLM prometheus scraping is auto-enabled when the LLM provider is vllm.
+  # To force-disable (e.g. vLLM proxied behind an endpoint without /metrics):
+  #   VLLM_METRICS_ENABLED=false   (in .env)
+  llm_performance_enabled: true
+  llm_performance_source: generation
+
+matrix:
+  llm_models:
+    - "vllm:Qwen2.5-7B-Instruct@http://localhost:8000"
+  embedding_models:
+    - nomic-embed-text:latest
+  chunking_strategies:
+    - recursive
+  chunk_sizes:
+    - 1000
+  chunk_overlaps:
+    - 200
+  prompt_templates:
+    - concise

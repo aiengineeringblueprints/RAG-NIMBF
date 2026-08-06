@@ -301,6 +301,21 @@ def _aggregate_adapter_metrics(diagnostics: list[dict[str, Any]]) -> dict[str, A
     }
 
 
+def _aggregate_vllm_metrics(snapshots: list[Any]) -> dict[str, float] | None:
+    """Aggregate vLLM prometheus snapshots into a flat metrics dict.
+
+    Returns ``None`` when no snapshots were collected (non-vLLM backend or
+    unreachable endpoint) so downstream code can skip MLflow / report rows.
+    """
+    if not snapshots:
+        return None
+    from benchmark.vllm_metrics import aggregate_snapshots
+
+    aggregate = aggregate_snapshots(snapshots)
+    flat = aggregate.to_flat_dict()
+    return flat or None
+
+
 def _maybe_inject_components(rag_adapter, config, console) -> None:
     """Hand Framework-built components to an external adapter, if it accepts them.
 
@@ -508,6 +523,8 @@ def _run_single_benchmark_impl(
     llm = None
     reranker = None
     prompt_tmpl = None
+    vllm_scraper = None
+    vllm_snapshots: list[Any] = []
     if rag_adapter is None:
         with _stage_timer(stage_timings, "load_models", resource_monitor):
             llm = get_llm(
@@ -519,6 +536,23 @@ def _run_single_benchmark_impl(
             )
             reranker = get_reranker(config.reranker_model)
             prompt_tmpl = get_template(config.prompt_template)
+        # vLLM prometheus scraper: best-effort, auto-enabled when the provider
+        # is vLLM and the endpoint exposes /metrics. Failures are non-fatal.
+        if config.vllm_metrics_enabled:
+            from benchmark.vllm_metrics import VllmMetricsScraper
+
+            vllm_scraper = VllmMetricsScraper(config.llm_base_url())
+            boot = vllm_scraper.snapshot(force=True)
+            if boot is None:
+                console.print(
+                    "  [yellow]vLLM metrics endpoint unreachable — "
+                    "KV-cache / TTFT scraper disabled for this run[/yellow]"
+                )
+            else:
+                vllm_snapshots.append(boot)
+                console.print(
+                    f"  [dim]Scraping vLLM metrics from {vllm_scraper.metrics_url}[/dim]"
+                )
     questions: list[str] = []
     ground_truths: list[str] = []
     all_contexts: list[list[str]] = []
@@ -659,6 +693,9 @@ def _run_single_benchmark_impl(
                     retrieved_metadata = [dict(doc.metadata) for doc in retrieved_docs]
     
                 with _stage_timer(stage_timings, "generate", resource_monitor):
+                    vllm_before = (
+                        vllm_scraper.snapshot() if vllm_scraper is not None else None
+                    )
                     result = generate_answer(
                         llm, sample["question"], context_texts,
                         system_prompt=prompt_tmpl.system_prompt,
@@ -669,6 +706,15 @@ def _run_single_benchmark_impl(
                         prompt_template_name=config.prompt_template,
                         cost_model_name=config.llm_model,
                     )
+                    if vllm_scraper is not None:
+                        vllm_after = vllm_scraper.snapshot()
+                        if vllm_after is not None:
+                            vllm_snapshots.append(vllm_after)
+                            result = replace(
+                                result,
+                                vllm_metrics_before=vllm_before,
+                                vllm_metrics_after=vllm_after,
+                            )
     
             questions.append(sample["question"])
             ground_truths.append(sample["ground_truth"])
@@ -1040,6 +1086,7 @@ def _run_single_benchmark_impl(
         host_energy_kwh=host_energy_kwh,
         estimated_energy_cost_usd=estimated_energy_cost,
         adapter_metrics=_aggregate_adapter_metrics(all_adapter_diagnostics),
+        vllm_metrics=_aggregate_vllm_metrics(vllm_snapshots),
     )
     if run_dir is not None:
         safe_name = config.name.replace(":", "_").replace("/", "_")

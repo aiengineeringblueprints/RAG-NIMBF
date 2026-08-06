@@ -101,6 +101,7 @@ class BenchmarkResultExtended:
     llm_performance_artifact: str | None = None
     llm_performance_error: str | None = None
     adapter_metrics: dict[str, Any] | None = None
+    vllm_metrics: dict[str, float] | None = None
 
 
 @dataclass(frozen=True)
