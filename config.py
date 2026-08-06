@@ -73,6 +73,8 @@ class BenchmarkConfig:
     dataset_ground_truth_field: str = "ground_truth"
     dataset_context_field: str = "context"
     dataset_metadata_field: str = "metadata"
+    dataset_split: str | None = None
+    dataset_max_examples: int | None = None
     ragas_enabled: bool = True
     custom_metrics_enabled: bool = True
     # Prompt template
@@ -524,6 +526,9 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
     dataset_metadata_field = (
         os.getenv("DATASET_METADATA_FIELD", "metadata").strip() or "metadata"
     )
+    dataset_split = os.getenv("DATASET_SPLIT", "").strip() or None
+    _dme_raw = os.getenv("DATASET_MAX_EXAMPLES", "").strip()
+    dataset_max_examples = int(_dme_raw) if _dme_raw else None
 
     # Validate dataset name against registry
     from benchmark.dataset_adapters import REGISTRY
@@ -928,6 +933,8 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
                     dataset_ground_truth_field=dataset_ground_truth_field,
                     dataset_context_field=dataset_context_field,
                     dataset_metadata_field=dataset_metadata_field,
+                    dataset_split=dataset_split,
+                    dataset_max_examples=dataset_max_examples,
                     eval_critic_llm=eval_critic_llm,
                     eval_critic_embedding=eval_critic_embedding,
                     custom_metrics_bert_model=custom_metrics_bert_model,

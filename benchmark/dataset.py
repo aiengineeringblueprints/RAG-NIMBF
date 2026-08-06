@@ -100,6 +100,8 @@ def load_benchmark_data(
     ground_truth_field: str | None = None,
     context_field: str | None = None,
     metadata_field: str | None = None,
+    split: str | None = None,
+    max_examples: int | None = None,
 ) -> list[dict]:
     adapter = resolve_adapter(dataset_name)
 
@@ -121,26 +123,56 @@ def load_benchmark_data(
     label = subset or "default"
     console.print(f"[bold blue]Loading {adapter.hf_id} ({label})...[/bold blue]")
 
+    # For ragbench_<component> adapters the component name is the HF config
+    # subset. Derive it from the adapter name when the caller did not pass an
+    # explicit subset, so YAML can target ``name: ragbench_cuad`` without also
+    # setting ``subset: cuad``.
+    effective_subset = subset
+    if effective_subset is None:
+        component = _ragbench_component_for_adapter(dataset_name)
+        if component is not None:
+            effective_subset = component
+
     kwargs: dict = {}
-    if adapter.requires_subset and subset:
-        kwargs["name"] = subset
-    ds = load_dataset(adapter.hf_id, **kwargs)
+    if adapter.requires_subset and effective_subset:
+        kwargs["name"] = effective_subset
+    try:
+        ds = load_dataset(adapter.hf_id, **kwargs)
+    except Exception as exc:  # noqa: BLE001 — surface a clear, actionable error
+        raise RuntimeError(
+            f"Failed to download dataset {adapter.hf_id!r}"
+            + (f" (subset={effective_subset!r})" if effective_subset else "")
+            + f". Network access to HuggingFace is required. Original error: {exc}"
+        ) from exc
 
-    split = adapter.preferred_split
-    if split not in ds:
-        split = list(ds.keys())[0]
-    data = ds[split]
+    chosen_split = (
+        split
+        or os.getenv("DATASET_SPLIT")
+        or adapter.preferred_split
+    )
+    if chosen_split not in ds:
+        chosen_split = list(ds.keys())[0]
+    data = ds[chosen_split]
 
-    if sample_size and sample_size < len(data):
-        data = data.shuffle(seed=42).select(range(sample_size))
+    cap = max_examples or _env_int("DATASET_MAX_EXAMPLES") or sample_size
+    if cap and cap < len(data):
+        data = data.shuffle(seed=42).select(range(cap))
+
+    rows = list(data)
+    _maybe_write_ragbench_trace_sidecar(dataset_name, subset, chosen_split, rows)
 
     samples = []
-    for row in data:
+    for row in rows:
         gt_raw = row.get(adapter.ground_truth_key, "")
         if adapter.ground_truth_transform:
             gt = adapter.ground_truth_transform(gt_raw)
         else:
             gt = str(gt_raw)
+
+        metadata = {k: row.get(k) for k in adapter.metadata_keys if k in row}
+        trace = _ragbench_trace_for_row(dataset_name, row)
+        if trace:
+            metadata["ragbench_trace"] = trace
 
         samples.append(
             normalize_sample(
@@ -148,17 +180,15 @@ def load_benchmark_data(
                     "question": row[adapter.question_key],
                     "ground_truth": gt,
                     "context": adapter.build_context(row),
-                    "metadata": {
-                        k: row.get(k) for k in adapter.metadata_keys if k in row
-                    },
+                    "metadata": metadata,
                 },
-                source=f"{dataset_name}:{split}[{len(samples)}]",
+                source=f"{dataset_name}:{chosen_split}[{len(samples)}]",
             )
         )
 
     console.print(
         f"[green]Loaded {len(samples)} samples from {adapter.hf_id} "
-        f"({split} split)[/green]"
+        f"({chosen_split} split)[/green]"
     )
     return samples
 
@@ -173,6 +203,8 @@ def load_corpus_and_questions(
     ground_truth_field: str | None = None,
     context_field: str | None = None,
     metadata_field: str | None = None,
+    split: str | None = None,
+    max_examples: int | None = None,
 ) -> tuple[list[dict], list[dict]]:
     """Load data and split into a deduplicated corpus and per-question entries.
 
@@ -194,6 +226,8 @@ def load_corpus_and_questions(
                 ground_truth_field=ground_truth_field,
                 context_field=context_field,
                 metadata_field=metadata_field,
+                split=split,
+                max_examples=max_examples,
             ),
             source=dataset_name,
         )
@@ -209,6 +243,8 @@ def load_corpus_and_questions(
             ground_truth_field=ground_truth_field,
             context_field=context_field,
             metadata_field=metadata_field,
+            split=split,
+            max_examples=max_examples,
         ),
         source=dataset_name,
     )
@@ -421,6 +457,53 @@ def _chroma_safe_metadata(metadata: Mapping[str, Any]) -> dict[str, Any]:
 def _stable_doc_id(dataset_name: str, context: str, index: int) -> str:
     digest = hashlib.sha1(context.encode("utf-8")).hexdigest()[:16]
     return f"{dataset_name}_doc_{index}_{digest}"
+
+
+def _env_int(name: str) -> int | None:
+    raw = os.getenv(name)
+    if raw is None or raw.strip() == "":
+        return None
+    try:
+        return int(raw)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be an integer, got {raw!r}") from exc
+
+
+def _ragbench_component_for_adapter(dataset_name: str) -> str | None:
+    """Return the RAGBench component name for ``ragbench_<component>`` adapters."""
+    prefix = "ragbench_"
+    if not dataset_name.startswith(prefix):
+        return None
+    component = dataset_name[len(prefix) :]
+    from benchmark.ragbench_adapter import RAGBENCH_COMPONENTS
+
+    return component if component in RAGBENCH_COMPONENTS else None
+
+
+def _ragbench_trace_for_row(dataset_name: str, row: Mapping[str, Any]) -> dict[str, Any]:
+    """Extract TRACe gold annotations for a row when ``dataset_name`` is RAGBench."""
+    component = _ragbench_component_for_adapter(dataset_name)
+    if component is None:
+        return {}
+    from benchmark.ragbench_adapter import _ragbench_trace_metadata
+
+    return _ragbench_trace_metadata(row)
+
+
+def _maybe_write_ragbench_trace_sidecar(
+    dataset_name: str,
+    subset: str | None,
+    split: str,
+    rows: list[Mapping[str, Any]],
+) -> None:
+    """Persist RAGBench TRACe gold annotations to a sidecar JSON when applicable."""
+    component = _ragbench_component_for_adapter(dataset_name)
+    if component is None:
+        return
+    from benchmark.ragbench_adapter import write_trace_sidecar
+
+    cache_root = os.getenv("DATASET_CACHE_ROOT") or "datasets"
+    write_trace_sidecar(cache_root, component, split, [dict(r) for r in rows])
 
 
 def _load_ragperf_wikipedia_nq(sample_size: int) -> tuple[list[dict], list[dict]]:
