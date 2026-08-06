@@ -20,6 +20,7 @@ class ExperimentSpec:
     dataset: dict[str, Any]
     matrix: dict[str, list[Any]]
     settings: dict[str, Any]
+    chunking: dict[str, Any] | None = None
 
 
 def load_experiment_spec(path: Path) -> ExperimentSpec:
@@ -49,7 +50,11 @@ def load_experiment_spec(path: Path) -> ExperimentSpec:
         key: _as_list(value) for key, value in _dict_or_empty(raw.get("matrix")).items()
     }
     settings = _dict_or_empty(raw.get("settings"))
-    return ExperimentSpec(name=name, dataset=dataset, matrix=matrix, settings=settings)
+    chunking_raw = raw.get("chunking")
+    chunking = _dict_or_empty(chunking_raw) if chunking_raw is not None else None
+    return ExperimentSpec(
+        name=name, dataset=dataset, matrix=matrix, settings=settings, chunking=chunking
+    )
 
 
 def build_configs_from_spec(
@@ -70,6 +75,8 @@ def build_configs_from_spec(
     dataset_scalars, dataset_matrix = _split_dataset_config(spec.dataset)
     base = _apply_dataset(base, dataset_scalars)
     base = _apply_settings(base, spec.settings)
+    if spec.chunking:
+        base = _apply_chunking(base, spec.chunking)
     base = validate_benchmark_config(base)
 
     matrix = _normalize_matrix({**dataset_matrix, **spec.matrix})
@@ -84,7 +91,9 @@ def build_configs_from_spec(
     for values in product(*(matrix[key] for key in keys)):
         updates = _updates_for_combo(dict(zip(keys, values)))
         cfg = replace(base, **updates)
-        if cfg.chunking_strategy in {"semantic", "provider"}:
+        if cfg.chunking_strategy in {"semantic", "provider"} or _is_mm_strategy(
+            cfg.chunking_strategy
+        ):
             cfg = replace(cfg, chunk_size=None, chunk_overlap=None)
         elif cfg.chunk_size is None or cfg.chunk_overlap is None:
             raise ValueError(
@@ -273,6 +282,45 @@ def _apply_dataset(config: BenchmarkConfig, dataset: dict[str, Any]) -> Benchmar
     if "max_examples" in dataset:
         value = dataset["max_examples"]
         updates["dataset_max_examples"] = None if value is None else int(value)
+    if "corpus_type" in dataset:
+        updates["corpus_type"] = str(dataset["corpus_type"]).lower()
+    return replace(config, **updates) if updates else config
+
+
+def _is_mm_strategy(strategy: str | None) -> bool:
+    """True if ``strategy`` is a registered multi-modal chunker."""
+    if not strategy:
+        return False
+    try:
+        from benchmark.multimodal.registry import is_chunker_multimodal
+    except ImportError:
+        return False
+    return is_chunker_multimodal(strategy)
+
+
+def _apply_chunking(
+    config: BenchmarkConfig, chunking: dict[str, Any]
+) -> BenchmarkConfig:
+    """Apply a top-level ``chunking:`` block from a YAML experiment spec.
+
+    Recognised keys: ``strategy`` (-> chunking_strategy), ``size``
+    (-> chunk_size), ``overlap`` (-> chunk_overlap). Multi-modal strategies
+    clear chunk_size/chunk_overlap (they're irrelevant for OCR/ASR ingestion).
+    """
+    updates: dict[str, Any] = {}
+    if "strategy" in chunking:
+        updates["chunking_strategy"] = str(chunking["strategy"]).lower()
+    if "size" in chunking:
+        updates["chunk_size"] = (
+            None if chunking["size"] is None else int(chunking["size"])
+        )
+    if "overlap" in chunking:
+        updates["chunk_overlap"] = (
+            None if chunking["overlap"] is None else int(chunking["overlap"])
+        )
+    if updates.get("chunking_strategy") and _is_mm_strategy(updates["chunking_strategy"]):
+        updates["chunk_size"] = None
+        updates["chunk_overlap"] = None
     return replace(config, **updates) if updates else config
 
 
@@ -445,6 +493,10 @@ def _coerce_field_value(key: str, value: Any) -> Any:
         "mcp_result_mode",
         "mcp_execution_mode",
         "workload_distribution",
+        "corpus_type",
+        "multimodal_backend",
+        "whisper_device",
+        "whisper_compute_type",
     }:
         return str(value).lower()
     if key == "dataset_subset":

@@ -1,0 +1,35 @@
+# Multi-modal audio smoke test (RAGPerf §4.1).
+#
+# Whisper ASR -> transcript -> standard text pipeline.
+# Requires the optional `faster-whisper` (default) or `openai-whisper` dep.
+#
+#   pip install faster-whisper
+#
+# Run:
+#   BENCHMARK_CONFIG_FILE=experiments/multimodal-audio-smoke.yaml python main.py
+
+experiment_name: multimodal-audio-smoke
+
+dataset:
+  name: jsonl
+  path: ./datasets/sample_audio/questions.jsonl
+  corpus_path: ./datasets/sample_audio
+  corpus_type: audio
+
+chunking:
+  strategy: audio_whisper
+
+settings:
+  multimodal_backend: faster-whisper  # faster-whisper | openai-whisper
+  whisper_model: base                 # tiny | base | small | medium | large-v3
+  whisper_device: cpu                 # cpu | cuda
+  whisper_compute_type: int8          # int8 | float16 (cuda) | float32
+  ragas_enabled: false
+  custom_metrics_enabled: false
+  vector_db_backend: chroma
+  retrieval_top_k: 5
+
+matrix:
+  llm_models: ["openai:gpt-4o-mini"]
+  embedding_models: ["nomic-embed-text:latest"]
+  prompt_templates: ["concise"]
