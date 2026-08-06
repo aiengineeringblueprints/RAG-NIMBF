@@ -67,6 +67,7 @@ from benchmark.reporting.models import (
     PerSampleResult,
     compute_stats,
 )
+from benchmark.stage_timing import StageTimings
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -100,6 +101,8 @@ def _stage_timer(
     stage_timings: dict[str, float],
     name: str,
     resource_monitor: ResourceMonitor | None = None,
+    latency_recorder: StageTimings | None = None,
+    latency_stage: str | None = None,
 ):
     started = time.perf_counter()
     if resource_monitor is not None:
@@ -107,9 +110,10 @@ def _stage_timer(
     try:
         yield
     finally:
-        stage_timings[name] = stage_timings.get(name, 0.0) + (
-            time.perf_counter() - started
-        )
+        elapsed = time.perf_counter() - started
+        stage_timings[name] = stage_timings.get(name, 0.0) + elapsed
+        if latency_recorder is not None and latency_stage is not None:
+            latency_recorder.record(latency_stage, elapsed)
         if resource_monitor is not None:
             resource_monitor.stage_end(name)
 
@@ -141,8 +145,15 @@ def _build_internal_retrieval_index(
     corpus: list[dict] | None,
     stage_timings: dict[str, float],
     resource_monitor: ResourceMonitor | None,
+    latency_recorder: StageTimings | None = None,
 ) -> tuple[list, object]:
-    with _stage_timer(stage_timings, "chunk", resource_monitor):
+    with _stage_timer(
+        stage_timings,
+        "chunk",
+        resource_monitor,
+        latency_recorder=latency_recorder,
+        latency_stage="chunking",
+    ):
         chunker_kwargs: dict = {}
         if config.chunking_strategy == "semantic":
             from benchmark.embedding import get_embedding_model
@@ -169,6 +180,11 @@ def _build_internal_retrieval_index(
         chunk_source = corpus if corpus else data
         chunks = chunk_documents(chunker, chunk_source)
     console.print(f"  [dim]Chunked into {len(chunks)} pieces[/dim]")
+    if latency_recorder is not None:
+        latency_recorder.set_count("chunks", len(chunks))
+        source_count = len(chunk_source) if chunk_source is not None else 0
+        if source_count:
+            latency_recorder.set_count("documents", source_count)
 
     corpus_fingerprint = _content_fingerprint(chunk_source)
     cache_k = _cache_key(
@@ -184,7 +200,13 @@ def _build_internal_retrieval_index(
         vector_db_backend=config.vector_db_backend,
     )
     collection_name = f"rag_{config.vector_db_backend}_{cache_k[:24]}"
-    with _stage_timer(stage_timings, "index", resource_monitor):
+    with _stage_timer(
+        stage_timings,
+        "index",
+        resource_monitor,
+        latency_recorder=latency_recorder,
+        latency_stage="indexing",
+    ):
         vector_store = build_vector_store(
             chunks,
             config.embedding_model,
@@ -323,6 +345,7 @@ def run_single_benchmark(
     corpus: list[dict] | None = None,
     load_data_seconds: float | None = None,
     resource_monitor: ResourceMonitor | None = None,
+    latency_recorder: StageTimings | None = None,
 ) -> BenchmarkResultExtended:
     """Run one configuration and always release its managed target.
 
@@ -342,6 +365,7 @@ def run_single_benchmark(
             load_data_seconds=load_data_seconds,
             resource_monitor=resource_monitor,
             cleanup_registry=cleanup_registry,
+            latency_recorder=latency_recorder,
         )
     except BaseException:
         failed = True
@@ -364,9 +388,12 @@ def _run_single_benchmark_impl(
     load_data_seconds: float | None = None,
     resource_monitor: ResourceMonitor | None = None,
     cleanup_registry: list[tuple[Any, PreparedTarget, BenchmarkConfig]] | None = None,
+    latency_recorder: StageTimings | None = None,
 ) -> BenchmarkResultExtended:
     run_start = time.perf_counter()
     stage_timings: dict[str, float] = {}
+    if latency_recorder is None:
+        latency_recorder = StageTimings()
     if load_data_seconds is not None:
         stage_timings["load_data"] = load_data_seconds
 
@@ -401,13 +428,17 @@ def _run_single_benchmark_impl(
             corpus,
             stage_timings,
             resource_monitor,
+            latency_recorder=latency_recorder,
         )
     else:
         console.print(f"  [dim]Direct mode — skipping chunking/retrieval[/dim]")
 
+    latency_recorder.set_count("questions", len(data))
+
     if config.benchmark_stage == "index":
         total_time = time.perf_counter() - run_start
         stage_timings["total"] = total_time
+        latency_recorder.record("total", total_time)
         console.print(
             f"[bold green]<<< Indexed: {config.name} in {total_time:.1f}s[/bold green]"
         )
@@ -458,11 +489,17 @@ def _run_single_benchmark_impl(
             dataset_name=config.dataset_name,
             dataset_sample_size=config.dataset_sample_size,
             stage_timings=stage_timings,
+            stage_latency=latency_recorder.summary() or None,
             vector_db_backend=config.vector_db_backend,
             energy_kwh=energy_kwh,
             host_energy_kwh=host_energy_kwh,
             estimated_energy_cost_usd=estimate_energy_cost_usd(energy_kwh, energy_price),
         )
+        if run_dir is not None:
+            safe_name = config.name.replace(":", "_").replace("/", "_")
+            latency_recorder.save_json(
+                run_dir / "stage_timings" / f"{safe_name}.json"
+            )
         return index_result
 
     # 3. Generate answers
@@ -548,7 +585,13 @@ def _run_single_benchmark_impl(
 
                 if vector_store is None:
                     raise RuntimeError("Vector store missing in retrieval mode.")
-                with _stage_timer(stage_timings, "retrieve", resource_monitor):
+                with _stage_timer(
+                    stage_timings,
+                    "retrieve",
+                    resource_monitor,
+                    latency_recorder=latency_recorder,
+                    latency_stage="retrieval",
+                ):
                     retrieved_docs = retrieve(
                         vector_store, query, config.retrieval_top_k,
                         retrieval_strategy=config.retrieval_strategy,
@@ -557,7 +600,13 @@ def _run_single_benchmark_impl(
                     )
 
                 if reranker is not None:
-                    with _stage_timer(stage_timings, "rerank", resource_monitor):
+                    with _stage_timer(
+                        stage_timings,
+                        "rerank",
+                        resource_monitor,
+                        latency_recorder=latency_recorder,
+                        latency_stage="reranking",
+                    ):
                         retrieved_docs = reranker.rerank(
                             sample["question"], retrieved_docs, config.reranker_top_k,
                         )
@@ -565,7 +614,13 @@ def _run_single_benchmark_impl(
                 context_texts = [doc.page_content for doc in retrieved_docs]
                 retrieved_metadata = [dict(doc.metadata) for doc in retrieved_docs]
 
-            with _stage_timer(stage_timings, "generate", resource_monitor):
+            with _stage_timer(
+                stage_timings,
+                "generate",
+                resource_monitor,
+                latency_recorder=latency_recorder,
+                latency_stage="generation",
+            ):
                 result = generate_answer(
                     llm, sample["question"], context_texts,
                     system_prompt=prompt_tmpl.system_prompt,
@@ -606,7 +661,13 @@ def _run_single_benchmark_impl(
     # 4. Evaluate with RAGAS using a separate critic model
     if config.ragas_enabled and config.benchmark_stage != "retrieve":
         console.print(f"  [dim]Running RAGAS evaluation (critic: {config.eval_critic_llm})...[/dim]")
-        with _stage_timer(stage_timings, "ragas_eval", resource_monitor):
+        with _stage_timer(
+            stage_timings,
+            "ragas_eval",
+            resource_monitor,
+            latency_recorder=latency_recorder,
+            latency_stage="evaluation",
+        ):
             eval_result = evaluate_results(
                 questions, ground_truths,
                 [r.answer for r in gen_results],
@@ -665,7 +726,13 @@ def _run_single_benchmark_impl(
 
         # Reuse or create embedding model for IR relevance detection + context_relevance
         from benchmark.embedding import get_embedding_model
-        with _stage_timer(stage_timings, "custom_metrics", resource_monitor):
+        with _stage_timer(
+            stage_timings,
+            "custom_metrics",
+            resource_monitor,
+            latency_recorder=latency_recorder,
+            latency_stage="evaluation",
+        ):
             _emb_model = get_embedding_model(
                 config.embedding_model,
                 config.embedding_base_url(),
@@ -709,6 +776,7 @@ def _run_single_benchmark_impl(
 
     total_time = time.perf_counter() - run_start
     stage_timings["total"] = total_time
+    latency_recorder.record("total", total_time)
     console.print(f"[bold green]<<< Finished: {config.name} in {total_time:.1f}s[/bold green]")
 
     # 5. Build per-sample results
@@ -872,6 +940,7 @@ def _run_single_benchmark_impl(
         dataset_name=config.dataset_name,
         dataset_sample_size=config.dataset_sample_size,
         stage_timings=stage_timings,
+        stage_latency=latency_recorder.summary() or None,
         vector_db_backend=config.vector_db_backend,
         total_input_tokens=sum(s.input_tokens for s in per_sample),
         total_output_tokens=sum(s.output_tokens for s in per_sample),
@@ -885,6 +954,11 @@ def _run_single_benchmark_impl(
         estimated_energy_cost_usd=estimated_energy_cost,
         adapter_metrics=_aggregate_adapter_metrics(all_adapter_diagnostics),
     )
+    if run_dir is not None:
+        safe_name = config.name.replace(":", "_").replace("/", "_")
+        latency_recorder.save_json(
+            run_dir / "stage_timings" / f"{safe_name}.json"
+        )
     return benchmark_result
 
 

@@ -41,6 +41,7 @@ def _result_to_dict(r: BenchmarkResultExtended) -> dict:
         val = getattr(r, key)
         d[key] = val
     d["stage_timings"] = r.stage_timings or {}
+    d["stage_latency"] = r.stage_latency or {}
     d["vector_db_backend"] = r.vector_db_backend
     d["total_input_tokens"] = r.total_input_tokens
     d["total_output_tokens"] = r.total_output_tokens
@@ -169,6 +170,14 @@ def save_csv_report(
         if r.stage_timings:
             for key, val in r.stage_timings.items():
                 row[f"stage_{key}_seconds"] = val
+        if r.stage_latency:
+            for stage, stats in r.stage_latency.items():
+                if not isinstance(stats, dict):
+                    continue
+                for stat_name in ("total_s", "mean_s", "p50_s", "p95_s", "max_s"):
+                    value = stats.get(stat_name)
+                    if value is not None:
+                        row[f"lat_{stage}_{stat_name}"] = value
         if r.adapter_metrics:
             for key, val in r.adapter_metrics.items():
                 row[f"adapter_{key}"] = (
