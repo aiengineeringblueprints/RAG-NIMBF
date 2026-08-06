@@ -124,14 +124,14 @@ def load_benchmark_data(
     console.print(f"[bold blue]Loading {adapter.hf_id} ({label})...[/bold blue]")
 
     # For ragbench_<component> adapters the component name is the HF config
-    # subset. Derive it from the adapter name when the caller did not pass an
-    # explicit subset, so YAML can target ``name: ragbench_cuad`` without also
-    # setting ``subset: cuad``.
-    effective_subset = subset
-    if effective_subset is None:
-        component = _ragbench_component_for_adapter(dataset_name)
-        if component is not None:
-            effective_subset = component
+    # subset. It always takes precedence over the env-derived ``subset`` value
+    # (which may leak from DATASET_SUBSET for unrelated adapters), because the
+    # adapter name is the authoritative signal here.
+    component = _ragbench_component_for_adapter(dataset_name)
+    if component is not None:
+        effective_subset = component
+    else:
+        effective_subset = subset
 
     kwargs: dict = {}
     if adapter.requires_subset and effective_subset:
