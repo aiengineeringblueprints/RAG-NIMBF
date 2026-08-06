@@ -429,3 +429,99 @@ def clear_cache() -> None:
         _vector_store_cache.clear()
         for collection in client.list_collections():
             client.delete_collection(collection.name)
+
+
+# --------------------------------------------------------------------------
+# Workload-generator adapter methods.
+#
+# ChromaDB is not safe for concurrent writes to the same collection
+# (its Rust bindings race on the persistent index). All mutations below
+# serialize on the existing ``_chroma_lock`` so the workload runner can
+# call them from many threads without corrupting the store. Reads stay
+# lock-free for now — Chroma tolerates concurrent reads.
+# --------------------------------------------------------------------------
+
+
+def _vector_store_collection(vector_store: Any) -> Any:
+    """Return the underlying chromadb Collection for a LangChain Chroma store."""
+    return getattr(vector_store, "_collection", None)
+
+
+def _ids_for_doc_id(vector_store: Any, doc_id: str) -> list[str]:
+    """Return all indexed chunk IDs whose metadata carries the given doc_id."""
+    collection = _vector_store_collection(vector_store)
+    if collection is None:
+        return []
+    try:
+        with _chroma_lock:
+            result = collection.get(where={"doc_id": doc_id})
+    except Exception as exc:  # pragma: no cover — best-effort lookup
+        logger.warning("collection.get(where doc_id=%s) failed: %s", doc_id, exc)
+        return []
+    ids = list(result.get("ids", []) if isinstance(result, dict) else [])
+    return [str(identifier) for identifier in ids]
+
+
+def workload_insert_documents(
+    vector_store: Any,
+    documents: list[Document],
+) -> int:
+    """Embed and insert new chunks into ``vector_store``.
+
+    Returns the number of documents actually added. Thread-safe.
+    """
+    if not documents:
+        return 0
+    with _chroma_lock:
+        vector_store.add_documents(documents)
+    return len(documents)
+
+
+def workload_update_document(
+    vector_store: Any,
+    doc_id: str,
+    new_text: str,
+    metadata: dict | None = None,
+) -> int:
+    """Re-write every chunk belonging to ``doc_id`` with ``new_text``.
+
+    Implements the Update op from RAGPerf §3.2: replace the document body,
+    re-embed, and re-index. The simplest correct strategy is delete-all then
+    insert-one, which avoids partial-failure states where a chunk is briefly
+    missing. Returns the net chunk-count delta (usually ≤ 0 because chunking
+    is collapsed here).
+    """
+    existing_ids = _ids_for_doc_id(vector_store, doc_id)
+    replacement_meta = dict(metadata or {})
+    replacement_meta["doc_id"] = doc_id
+    replacement = Document(page_content=new_text, metadata=replacement_meta)
+    with _chroma_lock:
+        if existing_ids:
+            try:
+                vector_store.delete(ids=existing_ids)
+            except Exception as exc:
+                logger.warning(
+                    "delete during update for doc_id=%s failed: %s", doc_id, exc
+                )
+                raise
+        vector_store.add_documents([replacement])
+    return 1 - len(existing_ids)
+
+
+def workload_remove_document(vector_store: Any, doc_id: str) -> int:
+    """Delete every chunk whose metadata carries ``doc_id``.
+
+    Returns the number of IDs removed. Thread-safe.
+    """
+    existing_ids = _ids_for_doc_id(vector_store, doc_id)
+    if not existing_ids:
+        return 0
+    with _chroma_lock:
+        try:
+            vector_store.delete(ids=existing_ids)
+        except Exception as exc:
+            logger.warning(
+                "delete during remove for doc_id=%s failed: %s", doc_id, exc
+            )
+            raise
+    return len(existing_ids)
