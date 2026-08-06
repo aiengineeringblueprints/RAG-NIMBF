@@ -62,6 +62,16 @@ from benchmark.resource_monitor import (
     gpu_index_from_env as resource_monitor_gpu_index,
     interval_from_env as resource_monitor_interval,
 )
+from benchmark.resource_monitor_v2 import (
+    NvmlNotAvailableError,
+    ResourceMonitorV2,
+    cgroup_path_from_env as resource_monitor_cgroup_path,
+    is_v2_requested as resource_monitor_v2_requested,
+)
+
+# Either backend (v1 procfs/nvidia-smi or v2 NVML/cgroups) — both expose the
+# same stage_start/stage_end/stop/trace_path interface used by run loops.
+ResourceMonitorLike = ResourceMonitor | ResourceMonitorV2
 from benchmark.llm_performance import (
     LLMPerformanceResult,
     performance_from_generation,
@@ -107,7 +117,7 @@ def _energy_price_usd() -> float | None:
 def _stage_timer(
     stage_timings: dict[str, float],
     name: str,
-    resource_monitor: ResourceMonitor | None = None,
+    resource_monitor: ResourceMonitorLike | None = None,
     latency_recorder: StageTimings | None = None,
     latency_stage: str | None = None,
 ):
@@ -166,7 +176,7 @@ def _build_internal_retrieval_index(
     data: list[dict],
     corpus: list[dict] | None,
     stage_timings: dict[str, float],
-    resource_monitor: ResourceMonitor | None,
+    resource_monitor: ResourceMonitorLike | None,
     latency_recorder: StageTimings | None = None,
 ) -> tuple[list, object]:
     with _stage_timer(
@@ -429,7 +439,7 @@ def run_single_benchmark(
     config: BenchmarkConfig, data: list[dict], run_dir: Path | None = None,
     corpus: list[dict] | None = None,
     load_data_seconds: float | None = None,
-    resource_monitor: ResourceMonitor | None = None,
+    resource_monitor: ResourceMonitorLike | None = None,
     latency_recorder: StageTimings | None = None,
 ) -> BenchmarkResultExtended:
     """Run one configuration and always release its managed target.
@@ -471,7 +481,7 @@ def _run_single_benchmark_impl(
     config: BenchmarkConfig, data: list[dict], run_dir: Path | None = None,
     corpus: list[dict] | None = None,
     load_data_seconds: float | None = None,
-    resource_monitor: ResourceMonitor | None = None,
+    resource_monitor: ResourceMonitorLike | None = None,
     cleanup_registry: list[tuple[Any, PreparedTarget, BenchmarkConfig]] | None = None,
     latency_recorder: StageTimings | None = None,
 ) -> BenchmarkResultExtended:
@@ -1368,12 +1378,38 @@ def run_all_benchmarks() -> list[BenchmarkResultExtended]:
             if resource_monitor_enabled():
                 safe_name = config.name.replace(":", "_").replace("/", "_")
                 trace_dir = run_dir / "resource_traces"
-                monitor = ResourceMonitor(
-                    trace_dir / f"{safe_name}.csv",
-                    trace_dir / f"{safe_name}_markers.csv",
-                    interval_seconds=resource_monitor_interval(),
-                    gpu_index=resource_monitor_gpu_index(),
-                )
+                trace_csv = trace_dir / f"{safe_name}.csv"
+                markers_csv = trace_dir / f"{safe_name}_markers.csv"
+                if resource_monitor_v2_requested():
+                    try:
+                        monitor = ResourceMonitorV2(
+                            trace_csv,
+                            markers_csv,
+                            interval_seconds=resource_monitor_interval(),
+                            gpu_index=resource_monitor_gpu_index(),
+                            cgroup_path=resource_monitor_cgroup_path(),
+                        )
+                        console.print(
+                            "[dim]  resource monitor: v2 (NVML + cgroups v2)[/dim]"
+                        )
+                    except NvmlNotAvailableError as exc:
+                        console.print(
+                            f"[yellow]  v2 resource monitor unavailable "
+                            f"({exc}); falling back to v1.[/yellow]"
+                        )
+                        monitor = ResourceMonitor(
+                            trace_csv,
+                            markers_csv,
+                            interval_seconds=resource_monitor_interval(),
+                            gpu_index=resource_monitor_gpu_index(),
+                        )
+                else:
+                    monitor = ResourceMonitor(
+                        trace_csv,
+                        markers_csv,
+                        interval_seconds=resource_monitor_interval(),
+                        gpu_index=resource_monitor_gpu_index(),
+                    )
 
             if monitor is None:
                 result = run_single_benchmark(
