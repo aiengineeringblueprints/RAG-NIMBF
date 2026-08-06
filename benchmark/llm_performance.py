@@ -176,6 +176,47 @@ def performance_from_generation(
     metrics = _aggregate_mode("generation", "sequential", calls, wall_s)
     metrics["generation_actual_calls"] = float(len(calls))
     metrics["generation_tpot_is_estimated"] = 1.0
+
+    # When the backend is vLLM, supplement the estimated TPOT with the
+    # server-reported per-output-token latency scraped from /metrics. We pair
+    # the per-sample before/after snapshots and average the window means.
+    if config.llm_provider == "vllm":
+        vllm_tpot_samples: list[float] = []
+        vllm_ttft_samples: list[float] = []
+        for sample in samples:
+            before = getattr(sample, "vllm_metrics_before", None)
+            after = getattr(sample, "vllm_metrics_after", None)
+            if before is None or after is None:
+                continue
+            before_tpot = getattr(before, "tpot_histogram", None)
+            after_tpot = getattr(after, "tpot_histogram", None)
+            if (
+                before_tpot is not None
+                and after_tpot is not None
+                and after_tpot.count > before_tpot.count
+            ):
+                dcount = after_tpot.count - before_tpot.count
+                dsum = after_tpot.sum - before_tpot.sum
+                if dsum > 0:
+                    vllm_tpot_samples.append(dsum / dcount)
+            before_ttft = getattr(before, "ttft_histogram", None)
+            after_ttft = getattr(after, "ttft_histogram", None)
+            if (
+                before_ttft is not None
+                and after_ttft is not None
+                and after_ttft.count > before_ttft.count
+            ):
+                dcount = after_ttft.count - before_ttft.count
+                dsum = after_ttft.sum - before_ttft.sum
+                if dsum > 0:
+                    vllm_ttft_samples.append(dsum / dcount)
+        if vllm_tpot_samples:
+            metrics["generation_tpot_vllm_mean_s"] = statistics.mean(vllm_tpot_samples)
+            metrics["generation_tpot_vllm_p95_s"] = _percentile(vllm_tpot_samples, 0.95)
+        if vllm_ttft_samples:
+            metrics["generation_ttft_vllm_mean_s"] = statistics.mean(vllm_ttft_samples)
+            metrics["generation_ttft_vllm_p95_s"] = _percentile(vllm_ttft_samples, 0.95)
+
     return LLMPerformanceResult(
         model=config.llm_model,
         provider=config.llm_provider,
@@ -303,7 +344,7 @@ def _measure_call(
     *,
     max_tokens: int | None = None,
 ) -> PerformanceCall:
-    if config.llm_provider == "openai":
+    if config.llm_provider in ("openai", "vllm"):
         return _measure_openai(config, prompt, max_tokens or config.max_new_tokens)
     if config.llm_provider == "ollama":
         return _measure_ollama(config, prompt, max_tokens or config.max_new_tokens)
@@ -342,6 +383,13 @@ def _measure_openai(
     try:
         from openai import OpenAI
 
+        # vLLM ids can embed the deployment URL ("model@http://..."); the
+        # chat completion request needs just the model portion.
+        request_model = (
+            config.llm_model.split("@", 1)[0]
+            if config.llm_provider == "vllm" and "@" in config.llm_model
+            else config.llm_model
+        )
         client_kwargs: dict[str, Any] = {
             "api_key": config.llm_api_key() or "not-needed",
             "timeout": config.llm_performance_timeout_seconds,
@@ -350,7 +398,7 @@ def _measure_openai(
             client_kwargs["base_url"] = config.llm_base_url()
         client = OpenAI(**client_kwargs)
         stream = client.chat.completions.create(
-            model=config.llm_model,
+            model=request_model,
             max_tokens=max_tokens,
             messages=[{"role": "user", "content": prompt}],
             stream=True,

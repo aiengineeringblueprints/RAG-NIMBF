@@ -302,6 +302,8 @@ class GenerationResult:
     raw_content: str = ""
     raw_reasoning: str | None = None
     answer_valid: bool = True
+    vllm_metrics_before: object | None = None
+    vllm_metrics_after: object | None = None
 
 
 def get_llm(

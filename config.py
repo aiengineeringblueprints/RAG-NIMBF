@@ -268,15 +268,34 @@ class BenchmarkConfig:
 
     def llm_base_url(self) -> str:
         """Return the base URL for the generator LLM's provider."""
+        if self.llm_provider == "vllm":
+            from benchmark.providers import extract_vllm_endpoint
+
+            url = extract_vllm_endpoint(
+                self.llm_model, fallback_url=self.llm_openai_compat_base_url
+            )
+            return url or self.llm_openai_compat_base_url or ""
         if self.llm_provider == "openai":
             return self.llm_openai_compat_base_url or self.openai_compat_base_url or ""
         return self.llm_ollama_base_url or self.ollama_base_url
 
     def llm_api_key(self) -> str | None:
         """Return the API key for the generator LLM's provider."""
-        if self.llm_provider == "openai":
+        if self.llm_provider in ("openai", "vllm"):
             return self.llm_openai_compat_api_key or self.openai_compat_api_key
         return self.llm_ollama_api_key or self.ollama_api_key
+
+    @property
+    def vllm_metrics_enabled(self) -> bool:
+        """Whether vLLM prometheus metrics should be scraped during this run.
+
+        Auto-detected from the LLM provider. Can be forced off via
+        ``VLLM_METRICS_ENABLED=false`` for hosts that proxy vLLM behind a
+        different endpoint without exposing ``/metrics``.
+        """
+        if not _env_bool("VLLM_METRICS_ENABLED", True):
+            return False
+        return self.llm_provider == "vllm"
 
     def eval_critic_base_url(self, provider: str) -> str:
         """Return the base URL for the critic LLM's provider."""
