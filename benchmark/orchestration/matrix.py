@@ -269,10 +269,29 @@ def _apply_settings(
     config: BenchmarkConfig, settings: dict[str, Any]
 ) -> BenchmarkConfig:
     allowed = {field.name for field in fields(BenchmarkConfig)}
-    unknown = sorted(set(settings) - allowed)
+    # Pseudo-keys that expand to multiple real fields. Each must be handled
+    # explicitly below; otherwise they would be flagged as unknown.
+    pseudo_keys = {"workload_op_mix"}
+    unknown = sorted(set(settings) - allowed - pseudo_keys)
     if unknown:
         raise ValueError(f"Unknown settings field(s): {', '.join(unknown)}")
-    updates = {key: _coerce_field_value(key, value) for key, value in settings.items()}
+    updates: dict[str, Any] = {}
+    for key, value in settings.items():
+        if key == "workload_op_mix":
+            # YAML ergonomic form: ``workload_op_mix: {query: 0.7, insert: 0.15}``
+            if not isinstance(value, dict):
+                raise ValueError(
+                    "workload_op_mix must be a mapping with query/insert/update/remove keys"
+                )
+            for sub, sub_value in value.items():
+                full_key = f"workload_op_mix_{sub}"
+                if full_key not in allowed:
+                    raise ValueError(
+                        f"Unknown workload_op_mix entry: {sub!r}"
+                    )
+                updates[full_key] = float(sub_value)
+        else:
+            updates[key] = _coerce_field_value(key, value)
     return replace(config, **updates) if updates else config
 
 
@@ -320,6 +339,8 @@ def _coerce_field_value(key: str, value: Any) -> Any:
         "llm_performance_call_counts",
         "mcp_max_agent_rounds",
         "mcp_max_retries",
+        "workload_concurrency",
+        "workload_total_ops",
     }:
         if key == "llm_performance_call_counts":
             values = (
@@ -339,6 +360,7 @@ def _coerce_field_value(key: str, value: Any) -> Any:
         "llm_performance_warmup",
         "mcp_continue_on_error",
         "mcp_enforce_fairness",
+        "workload_enabled",
     }:
         return _to_bool(value)
     if key in {
@@ -356,6 +378,12 @@ def _coerce_field_value(key: str, value: Any) -> Any:
         "llm_performance_timeout_seconds",
         "mcp_timeout_seconds",
         "mcp_retry_backoff_seconds",
+        "workload_op_mix_query",
+        "workload_op_mix_insert",
+        "workload_op_mix_update",
+        "workload_op_mix_remove",
+        "workload_zipf_theta",
+        "workload_target_qps",
     }:
         return float(value)
     if key in {
@@ -403,6 +431,7 @@ def _coerce_field_value(key: str, value: Any) -> Any:
         "mcp_transport",
         "mcp_result_mode",
         "mcp_execution_mode",
+        "workload_distribution",
     }:
         return str(value).lower()
     if key == "dataset_subset":
