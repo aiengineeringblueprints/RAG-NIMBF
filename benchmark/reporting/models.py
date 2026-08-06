@@ -85,6 +85,7 @@ class BenchmarkResultExtended:
     dataset_name: str | None = None
     dataset_sample_size: int | None = None
     stage_timings: dict[str, float] | None = None
+    stage_latency: dict[str, dict[str, float | int]] | None = None
     vector_db_backend: str | None = None
     total_input_tokens: int = 0
     total_output_tokens: int = 0

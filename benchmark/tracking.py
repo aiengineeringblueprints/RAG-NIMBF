@@ -56,6 +56,29 @@ def setup_mlflow() -> str:
     return tracking_uri
 
 
+def _derive_throughput_metrics(result: BenchmarkResultExtended) -> dict[str, float]:
+    """Derive chunks/s and queries/s from stage latency stats + counts."""
+    out: dict[str, float] = {}
+    stages = result.stage_latency or {}
+    indexing = stages.get("indexing") or {}
+    indexing_total = float(indexing.get("total_s") or 0.0)
+    if indexing_total > 0 and result.num_chunks:
+        out["embed_index_chunks_s"] = result.num_chunks / indexing_total
+    retrieval = stages.get("retrieval") or {}
+    retrieval_total = float(retrieval.get("total_s") or 0.0)
+    if retrieval_total > 0:
+        retrieval_count = int(retrieval.get("count") or 0)
+        if retrieval_count:
+            out["retrieve_qps"] = retrieval_count / retrieval_total
+    generation = stages.get("generation") or {}
+    generation_total = float(generation.get("total_s") or 0.0)
+    if generation_total > 0:
+        generation_count = int(generation.get("count") or 0)
+        if generation_count:
+            out["generate_qps"] = generation_count / generation_total
+    return out
+
+
 def _flatten_ragas_stats(
     result: BenchmarkResultExtended,
 ) -> dict[str, float | None]:
@@ -228,6 +251,22 @@ def log_benchmark_run(
     if result.stage_timings:
         for key, value in result.stage_timings.items():
             metrics[f"stage_{key}_seconds"] = value
+
+    if result.stage_latency:
+        for stage, stats in result.stage_latency.items():
+            if not isinstance(stats, dict):
+                continue
+            for stat_name in ("total_s", "mean_s", "p50_s", "p95_s", "max_s"):
+                value = stats.get(stat_name)
+                if value is None:
+                    continue
+                metrics[f"lat_{stage}_{stat_name}"] = float(value)
+            count = stats.get("count")
+            if count is not None:
+                metrics[f"lat_{stage}_count"] = float(count)
+        throughput = _derive_throughput_metrics(result)
+        for key, value in throughput.items():
+            metrics[f"throughput_{key}"] = value
 
     if result.llm_performance_metrics:
         for key, value in result.llm_performance_metrics.items():
