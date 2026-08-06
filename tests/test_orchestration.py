@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from benchmark.orchestration.matrix import (
     ExperimentSpec,
     build_configs_from_spec,
@@ -52,18 +54,22 @@ def test_manifest_matrix_expands_and_deduplicates_semantic(monkeypatch):
     # semantic ignores size/overlap: 2 models * 2 top-k = 4
     assert len(configs) == 12
     assert {c.dataset_sample_size for c in configs} == {7}
-    assert any(c.chunking_strategy == "semantic" and c.chunk_size is None for c in configs)
+    assert any(
+        c.chunking_strategy == "semantic" and c.chunk_size is None for c in configs
+    )
     assert any("_k3" in c.name for c in configs)
 
 
 def test_json_manifest_loads(tmp_path: Path):
     path = tmp_path / "experiment.json"
     path.write_text(
-        json.dumps({
-            "experiment_name": "json-test",
-            "dataset": {"sample_size": 2},
-            "matrix": {"retrieval_top_k": [3]},
-        }),
+        json.dumps(
+            {
+                "experiment_name": "json-test",
+                "dataset": {"sample_size": 2},
+                "matrix": {"retrieval_top_k": [3]},
+            }
+        ),
         encoding="utf-8",
     )
 
@@ -73,6 +79,36 @@ def test_json_manifest_loads(tmp_path: Path):
     assert spec.dataset == {"sample_size": 2}
     assert spec.matrix == {"retrieval_top_k": [3]}
 
+
+def test_managed_settings_and_json_options_are_normalized(monkeypatch):
+    _base_env(monkeypatch)
+    spec = ExperimentSpec(
+        name="managed",
+        dataset={
+            "name": "jsonl-shared",
+            "path": "questions.jsonl",
+            "corpus_path": "corpus",
+            "sample_size": 3,
+        },
+        settings={
+            "rag_system_adapter": "internal",
+            "chunking_strategy": "provider",
+            "ingestion_method": "naive",
+            "ingestion_options_json": {"chunk_token_num": 256},
+        },
+        matrix={
+            "retrieval_candidate_k": [128, 256],
+            "retrieval_similarity_threshold": [0.2],
+        },
+    )
+
+    configs = build_configs_from_spec(spec)
+
+    assert len(configs) == 2
+    assert {c.retrieval_candidate_k for c in configs} == {128, 256}
+    assert all(c.chunk_size is None and c.chunk_overlap is None for c in configs)
+    assert all(c.dataset_corpus_path == "corpus" for c in configs)
+    assert all(c.ingestion_options_json == '{"chunk_token_num":256}' for c in configs)
 
 
 def test_manifest_dataset_lists_expand_without_dropping_duplicates(monkeypatch):
@@ -164,6 +200,45 @@ def test_clearml_parameters_exclude_secret_fields(monkeypatch):
     assert "retrieval_top_k" in params
     assert "llm_openai_compat_api_key" not in params
     assert "rag_http_auth_value" not in params
+    assert "rag_managed_options_json" not in params
+    assert "ingestion_options_json" not in params
+
+
+def test_managed_matrix_names_cover_all_effective_sweep_dimensions(monkeypatch):
+    _base_env(monkeypatch)
+    spec = ExperimentSpec(
+        name="managed-identity",
+        dataset={},
+        settings={
+            "rag_system_adapter": "optimaiserag",
+            "chunking_strategy": "provider",
+        },
+        matrix={
+            "generation_top_p": [0.5, 0.9],
+            "ingestion_options_json": [
+                {"chunk_token_num": 128},
+                {"chunk_token_num": 256},
+            ],
+        },
+    )
+
+    configs = build_configs_from_spec(spec)
+
+    assert len(configs) == 4
+    assert len({config.name for config in configs}) == 4
+
+
+def test_matrix_rejects_invalid_managed_ranges(monkeypatch):
+    _base_env(monkeypatch)
+    spec = ExperimentSpec(
+        name="invalid-managed",
+        dataset={},
+        settings={},
+        matrix={"generation_top_p": [1.5]},
+    )
+
+    with pytest.raises(ValueError, match="generation_top_p"):
+        build_configs_from_spec(spec)
 
 
 def test_clearml_parameter_overrides_preserve_provider_without_prefix(monkeypatch):

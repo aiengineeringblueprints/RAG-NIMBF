@@ -12,6 +12,15 @@ system as a black-box HTTP service.
 pip install -r requirements.txt
 ```
 
+For a fully reproducible Python 3.12 environment, install the compiled lock:
+
+```bash
+pip install -r requirements-lock.txt
+```
+
+Regenerate it after dependency changes with the command recorded at the top of
+`requirements-lock.txt`.
+
 ## Run the Built-In Pipeline
 
 ```bash
@@ -136,6 +145,8 @@ logs scalar benchmark metrics to ClearML, and keeps MLflow logging enabled unles
 ## Benchmark RAG Systems
 
 - Enterprise RAG Blueprint: see [doc/Enterprise_RAG_Blueprint_Benchmark.md](doc/Enterprise_RAG_Blueprint_Benchmark.md).
+- optimiseRAG quickstart and operations: see [doc/OptimiseRAG_Benchmark.md](doc/OptimiseRAG_Benchmark.md).
+- Generic managed RAG adapters: see [doc/Managed_RAG_System_Usage.md](doc/Managed_RAG_System_Usage.md).
 - Your own RAG system: see [doc/Benchmark_Your_RAG.md](doc/Benchmark_Your_RAG.md).
 
 ## Use an External RAG System
@@ -327,6 +338,71 @@ RAG_HTTP_AUTH_HEADER=Authorization \
 RAG_HTTP_AUTH_VALUE="Bearer $RAG_API_TOKEN"
 ```
 
+### Compare Internal RAG With an MCP System
+
+The built-in `mcp` adapter calls one tool on an MCP server. MCP is the
+transport contract, not a retrieval algorithm, so the comparison measures the
+concrete MCP tool/server you configure.
+
+Two result modes are available:
+
+- `context`: tool results are evidence for the same configured generator used
+  by the framework. This isolates internal RAG retrieval versus MCP retrieval.
+- `answer`: the tool result is the final answer. This benchmarks a completely
+  external MCP-only QA system without a framework generator call.
+
+Two execution modes are available:
+
+- `fixed`: invoke `MCP_TOOL_NAME` once per question.
+- `agentic`: expose the allowlisted MCP tools to the configured chat model and
+  let it make several tool calls before producing a final answer.
+
+Run the included lexical MCP baseline against internal vector RAG:
+
+```bash
+pip install -r requirements.txt
+BENCHMARK_CONFIG_FILE=experiments/rag-vs-mcp.yaml python main.py
+```
+
+Additional ready-to-run comparisons are provided:
+
+```bash
+# LLM-controlled search + lookup MCP tools
+BENCHMARK_CONFIG_FILE=experiments/rag-vs-mcp-agentic.yaml python main.py
+
+# MCP tool supplies the final answer
+BENCHMARK_CONFIG_FILE=experiments/rag-vs-mcp-answer.yaml python main.py
+```
+
+For a remote Streamable HTTP server, configure machine-local connectivity in
+`.env` and keep the workflow fields in YAML:
+
+```bash
+MCP_TRANSPORT=streamable_http
+MCP_SERVER_URL=https://mcp.example.com/mcp
+MCP_TOOL_NAME=search
+MCP_RESULT_MODE=context
+MCP_RESULT_FIELD=contexts
+```
+
+For stdio servers, `MCP_COMMAND` and `MCP_ARGS_JSON` are passed as an executable
+and argument array; the adapter never invokes a shell. `MCP_ENV_VARS` is a
+comma-separated allowlist of environment-variable names that the child server
+needs. HTTP headers and static tool arguments are JSON objects in
+`MCP_HTTP_HEADERS_JSON` and `MCP_TOOL_ARGUMENTS_JSON`.
+
+The client session is initialized once during adapter preparation and reused
+for the full configuration. Reports preserve per-call tool names, redacted
+arguments, attempts, latency, source metadata, and errors. Aggregate adapter
+metrics include connection time, cold and warm tool latency, calls, retries,
+timeouts, empty responses, partial completions, and failure rate.
+
+When an experiment contains both `internal` and `mcp`, fairness validation is
+enabled by default. `MCP_CORPUS_PATH` must resolve to the same corpus as
+`dataset.corpus_path`, and context-mode comparisons must share the dataset,
+top-k, generator, prompt, and token limit. Set `MCP_ENFORCE_FAIRNESS=false` only
+for intentionally asymmetric experiments.
+
 ## Important Environment Variables
 
 YAML-first runs should set `BENCHMARK_CONFIG_FILE` and keep secrets/service URLs
@@ -336,7 +412,7 @@ templates, vector backend, and evaluator settings belong in `experiments/*.yaml`
 | Variable | Description |
 | --- | --- |
 | `BENCHMARK_CONFIG_FILE` | Optional JSON/YAML manifest for `python main.py`; falls back to legacy `.env` matrix when unset. |
-| `RAG_SYSTEM_ADAPTER` | `internal` or `http`; defaults to `internal`. |
+| `RAG_SYSTEM_ADAPTER` | `internal`, `http`, or `mcp`; defaults to `internal`. |
 | `RAG_HTTP_ENDPOINT_URL` | Required when `RAG_SYSTEM_ADAPTER=http`. |
 | `RAG_HTTP_TIMEOUT_SECONDS` | HTTP request timeout; defaults to `60`. |
 | `RAG_HTTP_ANSWER_FIELD` | Dotted response path for the answer; defaults to `answer`. |
@@ -344,6 +420,18 @@ templates, vector backend, and evaluator settings belong in `experiments/*.yaml`
 | `RAG_HTTP_METADATA_FIELD` | Dotted response path for retrieval metadata; defaults to `metadata`. |
 | `RAG_HTTP_TIMINGS_FIELD` | Dotted response path for timing data; defaults to `timings`. |
 | `RAG_ADAPTER_MODULES` | Optional comma-separated Python modules to import before RAG adapter validation. |
+| `MCP_TRANSPORT` | `stdio` or `streamable_http`; defaults to `stdio`. |
+| `MCP_COMMAND` / `MCP_ARGS_JSON` | Executable and JSON argument array for a stdio MCP server. |
+| `MCP_SERVER_URL` | MCP endpoint required by `streamable_http`. |
+| `MCP_TOOL_NAME` | Tool invoked for each benchmark question. |
+| `MCP_RESULT_MODE` | `context` (MCP evidence + framework LLM) or `answer` (tool is full QA system). |
+| `MCP_RESULT_FIELD` | Optional dotted path inside structured tool output, such as `contexts`. |
+| `MCP_EXECUTION_MODE` | `fixed` or `agentic`; defaults to `fixed`. |
+| `MCP_ALLOWED_TOOLS_JSON` | Optional JSON tool-name allowlist for agentic mode. |
+| `MCP_MAX_AGENT_ROUNDS` | Maximum model/tool rounds; defaults to `4`. |
+| `MCP_MAX_RETRIES` | Transport exception retries per tool call; defaults to `1`. |
+| `MCP_CONTINUE_ON_ERROR` | Record a failed sample and continue instead of aborting; defaults to `true`. |
+| `MCP_CORPUS_PATH` | Declares the MCP corpus for RAG-vs-MCP fairness validation. |
 | `DATASET_NAME` | Dataset adapter to benchmark; built-ins include `jsonl` and `csv` for local files. |
 | `DATASET_PATH` | Required for `DATASET_NAME=jsonl` or `csv`. |
 | `DATASET_QUESTION_FIELD` | Local dataset question field; defaults to `question`. |

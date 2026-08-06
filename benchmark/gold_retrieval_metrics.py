@@ -10,9 +10,11 @@ and multi-gold datasets (HotpotQA / MuSiQue / 2WikiMultiHopQA, where
 the gold set is auto-derived from ``supporting_facts`` / ``supporting_contexts``
 in the sample metadata when ``gold_doc_id`` is absent.
 """
+
 from __future__ import annotations
 
 import math
+import re
 from dataclasses import dataclass
 from typing import Any, Iterable
 
@@ -124,9 +126,7 @@ def _ndcg_at_k(gold: set[str], retrieved: list[str], k: int) -> float:
         return 0.0
     top_k = retrieved[:k]
     dcg = sum(
-        1.0 / math.log2(rank + 2)
-        for rank, doc_id in enumerate(top_k)
-        if doc_id in gold
+        1.0 / math.log2(rank + 2) for rank, doc_id in enumerate(top_k) if doc_id in gold
     )
     ideal_hits = min(len(gold), k)
     idcg = sum(1.0 / math.log2(rank + 2) for rank in range(ideal_hits))
@@ -141,6 +141,66 @@ def _recall_at_k(gold: set[str], retrieved: list[str], k: int) -> float:
     return hits / len(gold)
 
 
+def _span_relevance(
+    evidence: list[dict[str, Any]],
+    retrieved_ids: list[str | None],
+    contexts: list[str],
+) -> list[set[int]]:
+    """Map provider chunks to gold evidence spans using source + text overlap."""
+    relevance: list[set[int]] = []
+    for rank, context in enumerate(contexts):
+        context_tokens = set(re.findall(r"[a-z0-9]+", context.lower()))
+        document_id = retrieved_ids[rank] if rank < len(retrieved_ids) else None
+        matched: set[int] = set()
+        for evidence_index, item in enumerate(evidence):
+            source_id = item.get("source_id")
+            if source_id and document_id and str(source_id) != document_id:
+                continue
+            quote_tokens = set(
+                re.findall(r"[a-z0-9]+", str(item.get("quote") or "").lower())
+            )
+            if not quote_tokens:
+                continue
+            overlap = len(quote_tokens & context_tokens) / len(quote_tokens)
+            if overlap >= 0.6:
+                matched.add(evidence_index)
+        relevance.append(matched)
+    return relevance
+
+
+def _append_span_metrics(
+    scores: dict[str, float | None],
+    accum: dict[str, list[float]],
+    evidence: list[dict[str, Any]],
+    relevance: list[set[int]],
+    ks: list[int],
+) -> None:
+    if not evidence:
+        return
+    for k in ks:
+        top = relevance[:k]
+        covered = set().union(*top) if top else set()
+        first_rank = next((rank for rank, hits in enumerate(top, 1) if hits), None)
+        gains: list[int] = []
+        seen: set[int] = set()
+        for hits in top:
+            new_hits = hits - seen
+            gains.append(len(new_hits))
+            seen.update(hits)
+        dcg = sum(gain / math.log2(rank + 2) for rank, gain in enumerate(gains))
+        ideal = min(len(evidence), k)
+        idcg = sum(1.0 / math.log2(rank + 2) for rank in range(ideal))
+        values = {
+            f"span_hit@{k}": 1.0 if covered else 0.0,
+            f"span_mrr@{k}": 1.0 / first_rank if first_rank else 0.0,
+            f"span_ndcg@{k}": dcg / idcg if idcg else 0.0,
+            f"span_recall@{k}": len(covered) / len(evidence),
+        }
+        for name, value in values.items():
+            scores[name] = value
+            accum.setdefault(name, []).append(value)
+
+
 # ── Public entry point ───────────────────────────────────────────────
 
 
@@ -149,6 +209,7 @@ def compute_gold_doc_retrieval_metrics(
     retrieved_metadata: list[list[dict[str, Any]]],
     *,
     sample_metadata: list[dict[str, Any]] | None = None,
+    retrieved_contexts: list[list[str]] | None = None,
     k_values: list[int] | None = None,
 ) -> GoldRetrievalMetricsResult:
     """Compute document-level retrieval metrics from gold and retrieved IDs.
@@ -168,7 +229,9 @@ def compute_gold_doc_retrieval_metrics(
     skipped = 0
 
     for i, (gold, metadata_list) in enumerate(zip(gold_doc_ids, retrieved_metadata)):
-        meta = sample_metadata[i] if sample_metadata and i < len(sample_metadata) else None
+        meta = (
+            sample_metadata[i] if sample_metadata and i < len(sample_metadata) else None
+        )
         gold_set = _resolve_gold_set(gold, meta)
         scores: dict[str, float | None] = {}
 
@@ -188,6 +251,10 @@ def compute_gold_doc_retrieval_metrics(
             if doc_id is not None
         ]
 
+        # Preserve rank alignment for span metrics, including chunks without a
+        # provider document ID.
+        ranked_doc_ids = [_extract_doc_id(metadata) for metadata in metadata_list]
+
         for k in ks:
             hit = _hit_at_k(gold_set, retrieved_doc_ids, k)
             ndcg = _ndcg_at_k(gold_set, retrieved_doc_ids, k)
@@ -206,6 +273,16 @@ def compute_gold_doc_retrieval_metrics(
             ):
                 scores[name] = value
                 accum.setdefault(name, []).append(value)
+
+        evidence = meta.get("evidence", []) if isinstance(meta, dict) else []
+        contexts = (
+            retrieved_contexts[i]
+            if retrieved_contexts and i < len(retrieved_contexts)
+            else []
+        )
+        if isinstance(evidence, list) and contexts:
+            relevance = _span_relevance(evidence, ranked_doc_ids, contexts)
+            _append_span_metrics(scores, accum, evidence, relevance, ks)
 
         per_sample.append(scores)
 

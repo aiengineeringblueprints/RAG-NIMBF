@@ -25,15 +25,18 @@ from benchmark.dataset import (
 # Sample contract normalization
 # ---------------------------------------------------------------------------
 
+
 class TestSampleContract:
     def test_normalize_sample_preserves_public_shape_and_extra_keys(self):
-        sample = normalize_sample({
-            "question": 123,
-            "ground_truth": 42,
-            "context": ["ctx", 7],
-            "metadata": {"id": "abc"},
-            "extra": "kept",
-        })
+        sample = normalize_sample(
+            {
+                "question": 123,
+                "ground_truth": 42,
+                "context": ["ctx", 7],
+                "metadata": {"id": "abc"},
+                "extra": "kept",
+            }
+        )
 
         assert sample["question"] == "123"
         assert sample["ground_truth"] == "42"
@@ -50,29 +53,36 @@ class TestSampleContract:
             ValueError,
             match=r"dataset\[1\]\.metadata must be a dict, got list",
         ):
-            normalize_sample({
-                "question": "q",
-                "ground_truth": "a",
-                "context": "ctx",
-                "metadata": [],
-            }, source="dataset[1]")
-
-    def test_normalize_samples_labels_failing_index(self):
-        with pytest.raises(ValueError, match=r"batch\[1\].*context"):
-            normalize_samples([
+            normalize_sample(
                 {
                     "question": "q",
                     "ground_truth": "a",
                     "context": "ctx",
-                    "metadata": {},
+                    "metadata": [],
                 },
-                {"question": "q", "ground_truth": "a", "metadata": {}},
-            ], source="batch")
+                source="dataset[1]",
+            )
+
+    def test_normalize_samples_labels_failing_index(self):
+        with pytest.raises(ValueError, match=r"batch\[1\].*context"):
+            normalize_samples(
+                [
+                    {
+                        "question": "q",
+                        "ground_truth": "a",
+                        "context": "ctx",
+                        "metadata": {},
+                    },
+                    {"question": "q", "ground_truth": "a", "metadata": {}},
+                ],
+                source="batch",
+            )
 
 
 # ---------------------------------------------------------------------------
 # Adapter context builders
 # ---------------------------------------------------------------------------
+
 
 class TestT2RagbenchContext:
     def test_all_fields(self):
@@ -158,6 +168,7 @@ class TestRagperfWikipediaNqContext:
 # Adapter registry
 # ---------------------------------------------------------------------------
 
+
 class TestDatasetAdapters:
     def test_t2_ragbench_registered(self):
         adapter = get_adapter("t2-ragbench")
@@ -211,24 +222,29 @@ class TestDatasetAdapters:
 # load_benchmark_data
 # ---------------------------------------------------------------------------
 
+
 class TestLoadBenchmarkData:
     @patch("benchmark.dataset.load_dataset")
     def test_t2_ragbench_loads_and_transforms(self, mock_load):
         mock_ds = MagicMock()
         mock_split = MagicMock()
         mock_split.__len__ = MagicMock(return_value=1)
-        mock_split.__iter__ = MagicMock(return_value=iter([
-            {
-                "question": "What is the revenue?",
-                "program_answer": "42",
-                "pre_text": "Revenue report",
-                "table": None,
-                "post_text": None,
-                "context": None,
-                "file_name": "report.pdf",
-                "company_name": "ACME",
-            }
-        ]))
+        mock_split.__iter__ = MagicMock(
+            return_value=iter(
+                [
+                    {
+                        "question": "What is the revenue?",
+                        "program_answer": "42",
+                        "pre_text": "Revenue report",
+                        "table": None,
+                        "post_text": None,
+                        "context": None,
+                        "file_name": "report.pdf",
+                        "company_name": "ACME",
+                    }
+                ]
+            )
+        )
         mock_ds.__contains__ = MagicMock(return_value=False)
         mock_ds.keys.return_value = ["train"]
         mock_ds.__getitem__ = MagicMock(return_value=mock_split)
@@ -251,15 +267,19 @@ class TestLoadBenchmarkData:
         mock_ds = MagicMock()
         mock_split = MagicMock()
         mock_split.__len__ = MagicMock(return_value=1)
-        mock_split.__iter__ = MagicMock(return_value=iter([
-            {
-                "question": "What is X?",
-                "response": "Y",
-                "documents": ["doc text"],
-                "id": "123",
-                "dataset_name": "covidqa",
-            }
-        ]))
+        mock_split.__iter__ = MagicMock(
+            return_value=iter(
+                [
+                    {
+                        "question": "What is X?",
+                        "response": "Y",
+                        "documents": ["doc text"],
+                        "id": "123",
+                        "dataset_name": "covidqa",
+                    }
+                ]
+            )
+        )
         mock_ds.__contains__ = MagicMock(return_value=True)
         mock_ds.keys.return_value = ["test", "train"]
         mock_ds.__getitem__ = MagicMock(return_value=mock_split)
@@ -283,16 +303,24 @@ class TestLoadBenchmarkData:
     def test_ragperf_wikipedia_nq_loads_corpus_and_questions(self, mock_load):
         wiki = MagicMock()
         wiki.__len__ = MagicMock(return_value=2)
-        wiki.__iter__ = MagicMock(return_value=iter([
-            {"id": "w1", "title": "Alpha", "text": "Alpha article"},
-            {"id": "w2", "title": "Beta", "text": "Beta article"},
-        ]))
+        wiki.__iter__ = MagicMock(
+            return_value=iter(
+                [
+                    {"id": "w1", "title": "Alpha", "text": "Alpha article"},
+                    {"id": "w2", "title": "Beta", "text": "Beta article"},
+                ]
+            )
+        )
 
         nq = MagicMock()
         nq.__len__ = MagicMock(return_value=1)
-        nq.__iter__ = MagicMock(return_value=iter([
-            {"query": "What is Alpha?", "answer": "Alpha answer"},
-        ]))
+        nq.__iter__ = MagicMock(
+            return_value=iter(
+                [
+                    {"query": "What is Alpha?", "answer": "Alpha answer"},
+                ]
+            )
+        )
 
         mock_load.side_effect = [wiki, nq]
 
@@ -314,9 +342,24 @@ class TestGoldDocMetadata:
     @patch("benchmark.dataset.load_benchmark_data")
     def test_shared_corpus_adds_doc_and_gold_doc_ids(self, mock_load_benchmark_data):
         mock_load_benchmark_data.return_value = [
-            {"question": "q1", "ground_truth": "a1", "context": "same context", "metadata": {"id": "1"}},
-            {"question": "q2", "ground_truth": "a2", "context": "same context", "metadata": {"id": "2"}},
-            {"question": "q3", "ground_truth": "a3", "context": "other context", "metadata": {"id": "3"}},
+            {
+                "question": "q1",
+                "ground_truth": "a1",
+                "context": "same context",
+                "metadata": {"id": "1"},
+            },
+            {
+                "question": "q2",
+                "ground_truth": "a2",
+                "context": "same context",
+                "metadata": {"id": "2"},
+            },
+            {
+                "question": "q3",
+                "ground_truth": "a3",
+                "context": "other context",
+                "metadata": {"id": "3"},
+            },
         ]
 
         corpus, questions = load_corpus_and_questions(
@@ -326,9 +369,15 @@ class TestGoldDocMetadata:
 
         assert len(corpus) == 2
         assert corpus[0]["metadata"]["doc_id"].startswith("squad_doc_0_")
-        assert questions[0]["metadata"]["gold_doc_id"] == corpus[0]["metadata"]["doc_id"]
-        assert questions[1]["metadata"]["gold_doc_id"] == corpus[0]["metadata"]["doc_id"]
-        assert questions[2]["metadata"]["gold_doc_id"] == corpus[1]["metadata"]["doc_id"]
+        assert (
+            questions[0]["metadata"]["gold_doc_id"] == corpus[0]["metadata"]["doc_id"]
+        )
+        assert (
+            questions[1]["metadata"]["gold_doc_id"] == corpus[0]["metadata"]["doc_id"]
+        )
+        assert (
+            questions[2]["metadata"]["gold_doc_id"] == corpus[1]["metadata"]["doc_id"]
+        )
 
     @patch("benchmark.dataset.load_benchmark_data")
     def test_shared_corpus_normalizes_loaded_samples(self, mock_load_benchmark_data):
@@ -350,19 +399,24 @@ class TestGoldDocMetadata:
         assert corpus[0]["metadata"]["doc_id"].startswith("squad_doc_0_")
         assert questions[0]["question"] == "1"
         assert questions[0]["ground_truth"] == "2"
-        assert questions[0]["metadata"]["gold_doc_id"] == corpus[0]["metadata"]["doc_id"]
+        assert (
+            questions[0]["metadata"]["gold_doc_id"] == corpus[0]["metadata"]["doc_id"]
+        )
 
 
 class TestLocalDatasets:
     def test_jsonl_dataset_loads_with_custom_fields(self, tmp_path):
         path = tmp_path / "samples.jsonl"
         path.write_text(
-            json.dumps({
-                "q": "Question?",
-                "a": "Answer",
-                "ctx": ["one", "two"],
-                "meta": {"id": "1"},
-            }) + "\n",
+            json.dumps(
+                {
+                    "q": "Question?",
+                    "a": "Answer",
+                    "ctx": ["one", "two"],
+                    "meta": {"id": "1"},
+                }
+            )
+            + "\n",
             encoding="utf-8",
         )
 
@@ -376,18 +430,19 @@ class TestLocalDatasets:
             metadata_field="meta",
         )
 
-        assert samples == [{
-            "question": "Question?",
-            "ground_truth": "Answer",
-            "context": ["one", "two"],
-            "metadata": {"id": "1"},
-        }]
+        assert samples == [
+            {
+                "question": "Question?",
+                "ground_truth": "Answer",
+                "context": ["one", "two"],
+                "metadata": {"id": "1"},
+            }
+        ]
 
     def test_csv_dataset_parses_metadata_json_string(self, tmp_path):
         path = tmp_path / "samples.csv"
         path.write_text(
-            'question,ground_truth,context,metadata\n'
-            'Q,A,C,"{""id"":""row-1""}"\n',
+            'question,ground_truth,context,metadata\nQ,A,C,"{""id"":""row-1""}"\n',
             encoding="utf-8",
         )
 
@@ -408,7 +463,66 @@ class TestLocalDatasets:
 
     def test_local_dataset_reports_missing_field(self, tmp_path):
         path = tmp_path / "samples.jsonl"
-        path.write_text('{"question":"Q","context":"C","metadata":{}}\n', encoding="utf-8")
+        path.write_text(
+            '{"question":"Q","context":"C","metadata":{}}\n', encoding="utf-8"
+        )
 
         with pytest.raises(ValueError, match="missing required field 'ground_truth'"):
             load_benchmark_data(dataset_name="jsonl", dataset_path=str(path))
+
+
+def test_jsonl_shared_loads_explicit_corpus_directory(tmp_path):
+    from benchmark.dataset import load_corpus_and_questions
+
+    questions = tmp_path / "questions.jsonl"
+    questions.write_text(
+        '{"question":"Q","ground_truth":"A","context":"C",'
+        '"metadata":{"gold_doc_id":"DOC-1"}}\n',
+        encoding="utf-8",
+    )
+    corpus_dir = tmp_path / "corpus"
+    corpus_dir.mkdir()
+    (corpus_dir / "DOC-1.md").write_text("# Evidence\nA", encoding="utf-8")
+
+    corpus, samples = load_corpus_and_questions(
+        dataset_name="jsonl-shared",
+        sample_size=10,
+        dataset_path=str(questions),
+        corpus_path=str(corpus_dir),
+    )
+
+    assert len(samples) == 1
+    assert corpus == [
+        {
+            "context": "# Evidence\nA",
+            "metadata": {
+                "doc_id": "DOC-1",
+                "source_id": "DOC-1",
+                "source_name": "DOC-1.md",
+                "source_path": "DOC-1.md",
+            },
+        }
+    ]
+
+
+def test_jsonl_shared_rejects_symlinked_corpus_files(tmp_path):
+    from benchmark.dataset import load_corpus_and_questions
+
+    questions = tmp_path / "questions.jsonl"
+    questions.write_text(
+        '{"question":"Q","ground_truth":"A","context":"C","metadata":{}}\n',
+        encoding="utf-8",
+    )
+    outside = tmp_path / "private.md"
+    outside.write_text("must not be uploaded", encoding="utf-8")
+    corpus_dir = tmp_path / "corpus"
+    corpus_dir.mkdir()
+    (corpus_dir / "linked.md").symlink_to(outside)
+
+    with pytest.raises(ValueError, match="Symbolic links are not allowed"):
+        load_corpus_and_questions(
+            dataset_name="jsonl-shared",
+            sample_size=10,
+            dataset_path=str(questions),
+            corpus_path=str(corpus_dir),
+        )

@@ -21,6 +21,10 @@ _SENSITIVE_MARKERS = (
     "secret",
     "token",
     "key",
+    # Arbitrary provider option objects may contain credentials under names
+    # this framework does not know. Treat the complete payload as sensitive.
+    "options_json",
+    "tool_arguments_json",
 )
 
 _ENV_PREFIXES = (
@@ -34,6 +38,7 @@ _ENV_PREFIXES = (
     "LANCEDB_",
     "LLM_",
     "MLFLOW_",
+    "MCP_",
     "OLLAMA_",
     "OPENAI_COMPAT_",
     "OTEL_",

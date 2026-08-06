@@ -1,0 +1,61 @@
+experiment_name: optimaiserag-northstar
+
+# Northstar is a shared-corpus dataset: the 360 question rows are evaluated
+# against the same 60 Markdown documents uploaded by the managed adapter.
+dataset:
+  name: jsonl-shared
+  subset: null
+  sample_size: 360
+  path: datasets/northstar_facilities/questions.jsonl
+  corpus_path: datasets/northstar_facilities/corpus
+
+settings:
+  rag_system_adapter: optimaiserag
+  rag_managed_api_key_env: OPTIMAISE_RAG_API_KEY
+  rag_managed_request_timeout_seconds: 60
+  rag_managed_poll_interval_seconds: 2
+  rag_managed_poll_timeout_seconds: 1800
+  rag_managed_reuse_resources: true
+  rag_managed_cleanup: false
+  rag_managed_dataset_prefix: northstar
+
+  # optimiseRAG/RAGFlow calls this parser method "naive". Provider-managed
+  # chunking intentionally leaves chunk_size/chunk_overlap unset.
+  ingestion_method: naive
+  ingestion_options_json:
+    chunk_token_num: 256
+
+  retrieval_mode: retrieval
+  retrieval_top_k: 10
+  retrieval_candidate_k: 1024
+  retrieval_similarity_threshold: 0.2
+  retrieval_vector_similarity_weight: 0.3
+  retrieval_keyword_enabled: true
+
+  generation_context_k: 6
+  generation_temperature: 0.0
+  generation_top_p: 1.0
+  generation_presence_penalty: 0.0
+  generation_frequency_penalty: 0.0
+  max_new_tokens: 512
+  prompt_template: concise
+
+  custom_retrieval_metrics_mode: gold_doc
+  ragas_enabled: true
+  custom_metrics_enabled: true
+  eval_critic_llm: ollama:gemma3:12b
+  eval_critic_embedding: nomic-embed-text:latest
+  eval_critic_max_tokens: 4096
+  vector_db_backend: chroma
+
+matrix:
+  # These identifiers must already be configured and available in the target
+  # optimiseRAG installation. Add values here to turn this into a sweep.
+  llm_models:
+    - qwen2.5:7b
+  embedding_models:
+    - BAAI/bge-m3
+  chunking_strategies:
+    - provider
+  reranker_models:
+    - null
