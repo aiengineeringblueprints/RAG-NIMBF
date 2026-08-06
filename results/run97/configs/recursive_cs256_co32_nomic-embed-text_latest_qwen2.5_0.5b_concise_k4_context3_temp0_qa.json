@@ -1,0 +1,72 @@
+[
+  {
+    "index": 0,
+    "question": "What are both IFV and RSV infections shown to do?",
+    "answer": "Both RSV and IFV infections can induce respiratory syncytial virus (RSV) infections.",
+    "raw_content": "Both RSV and IFV infections can induce respiratory syncytial virus (RSV) infections.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 1,
+    "question": "What were the differences in immune responses?",
+    "answer": "The passage states that \"the vaccine B3 showed a more pronounced decrease in virus\" and \"we detected no significant differences between individual animals, but no significant differences between groups were detected.\"",
+    "raw_content": "The passage states that \"the vaccine B3 showed a more pronounced decrease in virus\" and \"we detected no significant differences between individual animals, but no significant differences between groups were detected.\"",
+    "raw_reasoning": null
+  },
+  {
+    "index": 2,
+    "question": "What is a conclusion of this report?",
+    "answer": "The globalization and emerging governance modalities may allow RSV to induce RLRs, which could be lost over time following NS1 or NS2 binding to RIG-I/ MDA5.",
+    "raw_content": "The globalization and emerging governance modalities may allow RSV to induce RLRs, which could be lost over time following NS1 or NS2 binding to RIG-I/ MDA5.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 3,
+    "question": "What reduces the antimicrobial activities of alveolar macrophages?",
+    "answer": "Immunoproteasome dysfunction.",
+    "raw_content": "Immunoproteasome dysfunction.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 4,
+    "question": "How may this \"Achilles Heel\" be safely targeted?",
+    "answer": "Calcitonin.",
+    "raw_content": "Calcitonin.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 5,
+    "question": "What preventative measure has been taken to decrease the incidence of diarrhea in children?",
+    "answer": "Virox.",
+    "raw_content": "Virox.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 6,
+    "question": "What is the Newcastle disease virus?",
+    "answer": "NDV is an avian paramyxovirus type I which causes a serious disease in chickens and other birds known as ND.",
+    "raw_content": "NDV is an avian paramyxovirus type I which causes a serious disease in chickens and other birds known as ND.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 7,
+    "question": "What is the structure of Hantaan virus?",
+    "answer": "The structure of Hantaan virus is very similar to that of puuv gn.",
+    "raw_content": "The structure of Hantaan virus is very similar to that of puuv gn.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 8,
+    "question": "What was the most common virus detected in community members in this sample?",
+    "answer": "Coronavirus OC43 was the most common virus detected in community members.",
+    "raw_content": "Coronavirus OC43 was the most common virus detected in community members.",
+    "raw_reasoning": null
+  },
+  {
+    "index": 9,
+    "question": "How many facilities believed they were adequately equipped to handle Ebla virus disease?",
+    "answer": "25.74%",
+    "raw_content": "25.74%",
+    "raw_reasoning": null
+  }
+]
