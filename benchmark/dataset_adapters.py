@@ -358,3 +358,8 @@ register(
         has_shared_corpus=False,
     )
 )
+
+
+# Register the 12 RAGBench component adapters (ragbench_cuad, ragbench_pubmedqa,
+# ...). Importing for its side effect.
+from benchmark import ragbench_adapter  # noqa: E402,F401  (registration hook)

@@ -973,6 +973,8 @@ def run_all_benchmarks() -> list[BenchmarkResultExtended]:
                 ground_truth_field=configs[0].dataset_ground_truth_field,
                 context_field=configs[0].dataset_context_field,
                 metadata_field=configs[0].dataset_metadata_field,
+                split=configs[0].dataset_split,
+                max_examples=configs[0].dataset_max_examples,
             )
         else:
             data = load_benchmark_data(
@@ -984,6 +986,8 @@ def run_all_benchmarks() -> list[BenchmarkResultExtended]:
                 ground_truth_field=configs[0].dataset_ground_truth_field,
                 context_field=configs[0].dataset_context_field,
                 metadata_field=configs[0].dataset_metadata_field,
+                split=configs[0].dataset_split,
+                max_examples=configs[0].dataset_max_examples,
             )
     load_data_seconds = load_stage.get("load_data")
 
