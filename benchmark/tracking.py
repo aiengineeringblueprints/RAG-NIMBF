@@ -276,6 +276,11 @@ def log_benchmark_run(
         for key, value in result.adapter_metrics.items():
             if isinstance(value, (int, float)) and math.isfinite(float(value)):
                 metrics[f"adapter_{key}"] = float(value)
+    if result.vllm_metrics:
+        for key, value in result.vllm_metrics.items():
+            if isinstance(value, (int, float)) and math.isfinite(float(value)):
+                # Keys already carry the ``vllm_`` prefix from the aggregator.
+                metrics[key] = float(value)
 
     # RAGAS mean metrics
     for key, value in [
