@@ -335,6 +335,7 @@ def _coerce_field_value(key: str, value: Any) -> Any:
         "llm_answer_value_fallback",
         "ragas_enabled",
         "custom_metrics_enabled",
+        "trace_metrics_enabled",
         "llm_performance_enabled",
         "llm_performance_warmup",
         "mcp_continue_on_error",

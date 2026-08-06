@@ -75,6 +75,7 @@ class BenchmarkConfig:
     dataset_metadata_field: str = "metadata"
     ragas_enabled: bool = True
     custom_metrics_enabled: bool = True
+    trace_metrics_enabled: bool = False
     # Prompt template
     prompt_template: str = "concise"
     # Reranker
@@ -548,6 +549,7 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
         custom_metrics_bert_model = None
     ragas_enabled = _env_bool("RAGAS_ENABLED", True)
     custom_metrics_enabled = _env_bool("CUSTOM_METRICS_ENABLED", True)
+    trace_metrics_enabled = _env_bool("TRACE_METRICS_ENABLED", False)
 
     # Per-role URLs (fall back to shared defaults when not set)
     llm_ollama_base_url = os.getenv("LLM_OLLAMA_BASE_URL") or None
@@ -933,6 +935,7 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
                     custom_metrics_bert_model=custom_metrics_bert_model,
                     ragas_enabled=ragas_enabled,
                     custom_metrics_enabled=custom_metrics_enabled,
+                    trace_metrics_enabled=trace_metrics_enabled,
                     reranker_model=reranker,
                     reranker_top_k=reranker_top_k,
                     prompt_template=tmpl,
