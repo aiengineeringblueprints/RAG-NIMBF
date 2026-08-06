@@ -89,6 +89,9 @@ def display_report(
     # --- RAGAS Scores Table ---
     _display_ragas_table(results, rankings)
 
+    # --- Stage Latency Breakdown ---
+    _display_stage_latency_table(results)
+
     # --- Sparkline Comparison ---
     _display_sparklines(results)
 
@@ -222,6 +225,54 @@ def _display_llm_load_table(results: list[BenchmarkResultExtended]) -> None:
             _fmt(metrics.get(f"{prefix}_speedup"), ".2f"),
             _fmt(metrics.get(f"{prefix}_parallel_success_rate"), ".1%"),
         )
+    console.print(table)
+
+
+def _display_stage_latency_table(results: list[BenchmarkResultExtended]) -> None:
+    """Show per-stage wall-clock latency breakdown for each configuration."""
+    if not any(r.stage_latency for r in results):
+        return
+
+    stages_order = (
+        "chunking",
+        "indexing",
+        "retrieval",
+        "reranking",
+        "generation",
+        "evaluation",
+        "total",
+    )
+    present_stages = [
+        stage
+        for stage in stages_order
+        if any(r.stage_latency and stage in r.stage_latency for r in results)
+    ]
+    if not present_stages:
+        return
+
+    table = Table(title="Stage Latency Breakdown (seconds)", show_lines=True)
+    table.add_column("Config", style="cyan")
+    for stage in present_stages:
+        table.add_column(stage.title(), justify="right")
+
+    for r in results:
+        cells: list[str] = []
+        for stage in present_stages:
+            stats = (r.stage_latency or {}).get(stage)
+            if not stats:
+                cells.append("[dim]N/A[/dim]")
+                continue
+            count = int(stats.get("count") or 0)
+            mean = stats.get("mean_s")
+            p95 = stats.get("p95_s")
+            if count > 1:
+                cells.append(
+                    f"{_fmt(mean)} / {_fmt(p95)}\n[dim]n={count}[/dim]"
+                )
+            else:
+                cells.append(_fmt(stats.get("total_s")))
+        table.add_row(_format_config_name(r.config_name), *cells)
+
     console.print(table)
 
 
