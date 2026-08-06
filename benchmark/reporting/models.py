@@ -27,6 +27,8 @@ class PerSampleResult:
     answer_valid: bool = True
     retrieved_doc_ids: tuple[str, ...] = ()
     ground_truth_doc_ids: tuple[str, ...] = ()
+    retrieval_metadata: tuple[dict[str, Any], ...] = ()
+    adapter_diagnostics: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -97,6 +99,7 @@ class BenchmarkResultExtended:
     llm_performance_metrics: dict[str, float] | None = None
     llm_performance_artifact: str | None = None
     llm_performance_error: str | None = None
+    adapter_metrics: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)

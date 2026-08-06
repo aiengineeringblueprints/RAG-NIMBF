@@ -9,7 +9,7 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Any
 
-from benchmark.adapters.base import RagSystemOutput
+from benchmark.adapters.base import AdapterCapabilities, RagSystemOutput
 
 
 def _lookup(data: dict[str, Any], path: str, default: Any = None) -> Any:
@@ -68,6 +68,10 @@ class HttpRagAdapter:
     headers: dict[str, str] | None = None
 
     name: str = "http"
+
+    def capabilities(self) -> AdapterCapabilities:
+        """The generic endpoint provides generation but controls no lifecycle."""
+        return AdapterCapabilities(generation=True)
 
     @classmethod
     def from_config(cls, config: Any) -> "HttpRagAdapter":

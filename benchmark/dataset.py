@@ -39,7 +39,9 @@ class BenchmarkSample:
         }
 
 
-def normalize_sample(sample: Mapping[str, Any], source: str = "sample") -> dict[str, Any]:
+def normalize_sample(
+    sample: Mapping[str, Any], source: str = "sample"
+) -> dict[str, Any]:
     """Validate and normalize a benchmark sample while preserving dict flow.
 
     The returned dict keeps the public ``question``, ``ground_truth``,
@@ -101,15 +103,19 @@ def load_benchmark_data(
 ) -> list[dict]:
     adapter = resolve_adapter(dataset_name)
 
-    if dataset_name in ("jsonl", "csv"):
+    if dataset_name in ("jsonl", "jsonl-shared", "csv"):
         return _load_local_dataset(
-            dataset_name=dataset_name,
+            dataset_name="jsonl" if dataset_name == "jsonl-shared" else dataset_name,
             dataset_path=dataset_path,
             sample_size=sample_size,
-            question_field=question_field or os.getenv("DATASET_QUESTION_FIELD", "question"),
-            ground_truth_field=ground_truth_field or os.getenv("DATASET_GROUND_TRUTH_FIELD", "ground_truth"),
-            context_field=context_field or os.getenv("DATASET_CONTEXT_FIELD", "context"),
-            metadata_field=metadata_field or os.getenv("DATASET_METADATA_FIELD", "metadata"),
+            question_field=question_field
+            or os.getenv("DATASET_QUESTION_FIELD", "question"),
+            ground_truth_field=ground_truth_field
+            or os.getenv("DATASET_GROUND_TRUTH_FIELD", "ground_truth"),
+            context_field=context_field
+            or os.getenv("DATASET_CONTEXT_FIELD", "context"),
+            metadata_field=metadata_field
+            or os.getenv("DATASET_METADATA_FIELD", "metadata"),
         )
 
     label = subset or "default"
@@ -143,9 +149,7 @@ def load_benchmark_data(
                     "ground_truth": gt,
                     "context": adapter.build_context(row),
                     "metadata": {
-                        k: row.get(k)
-                        for k in adapter.metadata_keys
-                        if k in row
+                        k: row.get(k) for k in adapter.metadata_keys if k in row
                     },
                 },
                 source=f"{dataset_name}:{split}[{len(samples)}]",
@@ -164,6 +168,7 @@ def load_corpus_and_questions(
     subset: str | None = None,
     sample_size: int = 50,
     dataset_path: str | None = None,
+    corpus_path: str | None = None,
     question_field: str | None = None,
     ground_truth_field: str | None = None,
     context_field: str | None = None,
@@ -177,6 +182,22 @@ def load_corpus_and_questions(
     """
     if dataset_name == RAGPERF_WIKIPEDIA_DATASET:
         return _load_ragperf_wikipedia_nq(sample_size=sample_size)
+
+    if dataset_name == "jsonl-shared":
+        samples = normalize_samples(
+            load_benchmark_data(
+                dataset_name,
+                subset,
+                sample_size,
+                dataset_path=dataset_path,
+                question_field=question_field,
+                ground_truth_field=ground_truth_field,
+                context_field=context_field,
+                metadata_field=metadata_field,
+            ),
+            source=dataset_name,
+        )
+        return _load_local_corpus(corpus_path), samples
 
     samples = normalize_samples(
         load_benchmark_data(
@@ -201,13 +222,17 @@ def load_corpus_and_questions(
         if ctx_key not in seen:
             doc_id = _stable_doc_id(dataset_name, ctx_key, len(corpus))
             seen[ctx_key] = doc_id
-            corpus.append({
-                "context": ctx,
-                "metadata": _chroma_safe_metadata({
-                    **sample.get("metadata", {}),
-                    "doc_id": doc_id,
-                }),
-            })
+            corpus.append(
+                {
+                    "context": ctx,
+                    "metadata": _chroma_safe_metadata(
+                        {
+                            **sample.get("metadata", {}),
+                            "doc_id": doc_id,
+                        }
+                    ),
+                }
+            )
         sample["metadata"] = {
             **sample.get("metadata", {}),
             "gold_doc_id": seen[ctx_key],
@@ -219,6 +244,60 @@ def load_corpus_and_questions(
     )
     return corpus, samples
 
+
+def _load_local_corpus(corpus_path: str | None) -> list[dict[str, Any]]:
+    """Load a deterministic text/Markdown corpus for managed external RAGs."""
+    value = corpus_path or os.getenv("DATASET_CORPUS_PATH")
+    if not value:
+        raise ValueError(
+            "DATASET_CORPUS_PATH is required when DATASET_NAME=jsonl-shared"
+        )
+    root = Path(value).resolve()
+    if not root.is_dir():
+        raise ValueError(f"DATASET_CORPUS_PATH is not a directory: {root}")
+
+    allowed = {".md", ".txt"}
+    paths: list[Path] = []
+    for candidate in root.rglob("*"):
+        # This corpus may be uploaded to an external service. Following a
+        # repository-controlled link could disclose an arbitrary local file.
+        if candidate.is_symlink():
+            raise ValueError(
+                f"Symbolic links are not allowed in DATASET_CORPUS_PATH: {candidate}"
+            )
+        if not candidate.is_file() or candidate.suffix.lower() not in allowed:
+            continue
+        resolved = candidate.resolve(strict=True)
+        try:
+            resolved.relative_to(root)
+        except ValueError as exc:
+            raise ValueError(
+                f"Corpus document resolves outside DATASET_CORPUS_PATH: {candidate}"
+            ) from exc
+        paths.append(resolved)
+    paths.sort()
+    if not paths:
+        raise ValueError(f"No Markdown or text documents found in {root}")
+
+    corpus: list[dict[str, Any]] = []
+    for path in paths:
+        relative = path.relative_to(root)
+        source_id = path.stem
+        corpus.append(
+            {
+                "context": path.read_text(encoding="utf-8"),
+                "metadata": {
+                    "doc_id": source_id,
+                    "source_id": source_id,
+                    "source_name": path.name,
+                    "source_path": str(relative),
+                },
+            }
+        )
+    console.print(
+        f"[green]Loaded {len(corpus)} local corpus documents from {root}[/green]"
+    )
+    return corpus
 
 
 def _load_local_dataset(
@@ -285,7 +364,9 @@ def _read_jsonl(path: Path) -> list[dict[str, Any]]:
             try:
                 row = json.loads(line)
             except json.JSONDecodeError as exc:
-                raise ValueError(f"Invalid JSON on {path}:{line_number}: {exc}") from exc
+                raise ValueError(
+                    f"Invalid JSON on {path}:{line_number}: {exc}"
+                ) from exc
             if not isinstance(row, dict):
                 raise ValueError(f"JSONL row {path}:{line_number} must be an object")
             rows.append(row)
@@ -299,8 +380,11 @@ def _read_csv(path: Path) -> list[dict[str, Any]]:
 
 def _require_field(row: Mapping[str, Any], field: str, index: int) -> Any:
     if field not in row:
-        raise ValueError(f"Local dataset row {index} is missing required field {field!r}")
+        raise ValueError(
+            f"Local dataset row {index} is missing required field {field!r}"
+        )
     return row[field]
+
 
 def _context_text(context: str | list[str]) -> str:
     if isinstance(context, list):
@@ -354,7 +438,9 @@ def _load_ragperf_wikipedia_nq(sample_size: int) -> tuple[list[dict], list[dict]
         "[bold blue]Loading RAGPerf-style Wikipedia corpus "
         f"({RAGPERF_WIKIPEDIA_CONFIG}, {corpus_size} docs)...[/bold blue]"
     )
-    wiki = load_dataset(RAGPERF_WIKIPEDIA_HF_ID, RAGPERF_WIKIPEDIA_CONFIG, split="train")
+    wiki = load_dataset(
+        RAGPERF_WIKIPEDIA_HF_ID, RAGPERF_WIKIPEDIA_CONFIG, split="train"
+    )
     if corpus_size and corpus_size < len(wiki):
         wiki = wiki.shuffle(seed=42).select(range(corpus_size))
 
