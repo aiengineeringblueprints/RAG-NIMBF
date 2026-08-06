@@ -3,6 +3,9 @@ __pycache__/
 *.py[codz]
 *$py.class
 
+# RAGBench HF cache + TRACe sidecar (regenerated on load)
+datasets/ragbench/
+
 # C extensions
 *.so
 

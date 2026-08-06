@@ -239,6 +239,10 @@ def _normalize_matrix(matrix: dict[str, list[Any]]) -> dict[str, list[Any]]:
             normalized["dataset_subset"] = values
         elif key in ("dataset_sample_size", "dataset_sample_sizes"):
             normalized["dataset_sample_size"] = values
+        elif key in ("dataset_split", "dataset_splits"):
+            normalized["dataset_split"] = values
+        elif key in ("dataset_max_examples", "dataset_max_examples_list"):
+            normalized["dataset_max_examples"] = values
         else:
             normalized[key] = values
     return normalized
@@ -262,6 +266,13 @@ def _apply_dataset(config: BenchmarkConfig, dataset: dict[str, Any]) -> Benchmar
         updates["dataset_corpus_path"] = (
             None if dataset["corpus_path"] is None else str(dataset["corpus_path"])
         )
+    if "split" in dataset:
+        updates["dataset_split"] = (
+            None if dataset["split"] is None else str(dataset["split"])
+        )
+    if "max_examples" in dataset:
+        value = dataset["max_examples"]
+        updates["dataset_max_examples"] = None if value is None else int(value)
     return replace(config, **updates) if updates else config
 
 
@@ -315,6 +326,7 @@ def _coerce_field_value(key: str, value: Any) -> Any:
         "reranker_top_k",
         "max_new_tokens",
         "dataset_sample_size",
+        "dataset_max_examples",
         "eval_critic_max_tokens",
         "semantic_breakpoint_amount",
         "llm_performance_call_counts",
