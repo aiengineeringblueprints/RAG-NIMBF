@@ -13,6 +13,28 @@ from benchmark.generation import AnswerStripMode
 from benchmark.providers import parse_model_id
 
 
+def _is_multimodal_chunker(strategy: str) -> bool:
+    """True if ``strategy`` is a registered multi-modal chunker name.
+
+    Imports the multimodal registry lazily so config import does not require
+    docling / colpali / whisper. The registry only registers factory
+    callables; it never imports heavy ML deps at module load.
+    """
+    try:
+        from benchmark.multimodal.registry import is_chunker_multimodal
+    except ImportError:
+        return False
+    return is_chunker_multimodal(strategy)
+
+
+def _is_multimodal_embedder(name: str) -> bool:
+    try:
+        from benchmark.multimodal.registry import is_embedder_multimodal
+    except ImportError:
+        return False
+    return is_embedder_multimodal(name)
+
+
 def _parse_list(value: str) -> list[str]:
     return [v.strip() for v in value.split(",") if v.strip()]
 
@@ -165,6 +187,20 @@ class BenchmarkConfig:
     llm_performance_warmup: bool = True
     llm_performance_timeout_seconds: float = 60.0
     llm_performance_source: str = "generation"  # generation | load_test
+    # Multi-modal ingestion (RAGPerf §3.3.1 / §4.1). When chunking_strategy is
+    # a registered multi-modal chunker (pdf_ocr_docling / image_ocr_docling /
+    # audio_whisper), corpus_type selects which files to walk and
+    # multimodal_backend selects the implementation where multiple exist.
+    corpus_type: str = "text"  # text | pdf | image | audio
+    multimodal_backend: str = "docling"  # docling | colpali | faster-whisper | openai-whisper
+    # Whisper ASR settings (only used when chunking_strategy == audio_whisper)
+    whisper_model: str = "base"
+    whisper_device: str = "cpu"
+    whisper_compute_type: str = "int8"
+    whisper_language: str | None = None
+    # ColPali visual embedder settings (only used when embedding_model == colpali_visual)
+    colpali_model: str = "vidore/colqwen2-v1.0"
+    colpali_index_path: str = ".colpali_index.json"
 
     @property
     def name(self) -> str:
@@ -178,6 +214,14 @@ class BenchmarkConfig:
         elif self.chunking_strategy == "provider":
             parts = (
                 f"provider-{self.ingestion_method or 'default'}"
+                f"_{self.embedding_model}_{self.llm_model}"
+                f"_{self.prompt_template}"
+            )
+        elif _is_multimodal_chunker(self.chunking_strategy):
+            # Multi-modal chunkers don't take chunk_size/overlap; surface the
+            # backend instead so reports distinguish Docling vs ColPali runs.
+            parts = (
+                f"{self.chunking_strategy}-{self.multimodal_backend}"
                 f"_{self.embedding_model}_{self.llm_model}"
                 f"_{self.prompt_template}"
             )
@@ -378,11 +422,42 @@ def validate_benchmark_config(config: BenchmarkConfig) -> BenchmarkConfig:
             raise ValueError(f"{name} must be between 0 and 1")
     if not 0.0 <= config.generation_temperature <= 2.0:
         raise ValueError("generation_temperature must be between 0 and 2")
-    if config.chunking_strategy not in {"semantic", "provider"}:
+    if config.chunking_strategy not in {"semantic", "provider"} and not _is_multimodal_chunker(
+        config.chunking_strategy
+    ):
         if config.chunk_size is None or config.chunk_overlap is None:
             raise ValueError("Non-semantic chunking requires size and overlap")
         if config.chunk_overlap >= config.chunk_size:
             raise ValueError("chunk_overlap must be less than chunk_size")
+    if config.corpus_type not in {"text", "pdf", "image", "audio"}:
+        raise ValueError(
+            "corpus_type must be one of: text, pdf, image, audio "
+            f"(got {config.corpus_type!r})"
+        )
+    if _is_multimodal_chunker(config.chunking_strategy):
+        # Multi-modal strategies imply a non-text corpus. Catch obvious
+        # mismatches early so users get a clear error instead of an empty
+        # corpus walk at runtime.
+        strategy_to_corpus = {
+            "pdf_ocr_docling": "pdf",
+            "image_ocr_docling": "image",
+            "audio_whisper": "audio",
+        }
+        expected = strategy_to_corpus.get(config.chunking_strategy)
+        if expected and config.corpus_type != expected:
+            raise ValueError(
+                f"chunking_strategy '{config.chunking_strategy}' requires "
+                f"corpus_type='{expected}' (got '{config.corpus_type}')"
+            )
+    if _is_multimodal_embedder(config.embedding_model):
+        # ColPali-style visual embedders don't go through the Ollama/HF text
+        # embedder factory. Surface this in validation so the failure mode is
+        # a clear config error rather than a downstream 404 from Ollama.
+        if config.embedding_model != "colpali_visual":
+            raise ValueError(
+                f"embedding_model '{config.embedding_model}' is registered as "
+                "multi-modal but has no factory wired into the text pipeline."
+            )
     _validate_json_object(config.rag_managed_options_json, "rag_managed_options_json")
     _validate_json_object(config.ingestion_options_json, "ingestion_options_json")
     _validate_json_object(config.mcp_http_headers_json, "mcp_http_headers_json")
@@ -445,10 +520,12 @@ def _chunk_parameter_pairs_for_strategy(
     """Return chunk parameter pairs that actually affect a strategy.
 
     LangChain's SemanticChunker is controlled by breakpoint parameters and
-    embeddings, not fixed chunk sizes or overlaps. Represent those ignored
+    embeddings, not fixed chunk sizes or overlaps. Multi-modal strategies
+    (Docling OCR, Whisper ASR) likewise ignore chunk_size/overlap at ingestion
+    time — they produce per-page/per-file chunks. Represent those ignored
     values as None so reports and cache keys do not imply a size/overlap sweep.
     """
-    if strategy in {"semantic", "provider"}:
+    if strategy in {"semantic", "provider"} or _is_multimodal_chunker(strategy):
         return [(None, None)]
     return list(product(chunk_sizes, chunk_overlaps))
 
@@ -858,7 +935,10 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
     _validate_positive_int(dataset_sample_size, "DATASET_SAMPLE_SIZE")
 
     non_semantic_strategies = [
-        strategy for strategy in chunking_strategies if strategy != "semantic"
+        strategy
+        for strategy in chunking_strategies
+        if strategy != "semantic"
+        and not _is_multimodal_chunker(strategy)
     ]
     if non_semantic_strategies:
         # Validate chunk_overlap < chunk_size for combinations that use those

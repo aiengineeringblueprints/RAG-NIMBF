@@ -16,7 +16,12 @@ from rich.console import Console
 
 from config import BenchmarkConfig, get_all_combinations
 from benchmark.dataset import load_benchmark_data, load_corpus_and_questions
-from benchmark.chunking import get_chunker, chunk_documents
+from benchmark.chunking import (
+    get_chunker,
+    chunk_documents,
+    is_chunker_multimodal,
+    run_multimodal_ingestion,
+)
 from benchmark.retrieval import (
     build_vector_store,
     retrieve,
@@ -131,8 +136,23 @@ def _content_fingerprint(items: list[dict]) -> str:
 @lru_cache(maxsize=2)
 def _get_bert_model(model_name: str):
     from sentence_transformers import SentenceTransformer
-
     return SentenceTransformer(model_name, device="cpu")
+
+
+def _default_text_strategy_for_mm(strategy: str) -> str:
+    """Pick the text-splitter strategy used to re-chunk multi-modal output.
+
+    Multi-modal chunkers (Docling OCR, Whisper ASR) produce one chunk per page
+    or per file — often larger than the configured chunk_size. We re-chunk
+    that text with a sensible default splitter so downstream embed/retrieve
+    sees consistently-sized chunks. Markdown is preserved for Docling (its
+    output is markdown); recursive is used for Whisper transcripts.
+    """
+    if strategy in ("pdf_ocr_docling", "image_ocr_docling"):
+        return "markdown"
+    if strategy == "audio_whisper":
+        return "recursive"
+    return "recursive"
 
 
 def _build_internal_retrieval_index(
@@ -143,31 +163,81 @@ def _build_internal_retrieval_index(
     resource_monitor: ResourceMonitor | None,
 ) -> tuple[list, object]:
     with _stage_timer(stage_timings, "chunk", resource_monitor):
-        chunker_kwargs: dict = {}
-        if config.chunking_strategy == "semantic":
-            from benchmark.embedding import get_embedding_model
+        # Multi-modal dispatch: Docling / Whisper strategies produce text corpus
+        # directly from disk (PDF/image/audio). They bypass the LangChain
+        # TextSplitter entirely; their per-page/per-file output is then chunked
+        # by the configured text splitter so downstream embed/retrieve sees
+        # normal sized chunks. See benchmark.multimodal and NOTES_G_Multimodal.md.
+        if is_chunker_multimodal(config.chunking_strategy):
+            mm_settings: dict = {}
+            if config.chunking_strategy == "audio_whisper":
+                mm_settings.update(
+                    model_name=config.whisper_model,
+                    backend=config.multimodal_backend
+                    if config.multimodal_backend in ("faster-whisper", "openai-whisper")
+                    else "faster-whisper",
+                    device=config.whisper_device,
+                    compute_type=config.whisper_compute_type,
+                    language=config.whisper_language,
+                )
+            elif config.chunking_strategy in ("pdf_ocr_docling", "image_ocr_docling"):
+                # Docling is the only OCR backend for now; colpali_visual is
+                # a different embedder, not a chunker.
+                mm_settings["backend"] = "docling"
 
-            semantic_emb = get_embedding_model(
-                config.embedding_model,
-                config.embedding_base_url(),
-                config.embedding_api_key(),
-                provider=config.embedding_provider,
+            mm_corpus_path = (
+                config.dataset_corpus_path
+                or config.dataset_path
+                or os.getenv("DATASET_CORPUS_PATH")
             )
-            chunker_kwargs = dict(
-                embeddings=semantic_emb,
-                breakpoint_threshold_type=config.semantic_breakpoint_type,
-                breakpoint_threshold_amount=config.semantic_breakpoint_amount,
+            if not mm_corpus_path:
+                raise ValueError(
+                    f"Multi-modal strategy '{config.chunking_strategy}' requires "
+                    "a corpus directory. Set dataset.corpus_path in the YAML."
+                )
+            mm_corpus = run_multimodal_ingestion(
+                config.chunking_strategy,
+                mm_corpus_path,
+                settings=mm_settings,
             )
-        chunker = get_chunker(
-            config.chunking_strategy,
-            config.chunk_size or 0,
-            config.chunk_overlap or 0,
-            **chunker_kwargs,
-        )
+            console.print(
+                f"  [dim]Multi-modal ingestion produced {len(mm_corpus)} "
+                f"{config.corpus_type} chunks from {mm_corpus_path}[/dim]"
+            )
+            # Re-chunk the OCR/ASR output with the configured text splitter so
+            # downstream embed/retrieve sees consistent chunk sizes.
+            text_chunker = get_chunker(
+                _default_text_strategy_for_mm(config.chunking_strategy),
+                config.chunk_size or 1000,
+                config.chunk_overlap or 200,
+            )
+            chunks = chunk_documents(text_chunker, mm_corpus)
+        else:
+            chunker_kwargs: dict = {}
+            if config.chunking_strategy == "semantic":
+                from benchmark.embedding import get_embedding_model
 
-        # Use shared corpus if available, otherwise chunk per-question data
-        chunk_source = corpus if corpus else data
-        chunks = chunk_documents(chunker, chunk_source)
+                semantic_emb = get_embedding_model(
+                    config.embedding_model,
+                    config.embedding_base_url(),
+                    config.embedding_api_key(),
+                    provider=config.embedding_provider,
+                )
+                chunker_kwargs = dict(
+                    embeddings=semantic_emb,
+                    breakpoint_threshold_type=config.semantic_breakpoint_type,
+                    breakpoint_threshold_amount=config.semantic_breakpoint_amount,
+                )
+            chunker = get_chunker(
+                config.chunking_strategy,
+                config.chunk_size or 0,
+                config.chunk_overlap or 0,
+                **chunker_kwargs,
+            )
+
+            # Use shared corpus if available, otherwise chunk per-question data
+            chunk_source = corpus if corpus else data
+            chunks = chunk_documents(chunker, chunk_source)
     console.print(f"  [dim]Chunked into {len(chunks)} pieces[/dim]")
 
     corpus_fingerprint = _content_fingerprint(chunk_source)
