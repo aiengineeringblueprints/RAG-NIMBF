@@ -429,3 +429,68 @@ def clear_cache() -> None:
         _vector_store_cache.clear()
         for collection in client.list_collections():
             client.delete_collection(collection.name)
+
+
+# ---------------------------------------------------------------------------
+# RAGPerf-style adapter layer (benchmark.vectorstore).
+#
+# The legacy ``build_vector_store`` / ``retrieve`` API above remains the
+# default entry point used by main.py and existing tests. The new
+# ``benchmark.vectorstore`` package exposes a stricter DBInstance-style
+# interface (build_index/insert/search/delete/count/drop). ``get_vector_store``
+# here is a thin re-export so callers can resolve an adapter through the
+# retrieval module without importing the new package directly.
+# ---------------------------------------------------------------------------
+
+def get_vector_store(config: Any | None = None):
+    """Resolve a RAGPerf-style adapter (see ``benchmark.vectorstore``).
+
+    This is the bridge between the new adapter layer and the legacy
+    retrieval module. Chroma adapters reuse the shared Chroma client and
+    lock managed here so ``cleanup_collection`` / ``clear_cache`` keep
+    working against collections created by either API.
+    """
+    from benchmark.vectorstore import get_vector_store as _factory
+
+    return _factory(config)
+
+
+def build_adapter_index(
+    chunks: list[Document],
+    embedding_model_name: str,
+    collection_name: str,
+    *,
+    embedding_provider: str = "ollama",
+    ollama_base_url: str = "http://localhost:11434",
+    ollama_api_key: str | None = None,
+    vector_store_config: Any | None = None,
+) -> Any:
+    """Build an index through the new adapter layer.
+
+    Returns the adapter instance. Vectors are computed through the shared
+    embedding factory so behaviour matches ``build_vector_store`` for the
+    same model+provider combination.
+
+    This is opt-in; existing call sites continue to use ``build_vector_store``.
+    """
+    from benchmark.vectorstore import VectorStoreConfig, get_vector_store
+
+    if vector_store_config is None:
+        vector_store_config = VectorStoreConfig()
+    elif isinstance(vector_store_config, dict):
+        vector_store_config = VectorStoreConfig.from_dict(vector_store_config)
+
+    adapter = get_vector_store(vector_store_config)
+    embedding_model = get_embedding_model(
+        embedding_model_name, ollama_base_url, ollama_api_key,
+        provider=embedding_provider,
+    )
+    texts = [doc.page_content for doc in chunks]
+    vectors = embedding_model.embed_documents(texts)
+    adapter.build_index(
+        vector_store_config.index_type,
+        vector_store_config.metric,
+        collection_name,
+    )
+    adapter.insert(vectors, chunks, collection_name)
+    return adapter
