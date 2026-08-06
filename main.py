@@ -604,7 +604,12 @@ def _run_single_benchmark_impl(
     console.print(f"  [dim]Generated {len(gen_results)} answers[/dim]       ")
 
     # 4. Evaluate with RAGAS using a separate critic model
-    if config.ragas_enabled and config.benchmark_stage != "retrieve":
+    run_ragas = (
+        config.ragas_enabled
+        and config.benchmark_stage != "retrieve"
+        and config.evaluator in {"ragas", "both"}
+    )
+    if run_ragas:
         console.print(f"  [dim]Running RAGAS evaluation (critic: {config.eval_critic_llm})...[/dim]")
         with _stage_timer(stage_timings, "ragas_eval", resource_monitor):
             eval_result = evaluate_results(
@@ -636,6 +641,74 @@ def _run_single_benchmark_impl(
 
     ragas_means = eval_result.metric_means
     per_sample_ragas = eval_result.per_sample_scores
+
+    # 4a. Optional RoBERTa-TRACe evaluation (drop-in for / companion to Ragas)
+    roberta_result = None
+    if config.evaluator in {"roberta_trace", "both"} and config.benchmark_stage != "retrieve":
+        from benchmark.roberta_evaluator import RobertaTraceEvaluator
+        console.print("  [dim]Running RoBERTa-TRACe evaluation...[/dim]")
+        with _stage_timer(stage_timings, "roberta_eval", resource_monitor):
+            roberta_evaluator = RobertaTraceEvaluator(
+                model_path=config.roberta_trace_model_path,
+                model_hub_id=config.roberta_trace_model_hub_id,
+                device=config.roberta_trace_device,
+            )
+            roberta_result = roberta_evaluator.evaluate(
+                questions,
+                ground_truths,
+                [r.answer for r in gen_results],
+                all_contexts,
+            )
+        if roberta_result.error:
+            console.print(
+                f"  [red]RoBERTa-TRACe evaluation failed: {roberta_result.error}[/red]"
+            )
+        else:
+            console.print(
+                f"  [dim]RoBERTa-TRACe evaluation complete: "
+                f"{', '.join(sorted(roberta_result.metric_means))}[/dim]"
+            )
+
+    # Merge RoBERTa-TRACe per-sample scores into the ragas_scores channel so
+    # they flow through the existing report/serialisation path without
+    # requiring changes to BenchmarkSample or tracking.py.  Keys are prefixed
+    # with ``roberta_`` to keep the two evaluator sources separable.
+    if roberta_result is not None and not roberta_result.error:
+        roberta_per_sample = roberta_result.per_sample_scores
+        if config.evaluator == "roberta_trace":
+            # Replace Ragas channel entirely.
+            per_sample_ragas = [
+                {f"roberta_{k}": v for k, v in s.items()}
+                for s in roberta_per_sample
+            ]
+            ragas_means = {
+                f"roberta_{k}": v for k, v in roberta_result.metric_means.items()
+            }
+            eval_result = EvaluationResult(
+                metric_means=ragas_means,
+                per_sample_scores=per_sample_ragas,
+                samples_with_valid_scores=roberta_result.samples_with_valid_scores,
+            )
+        else:  # both
+            merged_samples: list[dict[str, float | None]] = []
+            for base, roberta_s in zip(per_sample_ragas, roberta_per_sample):
+                merged = dict(base)
+                for k, v in roberta_s.items():
+                    merged[f"roberta_{k}"] = v
+                merged_samples.append(merged)
+            per_sample_ragas = merged_samples
+            ragas_means = {
+                **ragas_means,
+                **{f"roberta_{k}": v for k, v in roberta_result.metric_means.items()},
+            }
+            eval_result = EvaluationResult(
+                metric_means=ragas_means,
+                per_sample_scores=per_sample_ragas,
+                samples_with_valid_scores={
+                    **(eval_result.samples_with_valid_scores or {}),
+                    **{f"roberta_{k}": v for k, v in (roberta_result.samples_with_valid_scores or {}).items()},
+                },
+            )
 
     # 4b. Compute custom (non-RAGAS) metrics
     if (
