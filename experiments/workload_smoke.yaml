@@ -1,0 +1,26 @@
+experiment_name: workload-smoke
+
+# Tiny dataset — the workload generator picks questions from this pool
+# and corpus docs for Update/Remove sampling.
+dataset:
+  name: squad
+  sample_size: [40]
+
+settings:
+  # Opt into the workload mode (replaces the sequential query loop).
+  workload_enabled: true
+  workload_op_mix: {query: 0.7, insert: 0.15, update: 0.1, remove: 0.05}
+  workload_distribution: zipfian
+  workload_zipf_theta: 0.8
+  workload_target_qps: 5
+  workload_concurrency: 8
+  workload_total_ops: 500
+  vector_db_backend: chroma
+
+matrix:
+  llm_models: ["openai:gemma3:4b"]
+  embedding_models: ["nomic-embed-text:latest"]
+  chunking_strategies: ["recursive"]
+  chunk_sizes: [512]
+  chunk_overlaps: [64]
+  prompt_templates: ["concise"]
