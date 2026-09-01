@@ -100,6 +100,9 @@ class BenchmarkConfig:
     ragas_enabled: bool = True
     custom_metrics_enabled: bool = True
     trace_metrics_enabled: bool = False
+    # RAGChecker-style error attribution (claim-level hallucination /
+    # noise-sensitivity / self-knowledge).  Opt-in, reuses the critic LLM.
+    error_attribution_enabled: bool = False
     # Evaluator selection: "ragas" (default, LLM-judge), "roberta_trace"
     # (finetuned RoBERTa-TRACe classifier), or "both" (run side-by-side).
     evaluator: str = "ragas"
@@ -670,6 +673,7 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
     ragas_enabled = _env_bool("RAGAS_ENABLED", True)
     custom_metrics_enabled = _env_bool("CUSTOM_METRICS_ENABLED", True)
     trace_metrics_enabled = _env_bool("TRACE_METRICS_ENABLED", False)
+    error_attribution_enabled = _env_bool("ERROR_ATTRIBUTION_ENABLED", False)
 
     # Evaluator selection: ragas | roberta_trace | both. When roberta_trace
     # or both, the RoBERTa-TRACe classifier replaces (or runs alongside)
@@ -1110,6 +1114,7 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
                     ragas_enabled=ragas_enabled,
                     custom_metrics_enabled=custom_metrics_enabled,
                     trace_metrics_enabled=trace_metrics_enabled,
+                    error_attribution_enabled=error_attribution_enabled,
                     evaluator=evaluator,
                     roberta_trace_model_path=roberta_trace_model_path,
                     roberta_trace_model_hub_id=roberta_trace_model_hub_id,

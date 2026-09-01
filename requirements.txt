@@ -31,3 +31,6 @@ plotly>=5.0
 lancedb>=0.18
 clearml>=1.16
 mcp>=1.12.4,<2.0
+# Real-time dashboard (streamlit run dashboard/app.py)
+streamlit>=1.36
+streamlit-autorefresh>=1.0

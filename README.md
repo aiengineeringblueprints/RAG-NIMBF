@@ -451,6 +451,36 @@ templates, vector backend, and evaluator settings belong in `experiments/*.yaml`
 `BENCHMARK_STAGE=index` is only supported by the built-in adapter. External HTTP
 systems own their own indexing lifecycle.
 
+## Real-Time Dashboard
+
+Watch a benchmark sweep live, or explore past runs, in a Streamlit dashboard:
+
+```bash
+pip install -r requirements.txt
+streamlit run dashboard/app.py
+# optional: point at a custom results directory
+DASHBOARD_RESULTS_DIR=/path/to/results streamlit run dashboard/app.py
+```
+
+Tabs:
+
+- **Übersicht** — all `results/runN/` directories with status, dataset, and
+  config progress.
+- **Live-Monitor** — auto-refreshing view of a running worker. Reads
+  `progress.json`, per-config QA logs under `configs/`, and stage timing
+  files as they are written, so completed configs appear before the sweep
+  finishes. Toggle the refresh interval and Auto-Refresh in the sidebar.
+- **Vergleichen** — pick runs and compare RAGAS, custom/TRACe, performance,
+  and LLM-load-test metrics as tables, bar charts, per-sample box plots,
+  correlation heatmaps, and quality-vs-latency scatter plots.
+- **Run-Detail** — metrics, stage latencies, LLM performance, resource
+  traces (`resource_traces/*.csv`), per-sample answers, and raw JSON for a
+  single config.
+
+Data is read only from `results/`; the dashboard never writes or alters run
+artifacts. It parses the same aggregate JSON, QA logs, progress ledger, and
+stage timings that the worker and `main.py` produce.
+
 ## MLflow Run Comparison
 
 Start the MLflow UI against the local SQLite store:
