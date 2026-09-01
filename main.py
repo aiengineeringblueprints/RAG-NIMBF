@@ -34,6 +34,7 @@ from benchmark.evaluation import EvaluationResult, evaluate_results
 from benchmark.custom_metrics import CustomMetricsResult, compute_custom_metrics
 from benchmark.gold_retrieval_metrics import compute_gold_doc_retrieval_metrics
 from benchmark.trace_metrics import TraceMetricsResult, compute_trace_metrics
+from benchmark.error_attribution import compute_error_attribution
 from benchmark.reranker import get_reranker
 from benchmark.metrics import read_host_energy_joules, estimate_energy_cost_usd
 from benchmark.reporting import generate_report
@@ -1057,6 +1058,60 @@ def _run_single_benchmark_impl(
         )
     else:
         console.print("  [dim]TRACe metrics disabled[/dim]")
+
+    # 4d. RAGChecker-style error attribution (claim-level hallucination /
+    # noise-sensitivity / self-knowledge).  Opt-in; reuses the same critic
+    # LLM wiring.  Results merge into custom_metric_means automatically.
+    if config.error_attribution_enabled and config.benchmark_stage != "retrieve":
+        console.print("  [dim]Computing error attribution (RAGChecker-style)...[/dim]")
+        with _stage_timer(stage_timings, "error_attribution", resource_monitor):
+            attrib_result = compute_error_attribution(
+                questions,
+                ground_truths,
+                all_contexts,
+                [r.answer for r in gen_results],
+                llm_model=config.llm_model,
+                critic_llm_model=config.eval_critic_llm,
+                ollama_base_url=config.ollama_base_url,
+                ollama_api_key=config.ollama_api_key,
+                openai_compat_base_url=config.openai_compat_base_url,
+                openai_compat_api_key=config.openai_compat_api_key,
+                critic_ollama_base_url=config.eval_critic_ollama_base_url,
+                critic_ollama_api_key=config.eval_critic_ollama_api_key,
+                critic_openai_compat_base_url=config.eval_critic_openai_compat_base_url,
+                critic_openai_compat_api_key=config.eval_critic_openai_compat_api_key,
+                critic_max_tokens=max(config.eval_critic_max_tokens, 1024),
+            )
+        if attrib_result.error:
+            console.print(
+                f"  [yellow]Error attribution note: {attrib_result.error}[/yellow]"
+            )
+        else:
+            console.print(
+                "  [dim]Error attribution computed: "
+                f"{', '.join(attrib_result.metric_means.keys())}[/dim]"
+            )
+
+        merged_means = dict(custom_result.metric_means)
+        merged_means.update(attrib_result.metric_means)
+        merged_per_sample: list[dict[str, float | None]] = []
+        for base, attrib in zip(
+            custom_result.per_sample, attrib_result.per_sample_scores
+        ):
+            merged = dict(base) if base else {}
+            if attrib:
+                merged.update(attrib)
+            merged_per_sample.append(merged)
+        merged_valid = dict(custom_result.samples_with_valid_scores)
+        merged_valid.update(attrib_result.samples_with_valid_scores)
+        custom_result = CustomMetricsResult(
+            metric_means=merged_means,
+            per_sample=merged_per_sample,
+            samples_with_valid_scores=merged_valid,
+            error=custom_result.error or attrib_result.error,
+        )
+    else:
+        console.print("  [dim]Error attribution disabled[/dim]")
 
     total_time = time.perf_counter() - run_start
     stage_timings["total"] = total_time
