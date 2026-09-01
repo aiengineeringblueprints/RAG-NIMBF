@@ -1,0 +1,21 @@
+{
+  "difficulty": {
+    "easy": 180,
+    "hard": 60,
+    "medium": 120
+  },
+  "document_count": 60,
+  "errors": [],
+  "multi_source_questions": 60,
+  "question_count": 360,
+  "question_type": {
+    "factoid": 60,
+    "multi-fact": 120,
+    "multi-hop": 60,
+    "paraphrase": 120
+  },
+  "questions_with_evidence": 360,
+  "status": "pass",
+  "unique_case_ids": 360,
+  "unique_questions": 360
+}

@@ -26,3 +26,4 @@ opentelemetry-exporter-otlp>=1.20
 plotly>=5.0
 lancedb>=0.18
 clearml>=1.16
+mcp>=1.12.4,<2.0

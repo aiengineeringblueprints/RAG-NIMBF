@@ -7,6 +7,7 @@ from unittest.mock import patch
 from config import (
     BenchmarkConfig,
     get_all_combinations,
+    validate_benchmark_config,
     _parse_list,
     _parse_int_list,
     _validate_positive_int,
@@ -115,6 +116,47 @@ def _make_config(**overrides) -> BenchmarkConfig:
     return BenchmarkConfig(**defaults)
 
 
+def test_rag_vs_mcp_manifest_enforces_shared_corpus(tmp_path):
+    from benchmark.orchestration.matrix import ExperimentSpec, build_configs_from_spec
+
+    corpus = tmp_path / "corpus"
+    corpus.mkdir()
+    spec = ExperimentSpec(
+        name="fairness",
+        dataset={"corpus_path": str(corpus)},
+        settings={
+            "mcp_command": "python",
+            "mcp_corpus_path": str(corpus),
+        },
+        matrix={"rag_system_adapter": ["internal", "mcp"]},
+    )
+
+    configs = build_configs_from_spec(spec, base_configs=[_make_config()])
+
+    assert {config.rag_system_adapter for config in configs} == {"internal", "mcp"}
+
+
+def test_rag_vs_mcp_manifest_rejects_corpus_mismatch(tmp_path):
+    from benchmark.orchestration.matrix import ExperimentSpec, build_configs_from_spec
+
+    rag_corpus = tmp_path / "rag"
+    mcp_corpus = tmp_path / "mcp"
+    rag_corpus.mkdir()
+    mcp_corpus.mkdir()
+    spec = ExperimentSpec(
+        name="unfair",
+        dataset={"corpus_path": str(rag_corpus)},
+        settings={
+            "mcp_command": "python",
+            "mcp_corpus_path": str(mcp_corpus),
+        },
+        matrix={"rag_system_adapter": ["internal", "mcp"]},
+    )
+
+    with pytest.raises(ValueError, match="corpus mismatch"):
+        build_configs_from_spec(spec, base_configs=[_make_config()])
+
+
 class TestBenchmarkConfig:
     def test_name_property(self):
         cfg = _make_config()
@@ -220,9 +262,49 @@ class TestBenchmarkConfig:
         cfg = _make_config(rag_system_adapter="http")
         assert cfg.name.endswith("_http")
 
+    def test_valid_mcp_config(self):
+        cfg = _make_config(
+            rag_system_adapter="mcp",
+            mcp_transport="stdio",
+            mcp_command="python",
+            mcp_args_json='["server.py"]',
+            mcp_tool_name="search",
+            mcp_result_mode="context",
+        )
+
+        assert validate_benchmark_config(cfg) is cfg
+        assert "_mcp_" in cfg.name
+
+    def test_mcp_config_requires_transport_target(self):
+        cfg = _make_config(
+            rag_system_adapter="mcp",
+            mcp_transport="streamable_http",
+            mcp_server_url=None,
+        )
+
+        with pytest.raises(ValueError, match="mcp_server_url"):
+            validate_benchmark_config(cfg)
+
+    def test_mcp_args_must_be_string_array(self):
+        cfg = _make_config(
+            rag_system_adapter="mcp",
+            mcp_command="python",
+            mcp_args_json='{"server": "server.py"}',
+        )
+
+        with pytest.raises(ValueError, match="JSON array of strings"):
+            validate_benchmark_config(cfg)
+
     def test_rag_adapter_accepts_defaults_to_empty(self):
         cfg = _make_config()
         assert cfg.rag_adapter_accepts == ""
+
+    def test_llm_performance_defaults(self):
+        cfg = _make_config()
+        assert cfg.llm_performance_enabled is False
+        assert cfg.llm_performance_call_counts == (1, 3, 6, 10)
+        assert cfg.llm_performance_warmup is True
+        assert cfg.llm_performance_source == "generation"
 
 
 class TestChunkParameterPairs:
