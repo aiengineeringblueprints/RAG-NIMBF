@@ -229,6 +229,15 @@ def log_benchmark_run(
         for key, value in result.stage_timings.items():
             metrics[f"stage_{key}_seconds"] = value
 
+    if result.llm_performance_metrics:
+        for key, value in result.llm_performance_metrics.items():
+            if math.isfinite(value):
+                metrics[f"llm_perf_{key}"] = value
+    if result.adapter_metrics:
+        for key, value in result.adapter_metrics.items():
+            if isinstance(value, (int, float)) and math.isfinite(float(value)):
+                metrics[f"adapter_{key}"] = float(value)
+
     # RAGAS mean metrics
     for key, value in [
         ("ragas_faithfulness", result.ragas_faithfulness),
@@ -295,6 +304,12 @@ def log_benchmark_run(
 
         if result.evaluation_error:
             mlflow.set_tag("evaluation_error", result.evaluation_error)
+        if result.llm_performance_error:
+            mlflow.set_tag("llm_performance_error", result.llm_performance_error[:5000])
+        if result.llm_performance_artifact:
+            artifact_path = Path(result.llm_performance_artifact)
+            if artifact_path.exists():
+                mlflow.log_artifact(str(artifact_path), artifact_path="llm_performance")
 
         _log_classic_retriever_metrics(result)
         _log_genai_rag_judges(result)
@@ -347,6 +362,8 @@ def _log_per_sample_csv(result: BenchmarkResultExtended, run_id: str) -> None:
             "output_tokens",
             "total_tokens",
             "estimated_cost_usd",
+            "retrieval_metadata_json",
+            "adapter_diagnostics_json",
         ] + [f"ragas_{k}" for k in ragas_keys] + [f"custom_{k}" for k in custom_keys]
         writer.writerow(header)
 
@@ -363,6 +380,8 @@ def _log_per_sample_csv(result: BenchmarkResultExtended, run_id: str) -> None:
                 sample.output_tokens,
                 sample.total_tokens,
                 sample.estimated_cost_usd if sample.estimated_cost_usd is not None else "",
+                json.dumps(sample.retrieval_metadata, ensure_ascii=False, default=str),
+                json.dumps(sample.adapter_diagnostics or {}, ensure_ascii=False, default=str),
             ] + [sample.ragas_scores.get(k, "") for k in ragas_keys] + [
                 (sample.custom_scores or {}).get(k, "") for k in custom_keys
             ]

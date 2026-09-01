@@ -238,6 +238,7 @@ def _load_data_once(config: BenchmarkConfig) -> tuple[list[dict], list[dict] | N
                 subset=config.dataset_subset or None,
                 sample_size=config.dataset_sample_size,
                 dataset_path=config.dataset_path,
+                corpus_path=config.dataset_corpus_path,
                 question_field=config.dataset_question_field,
                 ground_truth_field=config.dataset_ground_truth_field,
                 context_field=config.dataset_context_field,

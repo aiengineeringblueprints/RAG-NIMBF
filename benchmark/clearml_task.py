@@ -10,7 +10,7 @@ from typing import Any
 
 from rich.console import Console
 
-from config import BenchmarkConfig, get_all_combinations
+from config import BenchmarkConfig, get_all_combinations, validate_benchmark_config
 from benchmark.orchestration.worker import ExperimentWorker, WorkerOptions
 from benchmark.providers import parse_model_id
 from benchmark.tracking import setup_mlflow
@@ -31,6 +31,12 @@ SECRET_CONFIG_FIELDS = {
     "rag_http_headers",
     "rag_http_auth_header",
     "rag_http_auth_value",
+    "mcp_http_headers_json",
+    "mcp_tool_arguments_json",
+    # Free-form JSON can carry provider-specific credentials. It must never be
+    # published to a tracking server, even when its nested key is unfamiliar.
+    "rag_managed_options_json",
+    "ingestion_options_json",
 }
 
 
@@ -65,7 +71,7 @@ def config_from_clearml_parameters(
     config = replace(base_config, **updates)
     if config.chunking_strategy == "semantic":
         config = replace(config, chunk_size=None, chunk_overlap=None)
-    return config
+    return validate_benchmark_config(config)
 
 
 def report_result_to_clearml(task: Any, result: BenchmarkResultExtended) -> None:
@@ -99,7 +105,9 @@ def run_clearml_task(
             "Install project requirements before running this entrypoint."
         ) from exc
 
-    base_configs = get_all_combinations(manifest) if manifest else get_all_combinations()
+    base_configs = (
+        get_all_combinations(manifest) if manifest else get_all_combinations()
+    )
     base_config = base_configs[0]
 
     task = Task.init(
@@ -236,7 +244,17 @@ def _scalar_metrics(result: BenchmarkResultExtended) -> dict[str, float]:
     if result.custom_metric_means:
         metrics.update(result.custom_metric_means)
     if result.stage_timings:
-        metrics.update({f"stage_{k}_seconds": v for k, v in result.stage_timings.items()})
+        metrics.update(
+            {f"stage_{k}_seconds": v for k, v in result.stage_timings.items()}
+        )
+    if result.adapter_metrics:
+        metrics.update(
+            {
+                f"adapter_{key}": value
+                for key, value in result.adapter_metrics.items()
+                if isinstance(value, (int, float))
+            }
+        )
 
     clean: dict[str, float] = {}
     for key, value in metrics.items():

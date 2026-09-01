@@ -32,7 +32,9 @@ class DatasetAdapter:
     metadata_keys: tuple[str, ...] = ()  # extra columns to include in metadata
     requires_subset: bool = False  # True if the HF dataset needs a config/subset
     ground_truth_transform: Callable[[Any], str] | None = None  # for complex fields
-    has_shared_corpus: bool = False  # True if contexts should be deduplicated into a shared corpus
+    has_shared_corpus: bool = (
+        False  # True if contexts should be deduplicated into a shared corpus
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -49,8 +51,7 @@ def register(adapter: DatasetAdapter) -> None:
 def get_adapter(name: str) -> DatasetAdapter:
     if name not in REGISTRY:
         raise ValueError(
-            f"Unknown dataset '{name}'. "
-            f"Available: {', '.join(sorted(REGISTRY))}"
+            f"Unknown dataset '{name}'. Available: {', '.join(sorted(REGISTRY))}"
         )
     return REGISTRY[name]
 
@@ -92,24 +93,41 @@ def resolve_adapter(name: str) -> DatasetAdapter:
 # ---------------------------------------------------------------------------
 
 
-register(DatasetAdapter(
-    name="jsonl",
-    hf_id="local-jsonl",
-    question_key="question",
-    ground_truth_key="ground_truth",
-    build_context=lambda row: str(row.get("context", "")),
-    preferred_split="local",
-))
+register(
+    DatasetAdapter(
+        name="jsonl",
+        hf_id="local-jsonl",
+        question_key="question",
+        ground_truth_key="ground_truth",
+        build_context=lambda row: str(row.get("context", "")),
+        preferred_split="local",
+    )
+)
 
 
-register(DatasetAdapter(
-    name="csv",
-    hf_id="local-csv",
-    question_key="question",
-    ground_truth_key="ground_truth",
-    build_context=lambda row: str(row.get("context", "")),
-    preferred_split="local",
-))
+register(
+    DatasetAdapter(
+        name="jsonl-shared",
+        hf_id="local-jsonl",
+        question_key="question",
+        ground_truth_key="ground_truth",
+        build_context=lambda row: str(row.get("context", "")),
+        preferred_split="local",
+        has_shared_corpus=True,
+    )
+)
+
+
+register(
+    DatasetAdapter(
+        name="csv",
+        hf_id="local-csv",
+        question_key="question",
+        ground_truth_key="ground_truth",
+        build_context=lambda row: str(row.get("context", "")),
+        preferred_split="local",
+    )
+)
 
 
 def _t2_ragbench_context(row: dict) -> str:
@@ -125,19 +143,25 @@ def _t2_ragbench_context(row: dict) -> str:
     return "\n\n".join(parts)
 
 
-register(DatasetAdapter(
-    name="t2-ragbench",
-    hf_id="G4KMU/t2-ragbench",
-    question_key="question",
-    ground_truth_key="program_answer",
-    build_context=_t2_ragbench_context,
-    preferred_split="test",
-    metadata_keys=(
-        "file_name", "company_name", "company_symbol",
-        "report_year", "page_number", "context_id",
-    ),
-    requires_subset=True,
-))
+register(
+    DatasetAdapter(
+        name="t2-ragbench",
+        hf_id="G4KMU/t2-ragbench",
+        question_key="question",
+        ground_truth_key="program_answer",
+        build_context=_t2_ragbench_context,
+        preferred_split="test",
+        metadata_keys=(
+            "file_name",
+            "company_name",
+            "company_symbol",
+            "report_year",
+            "page_number",
+            "context_id",
+        ),
+        requires_subset=True,
+    )
+)
 
 
 def _ragbench_context(row: dict) -> str:
@@ -157,16 +181,18 @@ def _ragbench_context(row: dict) -> str:
     return "\n\n".join(parts)
 
 
-register(DatasetAdapter(
-    name="ragbench",
-    hf_id="rungalileo/ragbench",
-    question_key="question",
-    ground_truth_key="response",
-    build_context=_ragbench_context,
-    preferred_split="test",
-    metadata_keys=("id", "dataset_name"),
-    requires_subset=True,
-))
+register(
+    DatasetAdapter(
+        name="ragbench",
+        hf_id="rungalileo/ragbench",
+        question_key="question",
+        ground_truth_key="response",
+        build_context=_ragbench_context,
+        preferred_split="test",
+        metadata_keys=("id", "dataset_name"),
+        requires_subset=True,
+    )
+)
 
 
 def _squad_ground_truth(raw: Any) -> str:
@@ -175,17 +201,19 @@ def _squad_ground_truth(raw: Any) -> str:
     return str(raw)
 
 
-register(DatasetAdapter(
-    name="squad",
-    hf_id="rajpurkar/squad",
-    question_key="question",
-    ground_truth_key="answers",
-    build_context=lambda row: row.get("context", ""),
-    ground_truth_transform=_squad_ground_truth,
-    preferred_split="validation",
-    metadata_keys=("id", "title"),
-    has_shared_corpus=True,
-))
+register(
+    DatasetAdapter(
+        name="squad",
+        hf_id="rajpurkar/squad",
+        question_key="question",
+        ground_truth_key="answers",
+        build_context=lambda row: row.get("context", ""),
+        ground_truth_transform=_squad_ground_truth,
+        preferred_split="validation",
+        metadata_keys=("id", "title"),
+        has_shared_corpus=True,
+    )
+)
 
 
 def _ragas_wikiqa_context(row: dict) -> str:
@@ -196,31 +224,35 @@ def _ragas_wikiqa_context(row: dict) -> str:
     return str(ctx) if ctx else ""
 
 
-register(DatasetAdapter(
-    name="ragas-wikiqa",
-    hf_id="vibrantlabsai/ragas-wikiqa",
-    question_key="question",
-    ground_truth_key="correct_answer",
-    build_context=_ragas_wikiqa_context,
-    preferred_split="train",
-    metadata_keys=(),
-))
+register(
+    DatasetAdapter(
+        name="ragas-wikiqa",
+        hf_id="vibrantlabsai/ragas-wikiqa",
+        question_key="question",
+        ground_truth_key="correct_answer",
+        build_context=_ragas_wikiqa_context,
+        preferred_split="train",
+        metadata_keys=(),
+    )
+)
 
 
 def _ragperf_wikipedia_nq_context(row: dict) -> str:
     return str(row.get("text", ""))
 
 
-register(DatasetAdapter(
-    name="ragperf-wikipedia-nq",
-    hf_id="sentence-transformers/natural-questions",
-    question_key="query",
-    ground_truth_key="answer",
-    build_context=_ragperf_wikipedia_nq_context,
-    preferred_split="train",
-    metadata_keys=(),
-    has_shared_corpus=True,
-))
+register(
+    DatasetAdapter(
+        name="ragperf-wikipedia-nq",
+        hf_id="sentence-transformers/natural-questions",
+        question_key="query",
+        ground_truth_key="answer",
+        build_context=_ragperf_wikipedia_nq_context,
+        preferred_split="train",
+        metadata_keys=(),
+        has_shared_corpus=True,
+    )
+)
 
 
 # ---------------------------------------------------------------------------
@@ -250,15 +282,17 @@ def _hf_generic_context(row: dict) -> str:
     return str(raw) if raw else ""
 
 
-register(DatasetAdapter(
-    name="hf-generic",
-    hf_id=ENV_HF_ID_SENTINEL,
-    question_key=ENV_KEY_SENTINEL,
-    ground_truth_key=ENV_KEY_SENTINEL,
-    build_context=_hf_generic_context,
-    preferred_split="test",
-    metadata_keys=("id",),
-))
+register(
+    DatasetAdapter(
+        name="hf-generic",
+        hf_id=ENV_HF_ID_SENTINEL,
+        question_key=ENV_KEY_SENTINEL,
+        ground_truth_key=ENV_KEY_SENTINEL,
+        build_context=_hf_generic_context,
+        preferred_split="test",
+        metadata_keys=("id",),
+    )
+)
 
 
 def _multihop_context(row: dict) -> str:
@@ -304,21 +338,23 @@ def _multihop_ground_truth(raw: Any) -> str:
     return str(raw)
 
 
-register(DatasetAdapter(
-    name="multihop-generic",
-    hf_id=ENV_HF_ID_SENTINEL,
-    question_key=ENV_KEY_SENTINEL,
-    ground_truth_key=ENV_KEY_SENTINEL,
-    build_context=_multihop_context,
-    ground_truth_transform=_multihop_ground_truth,
-    preferred_split="validation",
-    metadata_keys=(
-        "id",
-        "type",
-        "level",
-        "context",
-        "supporting_facts",
-        "supporting_contexts",
-    ),
-    has_shared_corpus=False,
-))
+register(
+    DatasetAdapter(
+        name="multihop-generic",
+        hf_id=ENV_HF_ID_SENTINEL,
+        question_key=ENV_KEY_SENTINEL,
+        ground_truth_key=ENV_KEY_SENTINEL,
+        build_context=_multihop_context,
+        ground_truth_transform=_multihop_ground_truth,
+        preferred_split="validation",
+        metadata_keys=(
+            "id",
+            "type",
+            "level",
+            "context",
+            "supporting_facts",
+            "supporting_contexts",
+        ),
+        has_shared_corpus=False,
+    )
+)

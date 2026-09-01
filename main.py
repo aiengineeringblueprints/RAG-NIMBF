@@ -9,6 +9,7 @@ from functools import lru_cache
 from datetime import datetime
 from dataclasses import replace
 from pathlib import Path
+from typing import Any
 
 import mlflow
 from rich.console import Console
@@ -37,13 +38,29 @@ from benchmark.tracking import (
     log_aggregate_artifacts_to_mlflow,
 )
 from benchmark.tracing import setup_tracing
-from benchmark.adapters import build_components, get_rag_adapter
+from benchmark.adapters import (
+    build_components,
+    cleanup_adapter,
+    generate_adapter,
+    get_rag_adapter,
+    PreparedTarget,
+    prepare_adapter,
+    RagSystemOutput,
+    retrieve_adapter,
+)
 from benchmark.reproducibility import write_reproducibility_bundle
 from benchmark.resource_monitor import (
     ResourceMonitor,
     enabled_from_env as resource_monitor_enabled,
     gpu_index_from_env as resource_monitor_gpu_index,
     interval_from_env as resource_monitor_interval,
+)
+from benchmark.llm_performance import (
+    LLMPerformanceResult,
+    performance_from_generation,
+    performance_cache_key,
+    run_llm_performance_benchmark,
+    save_llm_performance_result,
 )
 from benchmark.reporting.models import (
     BenchmarkResultExtended,
@@ -211,6 +228,55 @@ def _metadata_doc_ids(metadata_list: list[dict]) -> tuple[str, ...]:
     return tuple(doc_ids)
 
 
+def _aggregate_adapter_metrics(diagnostics: list[dict[str, Any]]) -> dict[str, Any] | None:
+    active = [item for item in diagnostics if item]
+    if not active:
+        return None
+    tool_latencies = [
+        sum(float(call.get("total_seconds", 0.0)) for call in item.get("tool_calls", []))
+        for item in active
+    ]
+    tool_names: dict[str, int] = {}
+    for item in active:
+        for call in item.get("tool_calls", []):
+            name = str(call.get("tool", "unknown"))
+            tool_names[name] = tool_names.get(name, 0) + 1
+    failures = sum(
+        bool(item.get("error") or item.get("empty_response")) for item in active
+    )
+    timeout_attempts = sum(
+        int(call.get("timeout_attempts", 0))
+        for item in active
+        for call in item.get("tool_calls", [])
+    )
+    return {
+        "sample_count": len(active),
+        "successful_samples": len(active) - failures,
+        "failure_count": failures,
+        "failure_rate": failures / len(active),
+        "timed_out_sample_count": sum(bool(item.get("timeout")) for item in active),
+        "timeout_attempt_count": timeout_attempts,
+        "empty_response_count": sum(
+            bool(item.get("empty_response")) for item in active
+        ),
+        "partial_completion_count": sum(
+            bool(item.get("partial_completion")) for item in active
+        ),
+        "retry_count": sum(int(item.get("retry_count", 0)) for item in active),
+        "tool_call_count": sum(tool_names.values()),
+        "tool_call_counts": tool_names,
+        "connection_seconds": sum(
+            float(item.get("connection_seconds", 0.0)) for item in active
+        ),
+        "cold_tool_seconds": tool_latencies[0] if tool_latencies else None,
+        "warm_tool_mean_seconds": (
+            sum(tool_latencies[1:]) / len(tool_latencies[1:])
+            if len(tool_latencies) > 1
+            else None
+        ),
+    }
+
+
 def _maybe_inject_components(rag_adapter, config, console) -> None:
     """Hand Framework-built components to an external adapter, if it accepts them.
 
@@ -258,6 +324,47 @@ def run_single_benchmark(
     load_data_seconds: float | None = None,
     resource_monitor: ResourceMonitor | None = None,
 ) -> BenchmarkResultExtended:
+    """Run one configuration and always release its managed target.
+
+    Cleanup lives in this thin wrapper so exceptions from generation or
+    evaluation cannot bypass the provider lifecycle. A cleanup error is
+    surfaced on successful runs, but does not hide the original benchmark
+    failure.
+    """
+    cleanup_registry: list[tuple[Any, PreparedTarget, BenchmarkConfig]] = []
+    failed = False
+    try:
+        return _run_single_benchmark_impl(
+            config,
+            data,
+            run_dir=run_dir,
+            corpus=corpus,
+            load_data_seconds=load_data_seconds,
+            resource_monitor=resource_monitor,
+            cleanup_registry=cleanup_registry,
+        )
+    except BaseException:
+        failed = True
+        raise
+    finally:
+        for adapter, target, target_config in reversed(cleanup_registry):
+            try:
+                cleanup_adapter(adapter, target, target_config)
+            except Exception as exc:
+                if not failed:
+                    raise
+                console.print(
+                    f"[yellow]Managed adapter cleanup also failed: {exc}[/yellow]"
+                )
+
+
+def _run_single_benchmark_impl(
+    config: BenchmarkConfig, data: list[dict], run_dir: Path | None = None,
+    corpus: list[dict] | None = None,
+    load_data_seconds: float | None = None,
+    resource_monitor: ResourceMonitor | None = None,
+    cleanup_registry: list[tuple[Any, PreparedTarget, BenchmarkConfig]] | None = None,
+) -> BenchmarkResultExtended:
     run_start = time.perf_counter()
     stage_timings: dict[str, float] = {}
     if load_data_seconds is not None:
@@ -267,6 +374,7 @@ def run_single_benchmark(
     console.print(f"\n[bold yellow]>>> Starting: {config.name}[/bold yellow]")
     chunks = []
     rag_adapter = get_rag_adapter(config)
+    prepared_target = None
 
     # Prepare QA log path if run_dir is provided
     qa_log: list[dict] = []
@@ -282,7 +390,9 @@ def run_single_benchmark(
     if rag_adapter is not None:
         _maybe_inject_components(rag_adapter, config, console)
         with _stage_timer(stage_timings, "adapter_prepare", resource_monitor):
-            rag_adapter.prepare(config, data, corpus=corpus)
+            prepared_target = prepare_adapter(rag_adapter, config, data, corpus=corpus)
+        if cleanup_registry is not None:
+            cleanup_registry.append((rag_adapter, prepared_target, config))
         console.print(f"  [dim]Using external RAG adapter: {rag_adapter.name}[/dim]")
     elif config.retrieval_mode == "retrieval":
         chunks, vector_store = _build_internal_retrieval_index(
@@ -309,7 +419,7 @@ def run_single_benchmark(
         )
         energy_price = _energy_price_usd()
         energy_kwh = host_energy_kwh  # GPU idle/host-only during indexing
-        return BenchmarkResultExtended(
+        index_result = BenchmarkResultExtended(
             config_name=config.name,
             llm_model=config.llm_model,
             embedding_model=config.embedding_model,
@@ -353,6 +463,7 @@ def run_single_benchmark(
             host_energy_kwh=host_energy_kwh,
             estimated_energy_cost_usd=estimate_energy_cost_usd(energy_kwh, energy_price),
         )
+        return index_result
 
     # 3. Generate answers
     llm = None
@@ -375,6 +486,7 @@ def run_single_benchmark(
     all_retrieved_metadata: list[list[dict]] = []
     gold_doc_ids: list[str | None] = []
     all_sample_metadata: list[dict] = []
+    all_adapter_diagnostics: list[dict[str, Any]] = []
     gen_results: list[GenerationResult] = []
 
     for i, sample in enumerate(data):
@@ -382,11 +494,45 @@ def run_single_benchmark(
 
         if rag_adapter is not None:
             with _stage_timer(stage_timings, "external_rag", resource_monitor):
-                adapter_result = rag_adapter.answer(sample, config)
+                if prepared_target is None:
+                    raise RuntimeError("External RAG adapter target was not prepared.")
+                if config.benchmark_stage == "retrieve":
+                    retrieval_result = retrieve_adapter(
+                        rag_adapter, prepared_target, sample, config
+                    )
+                    adapter_result = RagSystemOutput(
+                        answer="",
+                        contexts=retrieval_result.contexts,
+                        metadata=retrieval_result.metadata,
+                        raw_response=(
+                            retrieval_result.raw_response
+                            if isinstance(retrieval_result.raw_response, dict)
+                            else None
+                        ),
+                        total_seconds=retrieval_result.total_seconds,
+                        answer_valid=True,
+                    )
+                else:
+                    adapter_result = generate_adapter(
+                        rag_adapter, prepared_target, sample, config
+                    )
             context_texts = adapter_result.contexts
             retrieved_metadata = adapter_result.metadata
             result = _generation_result_from_adapter(adapter_result)
+            adapter_diagnostics = dict(getattr(adapter_result, "diagnostics", {}) or {})
+            if adapter_diagnostics:
+                stage_timings["mcp_connection"] = stage_timings.get(
+                    "mcp_connection", 0.0
+                ) + float(adapter_diagnostics.get("connection_seconds", 0.0))
+                stage_timings["mcp_tool"] = stage_timings.get("mcp_tool", 0.0) + sum(
+                    float(call.get("total_seconds", 0.0))
+                    for call in adapter_diagnostics.get("tool_calls", [])
+                )
+                stage_timings["mcp_generation"] = stage_timings.get(
+                    "mcp_generation", 0.0
+                ) + float(adapter_diagnostics.get("generation_seconds", 0.0))
         else:
+            adapter_diagnostics = {}
             if llm is None or prompt_tmpl is None:
                 raise RuntimeError("Internal RAG pipeline was not initialized.")
 
@@ -441,6 +587,7 @@ def run_single_benchmark(
             else None
         )
         all_sample_metadata.append(sample.get("metadata", {}) or {})
+        all_adapter_diagnostics.append(adapter_diagnostics)
         gen_results.append(result)
 
         # Stream QA pair to log file after each answer
@@ -457,7 +604,7 @@ def run_single_benchmark(
     console.print(f"  [dim]Generated {len(gen_results)} answers[/dim]       ")
 
     # 4. Evaluate with RAGAS using a separate critic model
-    if config.ragas_enabled:
+    if config.ragas_enabled and config.benchmark_stage != "retrieve":
         console.print(f"  [dim]Running RAGAS evaluation (critic: {config.eval_critic_llm})...[/dim]")
         with _stage_timer(stage_timings, "ragas_eval", resource_monitor):
             eval_result = evaluate_results(
@@ -491,7 +638,29 @@ def run_single_benchmark(
     per_sample_ragas = eval_result.per_sample_scores
 
     # 4b. Compute custom (non-RAGAS) metrics
-    if config.custom_metrics_enabled:
+    if (
+        config.benchmark_stage == "retrieve"
+        and config.custom_retrieval_metrics_mode == "gold_doc"
+    ):
+        gold_result = compute_gold_doc_retrieval_metrics(
+            gold_doc_ids,
+            all_retrieved_metadata,
+            sample_metadata=all_sample_metadata,
+            retrieved_contexts=all_contexts,
+        )
+        custom_result = CustomMetricsResult(
+            metric_means=gold_result.metric_means,
+            per_sample=gold_result.per_sample,
+            samples_with_valid_scores=gold_result.samples_with_valid_scores,
+            error=(
+                f"Gold-doc retrieval metrics skipped {gold_result.skipped_samples} "
+                "sample(s) without gold identifiers."
+                if gold_result.skipped_samples
+                else None
+            ),
+        )
+        console.print("  [dim]Computed retrieval-only gold metrics[/dim]")
+    elif config.custom_metrics_enabled:
         console.print("  [dim]Computing custom metrics (IR + NLG)...[/dim]")
 
         # Reuse or create embedding model for IR relevance detection + context_relevance
@@ -524,6 +693,7 @@ def run_single_benchmark(
                     gold_doc_ids,
                     all_retrieved_metadata,
                     sample_metadata=all_sample_metadata,
+                    retrieved_contexts=all_contexts,
                 )
         if custom_result.error:
             console.print(f"  [yellow]Custom metrics error: {custom_result.error}[/yellow]")
@@ -575,6 +745,12 @@ def run_single_benchmark(
             ground_truth_doc_ids=all_ground_truth_doc_ids[i]
             if i < len(all_ground_truth_doc_ids)
             else (),
+            retrieval_metadata=tuple(all_retrieved_metadata[i])
+            if i < len(all_retrieved_metadata)
+            else (),
+            adapter_diagnostics=all_adapter_diagnostics[i]
+            if i < len(all_adapter_diagnostics)
+            else None,
         )
         for i, (q, gt, ctx, gr) in enumerate(
             zip(questions, ground_truths, all_contexts, gen_results)
@@ -651,7 +827,7 @@ def run_single_benchmark(
         for key in custom_means
     }
 
-    return BenchmarkResultExtended(
+    benchmark_result = BenchmarkResultExtended(
         config_name=config.name,
         llm_model=config.llm_model,
         embedding_model=config.embedding_model,
@@ -707,7 +883,9 @@ def run_single_benchmark(
         energy_kwh=energy_kwh,
         host_energy_kwh=host_energy_kwh,
         estimated_energy_cost_usd=estimated_energy_cost,
+        adapter_metrics=_aggregate_adapter_metrics(all_adapter_diagnostics),
     )
+    return benchmark_result
 
 
 def _with_gold_doc_retrieval_metrics(
@@ -715,11 +893,13 @@ def _with_gold_doc_retrieval_metrics(
     gold_doc_ids: list[str | None],
     retrieved_metadata: list[list[dict]],
     sample_metadata: list[dict] | None = None,
+    retrieved_contexts: list[list[str]] | None = None,
 ) -> CustomMetricsResult:
     gold_result = compute_gold_doc_retrieval_metrics(
         gold_doc_ids,
         retrieved_metadata,
         sample_metadata=sample_metadata,
+        retrieved_contexts=retrieved_contexts,
     )
     metric_means = dict(custom_result.metric_means)
     metric_means.update(gold_result.metric_means)
@@ -818,6 +998,7 @@ def run_all_benchmarks() -> list[BenchmarkResultExtended]:
     # requests serially. Parallel execution causes GPU memory thrashing,
     # request queuing, and timeouts that produce *lower* throughput.
     results: list[BenchmarkResultExtended] = []
+    llm_performance_cache: dict[tuple, tuple[LLMPerformanceResult, Path]] = {}
     parent_context = mlflow.start_run(
         run_name=f"benchmark_env_matrix_{run_dir.name}",
         tags={
@@ -861,6 +1042,86 @@ def run_all_benchmarks() -> list[BenchmarkResultExtended]:
                     )
                 console.print(f"[dim]  Resource trace: {monitor.trace_path}[/dim]")
 
+            if (
+                config.llm_performance_enabled
+                and config.benchmark_stage != "index"
+                and config.rag_system_adapter == "internal"
+            ):
+                if config.llm_performance_source == "generation":
+                    console.print(
+                        "  [bold magenta]LLM performance:[/bold magenta] "
+                        "reusing measured RAG answer-generation calls"
+                    )
+                    perf_result = performance_from_generation(
+                        config,
+                        result.per_sample,
+                        generation_wall_s=(result.stage_timings or {}).get("generate"),
+                    )
+                    perf_path = save_llm_performance_result(
+                        perf_result,
+                        run_dir / "llm_performance",
+                        label=config.name,
+                    )
+                    console.print(
+                        f"  [dim]Generation performance metrics: {perf_path}[/dim]"
+                    )
+                else:
+                    perf_key = performance_cache_key(config)
+                    cached = llm_performance_cache.get(perf_key)
+                    if cached is None:
+                        console.print(
+                            f"  [bold magenta]LLM load test:[/bold magenta] "
+                            f"{config.llm_model} at "
+                            f"{config.llm_performance_call_counts}"
+                        )
+                        perf_result = run_llm_performance_benchmark(
+                            config,
+                            [str(sample["question"]) for sample in data],
+                        )
+                        perf_path = save_llm_performance_result(
+                            perf_result,
+                            run_dir / "llm_performance",
+                        )
+                        cached = (perf_result, perf_path)
+                        llm_performance_cache[perf_key] = cached
+                        if perf_result.error:
+                            console.print(
+                                f"  [yellow]LLM load test incomplete: "
+                                f"{perf_result.error}[/yellow]"
+                            )
+                        else:
+                            console.print(
+                                f"  [dim]LLM load metrics: {perf_path}[/dim]"
+                            )
+                    else:
+                        console.print(
+                            f"  [dim]Reusing LLM load metrics for "
+                            f"{config.llm_model}[/dim]"
+                        )
+
+                    perf_result, perf_path = cached
+                result = replace(
+                    result,
+                    llm_performance_metrics=perf_result.metrics or None,
+                    llm_performance_artifact=str(perf_path),
+                    llm_performance_error=perf_result.error,
+                )
+            elif config.llm_performance_enabled and config.benchmark_stage == "index":
+                result = replace(
+                    result,
+                    llm_performance_error=(
+                        "Skipped for benchmark_stage=index because that stage does "
+                        "not exercise the generator LLM."
+                    ),
+                )
+            elif config.llm_performance_enabled and config.rag_system_adapter != "internal":
+                result = replace(
+                    result,
+                    llm_performance_error=(
+                        "Skipped for external RAG adapter because its configured "
+                        "generator endpoint is not guaranteed to be the RAG service LLM."
+                    ),
+                )
 
             try:
                 log_benchmark_run(

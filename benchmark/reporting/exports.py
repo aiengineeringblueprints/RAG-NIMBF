@@ -47,6 +47,10 @@ def _result_to_dict(r: BenchmarkResultExtended) -> dict:
     d["total_tokens"] = r.total_tokens
     d["total_estimated_cost_usd"] = r.total_estimated_cost_usd
     d["avg_estimated_cost_per_answer_usd"] = r.avg_estimated_cost_per_answer_usd
+    d["llm_performance_metrics"] = r.llm_performance_metrics or {}
+    d["llm_performance_artifact"] = r.llm_performance_artifact
+    d["llm_performance_error"] = r.llm_performance_error
+    d["adapter_metrics"] = r.adapter_metrics or {}
 
     # Stats summary (quality metrics only)
     d["stats"] = {
@@ -65,11 +69,17 @@ def _result_to_dict(r: BenchmarkResultExtended) -> dict:
             "ground_truth": s.ground_truth,
             "answer": s.answer,
             "contexts": list(s.contexts),
+            "retrieval_metadata": list(s.retrieval_metadata),
+            "adapter_diagnostics": s.adapter_diagnostics or {},
             "retrieved_doc_ids": list(s.retrieved_doc_ids),
             "ground_truth_doc_ids": list(s.ground_truth_doc_ids),
             "ragas_scores": s.ragas_scores,
             "custom_scores": s.custom_scores or {},
             "answer_valid": s.answer_valid,
+            "ttft_seconds": s.ttft_seconds,
+            "total_seconds": s.total_seconds,
+            "token_count": s.token_count,
+            "tokens_per_second": s.tokens_per_second,
             "input_tokens": s.input_tokens,
             "output_tokens": s.output_tokens,
             "total_tokens": s.total_tokens,
@@ -150,10 +160,22 @@ def save_csv_report(
             "total_tokens": r.total_tokens,
             "total_estimated_cost_usd": r.total_estimated_cost_usd,
             "avg_estimated_cost_per_answer_usd": r.avg_estimated_cost_per_answer_usd,
+            "llm_performance_artifact": r.llm_performance_artifact,
+            "llm_performance_error": r.llm_performance_error,
         }
+        if r.llm_performance_metrics:
+            for key, val in r.llm_performance_metrics.items():
+                row[f"llm_perf_{key}"] = val
         if r.stage_timings:
             for key, val in r.stage_timings.items():
                 row[f"stage_{key}_seconds"] = val
+        if r.adapter_metrics:
+            for key, val in r.adapter_metrics.items():
+                row[f"adapter_{key}"] = (
+                    json.dumps(val, ensure_ascii=False)
+                    if isinstance(val, (dict, list))
+                    else val
+                )
         # Custom metric means
         if r.custom_metric_means:
             for key, val in r.custom_metric_means.items():
@@ -207,6 +229,12 @@ def save_csv_report(
                 "answer_valid": s.answer_valid,
                 "retrieved_doc_ids": ";".join(s.retrieved_doc_ids),
                 "ground_truth_doc_ids": ";".join(s.ground_truth_doc_ids),
+                "retrieval_metadata_json": json.dumps(
+                    s.retrieval_metadata, ensure_ascii=False, default=str
+                ),
+                "adapter_diagnostics_json": json.dumps(
+                    s.adapter_diagnostics or {}, ensure_ascii=False, default=str
+                ),
                 **{
                     f"custom_{k}": v
                     for k, v in (s.custom_scores or {}).items()

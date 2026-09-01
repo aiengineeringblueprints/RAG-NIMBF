@@ -31,3 +31,44 @@ def test_gold_doc_metrics_skip_missing_gold_id():
     assert result.skipped_samples == 1
     assert result.per_sample[0]["hit@1"] is None
     assert result.metric_means == {}
+
+
+def test_span_metrics_distinguish_wrong_section_in_right_document():
+    result = compute_gold_doc_retrieval_metrics(
+        gold_doc_ids=[["doc-a", "doc-b"]],
+        retrieved_metadata=[
+            [
+                {"doc_id": "doc-a"},
+                {"doc_id": "doc-a"},
+                {"doc_id": "doc-b"},
+            ]
+        ],
+        retrieved_contexts=[
+            [
+                "Unrelated governance notes from the correct document.",
+                "It was commissioned in 1998 and has a rated capacity of 40 MW.",
+                "The maintenance window is Monday 02:00-04:00 UTC.",
+            ]
+        ],
+        sample_metadata=[
+            {
+                "evidence": [
+                    {
+                        "source_id": "doc-a",
+                        "quote": "It was commissioned in 1998 and has a rated capacity of 40 MW.",
+                    },
+                    {
+                        "source_id": "doc-b",
+                        "quote": "The scheduled maintenance window is Monday 02:00-04:00 UTC.",
+                    },
+                ]
+            }
+        ],
+        k_values=[1, 3],
+    )
+
+    assert result.per_sample[0]["hit@1"] == 1.0
+    assert result.per_sample[0]["span_hit@1"] == 0.0
+    assert result.per_sample[0]["span_mrr@3"] == 0.5
+    assert result.per_sample[0]["span_recall@3"] == 1.0
+    assert result.per_sample[0]["span_ndcg@3"] > 0.0
