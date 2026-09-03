@@ -206,3 +206,32 @@ class TestEvaluateResultsScoreParsing:
 
         assert result.samples_with_valid_scores["faithfulness"] == 2
         assert result.samples_with_valid_scores["answer_relevancy"] == 1
+
+
+class TestCriticTokenFields:
+    @patch("benchmark.evaluation.LangchainEmbeddingsWrapper")
+    @patch("benchmark.evaluation.get_embedding_model")
+    @patch("benchmark.evaluation.LangchainLLMWrapper")
+    @patch("benchmark.evaluation.get_chat_model")
+    @patch("benchmark.evaluation.evaluate")
+    def test_evaluation_result_carries_critic_token_fields(
+        self, mock_evaluate, mock_get_chat, mock_llm_wrap, mock_get_emb, mock_emb_wrap
+    ):
+        mock_get_chat.return_value = MagicMock()
+        mock_llm_wrap.return_value = MagicMock()
+        mock_get_emb.return_value = MagicMock()
+        mock_emb_wrap.return_value = MagicMock()
+        mock_result = MagicMock()
+        mock_result.scores = [{"faithfulness": 0.9}]
+        mock_evaluate.return_value = mock_result
+
+        result = evaluate_results(
+            questions=["q1"],
+            ground_truths=["gt1"],
+            answers=["a1"],
+            contexts=[["ctx1"]],
+        )
+
+        assert result.critic_input_tokens == 0
+        assert result.critic_output_tokens == 0
+        assert result.critic_total_tokens == 0

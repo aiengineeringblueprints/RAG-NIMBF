@@ -196,6 +196,9 @@ def log_benchmark_run(
         "total_input_tokens": result.total_input_tokens,
         "total_output_tokens": result.total_output_tokens,
         "total_tokens": result.total_tokens,
+        "critic_input_tokens": result.critic_input_tokens,
+        "critic_output_tokens": result.critic_output_tokens,
+        "critic_total_tokens": result.critic_total_tokens,
     }
 
     # Optional GPU metrics

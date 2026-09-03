@@ -876,6 +876,9 @@ def _run_single_benchmark_impl(
         total_input_tokens=sum(s.input_tokens for s in per_sample),
         total_output_tokens=sum(s.output_tokens for s in per_sample),
         total_tokens=sum(s.total_tokens for s in per_sample),
+        critic_input_tokens=eval_result.critic_input_tokens,
+        critic_output_tokens=eval_result.critic_output_tokens,
+        critic_total_tokens=eval_result.critic_total_tokens,
         total_estimated_cost_usd=total_estimated_cost,
         avg_estimated_cost_per_answer_usd=(
             total_estimated_cost / len(priced_costs) if priced_costs else None

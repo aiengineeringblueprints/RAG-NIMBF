@@ -45,6 +45,9 @@ def _result_to_dict(r: BenchmarkResultExtended) -> dict:
     d["total_input_tokens"] = r.total_input_tokens
     d["total_output_tokens"] = r.total_output_tokens
     d["total_tokens"] = r.total_tokens
+    d["critic_input_tokens"] = r.critic_input_tokens
+    d["critic_output_tokens"] = r.critic_output_tokens
+    d["critic_total_tokens"] = r.critic_total_tokens
     d["total_estimated_cost_usd"] = r.total_estimated_cost_usd
     d["avg_estimated_cost_per_answer_usd"] = r.avg_estimated_cost_per_answer_usd
     d["llm_performance_metrics"] = r.llm_performance_metrics or {}
@@ -158,6 +161,9 @@ def save_csv_report(
             "total_input_tokens": r.total_input_tokens,
             "total_output_tokens": r.total_output_tokens,
             "total_tokens": r.total_tokens,
+            "critic_input_tokens": r.critic_input_tokens,
+            "critic_output_tokens": r.critic_output_tokens,
+            "critic_total_tokens": r.critic_total_tokens,
             "total_estimated_cost_usd": r.total_estimated_cost_usd,
             "avg_estimated_cost_per_answer_usd": r.avg_estimated_cost_per_answer_usd,
             "llm_performance_artifact": r.llm_performance_artifact,

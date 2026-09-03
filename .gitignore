@@ -245,3 +245,6 @@ graphify-out/
 CLAUDE.md
 AGENTS.md
 PROJECT_STATUS.md
+
+.codex
+mlflow.db.backup-20260902
