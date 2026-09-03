@@ -305,6 +305,18 @@
 | 280 | Qwen3.6-35B-A3B-NVFP4 | Recursive | 500 | 100 | MMR | Detailed | 12 | No | nomic-embed-text | squad-FinQA | 0.894 | - | 0.900 | - | - | 0.527 | 100 | Getestet |
 | 281 | Qwen3.6-35B-A3B-NVFP4 | Semantic | - | - | MMR | Concise | 12 | No | nomic-embed-text | squad-FinQA | 0.848 | - | 0.910 | - | - | 0.647 | 100 | Getestet |
 | 282 | Qwen3.6-35B-A3B-NVFP4 | Semantic | - | - | MMR | Detailed | 12 | No | nomic-embed-text | squad-FinQA | 0.926 | - | 0.910 | - | - | 0.522 | 100 | Getestet |
+| 283 | qwen3.5-think | Recursive | 2000 | 400 | Similarity | Concise | 20 | No | nomic-embed-text | squad-FinQA | 0.862 | - | 0.906 | - | - | 0.649 | 500 | Getestet |
+| 284 | qwen3.5-think | Recursive | 2000 | 400 | Similarity | Detailed | 20 | No | nomic-embed-text | squad-FinQA | 0.960 | - | 0.906 | - | - | 0.537 | 500 | Getestet |
+| 285 | qwen3.5-think | Semantic | - | - | Similarity | Concise | 20 | No | nomic-embed-text | squad-FinQA | 0.841 | - | 0.900 | - | - | 0.643 | 500 | Getestet |
+| 286 | qwen3.5-think | Semantic | - | - | Similarity | Detailed | 20 | No | nomic-embed-text | squad-FinQA | 0.962 | - | 0.900 | - | - | 0.535 | 500 | Getestet |
+| 287 | qwen3.5-think | Recursive | 2000 | 400 | MMR | Concise | 20 | No | nomic-embed-text | squad-FinQA | 0.720 | - | 0.780 | - | - | 0.609 | 500 | Getestet |
+| 288 | qwen3.5-think | Recursive | 2000 | 400 | MMR | Detailed | 20 | No | nomic-embed-text | squad-FinQA | 0.950 | - | 0.780 | - | - | 0.479 | 500 | Getestet |
+| 289 | qwen3.5-think | Semantic | - | - | MMR | Concise | 20 | No | nomic-embed-text | squad-FinQA | 0.678 | - | 0.742 | - | - | 0.604 | 500 | Getestet |
+| 290 | qwen3.5-think | Semantic | - | - | MMR | Detailed | 20 | No | nomic-embed-text | squad-FinQA | 0.936 | - | 0.742 | - | - | 0.478 | 500 | Getestet |
+| 291 | qwen3.5-think | Recursive | 2000 | 400 | MMR | Concise | 20 | No | ryanshillington/Qwen3-Embedding-4B | squad-FinQA | 0.870 | - | 0.968 | - | - | 0.648 | 500 | Getestet |
+| 292 | qwen3.5-think | Recursive | 2000 | 400 | MMR | Detailed | 20 | No | ryanshillington/Qwen3-Embedding-4B | squad-FinQA | 0.967 | - | 0.968 | - | - | 0.557 | 500 | Getestet |
+| 293 | qwen3.5-think | Semantic | - | - | MMR | Concise | 20 | No | ryanshillington/Qwen3-Embedding-4B | squad-FinQA | 0.842 | - | 0.944 | - | - | 0.661 | 500 | Getestet |
+| 294 | qwen3.5-think | Semantic | - | - | MMR | Detailed | 20 | No | ryanshillington/Qwen3-Embedding-4B | squad-FinQA | 0.951 | - | 0.944 | - | - | 0.553 | 500 | Getestet |
 
 
 

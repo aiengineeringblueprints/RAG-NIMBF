@@ -31,6 +31,7 @@ class DatasetAdapter:
     preferred_split: str = "test"  # which split to prefer
     metadata_keys: tuple[str, ...] = ()  # extra columns to include in metadata
     requires_subset: bool = False  # True if the HF dataset needs a config/subset
+    default_subset: str | None = None  # subset used when none is configured
     ground_truth_transform: Callable[[Any], str] | None = None  # for complex fields
     has_shared_corpus: bool = (
         False  # True if contexts should be deduplicated into a shared corpus
@@ -355,6 +356,48 @@ register(
             "supporting_facts",
             "supporting_contexts",
         ),
+        has_shared_corpus=False,
+    )
+)
+
+
+register(
+    DatasetAdapter(
+        name="hotpotqa",
+        hf_id="hotpot_qa",
+        question_key="question",
+        ground_truth_key="answer",
+        build_context=_multihop_context,
+        preferred_split="validation",
+        requires_subset=True,
+        default_subset="distractor",
+        metadata_keys=("id", "type", "level", "supporting_facts"),
+        has_shared_corpus=True,
+    )
+)
+
+
+def _nq_ground_truth(raw: Any) -> str:
+    if isinstance(raw, list):
+        return " | ".join(str(x) for x in raw)
+    return str(raw)
+
+
+def _nq_context(row: dict) -> str:
+    """nq_open ships no context: samples are closed-book compatible."""
+    return ""
+
+
+register(
+    DatasetAdapter(
+        name="nq_open",
+        hf_id="google-research-datasets/nq_open",
+        question_key="question",
+        ground_truth_key="answer",
+        build_context=_nq_context,
+        ground_truth_transform=_nq_ground_truth,
+        preferred_split="validation",
+        metadata_keys=(),
         has_shared_corpus=False,
     )
 )

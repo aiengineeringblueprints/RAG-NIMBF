@@ -50,16 +50,35 @@ def fake_blueprint(monkeypatch):
 
     promt_manager_mod.PromptKey = _FakePromptKey
     prompts_pkg.promt_manager = promt_manager_mod
+    # Mark package-like modules so `from pkg.mod import attr` resolves.
+    for module in (chain_pkg, prompts_pkg):
+        module.__path__ = []
 
     chain_pkg.retriever = retriever_mod
     chain_pkg.load_chain = load_chain_mod
     chain_pkg.prompts = prompts_pkg
 
-    monkeypatch.setitem(sys.modules, "chain", chain_pkg)
-    monkeypatch.setitem(sys.modules, "chain.retriever", retriever_mod)
-    monkeypatch.setitem(sys.modules, "chain.load_chain", load_chain_mod)
-    monkeypatch.setitem(sys.modules, "chain.prompts", prompts_pkg)
-    monkeypatch.setitem(sys.modules, "chain.prompts.promt_manager", promt_manager_mod)
+    blueprint_pkg = types.ModuleType("Enterprise_RAG_Blueprint")
+    blueprint_pkg.__path__ = []
+    blueprint_chain_pkg = types.ModuleType("Enterprise_RAG_Blueprint.chain")
+    blueprint_chain_pkg.__path__ = []
+    blueprint_prompts_pkg = types.ModuleType("Enterprise_RAG_Blueprint.chain.prompts")
+    blueprint_prompts_pkg.__path__ = []
+
+    for name, module in [
+        ("chain", chain_pkg),
+        ("chain.retriever", retriever_mod),
+        ("chain.load_chain", load_chain_mod),
+        ("chain.prompts", prompts_pkg),
+        ("chain.prompts.promt_manager", promt_manager_mod),
+        ("Enterprise_RAG_Blueprint", blueprint_pkg),
+        ("Enterprise_RAG_Blueprint.chain", blueprint_chain_pkg),
+        ("Enterprise_RAG_Blueprint.chain.retriever", retriever_mod),
+        ("Enterprise_RAG_Blueprint.chain.load_chain", load_chain_mod),
+        ("Enterprise_RAG_Blueprint.chain.prompts", blueprint_prompts_pkg),
+        ("Enterprise_RAG_Blueprint.chain.prompts.promt_manager", promt_manager_mod),
+    ]:
+        monkeypatch.setitem(sys.modules, name, module)
 
     return {
         "retriever": fake_retriever,

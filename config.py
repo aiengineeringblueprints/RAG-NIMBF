@@ -74,6 +74,9 @@ class BenchmarkConfig:
     dataset_context_field: str = "context"
     dataset_metadata_field: str = "metadata"
     ragas_enabled: bool = True
+    eval_ragas_preset: str = "core"
+    llm_judge_enabled: bool = False
+    llm_judge_llm: str | None = None
     custom_metrics_enabled: bool = True
     # Prompt template
     prompt_template: str = "concise"
@@ -134,6 +137,10 @@ class BenchmarkConfig:
     mcp_max_retries: int = 1
     mcp_retry_backoff_seconds: float = 0.25
     mcp_continue_on_error: bool = True
+    mcp_agent_system_prompt: str | None = None
+    agentic_max_rounds: int = 4
+    agentic_system_prompt: str | None = None
+    mcp_agent_require_retrieval: bool = False
     mcp_corpus_path: str | None = None
     mcp_enforce_fairness: bool = True
     # Managed external RAG lifecycle. These fields are provider-neutral; a
@@ -249,6 +256,8 @@ class BenchmarkConfig:
                     "mcp_execution_mode": self.mcp_execution_mode,
                     "mcp_allowed_tools_json": self.mcp_allowed_tools_json,
                     "mcp_max_agent_rounds": self.mcp_max_agent_rounds,
+                    "agentic_max_rounds": self.agentic_max_rounds,
+                    "agentic_system_prompt": self.agentic_system_prompt,
                     "mcp_max_retries": self.mcp_max_retries,
                     "mcp_corpus_path": self.mcp_corpus_path,
                 }
@@ -345,6 +354,8 @@ def validate_benchmark_config(config: BenchmarkConfig) -> BenchmarkConfig:
             raise ValueError("mcp_timeout_seconds must be positive")
         if config.mcp_max_agent_rounds <= 0:
             raise ValueError("mcp_max_agent_rounds must be positive")
+        if config.agentic_max_rounds <= 0:
+            raise ValueError("agentic_max_rounds must be positive")
         if config.mcp_max_retries < 0:
             raise ValueError("mcp_max_retries must be non-negative")
         if config.mcp_retry_backoff_seconds < 0:
@@ -547,6 +558,9 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
     if _bert_enabled in ("0", "false", "no", "off"):
         custom_metrics_bert_model = None
     ragas_enabled = _env_bool("RAGAS_ENABLED", True)
+    eval_ragas_preset = os.getenv("RAGAS_METRIC_PRESET", "core")
+    llm_judge_enabled = _env_bool("LLM_JUDGE_ENABLED", False)
+    llm_judge_llm = os.getenv("LLM_JUDGE_LLM") or None
     custom_metrics_enabled = _env_bool("CUSTOM_METRICS_ENABLED", True)
 
     # Per-role URLs (fall back to shared defaults when not set)
@@ -728,11 +742,15 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
     mcp_execution_mode = os.getenv("MCP_EXECUTION_MODE", "fixed").strip().lower()
     mcp_allowed_tools_json = os.getenv("MCP_ALLOWED_TOOLS_JSON") or None
     mcp_max_agent_rounds = int(os.getenv("MCP_MAX_AGENT_ROUNDS", "4"))
+    agentic_max_rounds = int(os.getenv("AGENTIC_MAX_ROUNDS", "4"))
+    agentic_system_prompt = os.getenv("AGENTIC_SYSTEM_PROMPT") or None
     mcp_max_retries = int(os.getenv("MCP_MAX_RETRIES", "1"))
     mcp_retry_backoff_seconds = float(
         os.getenv("MCP_RETRY_BACKOFF_SECONDS", "0.25")
     )
     mcp_continue_on_error = _env_bool("MCP_CONTINUE_ON_ERROR", True)
+    mcp_agent_system_prompt = os.getenv("MCP_AGENT_SYSTEM_PROMPT") or None
+    mcp_agent_require_retrieval = _env_bool("MCP_AGENT_REQUIRE_RETRIEVAL", False)
     mcp_corpus_path = os.getenv("MCP_CORPUS_PATH") or None
     mcp_enforce_fairness = _env_bool("MCP_ENFORCE_FAIRNESS", True)
     if rag_system_adapter == "mcp":
@@ -752,6 +770,8 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
             raise ValueError("MCP_TIMEOUT_SECONDS must be positive")
         if mcp_max_agent_rounds <= 0:
             raise ValueError("MCP_MAX_AGENT_ROUNDS must be positive")
+        if agentic_max_rounds <= 0:
+            raise ValueError("AGENTIC_MAX_ROUNDS must be positive")
         if mcp_max_retries < 0:
             raise ValueError("MCP_MAX_RETRIES must be non-negative")
         if mcp_retry_backoff_seconds < 0:
@@ -932,6 +952,9 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
                     eval_critic_embedding=eval_critic_embedding,
                     custom_metrics_bert_model=custom_metrics_bert_model,
                     ragas_enabled=ragas_enabled,
+                    eval_ragas_preset=eval_ragas_preset,
+                    llm_judge_enabled=llm_judge_enabled,
+                    llm_judge_llm=llm_judge_llm,
                     custom_metrics_enabled=custom_metrics_enabled,
                     reranker_model=reranker,
                     reranker_top_k=reranker_top_k,
@@ -972,9 +995,13 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
                     mcp_execution_mode=mcp_execution_mode,
                     mcp_allowed_tools_json=mcp_allowed_tools_json,
                     mcp_max_agent_rounds=mcp_max_agent_rounds,
+                    agentic_max_rounds=agentic_max_rounds,
+                    agentic_system_prompt=agentic_system_prompt,
                     mcp_max_retries=mcp_max_retries,
                     mcp_retry_backoff_seconds=mcp_retry_backoff_seconds,
                     mcp_continue_on_error=mcp_continue_on_error,
+                    mcp_agent_system_prompt=mcp_agent_system_prompt,
+                    mcp_agent_require_retrieval=mcp_agent_require_retrieval,
                     mcp_corpus_path=mcp_corpus_path,
                     mcp_enforce_fairness=mcp_enforce_fairness,
                     rag_managed_base_url=rag_managed_base_url,

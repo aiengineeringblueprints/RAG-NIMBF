@@ -118,12 +118,14 @@ def load_benchmark_data(
             or os.getenv("DATASET_METADATA_FIELD", "metadata"),
         )
 
-    label = subset or "default"
+    label = subset or adapter.default_subset or "default"
     console.print(f"[bold blue]Loading {adapter.hf_id} ({label})...[/bold blue]")
 
     kwargs: dict = {}
-    if adapter.requires_subset and subset:
-        kwargs["name"] = subset
+    if adapter.requires_subset:
+        effective_subset = subset or adapter.default_subset
+        if effective_subset:
+            kwargs["name"] = effective_subset
     ds = load_dataset(adapter.hf_id, **kwargs)
 
     split = adapter.preferred_split

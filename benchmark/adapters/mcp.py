@@ -182,6 +182,45 @@ def _message_usage(message: Any) -> tuple[int, int, int]:
     return input_tokens, output_tokens, total_tokens
 
 
+def aggregate_agent_metrics(diagnostics: list[dict[str, Any]]) -> dict[str, Any]:
+    """Aggregate per-sample agentic diagnostics into run-level agent metrics."""
+    agent_items = [
+        item for item in diagnostics if item.get("execution_mode") == "agentic"
+    ]
+    if not agent_items:
+        return {}
+    rounds = [int(item.get("agent_rounds", 0) or 0) for item in agent_items]
+    tool_call_counts = [
+        int(item.get("agent_tool_calls", 0) or 0) for item in agent_items
+    ]
+    tool_seconds = [
+        sum(float(call.get("total_seconds", 0.0)) for call in item.get("tool_calls", []))
+        for item in agent_items
+    ]
+    tokens = [int(item.get("agent_tokens_total", 0) or 0) for item in agent_items]
+    return {
+        "agent_sample_count": len(agent_items),
+        "agent_rounds_mean": sum(rounds) / len(rounds),
+        "agent_rounds_max": max(rounds),
+        "agent_tool_calls_mean": sum(tool_call_counts) / len(tool_call_counts),
+        "agent_tool_calls_max": max(tool_call_counts),
+        "agent_rounds_exhausted_count": sum(
+            bool(item.get("agent_rounds_exhausted")) for item in agent_items
+        ),
+        "agent_no_retrieval_count": sum(
+            not bool(item.get("agent_retrieved")) for item in agent_items
+        ),
+        "agent_error_count": sum(bool(item.get("error")) for item in agent_items),
+        "agent_tokens_total": sum(tokens),
+        "agent_tokens_mean": sum(tokens) / len(tokens),
+        "agent_model_seconds": sum(
+            float(item.get("agent_model_seconds", 0.0) or 0.0)
+            for item in agent_items
+        ),
+        "agent_tool_seconds": sum(tool_seconds),
+    }
+
+
 class PersistentMcpSession:
     """Own an MCP session on one background event loop for synchronous callers."""
 
@@ -386,6 +425,8 @@ class McpRagAdapter:
     env: dict[str, str] | None = None
     llm: Any = None
     prompt_template: Any = None
+    agent_system_prompt: str | None = None
+    agent_require_retrieval: bool = False
     session_factory: Any = PersistentMcpSession
 
     name: str = "mcp"
@@ -459,6 +500,14 @@ class McpRagAdapter:
             env=child_env or None,
             llm=llm,
             prompt_template=prompt_template,
+            agent_system_prompt=(
+                str(config.mcp_agent_system_prompt).strip()
+                if getattr(config, "mcp_agent_system_prompt", None)
+                else None
+            ),
+            agent_require_retrieval=bool(
+                getattr(config, "mcp_agent_require_retrieval", False)
+            ),
         )
 
     def capabilities(self) -> AdapterCapabilities:
@@ -646,7 +695,8 @@ class McpRagAdapter:
         model = self.llm.bind_tools(schemas)
         messages: list[Any] = [
             SystemMessage(
-                content=(
+                content=self.agent_system_prompt
+                or (
                     "Use the available MCP tools when evidence is needed. "
                     "Return only the final answer when you have enough evidence."
                 )
@@ -659,71 +709,101 @@ class McpRagAdapter:
         input_tokens = output_tokens = total_tokens = 0
         model_seconds = 0.0
         final_text = ""
+        rounds_used = 0
+        round_log: list[dict[str, Any]] = []
 
-        for round_number in range(1, self.max_agent_rounds + 1):
-            model_started = time.perf_counter()
-            response = model.invoke(messages)
-            model_seconds += time.perf_counter() - model_started
-            usage = _message_usage(response)
-            input_tokens += usage[0]
-            output_tokens += usage[1]
-            total_tokens += usage[2]
-            messages.append(response)
-            tool_calls = list(getattr(response, "tool_calls", ()) or ())
-            if not tool_calls:
-                final_text = _message_text(response).strip()
-                diagnostics["agent_rounds"] = round_number
-                break
+        try:
+            for round_number in range(1, self.max_agent_rounds + 1):
+                rounds_used = round_number
+                model_started = time.perf_counter()
+                response = model.invoke(messages)
+                model_seconds += time.perf_counter() - model_started
+                usage = _message_usage(response)
+                input_tokens += usage[0]
+                output_tokens += usage[1]
+                total_tokens += usage[2]
+                messages.append(response)
+                tool_calls = list(getattr(response, "tool_calls", ()) or ())
+                if not tool_calls:
+                    final_text = _message_text(response).strip()
+                    break
 
-            for tool_call in tool_calls:
-                name = str(tool_call.get("name", ""))
-                arguments = tool_call.get("args", {})
-                if name not in self._tools:
-                    raise ValueError(f"LLM requested disallowed MCP tool {name!r}")
-                if not isinstance(arguments, dict):
-                    raise ValueError(
-                        f"MCP tool arguments for {name!r} must be an object"
-                    )
-                effective_arguments = {**self.tool_arguments, **arguments}
-                if name == self.tool_name and self.top_k_argument:
-                    effective_arguments.setdefault(
-                        self.top_k_argument, int(config.retrieval_top_k)
-                    )
-                try:
-                    result, provenance = self._call_tool(name, effective_arguments)
-                except McpToolCallFailure as exc:
-                    diagnostics["tool_calls"].append(exc.provenance)
-                    diagnostics["retry_count"] += exc.provenance["attempts"] - 1
-                    raise
-                diagnostics["tool_calls"].append(provenance)
-                diagnostics["retry_count"] += provenance["attempts"] - 1
-                if _tool_is_error(result):
-                    raise RuntimeError(self._tool_error_message(name, result))
-                raw = _serialize_result(result)
-                raw_results.append(raw)
-                payload = _result_payload(result, self.result_field)
-                call_contexts = _as_texts(payload)
-                offset = len(contexts)
-                contexts.extend(call_contexts)
-                for item in _as_metadata(
-                    payload, len(call_contexts), name, self.transport
-                ):
-                    item["rank"] = offset + int(item["rank"])
-                    metadata.append(item)
-                messages.append(
-                    ToolMessage(
-                        content=json.dumps(raw, ensure_ascii=False, default=str),
-                        tool_call_id=str(tool_call.get("id", name)),
-                    )
+                round_tools: list[str] = []
+                round_log.append(
+                    {"round": round_number, "tools": round_tools}
                 )
-        else:
-            diagnostics["partial_completion"] = bool(diagnostics["tool_calls"])
-            raise RuntimeError(
-                f"MCP agent exceeded {self.max_agent_rounds} tool rounds"
+                for tool_call in tool_calls:
+                    name = str(tool_call.get("name", ""))
+                    round_tools.append(name)
+                    arguments = tool_call.get("args", {})
+                    if name not in self._tools:
+                        raise ValueError(
+                            f"LLM requested disallowed MCP tool {name!r}"
+                        )
+                    if not isinstance(arguments, dict):
+                        raise ValueError(
+                            f"MCP tool arguments for {name!r} must be an object"
+                        )
+                    effective_arguments = {**self.tool_arguments, **arguments}
+                    if name == self.tool_name and self.top_k_argument:
+                        effective_arguments.setdefault(
+                            self.top_k_argument, int(config.retrieval_top_k)
+                        )
+                    try:
+                        result, provenance = self._call_tool(name, effective_arguments)
+                    except McpToolCallFailure as exc:
+                        diagnostics["tool_calls"].append(exc.provenance)
+                        diagnostics["retry_count"] += exc.provenance["attempts"] - 1
+                        raise
+                    diagnostics["tool_calls"].append(provenance)
+                    diagnostics["retry_count"] += provenance["attempts"] - 1
+                    if _tool_is_error(result):
+                        raise RuntimeError(self._tool_error_message(name, result))
+                    raw = _serialize_result(result)
+                    raw_results.append(raw)
+                    payload = _result_payload(result, self.result_field)
+                    call_contexts = _as_texts(payload)
+                    offset = len(contexts)
+                    contexts.extend(call_contexts)
+                    for item in _as_metadata(
+                        payload, len(call_contexts), name, self.transport
+                    ):
+                        item["rank"] = offset + int(item["rank"])
+                        metadata.append(item)
+                    messages.append(
+                        ToolMessage(
+                            content=json.dumps(raw, ensure_ascii=False, default=str),
+                            tool_call_id=str(tool_call.get("id", name)),
+                        )
+                    )
+            else:
+                diagnostics["partial_completion"] = bool(diagnostics["tool_calls"])
+                diagnostics["agent_rounds_exhausted"] = True
+                raise RuntimeError(
+                    f"MCP agent exceeded {self.max_agent_rounds} tool rounds"
+                )
+        finally:
+            diagnostics["agent_rounds"] = rounds_used
+            diagnostics["agent_tool_calls"] = len(diagnostics["tool_calls"])
+            diagnostics["agent_round_log"] = round_log
+            diagnostics["agent_tools_used"] = sorted(
+                {str(call.get("tool", "unknown")) for call in diagnostics["tool_calls"]}
             )
+            diagnostics["agent_retrieved"] = bool(contexts)
+            diagnostics["agent_model_seconds"] = model_seconds
+            diagnostics["agent_tokens_input"] = input_tokens
+            diagnostics["agent_tokens_output"] = output_tokens
+            diagnostics["agent_tokens_total"] = total_tokens
+            diagnostics.setdefault("agent_rounds_exhausted", False)
 
         if not final_text:
             diagnostics["empty_response"] = True
+        if self.agent_require_retrieval and not contexts:
+            diagnostics["agent_skipped_retrieval"] = True
+            raise RuntimeError(
+                "MCP agent answered without retrieving "
+                "(mcp_agent_require_retrieval=true)"
+            )
         answer = final_text
         if config.llm_answer_value_fallback and answer:
             answer = extract_concise_fallback(answer) or answer

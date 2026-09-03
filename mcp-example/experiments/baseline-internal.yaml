@@ -1,0 +1,32 @@
+# Internal vector-RAG baseline on the shared corpus. Run this together with
+# mcp-modes.yaml; its results are the reference point for every MCP cell
+# (fairness validation compares dataset, corpus, top-k, generator, prompt,
+# and token limit).
+
+experiment_name: mcp-example-internal-baseline
+
+dataset:
+  name: jsonl
+  path: datasets/northstar_facilities/questions.jsonl
+  corpus_path: datasets/northstar_facilities/corpus
+  sample_size: 20
+
+settings:
+  benchmark_stage: all
+  retrieval_mode: retrieval
+  vector_db_backend: chroma
+  retrieval_top_k: 5
+  max_new_tokens: 512
+  eval_critic_llm: ollama:gemma3:12b
+  eval_critic_embedding: nomic-embed-text:latest
+  custom_retrieval_metrics_mode: gold_doc
+
+matrix:
+  rag_system_adapter: [internal]
+  llm_models: [ollama:gemma3:4b]
+  embedding_models: [nomic-embed-text:latest]
+  chunking_strategies: [recursive]
+  chunk_sizes: [1000]
+  chunk_overlaps: [200]
+  prompt_templates: [concise]
+  reranker_models: [null]

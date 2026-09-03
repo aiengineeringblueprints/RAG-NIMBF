@@ -320,6 +320,7 @@ def _coerce_field_value(key: str, value: Any) -> Any:
         "llm_performance_call_counts",
         "mcp_max_agent_rounds",
         "mcp_max_retries",
+        "agentic_max_rounds",
     }:
         if key == "llm_performance_call_counts":
             values = (
@@ -339,6 +340,7 @@ def _coerce_field_value(key: str, value: Any) -> Any:
         "llm_performance_warmup",
         "mcp_continue_on_error",
         "mcp_enforce_fairness",
+        "mcp_agent_require_retrieval",
     }:
         return _to_bool(value)
     if key in {
