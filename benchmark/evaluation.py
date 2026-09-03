@@ -15,7 +15,7 @@ from ragas.metrics import SemanticSimilarity
 from ragas.llms import LangchainLLMWrapper
 from ragas.embeddings import LangchainEmbeddingsWrapper
 
-from benchmark.providers import parse_model_id, get_chat_model, wrap_for_ragas
+from benchmark.providers import parse_model_id, get_chat_model, wrap_for_ragas, _TokenCountingChatModel
 from benchmark.embedding import get_embedding_model
 
 logger = logging.getLogger(__name__)
@@ -27,6 +27,9 @@ class EvaluationResult:
     per_sample_scores: list[dict[str, float | None]]
     error: str | None = None
     samples_with_valid_scores: dict[str, int] = field(default_factory=dict)
+    critic_input_tokens: int = 0
+    critic_output_tokens: int = 0
+    critic_total_tokens: int = 0
 
 
 @mlflow.trace(name="ragas_evaluation", span_type="func")
@@ -98,7 +101,8 @@ def evaluate_results(
             max_tokens=critic_max_tokens,
             temperature=0.0,
         )
-        critic_llm = LangchainLLMWrapper(wrap_for_ragas(critic_chat))
+        critic_counter = _TokenCountingChatModel(critic_chat)
+        critic_llm = LangchainLLMWrapper(wrap_for_ragas(critic_counter))
 
         # Resolve critic embeddings via factory
         emb_provider, emb_model_name = parse_model_id(effective_critic_embedding)
@@ -204,4 +208,7 @@ def evaluate_results(
         per_sample_scores=per_sample_scores,
         error=None,
         samples_with_valid_scores=valid_counts,
+        critic_input_tokens=critic_counter.input_tokens,
+        critic_output_tokens=critic_counter.output_tokens,
+        critic_total_tokens=critic_counter.total_tokens,
     )

@@ -108,3 +108,71 @@ class TestGetChatModel:
                 model_name="test",
                 base_url="http://localhost",
             )
+
+
+# ---------------------------------------------------------------------------
+# _TokenCountingChatModel
+# ---------------------------------------------------------------------------
+
+from langchain_core.messages import AIMessage
+from langchain_core.outputs import ChatGeneration, ChatResult
+
+from benchmark.providers import _TokenCountingChatModel
+
+
+class _FakeChatModel:
+    """Stands in for a BaseChatModel, returning canned AIMessages."""
+
+    def __init__(self, responses):
+        self._responses = list(responses)
+
+    def _generate(self, messages, stop=None, run_manager=None, **kwargs):
+        msg = AIMessage(content="ok", usage_metadata=self._responses.pop(0))
+        return ChatResult(generations=[ChatGeneration(message=msg)])
+
+
+class TestTokenCountingChatModel:
+    def test_aggregates_usage_across_calls(self):
+        inner = _FakeChatModel([
+            {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15},
+            {"input_tokens": 20, "output_tokens": 7, "total_tokens": 27},
+        ])
+        counter = _TokenCountingChatModel(inner)
+
+        counter._generate([])
+        counter._generate([])
+
+        assert counter.input_tokens == 30
+        assert counter.output_tokens == 12
+        assert counter.total_tokens == 42
+
+    def test_handles_missing_usage_metadata(self):
+        inner_calls = {"n": 0}
+
+        class _NoUsage:
+            def _generate(self, messages, stop=None, run_manager=None, **kwargs):
+                inner_calls["n"] += 1
+                return ChatResult(generations=[ChatGeneration(message=AIMessage(content="ok"))])
+
+        counter = _TokenCountingChatModel(_NoUsage())
+        counter._generate([])
+
+        assert counter.input_tokens == 0
+        assert counter.output_tokens == 0
+        assert counter.total_tokens == 0
+
+    def test_accepts_openai_style_token_keys(self):
+        class _OpenAIStyle:
+            def _generate(self, messages, stop=None, run_manager=None, **kwargs):
+                msg = AIMessage(
+                    content="ok",
+                    response_metadata={"token_usage": {"prompt_tokens": 100, "completion_tokens": 50, "total_tokens": 150}},
+                )
+                return ChatResult(generations=[ChatGeneration(message=msg)])
+
+        counter = _TokenCountingChatModel(_OpenAIStyle())
+        counter._generate([])
+
+        assert counter.input_tokens == 100
+        assert counter.output_tokens == 50
+        assert counter.total_tokens == 150

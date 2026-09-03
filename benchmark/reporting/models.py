@@ -89,6 +89,9 @@ class BenchmarkResultExtended:
     total_input_tokens: int = 0
     total_output_tokens: int = 0
     total_tokens: int = 0
+    critic_input_tokens: int = 0
+    critic_output_tokens: int = 0
+    critic_total_tokens: int = 0
     total_estimated_cost_usd: float | None = None
     avg_estimated_cost_per_answer_usd: float | None = None
     avg_gpu_power_w: float | None = None

@@ -179,3 +179,69 @@ def wrap_for_ragas(llm: BaseChatModel) -> BaseChatModel:
     Generator LLMs (question answering) do not need it.
     """
     return _ContentAsStringChatModel(llm)
+
+
+class _TokenCountingChatModel(BaseChatModel):
+    """Transparent wrapper that accumulates token usage of inner LLM calls.
+
+    RAGAS invokes the critic LLM internally, so usage never surfaces at the
+    call site.  Wrapping the critic with this class records the aggregate
+    ``input_tokens`` / ``output_tokens`` / ``total_tokens`` across every
+    call RAGAS makes.
+    """
+
+    _wrapped: BaseChatModel
+    input_tokens: int = 0
+    output_tokens: int = 0
+    total_tokens: int = 0
+
+    def __init__(self, wrapped: BaseChatModel) -> None:
+        super().__init__()
+        self._wrapped = wrapped
+        self.input_tokens = 0
+        self.output_tokens = 0
+        self.total_tokens = 0
+
+    @property
+    def _llm_type(self) -> str:
+        return getattr(self._wrapped, "_llm_type", "token-counting-wrapper")
+
+    def _generate(
+        self,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
+        run_manager: CallbackManagerForLLMRun | None = None,
+        **kwargs: Any,
+    ) -> ChatResult:
+        result = self._wrapped._generate(messages, stop=stop, run_manager=run_manager, **kwargs)
+        for gen in result.generations:
+            self._accumulate(gen.message)
+        return result
+
+    async def _agenerate(
+        self,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
+        run_manager: Any | None = None,
+        **kwargs: Any,
+    ) -> ChatResult:
+        result = await self._wrapped._agenerate(messages, stop=stop, run_manager=run_manager, **kwargs)
+        for gen in result.generations:
+            self._accumulate(gen.message)
+        return result
+
+    def _accumulate(self, message: BaseMessage) -> None:
+        usage = getattr(message, "usage_metadata", None) or {}
+        if not usage:
+            usage = (getattr(message, "response_metadata", None) or {}).get("token_usage") or {}
+        self.input_tokens += _usage_key(usage, "input_tokens", "prompt_tokens")
+        self.output_tokens += _usage_key(usage, "output_tokens", "completion_tokens")
+        self.total_tokens += _usage_key(usage, "total_tokens")
+
+
+def _usage_key(usage: dict, *keys: str) -> int:
+    for key in keys:
+        value = usage.get(key)
+        if isinstance(value, (int, float)):
+            return int(value)
+    return 0
