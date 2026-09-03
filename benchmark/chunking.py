@@ -1,5 +1,6 @@
 import mlflow
 
+from langchain_core.documents import Document
 from langchain_text_splitters import (
     CharacterTextSplitter,
     RecursiveCharacterTextSplitter,
@@ -8,6 +9,18 @@ from langchain_text_splitters import (
     TextSplitter,
     SentenceTransformersTokenTextSplitter
 )
+
+
+class ParagraphChunker:
+    """Emits one chunk per source document without splitting.
+
+    Designed for paragraph-level corpora (e.g. HotpotQA paragraphs), where
+    each corpus document is already the natural retrieval unit. Preserves
+    metadata (``title``, ``doc_id``) so gold-retrieval metrics work per chunk.
+    """
+
+    def split_documents(self, documents: list[Document]) -> list[Document]:
+        return list(documents)
 from langchain_core.documents import Document
 
 STRATEGY_MAP = {
@@ -21,6 +34,8 @@ STRATEGY_MAP = {
 
 
 def get_chunker(strategy: str, chunk_size: int, chunk_overlap: int, **kwargs):
+    if strategy == "paragraph":
+        return ParagraphChunker()
     if strategy == "semantic":
         from langchain_experimental.text_splitter import SemanticChunker
 

@@ -88,6 +88,8 @@ class BenchmarkConfig:
     retrieval_fetch_k: int | None = None  # MMR oversampling
     retrieval_mmr_lambda: float = 0.5  # 0 = max diversity, 1 = max relevance
     retrieval_use_hyde: bool = False  # HyDE query expansion
+    retrieval_multihop: bool = False  # iterative multi-hop retrieval
+    retrieval_multihop_rounds: int = 1  # total retrieval rounds when enabled
     # Retrieval mode
     retrieval_mode: str = "retrieval"  # "retrieval" | "direct"
     custom_retrieval_metrics_mode: str = "heuristic"  # heuristic | gold_doc
@@ -195,6 +197,8 @@ class BenchmarkConfig:
             parts += f"_mmr-l{self.retrieval_mmr_lambda}"
         if self.retrieval_use_hyde:
             parts += "_hyde"
+        if self.retrieval_multihop:
+            parts += f"_mh{self.retrieval_multihop_rounds}"
         if self.retrieval_candidate_k != 1024:
             parts += f"_candidate{self.retrieval_candidate_k}"
         if self.retrieval_similarity_threshold != 0.2:
@@ -615,6 +619,12 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
     _hyde_raw = os.getenv("RETRIEVAL_USE_HYDE", "false").strip().lower()
     retrieval_use_hyde = _hyde_raw in ("1", "true", "yes", "on")
 
+    # Iterative multi-hop retrieval
+    _mh_raw = os.getenv("RETRIEVAL_MULTIHOP", "false").strip().lower()
+    retrieval_multihop = _mh_raw in ("1", "true", "yes", "on")
+    retrieval_multihop_rounds = int(os.getenv("RETRIEVAL_MULTIHOP_ROUNDS", "1"))
+    _validate_positive_int(retrieval_multihop_rounds, "RETRIEVAL_MULTIHOP_ROUNDS")
+
     # Retrieval mode
     retrieval_mode = os.getenv("RETRIEVAL_MODE", "retrieval").strip().lower()
     if retrieval_mode not in ("retrieval", "direct"):
@@ -903,6 +913,8 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
                     retrieval_fetch_k=retrieval_fetch_k,
                     retrieval_mmr_lambda=retrieval_mmr_lambda,
                     retrieval_use_hyde=retrieval_use_hyde,
+                    retrieval_multihop=retrieval_multihop,
+                    retrieval_multihop_rounds=retrieval_multihop_rounds,
                     max_new_tokens=max_new_tokens,
                     ollama_base_url=ollama_base_url,
                     ollama_api_key=ollama_api_key,

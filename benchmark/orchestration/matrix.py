@@ -312,6 +312,7 @@ def _coerce_field_value(key: str, value: Any) -> Any:
         "retrieval_candidate_k",
         "generation_context_k",
         "retrieval_fetch_k",
+        "retrieval_multihop_rounds",
         "reranker_top_k",
         "max_new_tokens",
         "dataset_sample_size",
@@ -329,6 +330,7 @@ def _coerce_field_value(key: str, value: Any) -> Any:
         return None if value is None else int(value)
     if key in {
         "retrieval_use_hyde",
+        "retrieval_multihop",
         "retrieval_keyword_enabled",
         "rag_managed_reuse_resources",
         "rag_managed_cleanup",

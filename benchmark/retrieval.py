@@ -201,7 +201,9 @@ class ChromaVectorStoreBackend:
             )
             batch_size = 5000
             try:
-                batch_size = min(batch_size, client.get_max_batch_size())
+                max_batch = client.get_max_batch_size()
+                if isinstance(max_batch, int) and max_batch > 0:
+                    batch_size = min(batch_size, max_batch)
             except AttributeError:
                 pass
             chunks = context.chunks
@@ -410,6 +412,112 @@ def expand_query_with_hyde(
     except Exception as exc:
         logger.warning("HyDE expansion failed, using original query: %s", exc)
     return question
+
+
+_MULTIHOP_FOLLOWUP_SYSTEM = (
+    "You are a search-query generator for a multi-hop question answering "
+    "system. You are given a question and the documents retrieved so far. "
+    "Write ONE short search query (a phrase or sentence, no explanations) "
+    "that would find the missing document needed to fully answer the "
+    "question. If the retrieved documents already contain everything needed "
+    "to answer, output exactly: NONE"
+)
+
+
+def _doc_key(doc: Document) -> tuple:
+    """Identity used to deduplicate documents across retrieval rounds."""
+    metadata = doc.metadata or {}
+    for key in ("doc_id", "id", "paragraph_id"):
+        if metadata.get(key):
+            return (key, str(metadata[key]))
+    return ("content", doc.page_content.strip()[:200])
+
+
+def retrieve_multihop(
+    vector_store: Any,
+    llm: BaseChatModel,
+    question: str,
+    top_k: int = 3,
+    *,
+    rounds: int = 2,
+    retrieval_strategy: str = "similarity",
+    fetch_k: int | None = None,
+    mmr_lambda: float = 0.5,
+    callbacks: list | None = None,
+) -> list[Document]:
+    """Iteratively retrieve documents for multi-hop questions.
+
+    Round 1 performs a standard retrieval. Each further round asks the LLM
+    to generate a follow-up search query targeting the fact that is still
+    missing (given the question and the documents retrieved so far), then
+    retrieves with that query and merges any new unique documents into the
+    result set. Returns at most ``top_k`` documents, round-1 ranking first.
+    """
+    all_docs: list[Document] = []
+    seen: set[tuple] = set()
+
+    def _merge(docs: list[Document]) -> None:
+        for doc in docs:
+            key = _doc_key(doc)
+            if key not in seen:
+                seen.add(key)
+                all_docs.append(doc)
+
+    retrieved = retrieve(
+        vector_store, question, top_k,
+        retrieval_strategy=retrieval_strategy,
+        fetch_k=fetch_k,
+        mmr_lambda=mmr_lambda,
+        callbacks=callbacks,
+    )
+    _merge(retrieved)
+
+    for _ in range(max(0, rounds - 1)):
+        followup = _generate_followup_query(llm, question, all_docs, callbacks)
+        if not followup:
+            break
+        _merge(
+            retrieve(
+                vector_store, followup, top_k,
+                retrieval_strategy=retrieval_strategy,
+                fetch_k=fetch_k,
+                mmr_lambda=mmr_lambda,
+                callbacks=callbacks,
+            )
+        )
+
+    return all_docs[:top_k]
+
+
+def _generate_followup_query(
+    llm: BaseChatModel,
+    question: str,
+    retrieved_docs: list[Document],
+    callbacks: list | None = None,
+) -> str:
+    """Ask the LLM for a follow-up search query; empty string stops iterating."""
+    from langchain_core.messages import HumanMessage, SystemMessage
+
+    excerpts = "\n\n".join(
+        f"[{i + 1}] {(doc.metadata or {}).get('title', 'untitled')}: "
+        f"{doc.page_content[:400]}"
+        for i, doc in enumerate(retrieved_docs)
+    )
+    messages = [
+        SystemMessage(content=_MULTIHOP_FOLLOWUP_SYSTEM),
+        HumanMessage(
+            content=f"Question: {question}\n\nRetrieved documents:\n{excerpts}"
+        ),
+    ]
+    try:
+        response = llm.invoke(messages, config={"callbacks": callbacks or []})
+        content = str(response.content).strip() if response.content else ""
+    except Exception as exc:
+        logger.warning("Multi-hop follow-up generation failed: %s", exc)
+        return ""
+    if not content or content.upper().startswith("NONE"):
+        return ""
+    return content
 
 
 def cleanup_collection(collection_name: str, cache_key: str | None = None) -> None:

@@ -213,6 +213,9 @@ def load_corpus_and_questions(
         source=dataset_name,
     )
 
+    if dataset_name == "multihop-generic":
+        return _load_multihop_corpus(dataset_name, samples)
+
     seen: dict[str, str] = {}  # context text → stable gold document ID
     corpus: list[dict] = []
 
@@ -240,6 +243,60 @@ def load_corpus_and_questions(
 
     console.print(
         f"[green]Deduplicated corpus: {len(corpus)} unique documents "
+        f"for {len(samples)} questions[/green]"
+    )
+    return corpus, samples
+
+
+def _load_multihop_corpus(
+    dataset_name: str, samples: list[dict[str, Any]]
+) -> tuple[list[dict], list[dict]]:
+    """Build a paragraph-level shared corpus for multi-hop datasets.
+
+    HotpotQA-style samples flatten their context into a string of
+    ``Title\\nparagraph`` blocks separated by blank lines. Each unique
+    paragraph becomes one corpus document (with ``title`` + ``doc_id``
+    metadata), and each question's ``supporting_facts`` titles are resolved
+    into ``metadata["gold_doc_ids"]`` so gold-retrieval metrics work.
+    """
+    id_by_title: dict[str, str] = {}
+    corpus: list[dict] = []
+
+    def _doc_id(title: str, context: str) -> str:
+        return _stable_doc_id(dataset_name, f"{title}|{context}", len(corpus))
+
+    for sample in samples:
+        for block in str(sample["context"]).split("\n\n"):
+            block = block.strip()
+            if not block:
+                continue
+            title, _, paragraph = block.partition("\n")
+            title = title.strip()
+            if title in id_by_title:
+                continue
+            paragraph = paragraph.strip() or title
+            doc_id = _doc_id(title, paragraph)
+            id_by_title[title] = doc_id
+            corpus.append(
+                {
+                    "context": paragraph,
+                    "metadata": _chroma_safe_metadata(
+                        {"title": title, "doc_id": doc_id}
+                    ),
+                }
+            )
+
+    for sample in samples:
+        raw = sample.get("metadata", {}).get("supporting_facts") or []
+        gold: list[str] = []
+        for item in raw:
+            title = item[0] if isinstance(item, (list, tuple)) and item else str(item)
+            if title in id_by_title and id_by_title[title] not in gold:
+                gold.append(id_by_title[title])
+        sample["metadata"] = {**sample.get("metadata", {}), "gold_doc_ids": gold}
+
+    console.print(
+        f"[green]Deduplicated multihop corpus: {len(corpus)} unique paragraphs "
         f"for {len(samples)} questions[/green]"
     )
     return corpus, samples

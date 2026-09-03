@@ -314,6 +314,112 @@ class TestHyDE:
         assert result == "What is the answer?"
 
 
+class TestMultiHopRetrieval:
+    def _store_returning_per_query(self, per_query):
+        store = MagicMock()
+        calls = {"n": 0}
+
+        def side_effect(query, k=3, **kwargs):
+            docs = per_query[min(calls["n"], len(per_query) - 1)]
+            calls["n"] += 1
+            return docs
+
+        store.similarity_search.side_effect = side_effect
+        return store
+
+    def _llm_reply(self, text):
+        llm = MagicMock()
+        response = MagicMock()
+        response.content = text
+        llm.invoke.return_value = response
+        return llm
+
+    def test_merges_docs_from_followup_round(self):
+        from benchmark.retrieval import retrieve_multihop
+
+        round1 = [Document(page_content="hop1", metadata={"doc_id": "a"})]
+        round2 = [Document(page_content="hop2", metadata={"doc_id": "b"})]
+        store = self._store_returning_per_query([round1, round2])
+        llm = self._llm_reply("Who directed the film?")
+
+        docs = retrieve_multihop(
+            store, llm, "question", top_k=4, rounds=2,
+        )
+
+        doc_ids = [d.metadata.get("doc_id") for d in docs]
+        assert doc_ids == ["a", "b"]
+        # Second round used the LLM-generated follow-up query
+        second_query = store.similarity_search.call_args_list[1][0][0]
+        assert second_query == "Who directed the film?"
+
+    def test_deduplicates_docs_across_rounds(self):
+        from benchmark.retrieval import retrieve_multihop
+
+        round1 = [Document(page_content="same", metadata={"doc_id": "a"})]
+        round2 = [
+            Document(page_content="same", metadata={"doc_id": "a"}),
+            Document(page_content="new", metadata={"doc_id": "b"}),
+        ]
+        store = self._store_returning_per_query([round1, round2])
+        llm = self._llm_reply("follow-up")
+
+        docs = retrieve_multihop(store, llm, "question", top_k=4, rounds=2)
+        assert [d.metadata["doc_id"] for d in docs] == ["a", "b"]
+
+    def test_respects_top_k_limit(self):
+        from benchmark.retrieval import retrieve_multihop
+
+        round1 = [
+            Document(page_content="r1a", metadata={"doc_id": "a"}),
+            Document(page_content="r1b", metadata={"doc_id": "b"}),
+        ]
+        round2 = [
+            Document(page_content="r2a", metadata={"doc_id": "c"}),
+            Document(page_content="r2b", metadata={"doc_id": "d"}),
+        ]
+        store = self._store_returning_per_query([round1, round2])
+
+        docs = retrieve_multihop(
+            store, self._llm_reply("q2"), "question", top_k=3, rounds=2,
+        )
+        assert len(docs) == 3
+
+    def test_llm_failure_falls_back_to_first_round(self):
+        from benchmark.retrieval import retrieve_multihop
+
+        round1 = [Document(page_content="hop1", metadata={"doc_id": "a"})]
+        store = self._store_returning_per_query([round1])
+        llm = MagicMock()
+        llm.invoke.side_effect = RuntimeError("LLM unavailable")
+
+        docs = retrieve_multihop(store, llm, "question", top_k=3, rounds=2)
+        assert [d.metadata["doc_id"] for d in docs] == ["a"]
+
+    def test_single_round_delegates_to_plain_retrieval(self):
+        from benchmark.retrieval import retrieve_multihop
+
+        round1 = [Document(page_content="doc1", metadata={"doc_id": "a"})]
+        store = self._store_returning_per_query([round1])
+        llm = MagicMock()
+
+        docs = retrieve_multihop(store, llm, "question", top_k=3, rounds=1)
+        llm.invoke.assert_not_called()
+        assert [d.metadata["doc_id"] for d in docs] == ["a"]
+
+    def test_empty_content_from_llm_ends_iteration(self):
+        from benchmark.retrieval import retrieve_multihop
+
+        round1 = [Document(page_content="hop1", metadata={"doc_id": "a"})]
+        store = self._store_returning_per_query([round1])
+
+        docs = retrieve_multihop(
+            store, self._llm_reply(""), "question", top_k=3, rounds=3,
+        )
+        # only one similarity_search call (initial round)
+        assert store.similarity_search.call_count == 1
+        assert len(docs) == 1
+
+
 class TestCleanupCollection:
     @patch("benchmark.retrieval._get_client")
     def test_deletes_existing_collection(self, mock_get_client):
