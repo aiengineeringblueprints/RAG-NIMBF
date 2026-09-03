@@ -48,6 +48,7 @@ def evaluate_results(
     critic_openai_compat_base_url: str | None = None,
     critic_openai_compat_api_key: str | None = None,
     critic_max_tokens: int = 10000,
+    metric_preset: str = "core",
 ) -> EvaluationResult:
     if not questions:
         return EvaluationResult(
@@ -134,20 +135,23 @@ def evaluate_results(
             samples_with_valid_scores={},
         )
 
-    # Keep the default RAGAS set intentionally small:
-    # - faithfulness: existing groundedness judge
-    # - context_recall: useful retrieval signal; avoids per-context precision calls
-    # - semantic_similarity: embedding-only answer/reference similarity
-    #
-    # Deliberately not enabled by default:
-    # - answer_relevancy: generates multiple questions per answer (strictness)
-    # - answer_correctness: combines LLM factuality judging with similarity
-    # - context_precision: scales LLM judging with the number of retrieved contexts
+    # Metric presets:
+    #   "core" (default): faithfulness, context_recall, semantic_similarity.
+    #     Cheap and stable; keeps per-answer critic cost low.
+    #   "full": adds answer_relevancy, answer_correctness, context_precision.
+    #     All six RAGAS metrics, at roughly 2-3x the critic-LLM cost.
+    preset = str(metric_preset or "core").strip().lower()
     metrics = [
         faithfulness,
         context_recall,
         SemanticSimilarity(),
     ]
+    if preset in {"full", "all", "extended"}:
+        metrics.extend([answer_relevancy, answer_correctness, context_precision])
+    elif preset != "core":
+        raise ValueError(
+            f"Unknown RAGAS metric preset {metric_preset!r}; use 'core' or 'full'"
+        )
 
     # max_workers=1: local models process requests serially anyway.
     # More workers just cause queuing and timeouts. Raise timeout instead.

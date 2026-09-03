@@ -1,0 +1,41 @@
+# Baselines triangle on the shared corpus. Run together with (or instead of)
+# an internal-baseline run: every extra adapter inherits the same generator,
+# evaluator, and reporting path, so all four rows are directly comparable.
+#
+#   internal          -> vector RAG (needs its own run, e.g. baseline-internal.yaml)
+#   no_retrieval      -> closed-book LLM (retrieval lower bound)
+#   random_retrieval  -> random contexts (sanity floor)
+#   oracle_retrieval  -> gold context (retrieval upper bound / headroom)
+#
+# Headline numbers from comparisons.md after the run:
+#   internal - no_retrieval  = what retrieval contributes
+#   oracle  - internal       = remaining retrieval headroom
+
+experiment_name: baselines-triangle
+
+dataset:
+  name: jsonl
+  path: datasets/northstar_facilities/questions.jsonl
+  corpus_path: datasets/northstar_facilities/corpus
+  sample_size: 20
+
+settings:
+  benchmark_stage: all
+  retrieval_mode: retrieval
+  vector_db_backend: chroma
+  retrieval_top_k: 5
+  max_new_tokens: 512
+  eval_critic_llm: ollama:gemma3:12b
+  eval_critic_embedding: nomic-embed-text:latest
+  custom_retrieval_metrics_mode: gold_doc
+  eval_ragas_preset: core
+
+matrix:
+  rag_system_adapter: [no_retrieval, random_retrieval, oracle_retrieval]
+  llm_models: [ollama:gemma3:4b]
+  embedding_models: [nomic-embed-text:latest]
+  chunking_strategies: [recursive]
+  chunk_sizes: [1000]
+  chunk_overlaps: [200]
+  prompt_templates: [concise]
+  reranker_models: [null]

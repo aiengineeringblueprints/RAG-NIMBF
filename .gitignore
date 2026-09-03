@@ -212,6 +212,7 @@ cross_run_plots/
 
 # MLflow
 mlflow.db
+mlflow.db.backup-*
 mlruns/
 
 # ChromaDB persistent vector store
@@ -245,3 +246,4 @@ graphify-out/
 CLAUDE.md
 AGENTS.md
 PROJECT_STATUS.md
+.codex

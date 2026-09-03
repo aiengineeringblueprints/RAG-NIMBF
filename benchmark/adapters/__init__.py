@@ -15,10 +15,16 @@ from benchmark.adapters.base import (
     RetrievedChunk,
     RetrievalResult,
 )
+from benchmark.adapters.baselines import (
+    NoRetrievalAdapter,
+    OracleRetrievalAdapter,
+    RandomRetrievalAdapter,
+)
 from benchmark.adapters.components import ComponentBundle, build_components
 from benchmark.adapters.http import HttpRagAdapter
 from benchmark.adapters.mcp import McpRagAdapter
 from benchmark.adapters.ragflow import RagflowAdapter
+from benchmark.adapters.agentic import AgenticRagAdapter
 from benchmark.adapters.lifecycle import (
     UnsupportedAdapterCapability,
     cleanup_adapter,
@@ -41,6 +47,9 @@ __all__ = [
     "AdapterGenerationResult",
     "HttpRagAdapter",
     "McpRagAdapter",
+    "NoRetrievalAdapter",
+    "OracleRetrievalAdapter",
+    "RandomRetrievalAdapter",
     "RagflowAdapter",
     "ManagedRagSystemAdapter",
     "PreparedTarget",
@@ -76,6 +85,10 @@ register_rag_adapter("http", HttpRagAdapter.from_config)
 register_rag_adapter("mcp", McpRagAdapter.from_config)
 register_rag_adapter("ragflow", RagflowAdapter.from_config)
 register_rag_adapter("optimaiserag", RagflowAdapter.from_config)
+register_rag_adapter("no_retrieval", NoRetrievalAdapter.from_config)
+register_rag_adapter("random_retrieval", RandomRetrievalAdapter.from_config)
+register_rag_adapter("agentic", AgenticRagAdapter.from_config)
+register_rag_adapter("oracle_retrieval", OracleRetrievalAdapter.from_config)
 
 
 def get_rag_adapter(

@@ -1,0 +1,55 @@
+# Agentic budget sweep: how does the agent-round limit trade quality
+# against cost? Only the agentic MCP cells run; compare against the
+# all-modes experiment for the internal baseline.
+#
+# Metrics to read from the reports:
+#   agent_rounds_mean / agent_rounds_max     -> behavior
+#   agent_rounds_exhausted_count             -> budget too small
+#   agent_no_retrieval_count                 -> agent skipped retrieval
+#   agent_tokens_mean                        -> cost per answer
+#   agent_model_seconds + agent_tool_seconds -> latency split
+
+experiment_name: mcp-example-agentic-rounds
+
+dataset:
+  name: jsonl
+  path: datasets/northstar_facilities/questions.jsonl
+  corpus_path: datasets/northstar_facilities/corpus
+  sample_size: 20
+
+settings:
+  benchmark_stage: all
+  retrieval_mode: retrieval
+  vector_db_backend: chroma
+  retrieval_top_k: 5
+  max_new_tokens: 512
+  eval_critic_llm: ollama:gemma3:12b
+  eval_critic_embedding: nomic-embed-text:latest
+
+  mcp_transport: stdio
+  mcp_command: python
+  mcp_args_json:
+    - examples/corpus_mcp_server.py
+    - --corpus
+    - datasets/northstar_facilities/corpus
+  mcp_tool_name: search
+  mcp_question_argument: query
+  mcp_top_k_argument: top_k
+  mcp_result_mode: context
+  mcp_execution_mode: agentic
+  mcp_result_field: contexts
+  mcp_timeout_seconds: 60
+  mcp_max_retries: 1
+  mcp_continue_on_error: true
+  mcp_corpus_path: datasets/northstar_facilities/corpus
+
+matrix:
+  rag_system_adapter: [mcp]
+  mcp_max_agent_rounds: [1, 2, 4]
+  llm_models: [ollama:gemma3:4b]
+  embedding_models: [nomic-embed-text:latest]
+  chunking_strategies: [recursive]
+  chunk_sizes: [1000]
+  chunk_overlaps: [200]
+  prompt_templates: [concise]
+  reranker_models: [null]

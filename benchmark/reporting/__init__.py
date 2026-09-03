@@ -4,6 +4,7 @@ from pathlib import Path
 
 from benchmark.reporting.models import BenchmarkResultExtended, BenchmarkRun, collect_system_info
 from benchmark.reporting.analysis import compute_rankings
+from benchmark.reporting.comparisons import save_comparisons_report
 from benchmark.reporting.terminal import display_report
 from benchmark.reporting.exports import save_json_report
 
@@ -48,3 +49,9 @@ def generate_report(
         path = save_json_report(run, results_dir)
         from rich.console import Console
         Console().print(f"[green]JSON saved to {path}[/green]")
+
+    try:
+        save_comparisons_report(results, results_dir)
+    except Exception as exc:  # statistics must never break a benchmark run
+        from rich.console import Console
+        Console().print(f"[yellow]Statistical comparison skipped: {exc}[/yellow]")

@@ -1,0 +1,56 @@
+# The three MCP variants on the same corpus as baseline-internal.yaml:
+#
+#   fixed/context   -> MCP tool as retriever, framework LLM answers
+#   agentic/context -> LLM controls MCP tool calls, then answers
+#   fixed/answer    -> MCP tool IS the QA system (external black box)
+#
+# mcp_enforce_fairness blocks context-mode cells that do not share the
+# dataset, corpus, top-k, generator, prompt, and token limit with the
+# internal baseline.
+
+experiment_name: mcp-example-modes
+
+dataset:
+  name: jsonl
+  path: datasets/northstar_facilities/questions.jsonl
+  corpus_path: datasets/northstar_facilities/corpus
+  sample_size: 20
+
+settings:
+  benchmark_stage: all
+  retrieval_mode: retrieval
+  vector_db_backend: chroma
+  retrieval_top_k: 5
+  max_new_tokens: 512
+  eval_critic_llm: ollama:gemma3:12b
+  eval_critic_embedding: nomic-embed-text:latest
+  custom_retrieval_metrics_mode: gold_doc
+
+  # MCP server connectivity (workflow fields; secrets/URLs may live in .env)
+  mcp_transport: stdio
+  mcp_command: python
+  mcp_args_json:
+    - examples/corpus_mcp_server.py
+    - --corpus
+    - datasets/northstar_facilities/corpus
+  mcp_tool_name: search
+  mcp_question_argument: query
+  mcp_top_k_argument: top_k
+  mcp_result_field: contexts
+  mcp_timeout_seconds: 60
+  mcp_max_retries: 1
+  mcp_continue_on_error: true
+  mcp_corpus_path: datasets/northstar_facilities/corpus
+  mcp_enforce_fairness: true
+
+matrix:
+  rag_system_adapter: [mcp]
+  mcp_execution_mode: [fixed, agentic]
+  mcp_result_mode: [context, answer]
+  llm_models: [ollama:gemma3:4b]
+  embedding_models: [nomic-embed-text:latest]
+  chunking_strategies: [recursive]
+  chunk_sizes: [1000]
+  chunk_overlaps: [200]
+  prompt_templates: [concise]
+  reranker_models: [null]

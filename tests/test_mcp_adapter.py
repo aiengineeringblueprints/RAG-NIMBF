@@ -270,3 +270,222 @@ def test_agentic_mode_rejects_disallowed_tool_call():
 
     assert output.answer_valid is False
     assert "disallowed" in output.diagnostics["error"]
+    assert output.diagnostics["agent_rounds"] == 1
+    assert output.diagnostics["agent_tools_used"] == []
+    assert output.diagnostics["agent_retrieved"] is False
+
+
+def test_agentic_mode_records_round_accounting():
+    search_result = FakeToolResult(
+        structured={"contexts": [{"text": "Evidence", "source": "NF-001.md"}]}
+    )
+    adapter, _ = _adapter(
+        search_result,
+        result_mode="context",
+        result_field="contexts",
+        execution_mode="agentic",
+        tools=("search",),
+    )
+    adapter.llm = FakeAgentModel(
+        [
+            AIMessage(
+                content="",
+                tool_calls=[
+                    {"name": "search", "args": {"query": "capacity"}, "id": "1"}
+                ],
+                usage_metadata={
+                    "input_tokens": 10,
+                    "output_tokens": 1,
+                    "total_tokens": 11,
+                },
+            ),
+            AIMessage(
+                content="42",
+                usage_metadata={
+                    "input_tokens": 5,
+                    "output_tokens": 2,
+                    "total_tokens": 7,
+                },
+            ),
+        ]
+    )
+    adapter.prepare(Config(), [])
+
+    output = adapter.answer({"question": "What capacity?"}, Config())
+
+    diagnostics = output.diagnostics
+    assert diagnostics["agent_rounds"] == 2
+    assert diagnostics["agent_tool_calls"] == 1
+    assert diagnostics["agent_tools_used"] == ["search"]
+    assert diagnostics["agent_round_log"] == [{"round": 1, "tools": ["search"]}]
+    assert diagnostics["agent_retrieved"] is True
+    assert diagnostics["agent_rounds_exhausted"] is False
+    assert diagnostics["agent_tokens_input"] == 15
+    assert diagnostics["agent_tokens_output"] == 3
+    assert diagnostics["agent_tokens_total"] == 18
+    assert diagnostics["agent_model_seconds"] >= 0.0
+
+
+def test_agentic_mode_records_exhausted_rounds():
+    adapter, _ = _adapter(
+        FakeToolResult(structured={"contexts": [{"text": "Evidence"}]}),
+        FakeToolResult(structured={"contexts": [{"text": "Evidence"}]}),
+        result_mode="context",
+        result_field="contexts",
+        execution_mode="agentic",
+        tools=("search",),
+    )
+    loop_response = AIMessage(
+        content="",
+        tool_calls=[{"name": "search", "args": {"query": "x"}, "id": "1"}],
+        usage_metadata={
+            "input_tokens": 4,
+            "output_tokens": 1,
+            "total_tokens": 5,
+        },
+    )
+    adapter.llm = FakeAgentModel([loop_response, loop_response])
+    adapter.max_agent_rounds = 2
+    adapter.prepare(Config(), [])
+
+    output = adapter.answer({"question": "What?"}, Config())
+
+    assert output.answer_valid is False
+    assert "exceeded 2 tool rounds" in output.diagnostics["error"]
+    assert output.diagnostics["agent_rounds"] == 2
+    assert output.diagnostics["agent_rounds_exhausted"] is True
+    assert output.diagnostics["partial_completion"] is True
+    assert output.diagnostics["agent_retrieved"] is True
+    assert output.diagnostics["agent_tokens_total"] == 10
+    assert output.diagnostics["agent_round_log"] == [
+        {"round": 1, "tools": ["search"]},
+        {"round": 2, "tools": ["search"]},
+    ]
+
+
+def test_aggregate_agent_metrics_merges_into_run_metrics():
+    from benchmark.adapters.mcp import aggregate_agent_metrics
+
+    fixed_diagnostics = {
+        "execution_mode": "fixed",
+        "tool_calls": [{"tool": "search", "total_seconds": 0.5}],
+    }
+    agentic_diagnostics = [
+        {
+            "execution_mode": "agentic",
+            "agent_rounds": 2,
+            "agent_tool_calls": 1,
+            "agent_retrieved": True,
+            "agent_rounds_exhausted": False,
+            "agent_tokens_total": 18,
+            "agent_model_seconds": 1.0,
+            "tool_calls": [{"tool": "search", "total_seconds": 0.3}],
+        },
+        {
+            "execution_mode": "agentic",
+            "agent_rounds": 4,
+            "agent_tool_calls": 4,
+            "agent_retrieved": False,
+            "agent_rounds_exhausted": True,
+            "agent_tokens_total": 30,
+            "agent_model_seconds": 2.0,
+            "error": "exceeded",
+            "tool_calls": [{"tool": "search", "total_seconds": 0.7}],
+        },
+    ]
+
+    empty = aggregate_agent_metrics([fixed_diagnostics])
+    assert empty == {}
+
+    metrics = aggregate_agent_metrics([fixed_diagnostics, *agentic_diagnostics])
+    assert metrics["agent_sample_count"] == 2
+    assert metrics["agent_rounds_mean"] == 3.0
+    assert metrics["agent_rounds_max"] == 4
+    assert metrics["agent_tool_calls_mean"] == 2.5
+    assert metrics["agent_rounds_exhausted_count"] == 1
+    assert metrics["agent_no_retrieval_count"] == 1
+    assert metrics["agent_error_count"] == 1
+    assert metrics["agent_tokens_total"] == 48
+    assert metrics["agent_tokens_mean"] == 24.0
+    assert metrics["agent_model_seconds"] == 3.0
+    assert metrics["agent_tool_seconds"] == pytest.approx(1.0)
+
+
+def test_agentic_uses_configured_system_prompt():
+    from langchain_core.messages import AIMessage
+
+    adapter, _ = _adapter(
+        result_mode="context",
+        result_field="contexts",
+        execution_mode="agentic",
+        tools=("search",),
+    )
+    adapter.agent_system_prompt = "Always search exactly once."
+    adapter.llm = FakeAgentModel([AIMessage(content="42")])
+    adapter.prepare(Config(), [])
+    adapter.answer({"question": "What?"}, Config())
+    # bind_tools was called; the prompt is only visible via the first message
+    # of the model invocation, which FakeAgentModel discards — so instead
+    # assert via a capturing model.
+    captured = {}
+
+    class CapturingModel(FakeAgentModel):
+        def invoke(self, messages):
+            captured["system"] = str(messages[0].content)
+            return super().invoke(messages)
+
+    adapter.llm = CapturingModel([AIMessage(content="42")])
+    adapter.answer({"question": "What?"}, Config())
+    assert captured["system"] == "Always search exactly once."
+
+
+def test_agentic_require_retrieval_fails_when_agent_skips_tools():
+    from langchain_core.messages import AIMessage
+
+    adapter, _ = _adapter(
+        result_mode="context",
+        result_field="contexts",
+        execution_mode="agentic",
+        tools=("search",),
+    )
+    adapter.agent_require_retrieval = True
+    adapter.llm = FakeAgentModel(
+        [AIMessage(content="I know this one: 42", usage_metadata={
+            "input_tokens": 1, "output_tokens": 1, "total_tokens": 2})]
+    )
+    adapter.prepare(Config(), [])
+
+    output = adapter.answer({"question": "What?"}, Config())
+
+    assert output.answer_valid is False
+    assert output.diagnostics["agent_skipped_retrieval"] is True
+    assert "without retrieving" in output.diagnostics["error"]
+    assert output.diagnostics["agent_retrieved"] is False
+
+
+def test_agentic_require_retrieval_allows_real_retrieval():
+    from langchain_core.messages import AIMessage
+
+    adapter, _ = _adapter(
+        FakeToolResult(structured={"contexts": [{"text": "Evidence"}]}),
+        result_mode="context",
+        result_field="contexts",
+        execution_mode="agentic",
+        tools=("search",),
+    )
+    adapter.agent_require_retrieval = True
+    adapter.llm = FakeAgentModel(
+        [
+            AIMessage(
+                content="",
+                tool_calls=[{"name": "search", "args": {"query": "x"}, "id": "1"}],
+            ),
+            AIMessage(content="42"),
+        ]
+    )
+    adapter.prepare(Config(), [])
+
+    output = adapter.answer({"question": "What?"}, Config())
+
+    assert output.answer == "42"
+    assert output.diagnostics.get("agent_skipped_retrieval", False) is False

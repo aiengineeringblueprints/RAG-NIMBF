@@ -28,10 +28,10 @@ from benchmark.prompt_templates import get_template
 from benchmark.evaluation import EvaluationResult, evaluate_results
 from benchmark.custom_metrics import CustomMetricsResult, compute_custom_metrics
 from benchmark.gold_retrieval_metrics import compute_gold_doc_retrieval_metrics
+from benchmark.llm_judge import judge_answers
 from benchmark.reranker import get_reranker
 from benchmark.metrics import read_host_energy_joules, estimate_energy_cost_usd
 from benchmark.reporting import generate_report
-from benchmark.reporting.exports import _result_to_dict
 from benchmark.tracking import (
     setup_mlflow,
     log_benchmark_run,
@@ -48,6 +48,7 @@ from benchmark.adapters import (
     RagSystemOutput,
     retrieve_adapter,
 )
+from benchmark.adapters.mcp import aggregate_agent_metrics
 from benchmark.reproducibility import write_reproducibility_bundle
 from benchmark.resource_monitor import (
     ResourceMonitor,
@@ -197,7 +198,7 @@ def _build_internal_retrieval_index(
             lancedb_path=config.lancedb_path,
             create_if_missing=config.benchmark_stage != "query",
         )
-    console.print(f"  [dim]Vector store built[/dim]")
+    console.print("  [dim]Vector store built[/dim]")
     return chunks, vector_store
 
 
@@ -249,7 +250,7 @@ def _aggregate_adapter_metrics(diagnostics: list[dict[str, Any]]) -> dict[str, A
         for item in active
         for call in item.get("tool_calls", [])
     )
-    return {
+    aggregate = {
         "sample_count": len(active),
         "successful_samples": len(active) - failures,
         "failure_count": failures,
@@ -275,6 +276,8 @@ def _aggregate_adapter_metrics(diagnostics: list[dict[str, Any]]) -> dict[str, A
             else None
         ),
     }
+    aggregate.update(aggregate_agent_metrics(active))
+    return aggregate
 
 
 def _maybe_inject_components(rag_adapter, config, console) -> None:
@@ -403,7 +406,7 @@ def _run_single_benchmark_impl(
             resource_monitor,
         )
     else:
-        console.print(f"  [dim]Direct mode — skipping chunking/retrieval[/dim]")
+        console.print("  [dim]Direct mode — skipping chunking/retrieval[/dim]")
 
     if config.benchmark_stage == "index":
         total_time = time.perf_counter() - run_start
@@ -624,12 +627,13 @@ def _run_single_benchmark_impl(
                 critic_openai_compat_base_url=config.eval_critic_openai_compat_base_url,
                 critic_openai_compat_api_key=config.eval_critic_openai_compat_api_key,
                 critic_max_tokens=config.eval_critic_max_tokens,
+                metric_preset=config.eval_ragas_preset,
             )
 
         if eval_result.error:
             console.print(f"  [red]RAGAS evaluation failed: {eval_result.error}[/red]")
         else:
-            console.print(f"  [dim]RAGAS evaluation complete[/dim]")
+            console.print("  [dim]RAGAS evaluation complete[/dim]")
     else:
         console.print("  [dim]RAGAS evaluation disabled[/dim]")
         eval_result = EvaluationResult(metric_means={}, per_sample_scores=[])
@@ -705,6 +709,43 @@ def _run_single_benchmark_impl(
             metric_means={},
             per_sample=[{} for _ in questions],
             samples_with_valid_scores={},
+        )
+
+    # 4c. Optional LLM-as-judge scoring (independent of RAGAS)
+    if config.llm_judge_enabled and config.benchmark_stage != "retrieve":
+        judge_model = config.llm_judge_llm or config.eval_critic_llm
+        console.print(f"  [dim]Running LLM-as-judge ({judge_model})...[/dim]")
+        with _stage_timer(stage_timings, "llm_judge", resource_monitor):
+            judge_result = judge_answers(
+                questions,
+                ground_truths,
+                [r.answer for r in gen_results],
+                critic_llm_model=judge_model,
+                ollama_base_url=config.ollama_base_url,
+                ollama_api_key=config.ollama_api_key,
+                openai_compat_base_url=config.openai_compat_base_url,
+                openai_compat_api_key=config.openai_compat_api_key,
+            )
+        if judge_result.error:
+            console.print(f"  [yellow]LLM judge: {judge_result.error}[/yellow]")
+        else:
+            console.print(
+                f"  [dim]LLM judge scores: "
+                f"{', '.join(judge_result.metric_means.keys())}[/dim]"
+            )
+        judge_rows = judge_result.per_sample
+        merged_rows: list[dict] = []
+        for i, row in enumerate(custom_result.per_sample):
+            extra = judge_rows[i] if i < len(judge_rows) else {}
+            merged_rows.append({**row, **extra})
+        custom_result = CustomMetricsResult(
+            metric_means={**custom_result.metric_means, **judge_result.metric_means},
+            per_sample=merged_rows,
+            samples_with_valid_scores={
+                **custom_result.samples_with_valid_scores,
+                **judge_result.samples_with_valid_scores,
+            },
+            error=custom_result.error or judge_result.error,
         )
 
     total_time = time.perf_counter() - run_start
