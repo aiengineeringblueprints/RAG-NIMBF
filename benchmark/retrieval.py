@@ -199,7 +199,14 @@ class ChromaVectorStoreBackend:
                 collection_name=context.collection_name,
                 embedding_function=context.embedding_model,
             )
-            vector_store.add_documents(context.chunks)
+            batch_size = 5000
+            try:
+                batch_size = min(batch_size, client.get_max_batch_size())
+            except AttributeError:
+                pass
+            chunks = context.chunks
+            for i in range(0, len(chunks), batch_size):
+                vector_store.add_documents(chunks[i : i + batch_size])
             logger.info(
                 "Built new collection '%s' with %d chunks",
                 context.collection_name,
