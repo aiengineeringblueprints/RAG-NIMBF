@@ -404,6 +404,82 @@ class TestGoldDocMetadata:
         )
 
 
+class TestMultihopSharedCorpus:
+    def _hotpot_sample(self, index: int, question: str, titles, supporting):
+        paragraphs = [
+            f"{title}\nParagraph text about {title.lower()} for sample {index}."
+            for title in titles
+        ]
+        return {
+            "question": question,
+            "ground_truth": f"answer {index}",
+            "context": "\n\n".join(paragraphs),
+            "metadata": {
+                "id": str(index),
+                "supporting_facts": supporting,
+            },
+        }
+
+    def test_splits_paragraphs_into_deduplicated_corpus(self):
+        from benchmark.dataset import load_corpus_and_questions
+
+        samples = [
+            self._hotpot_sample(
+                0,
+                "q1",
+                ["Alpha", "Beta", "Gamma"],
+                [["Alpha", 0], ["Beta", 2]],
+            ),
+            self._hotpot_sample(
+                1,
+                "q2",
+                ["Beta", "Alpha", "Delta"],
+                [["Beta", 1], ["Delta", 0]],
+            ),
+        ]
+
+        with patch("benchmark.dataset.load_benchmark_data", return_value=samples):
+            corpus, questions = load_corpus_and_questions(
+                dataset_name="multihop-generic",
+                sample_size=2,
+            )
+
+        # Alpha/Beta/Gamma/Delta → 4 unique paragraph documents
+        assert len(corpus) == 4
+        titles = [doc["metadata"]["title"] for doc in corpus]
+        assert titles == ["Alpha", "Beta", "Gamma", "Delta"]
+        assert all(doc["metadata"]["doc_id"] for doc in corpus)
+        assert corpus[0]["context"] == (
+            "Paragraph text about alpha for sample 0."
+        )
+
+        # Each question carries gold_doc_ids resolved to corpus doc_ids
+        id_by_title = {d["metadata"]["title"]: d["metadata"]["doc_id"] for d in corpus}
+        assert questions[0]["metadata"]["gold_doc_ids"] == [
+            id_by_title["Alpha"],
+            id_by_title["Beta"],
+        ]
+        assert questions[1]["metadata"]["gold_doc_ids"] == [
+            id_by_title["Beta"],
+            id_by_title["Delta"],
+        ]
+
+    def test_question_without_supporting_facts_gets_empty_gold_ids(self):
+        from benchmark.dataset import load_corpus_and_questions
+
+        sample = self._hotpot_sample(0, "q1", ["Alpha"], [])
+        sample["metadata"]["supporting_facts"] = []
+
+        with patch("benchmark.dataset.load_benchmark_data", return_value=[sample]):
+            corpus, questions = load_corpus_and_questions(
+                dataset_name="multihop-generic",
+                sample_size=1,
+            )
+
+        assert len(corpus) == 1
+        assert questions[0]["metadata"]["gold_doc_ids"] == []
+
+
 class TestLocalDatasets:
     def test_jsonl_dataset_loads_with_custom_fields(self, tmp_path):
         path = tmp_path / "samples.jsonl"

@@ -529,6 +529,32 @@ class TestGetAllCombinations:
         "CHUNK_SIZES": "1000",
         "CHUNK_OVERLAPS": "200",
         "CHUNKING_STRATEGIES": "recursive",
+        "RETRIEVAL_MULTIHOP": "true",
+        "RETRIEVAL_MULTIHOP_ROUNDS": "3",
+    }, clear=False)
+    def test_multihop_config_loaded(self):
+        configs = get_all_combinations()
+        assert configs[0].retrieval_multihop is True
+        assert configs[0].retrieval_multihop_rounds == 3
+
+    @patch.dict(os.environ, {
+        "LLM_MODELS": "gemma3:4b",
+        "EMBEDDING_MODELS": "nomic-embed-text:latest",
+        "CHUNK_SIZES": "1000",
+        "CHUNK_OVERLAPS": "200",
+        "CHUNKING_STRATEGIES": "recursive",
+    }, clear=False)
+    def test_multihop_defaults_off(self):
+        configs = get_all_combinations()
+        assert configs[0].retrieval_multihop is False
+        assert configs[0].retrieval_multihop_rounds == 1
+
+    @patch.dict(os.environ, {
+        "LLM_MODELS": "gemma3:4b",
+        "EMBEDDING_MODELS": "nomic-embed-text:latest",
+        "CHUNK_SIZES": "1000",
+        "CHUNK_OVERLAPS": "200",
+        "CHUNKING_STRATEGIES": "recursive",
         "VECTOR_DB_BACKEND": "lancedb",
         "LANCEDB_PATH": ".test-lancedb",
         "BENCHMARK_STAGE": "query",

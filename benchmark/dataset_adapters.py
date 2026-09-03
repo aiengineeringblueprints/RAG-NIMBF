@@ -355,6 +355,7 @@ register(
             "supporting_facts",
             "supporting_contexts",
         ),
-        has_shared_corpus=False,
+        # Paragraph-level corpus built by dataset._load_multihop_corpus
+        has_shared_corpus=True,
     )
 )

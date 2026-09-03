@@ -21,6 +21,7 @@ from benchmark.retrieval import (
     build_vector_store,
     retrieve,
     expand_query_with_hyde,
+    retrieve_multihop,
     _cache_key,
 )
 from benchmark.generation import get_llm, generate_answer, GenerationResult
@@ -549,12 +550,21 @@ def _run_single_benchmark_impl(
                 if vector_store is None:
                     raise RuntimeError("Vector store missing in retrieval mode.")
                 with _stage_timer(stage_timings, "retrieve", resource_monitor):
-                    retrieved_docs = retrieve(
-                        vector_store, query, config.retrieval_top_k,
-                        retrieval_strategy=config.retrieval_strategy,
-                        fetch_k=config.retrieval_fetch_k,
-                        mmr_lambda=config.retrieval_mmr_lambda,
-                    )
+                    if config.retrieval_multihop:
+                        retrieved_docs = retrieve_multihop(
+                            vector_store, llm, query, config.retrieval_top_k,
+                            rounds=config.retrieval_multihop_rounds,
+                            retrieval_strategy=config.retrieval_strategy,
+                            fetch_k=config.retrieval_fetch_k,
+                            mmr_lambda=config.retrieval_mmr_lambda,
+                        )
+                    else:
+                        retrieved_docs = retrieve(
+                            vector_store, query, config.retrieval_top_k,
+                            retrieval_strategy=config.retrieval_strategy,
+                            fetch_k=config.retrieval_fetch_k,
+                            mmr_lambda=config.retrieval_mmr_lambda,
+                        )
 
                 if reranker is not None:
                     with _stage_timer(stage_timings, "rerank", resource_monitor):
