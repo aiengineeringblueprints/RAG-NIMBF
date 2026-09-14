@@ -1,9 +1,10 @@
-"""Component-injection tests driving the adapter seam directly.
+"""Component-injection policy tests driving the adapter seam directly.
 
-The injection policy lives beside the component factory in the adapter
-infrastructure (``benchmark.adapters.components.inject_components``) and is
-exercised through the adapter interface — no entry-point imports, no
-patching of ``main``.
+The decide-whether-and-what-to-inject policy lives in the adapter
+infrastructure (``benchmark.adapters.components``). The orchestrator hands
+over the adapter and a component bundle and nothing else; no code path
+mutates the config object. Tests exercise the policy through the adapter
+interface — no entry-point imports, no patching of ``main``.
 """
 
 from __future__ import annotations
@@ -16,20 +17,20 @@ from conftest import StubEmbedder
 
 import benchmark.adapters.components as components_module
 from benchmark.adapters import (
+    build_components,
     generate_adapter,
     inject_components,
     prepare_adapter,
+    resolve_injection_slots,
     retrieve_adapter,
 )
-from benchmark.adapters.components import ComponentBundle
+from benchmark.adapters.components import ComponentBundle, build_injected_components
 from benchmark.adapters.internal import InternalRagAdapter
 from benchmark.generation import GenerationResult
 
 
 @dataclass
 class InjectionConfig:
-    """Dataclass config so capability override can use dataclasses.replace."""
-
     rag_adapter_accepts: str = ""
     dataset_name: str = "unit-test"
     dataset_subset: str = ""
@@ -42,6 +43,7 @@ class InjectionConfig:
     chunk_size: int = 1000
     chunk_overlap: int = 0
     embedding_model: str = "stub-embedder"
+    llm_provider: str = "stub"
     llm_model: str = "stub-llm"
     reranker_model: str | None = None
     prompt_template: str = "concise"
@@ -87,68 +89,192 @@ class InjectionConfig:
 
 
 class _FullAdapter:
+    """Declares support for every slot."""
+
     name = "full"
 
     def __init__(self) -> None:
         self.bundle: ComponentBundle | None = None
 
     def supports_components(self) -> dict[str, bool]:
-        return {"llm": True, "chunker": True}
+        return {
+            "chunker": True,
+            "embedder": True,
+            "retriever": True,
+            "reranker": True,
+            "llm": True,
+            "prompt": True,
+        }
 
     def set_components(self, bundle: ComponentBundle) -> None:
         self.bundle = bundle
 
 
-class _LegacyAdapter:
-    name = "legacy"
+class _PartialAdapter:
+    """Declares support for some slots."""
+
+    name = "partial"
+
+    def __init__(self) -> None:
+        self.bundle: ComponentBundle | None = None
+
+    def supports_components(self) -> dict[str, bool]:
+        return {"llm": True, "chunker": True, "embedder": False}
+
+    def set_components(self, bundle: ComponentBundle) -> None:
+        self.bundle = bundle
 
 
-def test_inject_components_hands_built_slots_to_accepting_adapter(monkeypatch):
-    adapter = _FullAdapter()
-    fake_bundle = ComponentBundle(llm="FAKE_LLM", chunker="FAKE_CHUNKER")
-    seen_configs: list[Any] = []
+class _NoSlotAdapter:
+    """Declares the protocol but accepts nothing."""
 
-    def fake_build(config):
-        seen_configs.append(config)
-        return fake_bundle
+    name = "noslot"
 
-    monkeypatch.setattr(components_module, "build_components", fake_build)
+    def __init__(self) -> None:
+        self.bundle: ComponentBundle | None = None
 
-    cfg = InjectionConfig(rag_adapter_accepts="llm,chunker")
-    inject_components(adapter, cfg)
+    def supports_components(self) -> dict[str, bool]:
+        return {"llm": False}
 
-    assert adapter.bundle is fake_bundle
-    assert len(seen_configs) == 1
-    # Capability override from supports_components wins over RAG_ADAPTER_ACCEPTS.
-    assert seen_configs[0].rag_adapter_accepts == "chunker,llm"
-    # The user config is not mutated.
-    assert cfg.rag_adapter_accepts == "llm,chunker"
+    def set_components(self, bundle: ComponentBundle) -> None:
+        self.bundle = bundle
 
 
-def test_inject_components_skips_adapters_without_set_components(monkeypatch):
-    adapter = _LegacyAdapter()
-    called = []
+class _BlackBoxAdapter:
+    """Pure black-box: no component protocol at all."""
+
+    name = "blackbox"
+
+
+# resolve_injection_slots: the policy at the adapter seam
+
+
+def test_policy_all_slots():
+    assert resolve_injection_slots(_FullAdapter(), InjectionConfig()) == {
+        "chunker",
+        "embedder",
+        "retriever",
+        "reranker",
+        "llm",
+        "prompt",
+    }
+
+
+def test_policy_some_slots_only_true_capabilities():
+    slots = resolve_injection_slots(_PartialAdapter(), InjectionConfig())
+    assert slots == {"llm", "chunker"}
+
+
+def test_policy_no_slots_resolves_empty():
+    assert resolve_injection_slots(_NoSlotAdapter(), InjectionConfig()) == set()
+
+
+def test_policy_black_box_adapter_resolves_empty():
+    assert resolve_injection_slots(_BlackBoxAdapter(), InjectionConfig()) == set()
+
+
+def test_policy_user_intent_override_narrows_adapter_capability():
+    cfg = InjectionConfig(rag_adapter_accepts="llm")
+    assert resolve_injection_slots(_PartialAdapter(), cfg) == {"llm"}
+
+
+def test_policy_user_intent_override_cannot_add_unsupported_slots():
+    cfg = InjectionConfig(rag_adapter_accepts="llm,reranker")
+    assert resolve_injection_slots(_PartialAdapter(), cfg) == {"llm"}
+
+
+def test_policy_never_mutates_the_config_object():
+    cfg = InjectionConfig(rag_adapter_accepts="llm")
+    resolve_injection_slots(_PartialAdapter(), cfg)
+    assert cfg.rag_adapter_accepts == "llm"
+
+
+# build_injected_components + inject_components: the orchestrator handover
+
+
+def test_black_box_adapter_gets_no_bundle():
+    adapter = _BlackBoxAdapter()
+    bundle = build_injected_components(adapter, InjectionConfig())
+    assert bundle == ComponentBundle()
+    inject_components(adapter, bundle)  # must be a no-op, not an error
+
+
+def test_no_slot_adapter_gets_empty_bundle():
+    adapter = _NoSlotAdapter()
+    bundle = build_injected_components(adapter, InjectionConfig())
+    assert bundle == ComponentBundle()
+    inject_components(adapter, bundle)
+    assert adapter.bundle is None  # empty bundle is never delivered
+
+
+@pytest.fixture
+def fake_factories(monkeypatch):
     monkeypatch.setattr(
-        components_module, "build_components", lambda config: called.append(config)
+        components_module, "get_llm", lambda **kwargs: "FAKE_LLM", raising=False
+    )
+    monkeypatch.setattr(
+        components_module,
+        "get_embedding_model",
+        lambda *args, **kwargs: "FAKE_EMBEDDER",
+        raising=False,
+    )
+    monkeypatch.setattr(
+        components_module,
+        "get_chunker",
+        lambda *args, **kwargs: "FAKE_CHUNKER",
+        raising=False,
     )
 
-    inject_components(adapter, InjectionConfig())
 
-    assert called == []
-    assert not hasattr(adapter, "bundle")
+def test_full_adapter_receives_populated_bundle(fake_factories):
+    adapter = _FullAdapter()
+    cfg = InjectionConfig()
+    bundle = build_injected_components(adapter, cfg)
+    inject_components(adapter, bundle)
+    assert adapter.bundle is bundle
+    assert adapter.bundle.llm == "FAKE_LLM"
+    assert adapter.bundle.chunker == "FAKE_CHUNKER"
+    assert adapter.bundle.embedder == "FAKE_EMBEDDER"
+
+
+def test_partial_adapter_gets_only_declared_slots_even_when_user_lists_more(fake_factories):
+    adapter = _PartialAdapter()
+    cfg = InjectionConfig(rag_adapter_accepts="llm,chunker,embedder,reranker")
+    bundle = build_injected_components(adapter, cfg)
+    inject_components(adapter, bundle)
+    assert adapter.bundle.llm == "FAKE_LLM"
+    assert adapter.bundle.chunker == "FAKE_CHUNKER"
+    assert adapter.bundle.embedder is None  # declared False
+    assert adapter.bundle.reranker is None  # not declared
+
+
+def test_build_components_builds_exactly_the_requested_slots(fake_factories):
+    bundle = build_components(InjectionConfig(), {"llm", "embedder"})
+    assert bundle.llm == "FAKE_LLM"
+    assert bundle.embedder == "FAKE_EMBEDDER"
+    assert bundle.chunker is None
+    assert bundle.prompt_template is None
+
+
+def test_user_intent_override_restores_llm_only_injection(fake_factories):
+    adapter = _PartialAdapter()
+    cfg = InjectionConfig(rag_adapter_accepts="llm")
+    bundle = build_injected_components(adapter, cfg)
+    inject_components(adapter, bundle)
+    assert adapter.bundle.llm is not None
+    assert adapter.bundle.chunker is None
 
 
 def test_end_to_end_injection_through_adapter_lifecycle(monkeypatch):
-    """Injected components drive a full prepare -> retrieve -> generate run."""
-
-    def fake_build(config):
-        return ComponentBundle(embedder=StubEmbedder())
-
-    monkeypatch.setattr(components_module, "build_components", fake_build)
-
+    monkeypatch.setattr(
+        components_module,
+        "build_components",
+        lambda config, accepts=None: ComponentBundle(embedder=StubEmbedder()),
+    )
     adapter = InternalRagAdapter(generator=_stub_generator)
     cfg = InjectionConfig()
-    inject_components(adapter, cfg)
+    bundle = build_injected_components(adapter, cfg)
+    inject_components(adapter, bundle)
     assert adapter._bundle.embedder is not None
 
     corpus = [
@@ -190,25 +316,3 @@ def stub_generator(llm, question, contexts, **kwargs) -> GenerationResult:
 
 def _stub_generator(llm, question, contexts, **kwargs) -> GenerationResult:
     return stub_generator(llm, question, contexts, **kwargs)
-
-
-@pytest.mark.parametrize("accepts", ["", "llm,chunker"])
-def test_capability_override_covers_all_declared_slots(accepts: str):
-    captured: dict = {}
-
-    class RecordingAdapter(_FullAdapter):
-        def set_components(self, bundle: ComponentBundle) -> None:
-            captured["called"] = True
-
-    adapter = RecordingAdapter()
-    monkeypatch_build = ComponentBundle(llm="FAKE_LLM")
-    from unittest import mock
-
-    with mock.patch.object(
-        components_module, "build_components", return_value=monkeypatch_build
-    ) as bc_mock:
-        inject_components(adapter, InjectionConfig(rag_adapter_accepts=accepts))
-
-    bc_mock.assert_called_once()
-    assert bc_mock.call_args.args[0].rag_adapter_accepts == "chunker,llm"
-    assert captured["called"] is True

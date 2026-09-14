@@ -22,6 +22,7 @@ from benchmark.adapters import (
     RagSystemOutput,
     adapter_aggregate_metrics,
     adapter_stage_timings,
+    build_injected_components,
     cleanup_adapter,
     generate_adapter,
     get_rag_adapter,
@@ -195,7 +196,9 @@ def _run_single_benchmark_impl(
         checkpoint_store = CheckpointStore(configs_dir / f"{safe_name}_checkpoint.json")
 
     # 1. Chunk + 2. Embed (adapter-owned ingestion)
-    inject_components(rag_adapter, config, console)
+    # The orchestrator only hands over the adapter and a component bundle;
+    # the injection policy lives in the adapter infrastructure.
+    inject_components(rag_adapter, build_injected_components(rag_adapter, config), console)
     with _stage_timer(stage_timings, "adapter_prepare", resource_monitor):
         prepared_target = prepare_adapter(rag_adapter, config, data, corpus=corpus)
     if cleanup_registry is not None:

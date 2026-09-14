@@ -18,7 +18,9 @@ from benchmark.adapters.base import (
 from benchmark.adapters.components import (
     ComponentBundle,
     build_components,
+    build_injected_components,
     inject_components,
+    resolve_injection_slots,
 )
 from benchmark.adapters.http import HttpRagAdapter
 from benchmark.adapters.internal import InternalRagAdapter
@@ -62,6 +64,7 @@ __all__ = [
     "adapter_aggregate_metrics",
     "adapter_stage_timings",
     "build_components",
+    "build_injected_components",
     "cleanup_adapter",
     "generate_adapter",
     "get_adapter_capabilities",
@@ -70,6 +73,7 @@ __all__ = [
     "prepare_adapter",
     "register_rag_adapter",
     "require_adapter_capabilities",
+    "resolve_injection_slots",
     "retrieve_adapter",
 ]
 
