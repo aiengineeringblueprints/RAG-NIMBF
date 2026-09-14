@@ -1,74 +1,82 @@
+import copy
+import hashlib
 import json
 import logging
-import time
 import os
-import hashlib
-import copy
+import time
 from contextlib import contextmanager, nullcontext
-from functools import lru_cache
-from datetime import datetime
 from dataclasses import replace
+from datetime import datetime
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
 import mlflow
 from rich.console import Console
 
-from config import BenchmarkConfig, get_all_combinations
-from benchmark.dataset import load_benchmark_data, load_corpus_and_questions
-from benchmark.chunking import get_chunker, chunk_documents
-from benchmark.retrieval import (
-    build_vector_store,
-    retrieve,
-    expand_query_with_hyde,
-    retrieve_multihop,
-    index_cache_key,
-    corpus_fingerprint as _content_fingerprint,
-)
-from benchmark.generation import get_llm, generate_answer, GenerationResult
-from benchmark.prompt_templates import get_template
-from benchmark.evaluation import EvaluationResult, evaluate_results
-from benchmark.custom_metrics import CustomMetricsResult, compute_custom_metrics
-from benchmark.gold_retrieval_metrics import compute_gold_doc_retrieval_metrics
-from benchmark.reranker import get_reranker
-from benchmark.metrics import read_host_energy_joules, estimate_energy_cost_usd
-from benchmark.reporting import generate_report
-from benchmark.reporting.exports import _result_to_dict
-from benchmark.tracking import (
-    setup_mlflow,
-    log_benchmark_run,
-    log_aggregate_artifacts_to_mlflow,
-)
-from benchmark.tracing import setup_tracing
 from benchmark.adapters import (
+    PreparedTarget,
+    RagSystemOutput,
     build_components,
     cleanup_adapter,
     generate_adapter,
     get_rag_adapter,
-    PreparedTarget,
     prepare_adapter,
-    RagSystemOutput,
     retrieve_adapter,
 )
-from benchmark.reproducibility import write_reproducibility_bundle
-from benchmark.resource_monitor import (
-    ResourceMonitor,
-    enabled_from_env as resource_monitor_enabled,
-    gpu_index_from_env as resource_monitor_gpu_index,
-    interval_from_env as resource_monitor_interval,
-)
+from benchmark.checkpoint import CheckpointStore, generation_result_from_record
+from benchmark.chunking import chunk_documents, get_chunker
+from benchmark.custom_metrics import CustomMetricsResult, compute_custom_metrics
+from benchmark.dataset import load_benchmark_data, load_corpus_and_questions
+from benchmark.evaluation import EvaluationResult, evaluate_results
+from benchmark.generation import GenerationResult, generate_answer, get_llm
+from benchmark.gold_retrieval_metrics import compute_gold_doc_retrieval_metrics
 from benchmark.llm_performance import (
     LLMPerformanceResult,
-    performance_from_generation,
     performance_cache_key,
+    performance_from_generation,
     run_llm_performance_benchmark,
     save_llm_performance_result,
 )
+from benchmark.metrics import estimate_energy_cost_usd, read_host_energy_joules
+from benchmark.prompt_templates import get_template
+from benchmark.reporting import generate_report
 from benchmark.reporting.models import (
     BenchmarkResultExtended,
     PerSampleResult,
     compute_stats,
 )
+from benchmark.reproducibility import write_reproducibility_bundle
+from benchmark.reranker import get_reranker
+from benchmark.resource_monitor import (
+    ResourceMonitor,
+)
+from benchmark.resource_monitor import (
+    enabled_from_env as resource_monitor_enabled,
+)
+from benchmark.resource_monitor import (
+    gpu_index_from_env as resource_monitor_gpu_index,
+)
+from benchmark.resource_monitor import (
+    interval_from_env as resource_monitor_interval,
+)
+from benchmark.retrieval import (
+    build_vector_store,
+    expand_query_with_hyde,
+    index_cache_key,
+    retrieve,
+    retrieve_multihop,
+)
+from benchmark.retrieval import (
+    corpus_fingerprint as _content_fingerprint,
+)
+from benchmark.tracing import setup_tracing
+from benchmark.tracking import (
+    log_aggregate_artifacts_to_mlflow,
+    log_benchmark_run,
+    setup_mlflow,
+)
+from config import BenchmarkConfig, get_all_combinations
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -199,7 +207,7 @@ def _build_internal_retrieval_index(
             lancedb_path=config.lancedb_path,
             create_if_missing=config.benchmark_stage != "query",
         )
-    console.print(f"  [dim]Vector store built[/dim]")
+    console.print("  [dim]Vector store built[/dim]")
     return chunks, vector_store
 
 
@@ -375,17 +383,25 @@ def _run_single_benchmark_impl(
     host_energy_start = read_host_energy_joules()
     console.print(f"\n[bold yellow]>>> Starting: {config.name}[/bold yellow]")
     chunks = []
-    rag_adapter = get_rag_adapter(config)
+    # Expand half of expand–contract: "internal" now resolves to a managed
+    # InternalRagAdapter in the registry, but the orchestrator keeps routing
+    # internal runs through the built-in pipeline branch below until that
+    # branch is removed (ticket 03).
+    rag_adapter = (
+        None if config.rag_system_adapter == "internal" else get_rag_adapter(config)
+    )
     prepared_target = None
 
     # Prepare QA log path if run_dir is provided
     qa_log: list[dict] = []
     qa_log_path: Path | None = None
+    checkpoint_store: CheckpointStore | None = None
     if run_dir is not None:
         configs_dir = run_dir / "configs"
         configs_dir.mkdir(parents=True, exist_ok=True)
         safe_name = config.name.replace(":", "_").replace("/", "_")
         qa_log_path = configs_dir / f"{safe_name}_qa.json"
+        checkpoint_store = CheckpointStore(configs_dir / f"{safe_name}_checkpoint.json")
 
     # 1. Chunk + 2. Embed (only in retrieval mode)
     vector_store = None
@@ -405,7 +421,7 @@ def _run_single_benchmark_impl(
             resource_monitor,
         )
     else:
-        console.print(f"  [dim]Direct mode — skipping chunking/retrieval[/dim]")
+        console.print("  [dim]Direct mode — skipping chunking/retrieval[/dim]")
 
     if config.benchmark_stage == "index":
         total_time = time.perf_counter() - run_start
@@ -492,9 +508,20 @@ def _run_single_benchmark_impl(
     gen_results: list[GenerationResult] = []
 
     for i, sample in enumerate(data):
-        console.print(f"  [cyan]({i + 1}/{len(data)})[/cyan] {sample['question'][:80]}{'...' if len(sample['question']) > 80 else ''}")
-
-        if rag_adapter is not None:
+        cached_entry = (
+            checkpoint_store.entry_for(i, sample["question"])
+            if checkpoint_store is not None
+            else None
+        )
+        if cached_entry is not None:
+            console.print(
+                f"  [dim cyan]({i + 1}/{len(data)}) [cached][/dim cyan] {sample['question'][:80]}{'...' if len(sample['question']) > 80 else ''}"
+            )
+            context_texts = cached_entry["contexts"]
+            retrieved_metadata = cached_entry["retrieved_metadata"]
+            adapter_diagnostics = dict(cached_entry.get("adapter_diagnostics") or {})
+            result = generation_result_from_record(cached_entry)
+        elif rag_adapter is not None:
             with _stage_timer(stage_timings, "external_rag", resource_monitor):
                 if prepared_target is None:
                     raise RuntimeError("External RAG adapter target was not prepared.")
@@ -612,6 +639,18 @@ def _run_single_benchmark_impl(
             })
             qa_log_path.write_text(json.dumps(qa_log, indent=2, ensure_ascii=False))
 
+        if checkpoint_store is not None and cached_entry is None:
+            checkpoint_store.save(checkpoint_store.build_record(
+                index=i,
+                question=sample["question"],
+                contexts=context_texts,
+                retrieved_metadata=retrieved_metadata,
+                gold_doc_id=gold_doc_ids[-1],
+                sample_metadata=all_sample_metadata[-1],
+                adapter_diagnostics=adapter_diagnostics,
+                result=result,
+            ))
+
     console.print(f"  [dim]Generated {len(gen_results)} answers[/dim]       ")
 
     # 4. Evaluate with RAGAS using a separate critic model
@@ -640,7 +679,7 @@ def _run_single_benchmark_impl(
         if eval_result.error:
             console.print(f"  [red]RAGAS evaluation failed: {eval_result.error}[/red]")
         else:
-            console.print(f"  [dim]RAGAS evaluation complete[/dim]")
+            console.print("  [dim]RAGAS evaluation complete[/dim]")
     else:
         console.print("  [dim]RAGAS evaluation disabled[/dim]")
         eval_result = EvaluationResult(metric_means={}, per_sample_scores=[])

@@ -12,13 +12,12 @@ from benchmark.adapters.base import (
     PreparedTarget,
     RagSystemAdapter,
     RagSystemOutput,
-    RetrievedChunk,
     RetrievalResult,
+    RetrievedChunk,
 )
 from benchmark.adapters.components import ComponentBundle, build_components
 from benchmark.adapters.http import HttpRagAdapter
-from benchmark.adapters.mcp import McpRagAdapter
-from benchmark.adapters.ragflow import RagflowAdapter
+from benchmark.adapters.internal import InternalRagAdapter
 from benchmark.adapters.lifecycle import (
     UnsupportedAdapterCapability,
     cleanup_adapter,
@@ -28,6 +27,8 @@ from benchmark.adapters.lifecycle import (
     require_adapter_capabilities,
     retrieve_adapter,
 )
+from benchmark.adapters.mcp import McpRagAdapter
+from benchmark.adapters.ragflow import RagflowAdapter
 
 RagAdapterFactory = Callable[
     [Any], RagSystemAdapter | ManagedRagSystemAdapter | None
@@ -36,26 +37,27 @@ RagAdapterFactory = Callable[
 RAG_ADAPTER_REGISTRY: dict[str, RagAdapterFactory] = {}
 
 __all__ = [
-    "ComponentBundle",
+    "RAG_ADAPTER_REGISTRY",
     "AdapterCapabilities",
     "AdapterGenerationResult",
+    "ComponentBundle",
     "HttpRagAdapter",
-    "McpRagAdapter",
-    "RagflowAdapter",
+    "InternalRagAdapter",
     "ManagedRagSystemAdapter",
+    "McpRagAdapter",
     "PreparedTarget",
-    "RAG_ADAPTER_REGISTRY",
     "RagAdapterFactory",
     "RagSystemAdapter",
     "RagSystemOutput",
-    "RetrievedChunk",
+    "RagflowAdapter",
     "RetrievalResult",
+    "RetrievedChunk",
     "UnsupportedAdapterCapability",
     "build_components",
     "cleanup_adapter",
     "generate_adapter",
-    "get_rag_adapter",
     "get_adapter_capabilities",
+    "get_rag_adapter",
     "prepare_adapter",
     "register_rag_adapter",
     "require_adapter_capabilities",
@@ -71,7 +73,7 @@ def register_rag_adapter(name: str, factory: RagAdapterFactory) -> None:
     RAG_ADAPTER_REGISTRY[normalized_name] = factory
 
 
-register_rag_adapter("internal", lambda config: None)
+register_rag_adapter("internal", InternalRagAdapter.from_config)
 register_rag_adapter("http", HttpRagAdapter.from_config)
 register_rag_adapter("mcp", McpRagAdapter.from_config)
 register_rag_adapter("ragflow", RagflowAdapter.from_config)

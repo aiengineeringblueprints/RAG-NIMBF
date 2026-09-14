@@ -86,9 +86,11 @@ def test_http_adapter_normalizes_nested_response(monkeypatch):
     assert output.tokens_per_second == 20.0
 
 
-def test_get_rag_adapter_returns_none_for_internal():
+def test_get_rag_adapter_returns_managed_internal_adapter():
+    from benchmark.adapters.internal import InternalRagAdapter
+
     cfg = DummyConfig(rag_system_adapter="internal")
-    assert get_rag_adapter(cfg) is None
+    assert isinstance(get_rag_adapter(cfg), InternalRagAdapter)
 
 
 def test_get_rag_adapter_uses_registered_factory():
