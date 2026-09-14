@@ -1,4 +1,5 @@
 import hashlib
+import json
 import logging
 import mlflow
 import threading
@@ -27,11 +28,11 @@ _chroma_lock = threading.Lock()
 _vector_store_cache: dict[str, Any] = {}
 
 
-def _cache_key(
+def index_cache_key(
     embedding_model_name: str,
-    chunk_size: int | None,
-    chunk_overlap: int | None,
-    chunking_strategy: str,
+    chunk_size: int | None = None,
+    chunk_overlap: int | None = None,
+    chunking_strategy: str = "",
     dataset_name: str = "",
     *,
     embedding_provider: str = "",
@@ -40,7 +41,19 @@ def _cache_key(
     corpus_fingerprint: str = "",
     vector_db_backend: str = "chroma",
 ) -> str:
-    """Deterministic key derived from the parameters that affect embeddings."""
+    """Public, deterministic index-cache key shared by every path that builds
+    a vector store (internal pipeline and component injection alike).
+
+    Includes dataset name, subset, sample size, corpus fingerprint, and
+    embedding provider so two experiments over different data or embeddings
+    can never silently share a collection.
+    """
+    if chunking_strategy == "paragraph":
+        # Paragraph chunking never splits — chunk size/overlap don't affect
+        # the index contents, so keep them out of the key to avoid needless
+        # re-embedding.
+        chunk_size = None
+        chunk_overlap = None
     raw = (
         f"{embedding_provider}|{embedding_model_name}|{chunk_size}|"
         f"{chunk_overlap}|{chunking_strategy}|{dataset_name}|"
@@ -48,6 +61,42 @@ def _cache_key(
         f"{vector_db_backend}"
     )
     return hashlib.sha256(raw.encode()).hexdigest()
+
+
+# Backwards-compatible alias for the former private name.
+_cache_key = index_cache_key
+
+
+def corpus_fingerprint(items: list[dict]) -> str:
+    """Stable fingerprint over dataset items (id/question/context/ground_truth)."""
+    digest = hashlib.sha256()
+    for item in items:
+        digest.update(str(item.get("id", "")).encode())
+        digest.update(b"\0")
+        digest.update(str(item.get("question", "")).encode())
+        digest.update(b"\0")
+        digest.update(str(item.get("context", "")).encode())
+        digest.update(b"\0")
+        digest.update(str(item.get("ground_truth", "")).encode())
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
+def corpus_fingerprint_from_documents(docs: list[Any]) -> str:
+    """Stable fingerprint over chunked Documents (content + doc metadata)."""
+    digest = hashlib.sha256()
+    for doc in docs:
+        digest.update(str(getattr(doc, "page_content", "")).encode())
+        digest.update(b"\0")
+        digest.update(
+            json.dumps(
+                getattr(doc, "metadata", {}) or {},
+                sort_keys=True,
+                default=str,
+            ).encode()
+        )
+        digest.update(b"\0")
+    return digest.hexdigest()
 
 
 class LanceDBVectorStore:
