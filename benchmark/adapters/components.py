@@ -1,8 +1,14 @@
-"""Framework-built components offered to external RAG adapters via injection."""
+"""Framework-built components offered to external RAG adapters via injection.
+
+The injection policy (decide-whether-and-what-to-inject) lives here, beside
+the component factory. The orchestrator only hands over the adapter and a
+component bundle; it never re-derives capabilities from the config and no
+code path mutates the config object. ``rag_adapter_accepts`` remains a
+user-intent override that can only narrow what the adapter declares.
+"""
 
 from __future__ import annotations
 
-import copy
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -65,14 +71,15 @@ def _parse_accepts(raw: str) -> set[str]:
     return slots
 
 
-def build_components(config) -> ComponentBundle:
-    """Build a ComponentBundle honoringings RAG_ADAPTER_ACCEPTS.
+def build_components(config, accepts: set[str] | None = None) -> ComponentBundle:
+    """Build a ComponentBundle for the given component slots.
 
-    Slots the user did not list stay None. If config.rag_adapter_accepts is
-    empty, returns an empty bundle. Construction is kwargs-style so the
-    bundle stays frozen.
+    ``accepts`` is the resolved set of slots to populate. When omitted it
+    falls back to the user-intent ``RAG_ADAPTER_ACCEPTS`` config field. The
+    config object is only ever read — never mutated.
     """
-    accepts = _parse_accepts(getattr(config, "rag_adapter_accepts", ""))
+    if accepts is None:
+        accepts = _parse_accepts(getattr(config, "rag_adapter_accepts", ""))
     fields: dict[str, Any] = {}
 
     if "chunker" in accepts and getattr(config, "chunking_strategy", ""):
@@ -127,41 +134,54 @@ def build_components(config) -> ComponentBundle:
     return ComponentBundle(**fields)
 
 
-def inject_components(adapter: Any, config: Any, console: Any = None) -> None:
-    """Hand Framework-built components to an adapter, if it accepts them.
+def resolve_injection_slots(adapter: Any, config: Any) -> set[str]:
+    """Resolve the injection policy for an adapter.
 
-    Injection policy for the adapter seam: pure black-box adapters (no
-    ``set_components``) are skipped. If the adapter declares
-    ``supports_components()``, that overrides ``RAG_ADAPTER_ACCEPTS`` — the
-    adapter knows best which slots it can consume. The user's config object
-    is never mutated.
+    Capability is derived from the adapter itself: ``supports_components()``
+    declares which slots it can consume; adapters without the component
+    protocol (pure black-box) accept nothing. The user-intent config field
+    ``rag_adapter_accepts`` may only narrow the capability — it can never
+    inject a slot the adapter did not declare. The config object is read
+    only, never mutated.
+    """
+    if not hasattr(adapter, "set_components"):
+        return set()
+    capabilities = (
+        adapter.supports_components() if hasattr(adapter, "supports_components") else {}
+    )
+    capability = {k for k, v in (capabilities or {}).items() if v}
+    user_intent = _parse_accepts(getattr(config, "rag_adapter_accepts", ""))
+    if user_intent:
+        return capability & user_intent
+    return capability
+
+
+def build_injected_components(adapter: Any, config: Any) -> ComponentBundle:
+    """Resolve the policy for ``adapter`` and build the resulting bundle."""
+    return build_components(config, accepts=resolve_injection_slots(adapter, config))
+
+
+def inject_components(adapter: Any, bundle: ComponentBundle, console: Any = None) -> None:
+    """Hand a Framework-built component bundle to an adapter, if it accepts.
+
+    Pure handover: the policy was already applied when the bundle was built
+    (see ``resolve_injection_slots``). Adapters without ``set_components``
+    are skipped; empty bundles are not delivered.
     """
     if not hasattr(adapter, "set_components"):
         return
 
-    component_config = config
-    if hasattr(adapter, "supports_components"):
-        capabilities = adapter.supports_components() or {}
-        accepted = ",".join(sorted(k for k, v in capabilities.items() if v))
-        if accepted:
-            try:
-                from dataclasses import replace
-
-                component_config = replace(config, rag_adapter_accepts=accepted)
-            except TypeError:
-                component_config = copy.copy(config)
-                component_config.rag_adapter_accepts = accepted
-
-    bundle = build_components(component_config)
     populated = {
-        k: v for k, v in {
+        k: v
+        for k, v in {
             "chunker": bundle.chunker,
             "embedder": bundle.embedder,
             "retriever": bundle.retriever_factory,
             "reranker": bundle.reranker,
             "llm": bundle.llm,
             "prompt": bundle.prompt_template,
-        }.items() if v is not None
+        }.items()
+        if v is not None
     }
     if not populated:
         return

@@ -190,7 +190,9 @@ def stubbed_seam(monkeypatch):
     monkeypatch.setattr(
         components_module,
         "build_components",
-        lambda config: ComponentBundle(embedder=StubEmbedder(), llm=object()),
+        lambda config, accepts=None: ComponentBundle(
+            embedder=StubEmbedder(), llm=object()
+        ),
     )
     monkeypatch.setattr(
         benchmark.generation, "generate_answer", _stub_generate_answer
@@ -250,7 +252,7 @@ def test_adapter_diagnostics_surface_in_run_result(stubbed_seam):
 def test_injected_stub_embedder_drives_internal_index(stubbed_seam, monkeypatch):
     built: dict[str, Any] = {}
 
-    def fake_build_components(config):
+    def fake_build_components(config, accepts=None):
         built["called"] = True
         return ComponentBundle(embedder=StubEmbedder(), llm=object())
 
