@@ -1,4 +1,3 @@
-import copy
 import hashlib
 import json
 import logging
@@ -17,19 +16,20 @@ from rich.console import Console
 from benchmark.adapters import (
     PreparedTarget,
     RagSystemOutput,
-    build_components,
+    adapter_aggregate_metrics,
+    adapter_stage_timings,
     cleanup_adapter,
     generate_adapter,
     get_rag_adapter,
+    inject_components,
     prepare_adapter,
     retrieve_adapter,
 )
 from benchmark.checkpoint import CheckpointStore, generation_result_from_record
-from benchmark.chunking import chunk_documents, get_chunker
 from benchmark.custom_metrics import CustomMetricsResult, compute_custom_metrics
 from benchmark.dataset import load_benchmark_data, load_corpus_and_questions
 from benchmark.evaluation import EvaluationResult, evaluate_results
-from benchmark.generation import GenerationResult, generate_answer, get_llm
+from benchmark.generation import GenerationResult
 from benchmark.gold_retrieval_metrics import compute_gold_doc_retrieval_metrics
 from benchmark.llm_performance import (
     LLMPerformanceResult,
@@ -39,7 +39,6 @@ from benchmark.llm_performance import (
     save_llm_performance_result,
 )
 from benchmark.metrics import estimate_energy_cost_usd, read_host_energy_joules
-from benchmark.prompt_templates import get_template
 from benchmark.reporting import generate_report
 from benchmark.reporting.models import (
     BenchmarkResultExtended,
@@ -47,7 +46,6 @@ from benchmark.reporting.models import (
     compute_stats,
 )
 from benchmark.reproducibility import write_reproducibility_bundle
-from benchmark.reranker import get_reranker
 from benchmark.resource_monitor import (
     ResourceMonitor,
 )
@@ -59,16 +57,6 @@ from benchmark.resource_monitor import (
 )
 from benchmark.resource_monitor import (
     interval_from_env as resource_monitor_interval,
-)
-from benchmark.retrieval import (
-    build_vector_store,
-    expand_query_with_hyde,
-    index_cache_key,
-    retrieve,
-    retrieve_multihop,
-)
-from benchmark.retrieval import (
-    corpus_fingerprint as _content_fingerprint,
 )
 from benchmark.tracing import setup_tracing
 from benchmark.tracking import (
@@ -145,72 +133,6 @@ def _get_bert_model(model_name: str):
     return SentenceTransformer(model_name, device="cpu")
 
 
-def _build_internal_retrieval_index(
-    config: BenchmarkConfig,
-    data: list[dict],
-    corpus: list[dict] | None,
-    stage_timings: dict[str, float],
-    resource_monitor: ResourceMonitor | None,
-) -> tuple[list, object]:
-    with _stage_timer(stage_timings, "chunk", resource_monitor):
-        chunker_kwargs: dict = {}
-        if config.chunking_strategy == "semantic":
-            from benchmark.embedding import get_embedding_model
-
-            semantic_emb = get_embedding_model(
-                config.embedding_model,
-                config.embedding_base_url(),
-                config.embedding_api_key(),
-                provider=config.embedding_provider,
-            )
-            chunker_kwargs = dict(
-                embeddings=semantic_emb,
-                breakpoint_threshold_type=config.semantic_breakpoint_type,
-                breakpoint_threshold_amount=config.semantic_breakpoint_amount,
-            )
-        chunker = get_chunker(
-            config.chunking_strategy,
-            config.chunk_size or 0,
-            config.chunk_overlap or 0,
-            **chunker_kwargs,
-        )
-
-        # Use shared corpus if available, otherwise chunk per-question data
-        chunk_source = corpus if corpus else data
-        chunks = chunk_documents(chunker, chunk_source)
-    console.print(f"  [dim]Chunked into {len(chunks)} pieces[/dim]")
-
-    corpus_fingerprint = _content_fingerprint(chunk_source)
-    cache_k = index_cache_key(
-        config.embedding_model,
-        config.chunk_size,
-        config.chunk_overlap,
-        config.chunking_strategy,
-        dataset_name=config.dataset_name,
-        embedding_provider=config.embedding_provider,
-        dataset_subset=config.dataset_subset,
-        dataset_sample_size=config.dataset_sample_size,
-        corpus_fingerprint=corpus_fingerprint,
-        vector_db_backend=config.vector_db_backend,
-    )
-    collection_name = f"rag_{config.vector_db_backend}_{cache_k[:24]}"
-    with _stage_timer(stage_timings, "index", resource_monitor):
-        vector_store = build_vector_store(
-            chunks,
-            config.embedding_model,
-            collection_name,
-            ollama_base_url=config.embedding_base_url(),
-            ollama_api_key=config.embedding_api_key(),
-            cache_key=cache_k,
-            embedding_provider=config.embedding_provider,
-            vector_db_backend=config.vector_db_backend,
-            lancedb_path=config.lancedb_path,
-            create_if_missing=config.benchmark_stage != "query",
-        )
-    console.print("  [dim]Vector store built[/dim]")
-    return chunks, vector_store
-
-
 def _generation_result_from_adapter(adapter_result) -> GenerationResult:
     return GenerationResult(
         answer=adapter_result.answer,
@@ -236,96 +158,6 @@ def _metadata_doc_ids(metadata_list: list[dict]) -> tuple[str, ...]:
         if doc_id is not None:
             doc_ids.append(str(doc_id))
     return tuple(doc_ids)
-
-
-def _aggregate_adapter_metrics(diagnostics: list[dict[str, Any]]) -> dict[str, Any] | None:
-    active = [item for item in diagnostics if item]
-    if not active:
-        return None
-    tool_latencies = [
-        sum(float(call.get("total_seconds", 0.0)) for call in item.get("tool_calls", []))
-        for item in active
-    ]
-    tool_names: dict[str, int] = {}
-    for item in active:
-        for call in item.get("tool_calls", []):
-            name = str(call.get("tool", "unknown"))
-            tool_names[name] = tool_names.get(name, 0) + 1
-    failures = sum(
-        bool(item.get("error") or item.get("empty_response")) for item in active
-    )
-    timeout_attempts = sum(
-        int(call.get("timeout_attempts", 0))
-        for item in active
-        for call in item.get("tool_calls", [])
-    )
-    return {
-        "sample_count": len(active),
-        "successful_samples": len(active) - failures,
-        "failure_count": failures,
-        "failure_rate": failures / len(active),
-        "timed_out_sample_count": sum(bool(item.get("timeout")) for item in active),
-        "timeout_attempt_count": timeout_attempts,
-        "empty_response_count": sum(
-            bool(item.get("empty_response")) for item in active
-        ),
-        "partial_completion_count": sum(
-            bool(item.get("partial_completion")) for item in active
-        ),
-        "retry_count": sum(int(item.get("retry_count", 0)) for item in active),
-        "tool_call_count": sum(tool_names.values()),
-        "tool_call_counts": tool_names,
-        "connection_seconds": sum(
-            float(item.get("connection_seconds", 0.0)) for item in active
-        ),
-        "cold_tool_seconds": tool_latencies[0] if tool_latencies else None,
-        "warm_tool_mean_seconds": (
-            sum(tool_latencies[1:]) / len(tool_latencies[1:])
-            if len(tool_latencies) > 1
-            else None
-        ),
-    }
-
-
-def _maybe_inject_components(rag_adapter, config, console) -> None:
-    """Hand Framework-built components to an external adapter, if it accepts them.
-
-    Pure black-box adapters (no ``set_components``) are skipped. If the adapter
-    declares ``supports_components()``, that overrides ``RAG_ADAPTER_ACCEPTS``
-    from .env — the adapter knows best which slots it can consume.
-    """
-    if not hasattr(rag_adapter, "set_components"):
-        return
-
-    component_config = config
-    if hasattr(rag_adapter, "supports_components"):
-        capabilities = rag_adapter.supports_components() or {}
-        accepted = ",".join(sorted(k for k, v in capabilities.items() if v))
-        if accepted:
-            try:
-                component_config = replace(config, rag_adapter_accepts=accepted)
-            except TypeError:
-                component_config = copy.copy(config)
-                component_config.rag_adapter_accepts = accepted
-
-    bundle = build_components(component_config)
-    populated = {
-        k: v for k, v in {
-            "chunker": bundle.chunker,
-            "embedder": bundle.embedder,
-            "retriever": bundle.retriever_factory,
-            "reranker": bundle.reranker,
-            "llm": bundle.llm,
-            "prompt": bundle.prompt_template,
-        }.items() if v is not None
-    }
-    if not populated:
-        return
-
-    rag_adapter.set_components(bundle)
-    console.print(
-        f"  [dim]Injected components: {', '.join(sorted(populated))}[/dim]"
-    )
 
 
 def run_single_benchmark(
@@ -382,14 +214,10 @@ def _run_single_benchmark_impl(
 
     host_energy_start = read_host_energy_joules()
     console.print(f"\n[bold yellow]>>> Starting: {config.name}[/bold yellow]")
-    chunks = []
-    # Expand half of expand–contract: "internal" now resolves to a managed
-    # InternalRagAdapter in the registry, but the orchestrator keeps routing
-    # internal runs through the built-in pipeline branch below until that
-    # branch is removed (ticket 03).
-    rag_adapter = (
-        None if config.rag_system_adapter == "internal" else get_rag_adapter(config)
-    )
+
+    # Every system — the built-in pipeline included — crosses the adapter
+    # seam: the registry hands out an adapter for any configured name.
+    rag_adapter = get_rag_adapter(config)
     prepared_target = None
 
     # Prepare QA log path if run_dir is provided
@@ -403,25 +231,16 @@ def _run_single_benchmark_impl(
         qa_log_path = configs_dir / f"{safe_name}_qa.json"
         checkpoint_store = CheckpointStore(configs_dir / f"{safe_name}_checkpoint.json")
 
-    # 1. Chunk + 2. Embed (only in retrieval mode)
-    vector_store = None
-    if rag_adapter is not None:
-        _maybe_inject_components(rag_adapter, config, console)
-        with _stage_timer(stage_timings, "adapter_prepare", resource_monitor):
-            prepared_target = prepare_adapter(rag_adapter, config, data, corpus=corpus)
-        if cleanup_registry is not None:
-            cleanup_registry.append((rag_adapter, prepared_target, config))
-        console.print(f"  [dim]Using external RAG adapter: {rag_adapter.name}[/dim]")
-    elif config.retrieval_mode == "retrieval":
-        chunks, vector_store = _build_internal_retrieval_index(
-            config,
-            data,
-            corpus,
-            stage_timings,
-            resource_monitor,
-        )
-    else:
-        console.print("  [dim]Direct mode — skipping chunking/retrieval[/dim]")
+    # 1. Chunk + 2. Embed (adapter-owned ingestion)
+    inject_components(rag_adapter, config, console)
+    with _stage_timer(stage_timings, "adapter_prepare", resource_monitor):
+        prepared_target = prepare_adapter(rag_adapter, config, data, corpus=corpus)
+    if cleanup_registry is not None:
+        cleanup_registry.append((rag_adapter, prepared_target, config))
+    console.print(f"  [dim]Using RAG adapter: {rag_adapter.name}[/dim]")
+    num_chunks = int(
+        (prepared_target.metadata or {}).get("chunk_count") or 0
+    )
 
     if config.benchmark_stage == "index":
         total_time = time.perf_counter() - run_start
@@ -445,7 +264,7 @@ def _run_single_benchmark_impl(
             chunking_strategy=config.chunking_strategy,
             chunk_size=config.chunk_size,
             chunk_overlap=config.chunk_overlap,
-            num_chunks=len(chunks),
+            num_chunks=num_chunks,
             num_questions=len(data),
             avg_ttft_seconds=0,
             avg_tokens_per_second=0,
@@ -483,21 +302,7 @@ def _run_single_benchmark_impl(
         )
         return index_result
 
-    # 3. Generate answers
-    llm = None
-    reranker = None
-    prompt_tmpl = None
-    if rag_adapter is None:
-        with _stage_timer(stage_timings, "load_models", resource_monitor):
-            llm = get_llm(
-                provider=config.llm_provider,
-                model_name=config.llm_model,
-                base_url=config.llm_base_url(),
-                api_key=config.llm_api_key(),
-                max_new_tokens=config.max_new_tokens,
-            )
-            reranker = get_reranker(config.reranker_model)
-            prompt_tmpl = get_template(config.prompt_template)
+    # 3. Generate answers (through the adapter seam)
     questions: list[str] = []
     ground_truths: list[str] = []
     all_contexts: list[list[str]] = []
@@ -521,10 +326,10 @@ def _run_single_benchmark_impl(
             retrieved_metadata = cached_entry["retrieved_metadata"]
             adapter_diagnostics = dict(cached_entry.get("adapter_diagnostics") or {})
             result = generation_result_from_record(cached_entry)
-        elif rag_adapter is not None:
+        else:
             with _stage_timer(stage_timings, "external_rag", resource_monitor):
                 if prepared_target is None:
-                    raise RuntimeError("External RAG adapter target was not prepared.")
+                    raise RuntimeError("RAG adapter target was not prepared.")
                 if config.benchmark_stage == "retrieve":
                     retrieval_result = retrieve_adapter(
                         rag_adapter, prepared_target, sample, config
@@ -549,71 +354,12 @@ def _run_single_benchmark_impl(
             retrieved_metadata = adapter_result.metadata
             result = _generation_result_from_adapter(adapter_result)
             adapter_diagnostics = dict(getattr(adapter_result, "diagnostics", {}) or {})
-            if adapter_diagnostics:
-                stage_timings["mcp_connection"] = stage_timings.get(
-                    "mcp_connection", 0.0
-                ) + float(adapter_diagnostics.get("connection_seconds", 0.0))
-                stage_timings["mcp_tool"] = stage_timings.get("mcp_tool", 0.0) + sum(
-                    float(call.get("total_seconds", 0.0))
-                    for call in adapter_diagnostics.get("tool_calls", [])
-                )
-                stage_timings["mcp_generation"] = stage_timings.get(
-                    "mcp_generation", 0.0
-                ) + float(adapter_diagnostics.get("generation_seconds", 0.0))
-        else:
-            adapter_diagnostics = {}
-            if llm is None or prompt_tmpl is None:
-                raise RuntimeError("Internal RAG pipeline was not initialized.")
-
-            # HyDE query expansion: replace the raw question with a hypothetical answer
-            query = sample["question"]
-            if config.retrieval_mode == "direct":
-                context_texts = [sample["context"]]
-                retrieved_metadata = []
-            else:
-                if config.retrieval_use_hyde:
-                    with _stage_timer(stage_timings, "hyde", resource_monitor):
-                        query = expand_query_with_hyde(llm, sample["question"])
-
-                if vector_store is None:
-                    raise RuntimeError("Vector store missing in retrieval mode.")
-                with _stage_timer(stage_timings, "retrieve", resource_monitor):
-                    if config.retrieval_multihop:
-                        retrieved_docs = retrieve_multihop(
-                            vector_store, llm, query, config.retrieval_top_k,
-                            rounds=config.retrieval_multihop_rounds,
-                            retrieval_strategy=config.retrieval_strategy,
-                            fetch_k=config.retrieval_fetch_k,
-                            mmr_lambda=config.retrieval_mmr_lambda,
-                        )
-                    else:
-                        retrieved_docs = retrieve(
-                            vector_store, query, config.retrieval_top_k,
-                            retrieval_strategy=config.retrieval_strategy,
-                            fetch_k=config.retrieval_fetch_k,
-                            mmr_lambda=config.retrieval_mmr_lambda,
-                        )
-
-                if reranker is not None:
-                    with _stage_timer(stage_timings, "rerank", resource_monitor):
-                        retrieved_docs = reranker.rerank(
-                            sample["question"], retrieved_docs, config.reranker_top_k,
-                        )
-
-                context_texts = [doc.page_content for doc in retrieved_docs]
-                retrieved_metadata = [dict(doc.metadata) for doc in retrieved_docs]
-
-            with _stage_timer(stage_timings, "generate", resource_monitor):
-                result = generate_answer(
-                    llm, sample["question"], context_texts,
-                    system_prompt=prompt_tmpl.system_prompt,
-                    human_template=prompt_tmpl.human_template,
-                    strip_mode=config.llm_answer_strip_mode,
-                    value_fallback=config.llm_answer_value_fallback,
-                    ground_truth=sample["ground_truth"],
-                    prompt_template_name=config.prompt_template,
-                    cost_model_name=config.llm_model,
-                )
+            # Uniform, adapter-agnostic stage-timing contributions; the
+            # orchestrator never reads adapter-internal diagnostic keys.
+            for stage_name, seconds in adapter_stage_timings(
+                rag_adapter, adapter_diagnostics
+            ).items():
+                stage_timings[stage_name] = stage_timings.get(stage_name, 0.0) + seconds
 
         questions.append(sample["question"])
         ground_truths.append(sample["ground_truth"])
@@ -885,7 +631,7 @@ def _run_single_benchmark_impl(
         chunking_strategy=config.chunking_strategy,
         chunk_size=config.chunk_size,
         chunk_overlap=config.chunk_overlap,
-        num_chunks=len(chunks),
+        num_chunks=num_chunks,
         num_questions=len(data),
         avg_ttft_seconds=sum(ttfts) / len(ttfts) if ttfts else 0,
         avg_tokens_per_second=sum(tps_list) / len(tps_list) if tps_list else 0,
@@ -936,7 +682,7 @@ def _run_single_benchmark_impl(
         energy_kwh=energy_kwh,
         host_energy_kwh=host_energy_kwh,
         estimated_energy_cost_usd=estimated_energy_cost,
-        adapter_metrics=_aggregate_adapter_metrics(all_adapter_diagnostics),
+        adapter_metrics=adapter_aggregate_metrics(rag_adapter, all_adapter_diagnostics),
     )
     return benchmark_result
 

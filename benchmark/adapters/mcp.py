@@ -556,6 +556,25 @@ class McpRagAdapter:
                 diagnostics=diagnostics,
             )
 
+    def diagnostic_stage_timings(
+        self, diagnostics: dict[str, Any]
+    ) -> dict[str, float]:
+        """Map internal MCP timing keys onto benchmark stage-timing names."""
+        return {
+            "mcp_connection": float(diagnostics.get("connection_seconds", 0.0)),
+            "mcp_tool": sum(
+                float(call.get("total_seconds", 0.0))
+                for call in diagnostics.get("tool_calls", [])
+            ),
+            "mcp_generation": float(diagnostics.get("generation_seconds", 0.0)),
+        }
+
+    def aggregate_metrics(
+        self, diagnostics: list[dict[str, Any]]
+    ) -> dict[str, Any] | None:
+        """Fold per-sample MCP diagnostics into one run-level summary."""
+        return _aggregate_mcp_metrics(diagnostics)
+
     def _answer_fixed(
         self, sample: dict, config: Any, diagnostics: dict[str, Any]
     ) -> RagSystemOutput:
@@ -810,3 +829,55 @@ class McpRagAdapter:
             "description": getattr(tool, "description", None) or "MCP tool",
             "parameters": schema or {"type": "object", "properties": {}},
         }
+
+
+def _aggregate_mcp_metrics(
+    diagnostics: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    """Fold per-sample MCP diagnostics into the run-level adapter summary."""
+    active = [item for item in diagnostics if item]
+    if not active:
+        return None
+    tool_latencies = [
+        sum(float(call.get("total_seconds", 0.0)) for call in item.get("tool_calls", []))
+        for item in active
+    ]
+    tool_names: dict[str, int] = {}
+    for item in active:
+        for call in item.get("tool_calls", []):
+            name = str(call.get("tool", "unknown"))
+            tool_names[name] = tool_names.get(name, 0) + 1
+    failures = sum(
+        bool(item.get("error") or item.get("empty_response")) for item in active
+    )
+    timeout_attempts = sum(
+        int(call.get("timeout_attempts", 0))
+        for item in active
+        for call in item.get("tool_calls", [])
+    )
+    return {
+        "sample_count": len(active),
+        "successful_samples": len(active) - failures,
+        "failure_count": failures,
+        "failure_rate": failures / len(active),
+        "timed_out_sample_count": sum(bool(item.get("timeout")) for item in active),
+        "timeout_attempt_count": timeout_attempts,
+        "empty_response_count": sum(
+            bool(item.get("empty_response")) for item in active
+        ),
+        "partial_completion_count": sum(
+            bool(item.get("partial_completion")) for item in active
+        ),
+        "retry_count": sum(int(item.get("retry_count", 0)) for item in active),
+        "tool_call_count": sum(tool_names.values()),
+        "tool_call_counts": tool_names,
+        "connection_seconds": sum(
+            float(item.get("connection_seconds", 0.0)) for item in active
+        ),
+        "cold_tool_seconds": tool_latencies[0] if tool_latencies else None,
+        "warm_tool_mean_seconds": (
+            sum(tool_latencies[1:]) / len(tool_latencies[1:])
+            if len(tool_latencies) > 1
+            else None
+        ),
+    }

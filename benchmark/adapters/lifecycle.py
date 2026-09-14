@@ -125,3 +125,46 @@ def cleanup_adapter(adapter: Any, target: PreparedTarget, config: Any) -> None:
     cleanup = getattr(adapter, "cleanup", None)
     if callable(cleanup):
         cleanup(target, config)
+
+
+def adapter_stage_timings(
+    adapter: Any, diagnostics: dict[str, Any]
+) -> dict[str, float]:
+    """Per-sample stage-timing contributions in a uniform ``{stage: seconds}`` shape.
+
+    Adapters may implement ``diagnostic_stage_timings(diagnostics)`` to map
+    their internal diagnostic keys onto benchmark stage names. Adapters
+    without the method may instead embed a generic ``stage_timings`` dict in
+    the per-sample diagnostics. The orchestrator only ever consumes the
+    returned mapping — never the raw adapter-internal keys.
+    """
+    method = getattr(adapter, "diagnostic_stage_timings", None)
+    raw = method(diagnostics) if callable(method) else None
+    if raw is None:
+        raw = diagnostics.get("stage_timings") or {}
+    if not isinstance(raw, dict):
+        raise TypeError(
+            f"{adapter.name} stage timings must be a dict, got {type(raw).__name__}"
+        )
+    return {str(key): float(value) for key, value in raw.items()}
+
+
+def adapter_aggregate_metrics(
+    adapter: Any, diagnostics: list[dict[str, Any]]
+) -> dict[str, Any] | None:
+    """Run-level adapter metrics summary, or ``None`` if the adapter has none.
+
+    Adapters may implement ``aggregate_metrics(diagnostics_list)`` to fold
+    their per-sample diagnostics into one adapter-agnostic summary consumed
+    by reporting and tracking.
+    """
+    method = getattr(adapter, "aggregate_metrics", None)
+    if not callable(method):
+        return None
+    summary = method(diagnostics)
+    if summary is not None and not isinstance(summary, dict):
+        raise TypeError(
+            f"{adapter.name}.aggregate_metrics() must return a dict or None, "
+            f"got {type(summary).__name__}"
+        )
+    return summary

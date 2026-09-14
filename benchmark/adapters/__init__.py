@@ -15,11 +15,17 @@ from benchmark.adapters.base import (
     RetrievalResult,
     RetrievedChunk,
 )
-from benchmark.adapters.components import ComponentBundle, build_components
+from benchmark.adapters.components import (
+    ComponentBundle,
+    build_components,
+    inject_components,
+)
 from benchmark.adapters.http import HttpRagAdapter
 from benchmark.adapters.internal import InternalRagAdapter
 from benchmark.adapters.lifecycle import (
     UnsupportedAdapterCapability,
+    adapter_aggregate_metrics,
+    adapter_stage_timings,
     cleanup_adapter,
     generate_adapter,
     get_adapter_capabilities,
@@ -53,11 +59,14 @@ __all__ = [
     "RetrievalResult",
     "RetrievedChunk",
     "UnsupportedAdapterCapability",
+    "adapter_aggregate_metrics",
+    "adapter_stage_timings",
     "build_components",
     "cleanup_adapter",
     "generate_adapter",
     "get_adapter_capabilities",
     "get_rag_adapter",
+    "inject_components",
     "prepare_adapter",
     "register_rag_adapter",
     "require_adapter_capabilities",
