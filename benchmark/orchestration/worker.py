@@ -13,6 +13,7 @@ import mlflow
 from rich.console import Console
 
 from config import BenchmarkConfig
+from benchmark.orchestration.runner import _stage_timer, run_single_benchmark
 from benchmark.reporting import generate_report
 from benchmark.reporting.exports import _result_to_dict
 from benchmark.reporting.models import BenchmarkResultExtended
@@ -118,8 +119,6 @@ class ExperimentWorker:
             summary = self.plan()
             console.print(json.dumps(summary, indent=2))
             return []
-
-        from main import run_single_benchmark
 
         run_dir = self.options.run_dir or _next_run_dir()
         run_dir.mkdir(parents=True, exist_ok=True)
@@ -227,7 +226,6 @@ def config_result_path(run_dir: Path, config: BenchmarkConfig) -> Path:
 def _load_data_once(config: BenchmarkConfig) -> tuple[list[dict], list[dict] | None, float]:
     from benchmark.dataset import load_benchmark_data, load_corpus_and_questions
     from benchmark.dataset_adapters import resolve_adapter
-    from main import _stage_timer
 
     load_stage: dict[str, float] = {}
     with _stage_timer(load_stage, "load_data"):

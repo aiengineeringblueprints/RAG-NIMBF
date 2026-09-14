@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 import main
+import benchmark.orchestration.runner
 from benchmark.adapters import (
     AdapterCapabilities,
     AdapterGenerationResult,
@@ -154,7 +155,9 @@ def test_benchmark_wrapper_cleans_managed_target_after_failure(monkeypatch):
         cleanup_registry.append((adapter, target, args[0]))
         raise RuntimeError("generation failed")
 
-    monkeypatch.setattr(main, "_run_single_benchmark_impl", fail_after_prepare)
+    monkeypatch.setattr(
+        benchmark.orchestration.runner, "_run_single_benchmark_impl", fail_after_prepare
+    )
 
     with pytest.raises(RuntimeError, match="generation failed"):
         main.run_single_benchmark(object(), [])

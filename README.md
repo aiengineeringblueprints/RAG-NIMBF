@@ -30,9 +30,10 @@ BENCHMARK_CONFIG_FILE=experiments/full-grid-example.yaml python main.py
 The built-in mode chunks/indexes the selected dataset, retrieves contexts,
 generates answers, evaluates the results, writes reports under `results/`, and
 logs to MLflow. Keep models, chunking, retrieval, datasets, and evaluator
-settings in YAML; keep API keys and machine-local service URLs in `.env`. If
-`BENCHMARK_CONFIG_FILE` is not set, `python main.py` still falls back to the
-legacy `.env` matrix variables.
+settings in YAML; keep API keys and machine-local service URLs in `.env`.
+`python main.py` requires a manifest: it reads `BENCHMARK_CONFIG_FILE` or an
+explicit path argument (`python main.py experiments/<name>.yaml`) and exits
+with an actionable error when neither is set.
 
 ### Include an LLM Load Test in `main.py`
 
@@ -99,9 +100,9 @@ Reuse a run directory to continue after interruption:
 python -m benchmark.worker run experiments/full-grid-example.yaml --run-dir results/run3
 ```
 
-Omit the manifest to use `BENCHMARK_CONFIG_FILE` when set, or the legacy `.env` matrix otherwise.
-For the normal non-worker workflow, `BENCHMARK_CONFIG_FILE=<manifest> python main.py`
-uses the same manifest format without requiring ClearML.
+Omit the manifest to use `BENCHMARK_CONFIG_FILE` when set.
+`BENCHMARK_CONFIG_FILE=<manifest> python main.py` delegates to the same worker
+loop and uses the same manifest format without requiring ClearML.
 
 ## Run With ClearML Agent
 
@@ -411,7 +412,7 @@ templates, vector backend, and evaluator settings belong in `experiments/*.yaml`
 
 | Variable | Description |
 | --- | --- |
-| `BENCHMARK_CONFIG_FILE` | Optional JSON/YAML manifest for `python main.py`; falls back to legacy `.env` matrix when unset. |
+| `BENCHMARK_CONFIG_FILE` | JSON/YAML manifest for `python main.py` and `python -m benchmark.worker`; required for `python main.py` unless a manifest path is passed explicitly. |
 | `RAG_SYSTEM_ADAPTER` | `internal`, `http`, or `mcp`; defaults to `internal`. |
 | `RAG_HTTP_ENDPOINT_URL` | Required when `RAG_SYSTEM_ADAPTER=http`. |
 | `RAG_HTTP_TIMEOUT_SECONDS` | HTTP request timeout; defaults to `60`. |
