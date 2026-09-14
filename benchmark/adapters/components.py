@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import copy
+import logging
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, Optional, TYPE_CHECKING
+from typing import Any
 
 try:
     from benchmark.chunking import get_chunker
@@ -35,18 +38,14 @@ class ComponentBundle:
     Frozen so a bundle can be hashed/cached and so adapters cannot mutate
     the Framework-built instance — they receive it, store it, read it.
     """
-    chunker: Optional[Any] = None  # langchain TextSplitter
-    embedder: Optional[Any] = None  # langchain Embeddings
-    retriever_factory: Optional[Callable[[list[dict]], Any]] = None
-    reranker: Optional[Any] = None
-    llm: Optional[Any] = None  # langchain BaseChatModel
-    prompt_template: Optional[str] = None
+    chunker: Any | None = None  # langchain TextSplitter
+    embedder: Any | None = None  # langchain Embeddings
+    retriever_factory: Callable[[list[dict]], Any] | None = None
+    reranker: Any | None = None
+    llm: Any | None = None  # langchain BaseChatModel
+    prompt_template: str | None = None
 
 
-if TYPE_CHECKING:
-    from langchain_core.language_models.chat_models import BaseChatModel
-    from langchain_core.embeddings import Embeddings
-    from langchain_text_splitters import TextSplitter
 
 
 def _parse_accepts(raw: str) -> set[str]:
@@ -77,10 +76,26 @@ def build_components(config) -> ComponentBundle:
     fields: dict[str, Any] = {}
 
     if "chunker" in accepts and getattr(config, "chunking_strategy", ""):
+        chunker_kwargs: dict[str, Any] = {}
+        if config.chunking_strategy == "semantic":
+            # Semantic splitters need embeddings; mirror the internal
+            # pipeline's construction so an injected chunker behaves the
+            # same as a self-built one.
+            chunker_kwargs = dict(
+                embeddings=get_embedding_model(
+                    config.embedding_model,
+                    config.embedding_base_url(),
+                    config.embedding_api_key(),
+                    provider=config.embedding_provider,
+                ),
+                breakpoint_threshold_type=config.semantic_breakpoint_type,
+                breakpoint_threshold_amount=config.semantic_breakpoint_amount,
+            )
         fields["chunker"] = get_chunker(
             config.chunking_strategy,
             int(config.chunk_size or 0),
             int(config.chunk_overlap or 0),
+            **chunker_kwargs,
         )
 
     if "embedder" in accepts and getattr(config, "embedding_model", ""):
@@ -110,6 +125,53 @@ def build_components(config) -> ComponentBundle:
         fields["retriever_factory"] = _make_retriever_factory(config)
 
     return ComponentBundle(**fields)
+
+
+def inject_components(adapter: Any, config: Any, console: Any = None) -> None:
+    """Hand Framework-built components to an adapter, if it accepts them.
+
+    Injection policy for the adapter seam: pure black-box adapters (no
+    ``set_components``) are skipped. If the adapter declares
+    ``supports_components()``, that overrides ``RAG_ADAPTER_ACCEPTS`` — the
+    adapter knows best which slots it can consume. The user's config object
+    is never mutated.
+    """
+    if not hasattr(adapter, "set_components"):
+        return
+
+    component_config = config
+    if hasattr(adapter, "supports_components"):
+        capabilities = adapter.supports_components() or {}
+        accepted = ",".join(sorted(k for k, v in capabilities.items() if v))
+        if accepted:
+            try:
+                from dataclasses import replace
+
+                component_config = replace(config, rag_adapter_accepts=accepted)
+            except TypeError:
+                component_config = copy.copy(config)
+                component_config.rag_adapter_accepts = accepted
+
+    bundle = build_components(component_config)
+    populated = {
+        k: v for k, v in {
+            "chunker": bundle.chunker,
+            "embedder": bundle.embedder,
+            "retriever": bundle.retriever_factory,
+            "reranker": bundle.reranker,
+            "llm": bundle.llm,
+            "prompt": bundle.prompt_template,
+        }.items() if v is not None
+    }
+    if not populated:
+        return
+
+    adapter.set_components(bundle)
+    message = f"Injected components: {', '.join(sorted(populated))}"
+    if console is not None:
+        console.print(f"  [dim]{message}[/dim]")
+    else:
+        logging.getLogger(__name__).info(message)
 
 
 def _make_retriever_factory(config):
@@ -150,6 +212,6 @@ def _make_retriever_factory(config):
             embedding_provider=config.embedding_provider,
             vector_db_backend=config.vector_db_backend,
             lancedb_path=getattr(config, "lancedb_path", ".lancedb"),
-            create_if_missing=True,
+            create_if_missing=getattr(config, "benchmark_stage", "all") != "query",
         )
     return factory
