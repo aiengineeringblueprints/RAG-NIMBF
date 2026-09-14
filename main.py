@@ -22,7 +22,8 @@ from benchmark.retrieval import (
     retrieve,
     expand_query_with_hyde,
     retrieve_multihop,
-    _cache_key,
+    index_cache_key,
+    corpus_fingerprint as _content_fingerprint,
 )
 from benchmark.generation import get_llm, generate_answer, GenerationResult
 from benchmark.prompt_templates import get_template
@@ -172,7 +173,7 @@ def _build_internal_retrieval_index(
     console.print(f"  [dim]Chunked into {len(chunks)} pieces[/dim]")
 
     corpus_fingerprint = _content_fingerprint(chunk_source)
-    cache_k = _cache_key(
+    cache_k = index_cache_key(
         config.embedding_model,
         config.chunk_size,
         config.chunk_overlap,

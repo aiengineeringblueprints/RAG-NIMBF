@@ -121,14 +121,29 @@ def _make_retriever_factory(config):
     """
     def factory(chunks: list):
         # Import locally to avoid a heavy import at module load.
-        from benchmark.retrieval import build_vector_store
+        from benchmark.retrieval import (
+            build_vector_store,
+            corpus_fingerprint_from_documents,
+            index_cache_key,
+        )
 
-        cache_k = f"injected_{config.embedding_model}_{config.chunk_size}_{config.chunk_overlap}_{config.chunking_strategy}"
-        collection_name = f"rag_injected_{config.vector_db_backend}_{cache_k[:24]}"
+        cache_k = index_cache_key(
+            config.embedding_model,
+            config.chunk_size,
+            config.chunk_overlap,
+            config.chunking_strategy,
+            dataset_name=getattr(config, "dataset_name", ""),
+            embedding_provider=config.embedding_provider,
+            dataset_subset=getattr(config, "dataset_subset", ""),
+            dataset_sample_size=getattr(config, "dataset_sample_size", None),
+            corpus_fingerprint=corpus_fingerprint_from_documents(chunks),
+            vector_db_backend=config.vector_db_backend,
+        )
+        collection_name = f"rag_{config.vector_db_backend}_{cache_k[:24]}"
         return build_vector_store(
             chunks,
             config.embedding_model,
-            collection_name,
+            collection_name=collection_name,
             ollama_base_url=config.embedding_base_url(),
             ollama_api_key=config.embedding_api_key(),
             cache_key=cache_k,
