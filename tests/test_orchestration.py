@@ -191,6 +191,57 @@ def test_summarize_matrix_counts_questions(monkeypatch):
     assert summary["total_questions"] == 8
 
 
+def test_manifest_corpus_parser_knob_expands_and_validates(monkeypatch, tmp_path):
+    _base_env(monkeypatch)
+    manifest = tmp_path / "corpus_parser_experiment.yaml"
+    manifest.write_text(
+        """
+experiment_name: corpus-parser-test
+dataset:
+  name: jsonl-shared
+  path: questions.jsonl
+  corpus_path: raw_docs
+  sample_size: 2
+  license: apache-2.0
+settings:
+  corpus_parser: stub-corpus-parser
+matrix:
+  retrieval_top_k: [3, 5]
+""".strip(),
+        encoding="utf-8",
+    )
+
+    from config import get_all_combinations
+
+    monkeypatch.setenv("BENCHMARK_CONFIG_FILE", str(manifest))
+    configs = get_all_combinations()
+
+    assert len(configs) == 2
+    assert all(c.corpus_parser == "stub-corpus-parser" for c in configs)
+    assert all(c.dataset_license == "apache-2.0" for c in configs)
+
+
+def test_manifest_corpus_parser_rejects_non_shared_dataset(monkeypatch, tmp_path):
+    _base_env(monkeypatch)
+    manifest = tmp_path / "bad_corpus_parser.yaml"
+    manifest.write_text(
+        """
+experiment_name: bad-corpus-parser
+dataset:
+  name: squad
+settings:
+  corpus_parser: stub-corpus-parser
+""".strip(),
+        encoding="utf-8",
+    )
+
+    from config import get_all_combinations
+
+    monkeypatch.setenv("BENCHMARK_CONFIG_FILE", str(manifest))
+    with pytest.raises(ValueError, match="corpus_parser"):
+        get_all_combinations()
+
+
 def test_clearml_parameters_exclude_secret_fields(monkeypatch):
     _base_env(monkeypatch)
     config = build_configs_from_spec()[0]

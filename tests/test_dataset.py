@@ -21,6 +21,20 @@ from benchmark.dataset import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _clean_local_dataset_field_env(monkeypatch):
+    """Keep tests hermetic: a developer .env may set DATASET_*_FIELD via
+    load_dotenv during config loading, which would leak into these tests'
+    default field names."""
+    for var in (
+        "DATASET_QUESTION_FIELD",
+        "DATASET_GROUND_TRUTH_FIELD",
+        "DATASET_CONTEXT_FIELD",
+        "DATASET_METADATA_FIELD",
+    ):
+        monkeypatch.delenv(var, raising=False)
+
+
 # ---------------------------------------------------------------------------
 # Sample contract normalization
 # ---------------------------------------------------------------------------

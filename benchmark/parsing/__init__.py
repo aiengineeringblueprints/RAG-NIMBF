@@ -84,6 +84,7 @@ __all__ = [
     "compute_parsing_table_metrics",
     "compute_parsing_text_metrics",
     "extract_markdown_tables",
+    "get_corpus_parser",
     "get_parser_adapter",
     "load_parser_class",
     "markdown_tables_to_html",
@@ -108,6 +109,29 @@ def register_parser_adapter(name: str, factory: ParserAdapterFactory) -> None:
 
 
 register_parser_adapter("http", HttpParserAdapter.from_config)
+
+
+def get_corpus_parser(config: Any) -> DocumentParser | None:
+    """Resolve the corpus-ingestion parser (OCR-07), or None when unset.
+
+    Unlike :func:`get_parser_adapter`, this is registry-only: the
+    ``corpus_parser`` knob names a registered parser adapter, and the
+    parser_* settings (HTTP endpoint, version, ...) parameterize it.
+    """
+    corpus_parser_name = str(
+        getattr(config, "corpus_parser", "") or ""
+    ).strip().lower()
+    if not corpus_parser_name:
+        return None
+    try:
+        factory = PARSER_ADAPTER_REGISTRY[corpus_parser_name]
+    except KeyError as exc:
+        available = ", ".join(sorted(PARSER_ADAPTER_REGISTRY))
+        raise ValueError(
+            f"Unsupported CORPUS_PARSER={config.corpus_parser!r}. "
+            f"Available: {available}"
+        ) from exc
+    return factory(config)
 
 
 def get_parser_adapter(config: Any) -> DocumentParser | None:

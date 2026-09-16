@@ -114,6 +114,12 @@ def _make_tags(result: BenchmarkResultExtended) -> dict[str, str]:
         tags["dataset_name"] = result.dataset_name
     if result.vector_db_backend:
         tags["vector_db_backend"] = result.vector_db_backend
+    if result.corpus_parser:
+        tags["corpus_parser"] = result.corpus_parser
+    if result.parser_version:
+        tags["parser_version"] = result.parser_version
+    if result.dataset_license:
+        tags["dataset_license"] = result.dataset_license
     return tags
 
 

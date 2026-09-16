@@ -133,6 +133,11 @@ class BenchmarkConfig:
     parser_http_headers: str | None = None
     parser_plugin_module: str | None = None
     parser_plugin_attribute: str | None = None
+    # Corpus ingestion knob (OCR-07). When set, RAG corpus construction
+    # routes through the named parser adapter: documents under
+    # dataset_corpus_path are parsed to Markdown before chunking. Requires
+    # a shared-corpus dataset (jsonl-shared).
+    corpus_parser: str = ""
     # MCP tool backend. In context mode the tool supplies evidence to the
     # configured generator; in answer mode the tool is the complete QA system.
     mcp_transport: str = "stdio"  # stdio | streamable_http
@@ -405,6 +410,17 @@ def validate_benchmark_config(config: BenchmarkConfig) -> BenchmarkConfig:
             raise ValueError("Non-semantic chunking requires size and overlap")
         if config.chunk_overlap >= config.chunk_size:
             raise ValueError("chunk_overlap must be less than chunk_size")
+    if config.corpus_parser:
+        if config.dataset_name != "jsonl-shared":
+            raise ValueError(
+                "corpus_parser requires a shared-corpus dataset "
+                f"(dataset_name='jsonl-shared'), got {config.dataset_name!r}"
+            )
+        if not config.dataset_corpus_path:
+            raise ValueError(
+                "corpus_parser requires dataset_corpus_path pointing at the "
+                "raw documents to parse"
+            )
     _validate_json_object(config.rag_managed_options_json, "rag_managed_options_json")
     _validate_json_object(config.ingestion_options_json, "ingestion_options_json")
     _validate_json_object(config.mcp_http_headers_json, "mcp_http_headers_json")
@@ -780,6 +796,25 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
             "Set either PARSER_PLUGIN_MODULE or PARSER_ADAPTER, not both"
         )
 
+    corpus_parser = os.getenv("CORPUS_PARSER", "").strip().lower()
+    if corpus_parser and corpus_parser not in PARSER_ADAPTER_REGISTRY:
+        raise ValueError(
+            f"Invalid CORPUS_PARSER={corpus_parser!r}. "
+            f"Use: {', '.join(sorted(PARSER_ADAPTER_REGISTRY))}"
+        )
+    dataset_license = os.getenv("DATASET_LICENSE") or dataset_license
+    if corpus_parser:
+        if dataset_name != "jsonl-shared":
+            raise ValueError(
+                "CORPUS_PARSER requires a shared-corpus dataset "
+                f"(DATASET_NAME=jsonl-shared), got {dataset_name!r}"
+            )
+        if not dataset_corpus_path:
+            raise ValueError(
+                "CORPUS_PARSER requires DATASET_CORPUS_PATH pointing at the "
+                "raw documents to parse"
+            )
+
     mcp_transport = os.getenv("MCP_TRANSPORT", "stdio").strip().lower()
     mcp_server_url = os.getenv("MCP_SERVER_URL") or None
     mcp_command = os.getenv("MCP_COMMAND") or None
@@ -1040,6 +1075,7 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
                     parser_http_headers=parser_http_headers,
                     parser_plugin_module=parser_plugin_module,
                     parser_plugin_attribute=parser_plugin_attribute,
+                    corpus_parser=corpus_parser,
                     mcp_transport=mcp_transport,
                     mcp_server_url=mcp_server_url,
                     mcp_command=mcp_command,

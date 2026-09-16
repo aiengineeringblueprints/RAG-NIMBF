@@ -857,6 +857,108 @@ def test_parser_adapter_unknown_name_rejected():
             get_all_combinations()
 
 
+def test_corpus_parser_defaults_to_unset():
+    with patch.dict(os.environ, {
+        "LLM_MODELS": "gemma3:4b",
+        "EMBEDDING_MODELS": "nomic-embed-text:latest",
+        "CHUNK_SIZES": "1000",
+        "CHUNK_OVERLAPS": "200",
+        "CHUNKING_STRATEGIES": "recursive",
+    }, clear=False):
+        configs = get_all_combinations()
+
+    assert configs[0].corpus_parser == ""
+    assert configs[0].dataset_license is None
+
+
+def test_corpus_parser_and_dataset_license_env_fallback():
+    with patch.dict(os.environ, {
+        "LLM_MODELS": "gemma3:4b",
+        "EMBEDDING_MODELS": "nomic-embed-text:latest",
+        "CHUNK_SIZES": "1000",
+        "CHUNK_OVERLAPS": "200",
+        "CHUNKING_STRATEGIES": "recursive",
+        "DATASET_NAME": "jsonl-shared",
+        "DATASET_CORPUS_PATH": "datasets/raw_docs",
+        "CORPUS_PARSER": "http",
+        "PARSER_HTTP_ENDPOINT_URL": "http://parser.local/v1/chat/completions",
+        "PARSER_VERSION": "olmocr-1.0",
+        "DATASET_LICENSE": "apache-2.0",
+    }, clear=False):
+        configs = get_all_combinations()
+
+    assert configs[0].corpus_parser == "http"
+    assert configs[0].dataset_license == "apache-2.0"
+
+
+def test_corpus_parser_unknown_name_rejected():
+    with patch.dict(os.environ, {
+        "LLM_MODELS": "gemma3:4b",
+        "EMBEDDING_MODELS": "nomic-embed-text:latest",
+        "CHUNK_SIZES": "1000",
+        "CHUNK_OVERLAPS": "200",
+        "CHUNKING_STRATEGIES": "recursive",
+        "CORPUS_PARSER": "nope",
+    }, clear=False):
+        with pytest.raises(ValueError, match="CORPUS_PARSER"):
+            get_all_combinations()
+
+
+def test_corpus_parser_requires_shared_corpus_dataset():
+    with patch.dict(os.environ, {
+        "LLM_MODELS": "gemma3:4b",
+        "EMBEDDING_MODELS": "nomic-embed-text:latest",
+        "CHUNK_SIZES": "1000",
+        "CHUNK_OVERLAPS": "200",
+        "CHUNKING_STRATEGIES": "recursive",
+        "DATASET_NAME": "squad",
+        "CORPUS_PARSER": "http",
+        "PARSER_HTTP_ENDPOINT_URL": "http://parser.local/v1/chat/completions",
+    }, clear=False):
+        with pytest.raises(ValueError, match="jsonl-shared"):
+            get_all_combinations()
+
+
+def test_corpus_parser_requires_corpus_path():
+    with patch.dict(os.environ, {
+        "LLM_MODELS": "gemma3:4b",
+        "EMBEDDING_MODELS": "nomic-embed-text:latest",
+        "CHUNK_SIZES": "1000",
+        "CHUNK_OVERLAPS": "200",
+        "CHUNKING_STRATEGIES": "recursive",
+        "DATASET_NAME": "jsonl-shared",
+        "CORPUS_PARSER": "http",
+        "PARSER_HTTP_ENDPOINT_URL": "http://parser.local/v1/chat/completions",
+    }, clear=False):
+        with pytest.raises(ValueError, match="DATASET_CORPUS_PATH"):
+            get_all_combinations()
+
+
+def test_corpus_parser_module_autoload(tmp_path, monkeypatch):
+    plugin = tmp_path / "my_corpus_parser_plugin.py"
+    plugin.write_text(
+        "from benchmark.parsing import register_parser_adapter\n"
+        "register_parser_adapter('autoloaded_corpus_parser', lambda config: None)\n",
+        encoding="utf-8",
+    )
+    monkeypatch.syspath_prepend(str(tmp_path))
+
+    with patch.dict(os.environ, {
+        "LLM_MODELS": "gemma3:4b",
+        "EMBEDDING_MODELS": "nomic-embed-text:latest",
+        "CHUNK_SIZES": "1000",
+        "CHUNK_OVERLAPS": "200",
+        "CHUNKING_STRATEGIES": "recursive",
+        "PARSER_ADAPTER_MODULES": "my_corpus_parser_plugin",
+        "DATASET_NAME": "jsonl-shared",
+        "DATASET_CORPUS_PATH": "datasets/raw_docs",
+        "CORPUS_PARSER": "autoloaded_corpus_parser",
+    }, clear=False):
+        configs = get_all_combinations()
+
+    assert configs[0].corpus_parser == "autoloaded_corpus_parser"
+
+
 def test_parser_adapter_module_autoload(tmp_path, monkeypatch):
     plugin = tmp_path / "my_parser_module_plugin.py"
     plugin.write_text(

@@ -430,6 +430,8 @@ templates, vector backend, and evaluator settings belong in `experiments/*.yaml`
 | `PARSER_PLUGIN_MODULE` / `PARSER_PLUGIN_ATTRIBUTE` | Import path and class name of a local parser plugin (takes precedence over `PARSER_ADAPTER`). |
 | `PARSER_ADAPTER_MODULES` | Optional comma-separated Python modules to import before parser adapter validation. |
 | `PARSER_VERSION` | Optional parser version pinned into run metadata. |
+| `CORPUS_PARSER` | Registered parser name for RAG corpus ingestion; when set, documents under `DATASET_CORPUS_PATH` are parsed to Markdown before chunking (requires `DATASET_NAME=jsonl-shared`). |
+| `DATASET_LICENSE` | Dataset/corpus license pinned into run metadata; defaults to the dataset adapter's license when it declares one. |
 | `MCP_TRANSPORT` | `stdio` or `streamable_http`; defaults to `stdio`. |
 | `MCP_COMMAND` / `MCP_ARGS_JSON` | Executable and JSON argument array for a stdio MCP server. |
 | `MCP_SERVER_URL` | MCP endpoint required by `streamable_http`. |

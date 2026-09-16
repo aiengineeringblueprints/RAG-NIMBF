@@ -230,6 +230,11 @@ def _load_data_once(config: BenchmarkConfig) -> tuple[list[dict], list[dict] | N
     load_stage: dict[str, float] = {}
     with _stage_timer(load_stage, "load_data"):
         adapter = resolve_adapter(config.dataset_name)
+        corpus_parser = None
+        if config.corpus_parser:
+            from benchmark.parsing import get_corpus_parser
+
+            corpus_parser = get_corpus_parser(config)
         if adapter.has_shared_corpus:
             corpus, data = load_corpus_and_questions(
                 dataset_name=config.dataset_name,
@@ -241,6 +246,7 @@ def _load_data_once(config: BenchmarkConfig) -> tuple[list[dict], list[dict] | N
                 ground_truth_field=config.dataset_ground_truth_field,
                 context_field=config.dataset_context_field,
                 metadata_field=config.dataset_metadata_field,
+                corpus_parser=corpus_parser,
             )
         else:
             corpus = None
