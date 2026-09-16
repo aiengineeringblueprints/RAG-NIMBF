@@ -1,0 +1,19 @@
+# Parser benchmark over olmOCR-Bench document GT (Apache-2.0 license).
+#
+# Local-file dataset: point DATASET_PATH at a local olmOCR-Bench JSON/JSONL
+# export; nothing is downloaded. Only unit-test rows with expected_text ground
+# truth are scored (gt_supported=false rows are skipped). Requires
+# PARSER_HTTP_ENDPOINT_URL when the http parser adapter is used.
+experiment_name: ocr-parser-olmocr-bench
+
+dataset:
+  name: olmocr-bench
+  license: Apache-2.0
+
+settings:
+  benchmark_stage: parsing
+  ragas_enabled: false
+  custom_metrics_enabled: false
+
+matrix:
+  parser_adapters: ["http"]
