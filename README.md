@@ -421,6 +421,15 @@ templates, vector backend, and evaluator settings belong in `experiments/*.yaml`
 | `RAG_HTTP_METADATA_FIELD` | Dotted response path for retrieval metadata; defaults to `metadata`. |
 | `RAG_HTTP_TIMINGS_FIELD` | Dotted response path for timing data; defaults to `timings`. |
 | `RAG_ADAPTER_MODULES` | Optional comma-separated Python modules to import before RAG adapter validation. |
+| `PARSER_ADAPTER` | Document parser adapter name (`http` or a registered plugin name); unset means no parser. |
+| `PARSER_HTTP_ENDPOINT_URL` | Required when `PARSER_ADAPTER=http`; OpenAI-compatible `chat/completions` endpoint. |
+| `PARSER_HTTP_MODEL` | Model ID sent in chat-completions payloads. |
+| `PARSER_HTTP_PROMPT` | Per-page parsing instruction; defaults to a Markdown-conversion prompt. |
+| `PARSER_HTTP_TIMEOUT_SECONDS` | Per-page HTTP timeout; defaults to `60`. |
+| `PARSER_HTTP_HEADERS` | Extra JSON headers for parser requests. |
+| `PARSER_PLUGIN_MODULE` / `PARSER_PLUGIN_ATTRIBUTE` | Import path and class name of a local parser plugin (takes precedence over `PARSER_ADAPTER`). |
+| `PARSER_ADAPTER_MODULES` | Optional comma-separated Python modules to import before parser adapter validation. |
+| `PARSER_VERSION` | Optional parser version pinned into run metadata. |
 | `MCP_TRANSPORT` | `stdio` or `streamable_http`; defaults to `stdio`. |
 | `MCP_COMMAND` / `MCP_ARGS_JSON` | Executable and JSON argument array for a stdio MCP server. |
 | `MCP_SERVER_URL` | MCP endpoint required by `streamable_http`. |
