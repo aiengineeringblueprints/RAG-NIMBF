@@ -1,3 +1,4 @@
+import base64
 import csv
 import hashlib
 import json
@@ -182,15 +183,25 @@ def load_corpus_and_questions(
     ground_truth_field: str | None = None,
     context_field: str | None = None,
     metadata_field: str | None = None,
+    corpus_parser: Any | None = None,
 ) -> tuple[list[dict], list[dict]]:
     """Load data and split into a deduplicated corpus and per-question entries.
 
     Returns (corpus, questions) where:
       - corpus: list of {context, metadata} dicts — all unique contexts
       - questions: list of {question, ground_truth, context, metadata} dicts
+
+    When ``corpus_parser`` (a DocumentParser) is given, the local corpus is
+    built by parsing raw documents instead of reading text files directly.
     """
     if dataset_name == RAGPERF_WIKIPEDIA_DATASET:
         return _load_ragperf_wikipedia_nq(sample_size=sample_size)
+
+    if corpus_parser is not None and dataset_name != "jsonl-shared":
+        raise ValueError(
+            "corpus_parser requires dataset_name='jsonl-shared'; dataset "
+            f"{dataset_name!r} has no local corpus to parse"
+        )
 
     if dataset_name == "jsonl-shared":
         samples = normalize_samples(
@@ -206,7 +217,11 @@ def load_corpus_and_questions(
             ),
             source=dataset_name,
         )
-        return _load_local_corpus(corpus_path), samples
+        if corpus_parser is not None:
+            corpus = load_corpus_via_parser(corpus_path, corpus_parser)
+        else:
+            corpus = _load_local_corpus(corpus_path)
+        return corpus, samples
 
     samples = normalize_samples(
         load_benchmark_data(
@@ -309,6 +324,152 @@ def _load_multihop_corpus(
         f"for {len(samples)} questions[/green]"
     )
     return corpus, samples
+
+
+_TEXT_DOCUMENT_SUFFIXES = {".md", ".txt"}
+_IMAGE_MEDIA_TYPES = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".tif": "image/tiff",
+    ".tiff": "image/tiff",
+    ".bmp": "image/bmp",
+    ".webp": "image/webp",
+}
+
+
+def _corpus_document_paths(corpus_path: str | Path | None) -> tuple[Path, list[Path]]:
+    """Resolve the raw-document corpus directory into sorted, safe paths.
+
+    Applies the same symlink and traversal protections as
+    :func:`_load_local_corpus`; the corpus may be uploaded to external
+    services, so repository-controlled links must never be followed.
+    """
+    value = corpus_path or os.getenv("DATASET_CORPUS_PATH")
+    if not value:
+        raise ValueError(
+            "DATASET_CORPUS_PATH is required to build a parsed corpus"
+        )
+    root = Path(value).resolve()
+    if not root.is_dir():
+        raise ValueError(f"DATASET_CORPUS_PATH is not a directory: {root}")
+
+    paths: list[Path] = []
+    for candidate in root.rglob("*"):
+        if candidate.is_symlink():
+            raise ValueError(
+                f"Symbolic links are not allowed in DATASET_CORPUS_PATH: {candidate}"
+            )
+        if not candidate.is_file() or (
+            candidate.suffix.lower() not in _TEXT_DOCUMENT_SUFFIXES
+            and candidate.suffix.lower() not in _IMAGE_MEDIA_TYPES
+        ):
+            continue
+        resolved = candidate.resolve(strict=True)
+        try:
+            resolved.relative_to(root)
+        except ValueError as exc:
+            raise ValueError(
+                f"Corpus document resolves outside DATASET_CORPUS_PATH: {candidate}"
+            ) from exc
+        paths.append(resolved)
+    paths.sort()
+    if not paths:
+        raise ValueError(f"No documents found in {root}")
+    return root, paths
+
+
+def load_corpus_documents(corpus_path: str | Path | None) -> list[dict[str, Any]]:
+    """Discover raw documents on disk in the DocumentParser contract shape.
+
+    Text/Markdown files become single-page text documents; image files and
+    PDFs become single-page base64 image documents. Page splitting within a
+    document is the parser's responsibility.
+    """
+    root, paths = _corpus_document_paths(corpus_path)
+
+    documents: list[dict[str, Any]] = []
+    for path in paths:
+        suffix = path.suffix.lower()
+        if suffix in _IMAGE_MEDIA_TYPES:
+            pages: list[dict[str, Any]] = [
+                {
+                    "page_number": 1,
+                    "image_base64": base64.b64encode(
+                        path.read_bytes()
+                    ).decode("ascii"),
+                    "image_media_type": _IMAGE_MEDIA_TYPES[suffix],
+                    "text": None,
+                }
+            ]
+        else:
+            pages = [
+                {
+                    "page_number": 1,
+                    "image_base64": None,
+                    "image_media_type": "",
+                    "text": path.read_text(encoding="utf-8"),
+                }
+            ]
+        relative = path.relative_to(root)
+        documents.append(
+            {
+                "document_id": path.stem,
+                "pages": pages,
+                "metadata": {
+                    "doc_id": path.stem,
+                    "source_id": path.stem,
+                    "source_name": path.name,
+                    "source_path": str(relative),
+                },
+            }
+        )
+    console.print(
+        f"[green]Discovered {len(documents)} raw corpus documents in {root}[/green]"
+    )
+    return documents
+
+
+def load_corpus_via_parser(
+    corpus_path: str | Path | None, parser: Any
+) -> list[dict[str, Any]]:
+    """Build a corpus by parsing raw documents into Markdown.
+
+    The returned documents keep the exact {context, metadata} shape of a
+    directly loaded text corpus (``_load_local_corpus``), so the downstream
+    chunk → index → retrieve → generate → evaluate pipeline runs unchanged.
+    Parser identity and version are recorded per document for provenance.
+    """
+    documents = load_corpus_documents(corpus_path)
+
+    corpus: list[dict[str, Any]] = []
+    for document in documents:
+        result = parser.parse(document)
+        metadata = {
+            **document["metadata"],
+            "doc_id": document["document_id"],
+            "parser_name": result.parser_name or getattr(parser, "name", ""),
+            "parser_version": (
+                result.parser_version
+                if result.parser_version is not None
+                else getattr(parser, "parser_version", None)
+            ),
+            "parse_seconds": result.total_seconds,
+        }
+        context = result.markdown
+        if not context.strip():
+            raise ValueError(
+                f"Parser produced empty Markdown for document "
+                f"{document['document_id']!r}"
+            )
+        corpus.append(
+            {"context": context, "metadata": _chroma_safe_metadata(metadata)}
+        )
+    console.print(
+        f"[green]Parsed corpus: {len(corpus)} documents via "
+        f"{corpus[0]['metadata'].get('parser_name', 'parser')}[/green]"
+    )
+    return corpus
 
 
 def _load_local_corpus(corpus_path: str | None) -> list[dict[str, Any]]:

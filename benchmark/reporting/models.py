@@ -103,6 +103,11 @@ class BenchmarkResultExtended:
     llm_performance_artifact: str | None = None
     llm_performance_error: str | None = None
     adapter_metrics: dict[str, Any] | None = None
+    # Corpus-parser provenance (OCR-07): pinned into run metadata so the
+    # parsing → chunking → answer-quality chain stays traceable.
+    corpus_parser: str | None = None
+    parser_version: str | None = None
+    dataset_license: str | None = None
 
 
 @dataclass(frozen=True)

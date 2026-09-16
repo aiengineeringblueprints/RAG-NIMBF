@@ -265,6 +265,9 @@ def _run_single_benchmark_impl(
             energy_kwh=energy_kwh,
             host_energy_kwh=host_energy_kwh,
             estimated_energy_cost_usd=estimate_energy_cost_usd(energy_kwh, energy_price),
+            corpus_parser=config.corpus_parser or None,
+            parser_version=config.parser_version,
+            dataset_license=config.dataset_license,
         )
         return index_result
 
@@ -649,6 +652,9 @@ def _run_single_benchmark_impl(
         host_energy_kwh=host_energy_kwh,
         estimated_energy_cost_usd=estimated_energy_cost,
         adapter_metrics=adapter_aggregate_metrics(rag_adapter, all_adapter_diagnostics),
+        corpus_parser=config.corpus_parser or None,
+        parser_version=config.parser_version,
+        dataset_license=config.dataset_license,
     )
     return benchmark_result
 

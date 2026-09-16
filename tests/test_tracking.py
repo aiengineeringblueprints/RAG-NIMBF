@@ -105,3 +105,50 @@ def test_log_classic_retriever_metrics_does_not_use_deprecated_evaluate(monkeypa
         "classic_recall_at_2": 1.0,
         "classic_ndcg_at_2": 1.0,
     }
+
+
+def test_make_tags_pins_corpus_parser_provenance():
+    from benchmark.tracking import _make_tags
+
+    result = BenchmarkResultExtended(
+        config_name="corpus-parser-test",
+        llm_model="model",
+        embedding_model="emb",
+        prompt_template="concise",
+        chunking_strategy="recursive",
+        chunk_size=1000,
+        chunk_overlap=200,
+        num_chunks=10,
+        num_questions=1,
+        avg_ttft_seconds=0.5,
+        avg_tokens_per_second=100.0,
+        avg_gpu_utilization_pct=None,
+        avg_gpu_memory_used_mb=None,
+        ragas_faithfulness=None,
+        ragas_answer_relevancy=None,
+        ragas_answer_correctness=None,
+        ragas_context_precision=None,
+        ragas_context_recall=None,
+        ragas_semantic_similarity=None,
+        total_time_seconds=30.0,
+        per_sample=(),
+        ttft_stats=None,
+        tps_stats=None,
+        gpu_util_stats=None,
+        gpu_mem_stats=None,
+        ragas_faithfulness_stats=None,
+        ragas_answer_relevancy_stats=None,
+        ragas_answer_correctness_stats=None,
+        ragas_context_precision_stats=None,
+        ragas_context_recall_stats=None,
+        ragas_semantic_similarity_stats=None,
+        corpus_parser="stub-corpus-parser",
+        parser_version="1.2.3",
+        dataset_license="apache-2.0",
+    )
+
+    tags = _make_tags(result)
+
+    assert tags["corpus_parser"] == "stub-corpus-parser"
+    assert tags["parser_version"] == "1.2.3"
+    assert tags["dataset_license"] == "apache-2.0"

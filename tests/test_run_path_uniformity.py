@@ -144,6 +144,9 @@ class UniformityConfig:
         "retrieval_multihop_rounds": 2,
         "semantic_breakpoint_type": "percentile",
         "semantic_breakpoint_amount": 95,
+        "corpus_parser": "",
+        "parser_version": None,
+        "dataset_license": None,
     }
 
     def embedding_base_url(self) -> str:

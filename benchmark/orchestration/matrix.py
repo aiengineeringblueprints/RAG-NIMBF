@@ -270,6 +270,10 @@ def _apply_dataset(config: BenchmarkConfig, dataset: dict[str, Any]) -> Benchmar
         updates["dataset_corpus_path"] = (
             None if dataset["corpus_path"] is None else str(dataset["corpus_path"])
         )
+    if "license" in dataset:
+        updates["dataset_license"] = (
+            None if dataset["license"] is None else str(dataset["license"])
+        )
     return replace(config, **updates) if updates else config
 
 
@@ -398,6 +402,8 @@ def _coerce_field_value(key: str, value: Any) -> Any:
         "mcp_result_field",
         "mcp_allowed_tools_json",
         "mcp_corpus_path",
+        "corpus_parser",
+        "dataset_license",
     }:
         return None if value is None else str(value)
     if key in {
