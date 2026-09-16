@@ -10,12 +10,23 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
+from benchmark.parsing.alignment import (
+    MATCH_ALGORITHM_LICENSE,
+    MATCH_ALGORITHM_NAME,
+    MATCH_ALGORITHM_SOURCE,
+    MATCH_ALGORITHM_VERSION,
+    AlignedPair,
+    alignment_run_metadata,
+    quick_match,
+    split_paragraphs,
+)
 from benchmark.parsing.base import DocumentParser, ParsedPage, ParseResult
 from benchmark.parsing.http import HttpParserAdapter
 from benchmark.parsing.metrics import (
     PageTextMetrics,
     ParsingTextMetricsResult,
     cer,
+    compute_aligned_parsing_text_metrics,
     compute_parsing_text_metrics,
     normalize_text,
     normalized_edit_distance,
@@ -28,7 +39,12 @@ ParserAdapterFactory = Callable[[Any], DocumentParser]
 PARSER_ADAPTER_REGISTRY: dict[str, ParserAdapterFactory] = {}
 
 __all__ = [
+    "MATCH_ALGORITHM_LICENSE",
+    "MATCH_ALGORITHM_NAME",
+    "MATCH_ALGORITHM_SOURCE",
+    "MATCH_ALGORITHM_VERSION",
     "PARSER_ADAPTER_REGISTRY",
+    "AlignedPair",
     "DocumentParser",
     "HttpParserAdapter",
     "PageTextMetrics",
@@ -36,13 +52,17 @@ __all__ = [
     "ParsedPage",
     "ParserAdapterFactory",
     "ParsingTextMetricsResult",
+    "alignment_run_metadata",
     "cer",
+    "compute_aligned_parsing_text_metrics",
     "compute_parsing_text_metrics",
     "get_parser_adapter",
     "load_parser_class",
     "normalize_text",
     "normalized_edit_distance",
+    "quick_match",
     "register_parser_adapter",
+    "split_paragraphs",
     "wer",
 ]
 
