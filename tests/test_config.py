@@ -749,3 +749,87 @@ def test_rag_adapter_module_autoload(tmp_path, monkeypatch):
         configs = get_all_combinations()
 
     assert configs[0].rag_system_adapter == "autoloaded"
+
+
+def test_parser_adapter_defaults_to_unset():
+    with patch.dict(os.environ, {
+        "LLM_MODELS": "gemma3:4b",
+        "EMBEDDING_MODELS": "nomic-embed-text:latest",
+        "CHUNK_SIZES": "1000",
+        "CHUNK_OVERLAPS": "200",
+        "CHUNKING_STRATEGIES": "recursive",
+    }, clear=False):
+        configs = get_all_combinations()
+
+    assert configs[0].parser_adapter == ""
+    assert configs[0].parser_http_endpoint_url is None
+    assert configs[0].parser_plugin_module is None
+
+
+def test_parser_adapter_http_env_fallback():
+    with patch.dict(os.environ, {
+        "LLM_MODELS": "gemma3:4b",
+        "EMBEDDING_MODELS": "nomic-embed-text:latest",
+        "CHUNK_SIZES": "1000",
+        "CHUNK_OVERLAPS": "200",
+        "CHUNKING_STRATEGIES": "recursive",
+        "PARSER_ADAPTER": "http",
+        "PARSER_HTTP_ENDPOINT_URL": "http://parser.local/v1/chat/completions",
+        "PARSER_HTTP_MODEL": "olmocr",
+        "PARSER_VERSION": "olmocr-1.0",
+    }, clear=False):
+        configs = get_all_combinations()
+
+    assert configs[0].parser_adapter == "http"
+    assert configs[0].parser_http_endpoint_url == "http://parser.local/v1/chat/completions"
+    assert configs[0].parser_http_model == "olmocr"
+    assert configs[0].parser_version == "olmocr-1.0"
+
+
+def test_parser_adapter_http_requires_endpoint():
+    with patch.dict(os.environ, {
+        "LLM_MODELS": "gemma3:4b",
+        "EMBEDDING_MODELS": "nomic-embed-text:latest",
+        "CHUNK_SIZES": "1000",
+        "CHUNK_OVERLAPS": "200",
+        "CHUNKING_STRATEGIES": "recursive",
+        "PARSER_ADAPTER": "http",
+    }, clear=False):
+        with pytest.raises(ValueError, match="PARSER_HTTP_ENDPOINT_URL"):
+            get_all_combinations()
+
+
+def test_parser_adapter_unknown_name_rejected():
+    with patch.dict(os.environ, {
+        "LLM_MODELS": "gemma3:4b",
+        "EMBEDDING_MODELS": "nomic-embed-text:latest",
+        "CHUNK_SIZES": "1000",
+        "CHUNK_OVERLAPS": "200",
+        "CHUNKING_STRATEGIES": "recursive",
+        "PARSER_ADAPTER": "nope",
+    }, clear=False):
+        with pytest.raises(ValueError, match="PARSER_ADAPTER"):
+            get_all_combinations()
+
+
+def test_parser_adapter_module_autoload(tmp_path, monkeypatch):
+    plugin = tmp_path / "my_parser_module_plugin.py"
+    plugin.write_text(
+        "from benchmark.parsing import register_parser_adapter\n"
+        "register_parser_adapter('autoloaded_parser', lambda config: None)\n",
+        encoding="utf-8",
+    )
+    monkeypatch.syspath_prepend(str(tmp_path))
+
+    with patch.dict(os.environ, {
+        "LLM_MODELS": "gemma3:4b",
+        "EMBEDDING_MODELS": "nomic-embed-text:latest",
+        "CHUNK_SIZES": "1000",
+        "CHUNK_OVERLAPS": "200",
+        "CHUNKING_STRATEGIES": "recursive",
+        "PARSER_ADAPTER_MODULES": "my_parser_module_plugin",
+        "PARSER_ADAPTER": "autoloaded_parser",
+    }, clear=False):
+        configs = get_all_combinations()
+
+    assert configs[0].parser_adapter == "autoloaded_parser"

@@ -115,6 +115,19 @@ class BenchmarkConfig:
     rag_http_headers: str | None = None
     rag_http_auth_header: str | None = None
     rag_http_auth_value: str | None = None
+    # Document parser adapter (OCR benchmarking, ADR-005). Empty means no
+    # parser is used; otherwise a registered name or an explicit plugin
+    # module/attribute pair.
+    parser_adapter: str = ""
+    parser_version: str | None = None
+    parser_adapter_modules: tuple[str, ...] = ()
+    parser_http_endpoint_url: str | None = None
+    parser_http_model: str = ""
+    parser_http_prompt: str = ""
+    parser_http_timeout_seconds: float = 60.0
+    parser_http_headers: str | None = None
+    parser_plugin_module: str | None = None
+    parser_plugin_attribute: str | None = None
     # MCP tool backend. In context mode the tool supplies evidence to the
     # configured generator; in answer mode the tool is the complete QA system.
     mcp_transport: str = "stdio"  # stdio | streamable_http
@@ -720,6 +733,45 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
             "RAG_HTTP_ENDPOINT_URL is required when RAG_SYSTEM_ADAPTER=http"
         )
 
+    parser_adapter_modules = tuple(
+        _parse_list(os.getenv("PARSER_ADAPTER_MODULES", ""))
+    )
+    for module_name in parser_adapter_modules:
+        importlib.import_module(module_name)
+
+    from benchmark.parsing import PARSER_ADAPTER_REGISTRY
+
+    parser_adapter = os.getenv("PARSER_ADAPTER", "").strip().lower()
+    if parser_adapter and parser_adapter not in PARSER_ADAPTER_REGISTRY:
+        raise ValueError(
+            f"Invalid PARSER_ADAPTER={parser_adapter!r}. "
+            f"Use: {', '.join(sorted(PARSER_ADAPTER_REGISTRY))}"
+        )
+    parser_version = os.getenv("PARSER_VERSION") or None
+    parser_http_endpoint_url = os.getenv("PARSER_HTTP_ENDPOINT_URL") or None
+    if parser_adapter == "http" and not parser_http_endpoint_url:
+        raise ValueError(
+            "PARSER_HTTP_ENDPOINT_URL is required when PARSER_ADAPTER=http"
+        )
+    parser_http_model = os.getenv("PARSER_HTTP_MODEL", "").strip()
+    parser_http_prompt = os.getenv("PARSER_HTTP_PROMPT", "").strip()
+    parser_http_timeout_seconds = float(
+        os.getenv("PARSER_HTTP_TIMEOUT_SECONDS", "60")
+    )
+    if parser_http_timeout_seconds <= 0:
+        raise ValueError("PARSER_HTTP_TIMEOUT_SECONDS must be positive")
+    parser_http_headers = os.getenv("PARSER_HTTP_HEADERS") or None
+    parser_plugin_module = os.getenv("PARSER_PLUGIN_MODULE") or None
+    parser_plugin_attribute = os.getenv("PARSER_PLUGIN_ATTRIBUTE") or None
+    if parser_plugin_module and not parser_plugin_attribute:
+        raise ValueError(
+            "PARSER_PLUGIN_ATTRIBUTE is required when PARSER_PLUGIN_MODULE is set"
+        )
+    if parser_plugin_module and parser_adapter:
+        raise ValueError(
+            "Set either PARSER_PLUGIN_MODULE or PARSER_ADAPTER, not both"
+        )
+
     mcp_transport = os.getenv("MCP_TRANSPORT", "stdio").strip().lower()
     mcp_server_url = os.getenv("MCP_SERVER_URL") or None
     mcp_command = os.getenv("MCP_COMMAND") or None
@@ -968,6 +1020,16 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
                     rag_http_headers=rag_http_headers,
                     rag_http_auth_header=rag_http_auth_header,
                     rag_http_auth_value=rag_http_auth_value,
+                    parser_adapter=parser_adapter,
+                    parser_version=parser_version,
+                    parser_adapter_modules=parser_adapter_modules,
+                    parser_http_endpoint_url=parser_http_endpoint_url,
+                    parser_http_model=parser_http_model,
+                    parser_http_prompt=parser_http_prompt,
+                    parser_http_timeout_seconds=parser_http_timeout_seconds,
+                    parser_http_headers=parser_http_headers,
+                    parser_plugin_module=parser_plugin_module,
+                    parser_plugin_attribute=parser_plugin_attribute,
                     mcp_transport=mcp_transport,
                     mcp_server_url=mcp_server_url,
                     mcp_command=mcp_command,
