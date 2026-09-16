@@ -1,0 +1,18 @@
+# Parser benchmark over the OmniDocBench document GT (research-only license).
+#
+# Local-file dataset: point DATASET_PATH at a local OmniDocBench JSON export
+# (layout_dets format); nothing is downloaded. Requires PARSER_HTTP_ENDPOINT_URL
+# when the http parser adapter is used.
+experiment_name: ocr-parser-omnidocbench
+
+dataset:
+  name: omnidocbench
+  license: research-only
+
+settings:
+  benchmark_stage: parsing
+  ragas_enabled: false
+  custom_metrics_enabled: false
+
+matrix:
+  parser_adapters: ["http"]

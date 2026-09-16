@@ -1,0 +1,18 @@
+# Parser benchmark over DP-Bench document GT (MIT license).
+#
+# Local-file dataset: point DATASET_PATH at a local DP-Bench JSON/JSONL export
+# (gt_markdown/gt_html ground truth); nothing is downloaded. Requires
+# PARSER_HTTP_ENDPOINT_URL when the http parser adapter is used.
+experiment_name: ocr-parser-dp-bench
+
+dataset:
+  name: dp-bench
+  license: MIT
+
+settings:
+  benchmark_stage: parsing
+  ragas_enabled: false
+  custom_metrics_enabled: false
+
+matrix:
+  parser_adapters: ["http"]

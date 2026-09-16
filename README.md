@@ -150,6 +150,15 @@ logs scalar benchmark metrics to ClearML, and keeps MLflow logging enabled unles
 - Generic managed RAG adapters: see [doc/Managed_RAG_System_Usage.md](doc/Managed_RAG_System_Usage.md).
 - Your own RAG system: see [doc/Benchmark_Your_RAG.md](doc/Benchmark_Your_RAG.md).
 
+## Benchmark Document Parsers
+
+- Your own parser (OCR / PDF-to-Markdown): see [doc/Benchmark_Your_Parser.md](doc/Benchmark_Your_Parser.md).
+- Ready-to-run manifests: `experiments/ocr_parser_omnidocbench.yaml`,
+  `experiments/ocr_parser_dp_bench.yaml`, `experiments/ocr_parser_olmocr_bench.yaml`.
+- Note: the document GT datasets (`omnidocbench`, `dp-bench`, `olmocr-bench`)
+  are parsing-stage-only and are not part of the RAG `EVAL_MATRIX` sweep —
+  they never enter the RAG retrieval/QA evaluation path.
+
 ## Use an External RAG System
 
 Use this mode when your RAG system already exists and you want this framework to
