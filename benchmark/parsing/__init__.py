@@ -10,8 +10,17 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from benchmark.parsing.base import DocumentParser, ParseResult, ParsedPage
+from benchmark.parsing.base import DocumentParser, ParsedPage, ParseResult
 from benchmark.parsing.http import HttpParserAdapter
+from benchmark.parsing.metrics import (
+    PageTextMetrics,
+    ParsingTextMetricsResult,
+    cer,
+    compute_parsing_text_metrics,
+    normalize_text,
+    normalized_edit_distance,
+    wer,
+)
 from benchmark.parsing.plugin import load_parser_class
 
 ParserAdapterFactory = Callable[[Any], DocumentParser]
@@ -22,12 +31,19 @@ __all__ = [
     "PARSER_ADAPTER_REGISTRY",
     "DocumentParser",
     "HttpParserAdapter",
+    "PageTextMetrics",
     "ParseResult",
     "ParsedPage",
     "ParserAdapterFactory",
+    "ParsingTextMetricsResult",
+    "cer",
+    "compute_parsing_text_metrics",
     "get_parser_adapter",
     "load_parser_class",
+    "normalize_text",
+    "normalized_edit_distance",
     "register_parser_adapter",
+    "wer",
 ]
 
 
