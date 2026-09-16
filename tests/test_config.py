@@ -733,6 +733,51 @@ def test_local_dataset_and_metric_toggle_config_loaded():
     assert configs[0].custom_metrics_enabled is False
 
 
+def test_ocr_dataset_license_flags_surface_on_config():
+    with patch.dict(os.environ, {
+        "DATASET_NAME": "omnidocbench",
+        "DATASET_PATH": "fixtures/omnidocbench.json",
+    }, clear=False):
+        configs = get_all_combinations()
+
+    assert configs[0].dataset_license == "research-only"
+    assert configs[0].dataset_research_only is True
+
+
+def test_non_research_ocr_dataset_license_flag():
+    with patch.dict(os.environ, {
+        "DATASET_NAME": "dp-bench",
+        "DATASET_PATH": "fixtures/dp-bench.json",
+    }, clear=False):
+        configs = get_all_combinations()
+
+    assert configs[0].dataset_license == "MIT"
+    assert configs[0].dataset_research_only is False
+
+
+def test_config_without_license_fields_defaults_to_none():
+    config = _make_config()
+    assert config.dataset_license is None
+    assert config.dataset_research_only is False
+
+
+def test_manifest_dataset_override_refreshes_license_flags():
+    from benchmark.orchestration.matrix import ExperimentSpec, build_configs_from_spec
+
+    spec = ExperimentSpec(
+        name="ocr",
+        dataset={"name": "omnidocbench", "path": "fixtures/omnidocbench.json"},
+        settings={},
+        matrix={},
+    )
+
+    configs = build_configs_from_spec(spec, base_configs=[_make_config()])
+
+    assert configs[0].dataset_name == "omnidocbench"
+    assert configs[0].dataset_license == "research-only"
+    assert configs[0].dataset_research_only is True
+
+
 def test_rag_adapter_module_autoload(tmp_path, monkeypatch):
     plugin = tmp_path / "my_rag_plugin.py"
     plugin.write_text(

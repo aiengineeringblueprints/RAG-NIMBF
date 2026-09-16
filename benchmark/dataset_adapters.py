@@ -21,7 +21,11 @@ ENV_KEY_SENTINEL = "__env_field__"
 
 @dataclass(frozen=True)
 class DatasetAdapter:
-    """Describes how to load and normalise one HuggingFace dataset."""
+    """Describes how to load and normalise one benchmark dataset.
+
+    Most adapters wrap a HuggingFace dataset; document ground-truth datasets
+    (OCR-05) use local files via benchmark.ocr_datasets instead.
+    """
 
     name: str  # short registry key, e.g. "t2-ragbench"
     hf_id: str  # HuggingFace dataset ID, e.g. "G4KMU/t2-ragbench"
@@ -35,6 +39,15 @@ class DatasetAdapter:
     has_shared_corpus: bool = (
         False  # True if contexts should be deduplicated into a shared corpus
     )
+    # License metadata for document ground-truth datasets (OCR-05). These are
+    # surfaced on every loaded sample and propagated into run metadata.
+    license: str | None = None
+    license_research_only: bool = False
+
+
+# Names of the document ground-truth benchmark datasets (OCR-05). They are
+# loaded from local files by benchmark.ocr_datasets, not from HuggingFace.
+OCR_GT_DATASET_NAMES = ("omnidocbench", "dp-bench", "olmocr-bench")
 
 
 # ---------------------------------------------------------------------------
@@ -357,5 +370,53 @@ register(
         ),
         # Paragraph-level corpus built by dataset._load_multihop_corpus
         has_shared_corpus=True,
+    )
+)
+
+
+# ---------------------------------------------------------------------------
+# Document ground-truth benchmarks (OCR-05)
+# ---------------------------------------------------------------------------
+# Local-file loaders live in benchmark/ocr_datasets.py. Registered here so
+# config validation, resolve_adapter, and license metadata all share one
+# source of truth.
+
+
+register(
+    DatasetAdapter(
+        name="omnidocbench",
+        hf_id="local-omnidocbench",
+        question_key="question",
+        ground_truth_key="ground_truth",
+        build_context=lambda row: "",
+        preferred_split="local",
+        license="research-only",
+        license_research_only=True,
+    )
+)
+
+
+register(
+    DatasetAdapter(
+        name="dp-bench",
+        hf_id="local-dp-bench",
+        question_key="question",
+        ground_truth_key="ground_truth",
+        build_context=lambda row: "",
+        preferred_split="local",
+        license="MIT",
+    )
+)
+
+
+register(
+    DatasetAdapter(
+        name="olmocr-bench",
+        hf_id="local-olmocr-bench",
+        question_key="question",
+        ground_truth_key="ground_truth",
+        build_context=lambda row: "",
+        preferred_split="local",
+        license="Apache-2.0",
     )
 )

@@ -247,7 +247,15 @@ def _normalize_matrix(matrix: dict[str, list[Any]]) -> dict[str, list[Any]]:
 def _apply_dataset(config: BenchmarkConfig, dataset: dict[str, Any]) -> BenchmarkConfig:
     updates: dict[str, Any] = {}
     if "name" in dataset:
-        updates["dataset_name"] = str(dataset["name"])
+        new_name = str(dataset["name"])
+        updates["dataset_name"] = new_name
+        # Keep license metadata in sync with the dataset switch so the
+        # reproducibility manifest reflects the actually-selected dataset.
+        from benchmark.dataset_adapters import get_adapter
+
+        adapter = get_adapter(new_name)
+        updates["dataset_license"] = adapter.license
+        updates["dataset_research_only"] = adapter.license_research_only
     if "subset" in dataset:
         updates["dataset_subset"] = (
             "" if dataset["subset"] is None else str(dataset["subset"])
