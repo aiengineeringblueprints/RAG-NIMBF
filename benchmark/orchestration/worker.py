@@ -14,6 +14,10 @@ from rich.console import Console
 
 from config import BenchmarkConfig
 from benchmark.orchestration.runner import _stage_timer, run_single_benchmark
+from benchmark.parsing.evaluation import (
+    generate_parsing_leaderboard,
+    run_parsing_benchmark,
+)
 from benchmark.reporting import generate_report
 from benchmark.reporting.exports import _result_to_dict
 from benchmark.reporting.models import BenchmarkResultExtended
@@ -27,6 +31,7 @@ from benchmark.resource_monitor import (
 from benchmark.tracking import (
     log_aggregate_artifacts_to_mlflow,
     log_benchmark_run,
+    log_parsing_run,
 )
 from benchmark.orchestration.matrix import summarize_matrix
 
@@ -124,7 +129,21 @@ class ExperimentWorker:
         run_dir.mkdir(parents=True, exist_ok=True)
         progress = ProgressStore(run_dir / "progress.json")
 
-        data, corpus, load_data_seconds = _load_data_once(self.configs[0])
+        parsing_only = all(
+            config.benchmark_stage == "parsing" for config in self.configs
+        )
+        if not parsing_only and any(
+            config.benchmark_stage == "parsing" for config in self.configs
+        ):
+            raise ValueError(
+                "Mixing parsing and RAG benchmark stages in one worker run "
+                "is not supported; use separate experiment manifests"
+            )
+
+        if parsing_only:
+            data, corpus, load_data_seconds = ([], None, 0.0)
+        else:
+            data, corpus, load_data_seconds = _load_data_once(self.configs[0])
         reproducibility_dir = write_reproducibility_bundle(run_dir, self.configs)
         _write_worker_manifest(run_dir, self.options.experiment_name, self.configs)
 
@@ -133,7 +152,7 @@ class ExperimentWorker:
             f"into {run_dir}[/bold]"
         )
 
-        results: list[BenchmarkResultExtended] = []
+        results: list[Any] = []
         wall_start = time.perf_counter()
 
         parent_context = (
@@ -158,6 +177,27 @@ class ExperimentWorker:
                     continue
 
                 progress.mark_running(config)
+                if config.benchmark_stage == "parsing":
+                    try:
+                        summary = run_parsing_benchmark(config, run_dir=run_dir)
+                        progress.mark_completed(config)
+                        if self.options.log_mlflow:
+                            log_parsing_run(
+                                summary,
+                                reproducibility_dir=reproducibility_dir,
+                                nested=True,
+                            )
+                        results.append(summary)
+                    except Exception as exc:
+                        progress.mark_failed(config, str(exc))
+                        if not self.options.keep_going:
+                            raise
+                        console.print(
+                            f"[red]Parsing config failed and worker is "
+                            f"continuing: {exc}[/red]"
+                        )
+                    continue
+
                 monitor = _resource_monitor_for(run_dir, config)
                 try:
                     if monitor is None:
@@ -197,6 +237,19 @@ class ExperimentWorker:
 
             if results and self.options.write_reports:
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                if parsing_only:
+                    generate_parsing_leaderboard(
+                        results,  # type: ignore[arg-type]
+                        run_dir,
+                        timestamp=timestamp,
+                    )
+                    if self.options.log_mlflow:
+                        log_aggregate_artifacts_to_mlflow(
+                            run_dir,
+                            run_name=f"summary_{run_dir.name}_{timestamp}",
+                            reproducibility_dir=reproducibility_dir,
+                        )
+                    return results  # type: ignore[return-value]
                 generate_report(
                     results,
                     results_dir=run_dir,

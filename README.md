@@ -463,6 +463,13 @@ templates, vector backend, and evaluator settings belong in `experiments/*.yaml`
 `BENCHMARK_STAGE=index` is only supported by the built-in adapter. External HTTP
 systems own their own indexing lifecycle.
 
+`BENCHMARK_STAGE=parsing` runs the parser evaluation runner (OCR-06): the
+manifest declares `parser_adapters` × document GT datasets, the worker parses
+and scores each document resumably (per-document checkpoints), and a
+leaderboard report (`parsing_leaderboard_<timestamp>.json` with per-parser,
+per-category, and per-page text/TEDS scores) lands in the run dir plus MLflow
+as nested child runs.
+
 ## MLflow Run Comparison
 
 Start the MLflow UI against the local SQLite store:

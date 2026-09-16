@@ -70,11 +70,16 @@ def build_configs_from_spec(
     dataset_scalars, dataset_matrix = _split_dataset_config(spec.dataset)
     base = _apply_dataset(base, dataset_scalars)
     base = _apply_settings(base, spec.settings)
-    base = validate_benchmark_config(base)
+    if base.benchmark_stage != "parsing":
+        # Parsing-stage bases get their parser from the matrix axis, so the
+        # parser-presence check only applies to the expanded combos below.
+        base = validate_benchmark_config(base)
 
     matrix = _normalize_matrix({**dataset_matrix, **spec.matrix})
     if not matrix:
         configs = [base]
+        if base.benchmark_stage == "parsing":
+            validate_benchmark_config(base)
         _validate_mcp_comparison_fairness(configs)
         return configs
 
@@ -173,12 +178,14 @@ def summarize_matrix(configs: list[BenchmarkConfig]) -> dict[str, Any]:
     embeddings = sorted({c.embedding_model for c in configs})
     datasets = sorted({f"{c.dataset_name}/{c.dataset_subset}" for c in configs})
     sample_sizes = sorted({c.dataset_sample_size for c in configs})
+    parsers = sorted({c.parser_adapter for c in configs if c.parser_adapter})
     return {
         "num_configs": len(configs),
         "models": models,
         "embedding_models": embeddings,
         "datasets": datasets,
         "sample_sizes": sample_sizes,
+        **({"parsers": parsers} if parsers else {}),
         "total_questions": sum(c.dataset_sample_size for c in configs),
     }
 
@@ -235,6 +242,10 @@ def _normalize_matrix(matrix: dict[str, list[Any]]) -> dict[str, list[Any]]:
             ]
         elif key in ("dataset_name", "dataset_names"):
             normalized["dataset_name"] = values
+        elif key in ("parser_adapter", "parser_adapters"):
+            normalized["parser_adapter"] = [
+                str(v).strip().lower() for v in values
+            ]
         elif key in ("dataset_subset", "dataset_subsets"):
             normalized["dataset_subset"] = values
         elif key in ("dataset_sample_size", "dataset_sample_sizes"):
@@ -367,6 +378,7 @@ def _coerce_field_value(key: str, value: Any) -> Any:
         "generation_top_p",
         "generation_presence_penalty",
         "generation_frequency_penalty",
+        "parser_http_timeout_seconds",
         "llm_performance_timeout_seconds",
         "mcp_timeout_seconds",
         "mcp_retry_backoff_seconds",
@@ -404,6 +416,14 @@ def _coerce_field_value(key: str, value: Any) -> Any:
         "mcp_corpus_path",
         "corpus_parser",
         "dataset_license",
+        "parser_adapter",
+        "parser_version",
+        "parser_plugin_module",
+        "parser_plugin_attribute",
+        "parser_http_endpoint_url",
+        "parser_http_model",
+        "parser_http_prompt",
+        "parser_http_headers",
     }:
         return None if value is None else str(value)
     if key in {

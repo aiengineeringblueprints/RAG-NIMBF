@@ -980,3 +980,14 @@ def test_parser_adapter_module_autoload(tmp_path, monkeypatch):
         configs = get_all_combinations()
 
     assert configs[0].parser_adapter == "autoloaded_parser"
+
+
+def test_benchmark_stage_parsing_requires_parser():
+    cfg = _make_config(benchmark_stage="parsing")
+    with pytest.raises(ValueError, match="parser adapter"):
+        validate_benchmark_config(cfg)
+
+    cfg = _make_config(
+        benchmark_stage="parsing", parser_adapter="http"
+    )
+    assert validate_benchmark_config(cfg).benchmark_stage == "parsing"

@@ -105,7 +105,7 @@ class BenchmarkConfig:
     semantic_breakpoint_amount: int = 95
     vector_db_backend: str = "chroma"  # chroma | lancedb
     lancedb_path: str = ".lancedb"
-    benchmark_stage: str = "all"  # all | index | query | retrieve
+    benchmark_stage: str = "all"  # all | index | query | retrieve | parsing
     # RAG system adapter
     rag_system_adapter: str = "internal"  # internal | http | mcp
     rag_adapter_accepts: str = (
@@ -236,6 +236,8 @@ class BenchmarkConfig:
             parts += f"_temp{self.generation_temperature:g}"
         if self.retrieval_mode == "direct":
             parts += "_direct"
+        if self.parser_adapter:
+            parts += f"_parser-{self.parser_adapter}"
         if self.vector_db_backend != "chroma":
             parts += f"_{self.vector_db_backend}"
         if self.rag_system_adapter != "internal":
@@ -332,8 +334,13 @@ class BenchmarkConfig:
 
 def validate_benchmark_config(config: BenchmarkConfig) -> BenchmarkConfig:
     """Validate a concrete config after env, YAML, or tracker overrides."""
-    if config.benchmark_stage not in {"all", "index", "query", "retrieve"}:
-        raise ValueError("benchmark_stage must be one of: all, index, query, retrieve")
+    if config.benchmark_stage not in {"all", "index", "query", "retrieve", "parsing"}:
+        raise ValueError("benchmark_stage must be one of: all, index, query, retrieve, parsing")
+    if config.benchmark_stage == "parsing" and not config.parser_adapter and not config.parser_plugin_module:
+        raise ValueError(
+            "benchmark_stage=parsing requires a parser adapter "
+            "(PARSER_ADAPTER or PARSER_PLUGIN_MODULE)"
+        )
     if config.retrieval_mode not in {"retrieval", "direct"}:
         raise ValueError("retrieval_mode must be 'retrieval' or 'direct'")
     if config.benchmark_stage == "index" and config.retrieval_mode == "direct":
@@ -706,10 +713,10 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
     lancedb_path = os.getenv("LANCEDB_PATH", ".lancedb").strip() or ".lancedb"
 
     benchmark_stage = os.getenv("BENCHMARK_STAGE", "all").strip().lower()
-    if benchmark_stage not in ("all", "index", "query", "retrieve"):
+    if benchmark_stage not in ("all", "index", "query", "retrieve", "parsing"):
         raise ValueError(
             f"Invalid BENCHMARK_STAGE={benchmark_stage!r}. "
-            "Use: all, index, query, retrieve"
+            "Use: all, index, query, retrieve, parsing"
         )
     if benchmark_stage == "index" and retrieval_mode == "direct":
         raise ValueError("BENCHMARK_STAGE=index requires RETRIEVAL_MODE=retrieval")
