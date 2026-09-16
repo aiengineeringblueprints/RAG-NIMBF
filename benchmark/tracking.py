@@ -638,3 +638,72 @@ def log_aggregate_artifacts_to_mlflow(
             )
     except Exception as e:
         logger.warning("Failed to log aggregate artifacts to MLflow (non-fatal): %s", e)
+
+
+def log_parsing_run(
+    summary: dict[str, Any],
+    reproducibility_dir: Path | None = None,
+    *,
+    nested: bool | None = None,
+) -> str | None:
+    """Log one parsing benchmark cell as a nested MLflow child run.
+
+    Mirrors the RAG-run hierarchy: the worker opens the parent run and each
+    parser×dataset cell becomes a nested child with per-cell metrics and
+    provenance tags (parser identity, dataset license, match algorithm).
+    """
+    experiment_name = "RAG-Benchmark"
+    mlflow.set_experiment(experiment_name)
+
+    dataset = summary.get("dataset") or {}
+    match_algorithm = summary.get("match_algorithm") or {}
+    tags: dict[str, str] = {
+        "type": "parsing_cell",
+        "benchmark_stage": "parsing",
+        "config_name": str(summary.get("config_name", "")),
+        "parser": str(summary.get("parser", "")),
+    }
+    if summary.get("parser_version") is not None:
+        tags["parser_version"] = str(summary["parser_version"])
+    if dataset.get("license"):
+        tags["dataset_license"] = str(dataset["license"])
+        tags["dataset_research_only"] = str(
+            bool(dataset.get("research_only"))
+        )
+    if match_algorithm.get("version"):
+        tags["match_algorithm"] = str(match_algorithm["version"])
+
+    params: dict[str, Any] = {
+        "dataset_name": dataset.get("name"),
+        "num_documents": summary.get("num_documents"),
+        "num_scored_documents": summary.get("num_scored_documents"),
+    }
+
+    metrics = {
+        str(name): float(value)
+        for name, value in (summary.get("metrics") or {}).items()
+        if isinstance(value, (int, float))
+    }
+    for category, entry in (summary.get("per_category") or {}).items():
+        for name, value in (entry.get("metrics") or {}).items():
+            if isinstance(value, (int, float)):
+                metrics[f"{category}_{name}"] = float(value)
+
+    auto_nest = nested if nested is not None else bool(mlflow.active_run())
+    try:
+        with mlflow.start_run(
+            run_name=f"parsing_{summary.get('config_name', 'cell')}",
+            tags={key: value[:250] for key, value in tags.items()},
+            nested=auto_nest,
+        ) as run:
+            mlflow.log_params(params)
+            if metrics:
+                mlflow.log_metrics(metrics)
+            if reproducibility_dir and Path(reproducibility_dir).exists():
+                mlflow.log_artifacts(
+                    str(reproducibility_dir), artifact_path="reproducibility"
+                )
+            return run.info.run_id
+    except Exception as e:
+        logger.warning("Failed to log parsing run to MLflow (non-fatal): %s", e)
+        return None
