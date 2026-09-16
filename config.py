@@ -73,6 +73,11 @@ class BenchmarkConfig:
     dataset_ground_truth_field: str = "ground_truth"
     dataset_context_field: str = "context"
     dataset_metadata_field: str = "metadata"
+    # License metadata for document ground-truth datasets (OCR-05). Derived
+    # from the dataset adapter registry so it lands in the reproducibility
+    # manifest (run metadata) automatically.
+    dataset_license: str | None = None
+    dataset_research_only: bool = False
     ragas_enabled: bool = True
     custom_metrics_enabled: bool = True
     # Prompt template
@@ -550,6 +555,9 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
             f"Unknown dataset '{dataset_name}'. "
             f"Available: {', '.join(sorted(REGISTRY))}"
         )
+    dataset_adapter = REGISTRY[dataset_name]
+    dataset_license = dataset_adapter.license
+    dataset_research_only = dataset_adapter.license_research_only
     eval_critic_llm = os.getenv("EVAL_CRITIC_LLM", "gemma3:12b")
     eval_critic_embedding = os.getenv(
         "EVAL_CRITIC_EMBEDDING",
@@ -992,6 +1000,8 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
                     dataset_ground_truth_field=dataset_ground_truth_field,
                     dataset_context_field=dataset_context_field,
                     dataset_metadata_field=dataset_metadata_field,
+                    dataset_license=dataset_license,
+                    dataset_research_only=dataset_research_only,
                     eval_critic_llm=eval_critic_llm,
                     eval_critic_embedding=eval_critic_embedding,
                     custom_metrics_bert_model=custom_metrics_bert_model,

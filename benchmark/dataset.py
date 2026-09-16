@@ -9,7 +9,7 @@ from typing import Any, Mapping
 from datasets import load_dataset
 from rich.console import Console
 
-from benchmark.dataset_adapters import resolve_adapter
+from benchmark.dataset_adapters import OCR_GT_DATASET_NAMES, resolve_adapter
 
 console = Console()
 
@@ -102,6 +102,15 @@ def load_benchmark_data(
     metadata_field: str | None = None,
 ) -> list[dict]:
     adapter = resolve_adapter(dataset_name)
+
+    if dataset_name in OCR_GT_DATASET_NAMES:
+        # Function-level import: benchmark.ocr_datasets imports
+        # normalize_sample from this module, so a top-level import cycles.
+        from benchmark.ocr_datasets import load_ocr_gt_dataset
+
+        return load_ocr_gt_dataset(
+            dataset_name, dataset_path=dataset_path, sample_size=sample_size
+        )
 
     if dataset_name in ("jsonl", "jsonl-shared", "csv"):
         return _load_local_dataset(
