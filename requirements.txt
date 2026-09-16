@@ -27,3 +27,5 @@ plotly>=5.0
 lancedb>=0.18
 clearml>=1.16
 mcp>=1.12.4,<2.0
+jiwer>=4.0
+rapidfuzz>=3.14
