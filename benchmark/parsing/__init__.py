@@ -33,6 +33,25 @@ from benchmark.parsing.metrics import (
     wer,
 )
 from benchmark.parsing.plugin import load_parser_class
+from benchmark.parsing.table_metrics import (
+    PageTableMetrics,
+    ParsingTableMetricsResult,
+    compute_parsing_table_metrics,
+)
+from benchmark.parsing.teds import (
+    TEDS,
+    TEDS_ALGORITHM_LICENSE,
+    TEDS_ALGORITHM_NAME,
+    TEDS_ALGORITHM_SOURCE,
+    TEDS_ALGORITHM_VERSION,
+    teds,
+    teds_run_metadata,
+    teds_structure_only,
+)
+from benchmark.parsing.tables import (
+    extract_markdown_tables,
+    markdown_tables_to_html,
+)
 
 ParserAdapterFactory = Callable[[Any], DocumentParser]
 
@@ -44,25 +63,38 @@ __all__ = [
     "MATCH_ALGORITHM_SOURCE",
     "MATCH_ALGORITHM_VERSION",
     "PARSER_ADAPTER_REGISTRY",
+    "TEDS",
+    "TEDS_ALGORITHM_LICENSE",
+    "TEDS_ALGORITHM_NAME",
+    "TEDS_ALGORITHM_SOURCE",
+    "TEDS_ALGORITHM_VERSION",
     "AlignedPair",
     "DocumentParser",
     "HttpParserAdapter",
+    "PageTableMetrics",
     "PageTextMetrics",
     "ParseResult",
     "ParsedPage",
     "ParserAdapterFactory",
+    "ParsingTableMetricsResult",
     "ParsingTextMetricsResult",
     "alignment_run_metadata",
     "cer",
     "compute_aligned_parsing_text_metrics",
+    "compute_parsing_table_metrics",
     "compute_parsing_text_metrics",
+    "extract_markdown_tables",
     "get_parser_adapter",
     "load_parser_class",
+    "markdown_tables_to_html",
     "normalize_text",
     "normalized_edit_distance",
     "quick_match",
     "register_parser_adapter",
     "split_paragraphs",
+    "teds",
+    "teds_run_metadata",
+    "teds_structure_only",
     "wer",
 ]
 
