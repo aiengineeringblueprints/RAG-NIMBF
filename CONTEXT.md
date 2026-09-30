@@ -76,6 +76,35 @@ Slow and costly — disable via `RAGAS_ENABLED=false` for smoke tests.
   combination of dataset/model/parameter values. The worker executes the
   matrix cell by cell, resumably.
 
+### Parser adapter
+A second, separate adapter family for document parsers (OCR / PDF→Markdown
+systems), registered with `register_parser_adapter`. Contract: a document
+(PDF or page images) in → a `ParseResult` out. Two flavors exist: HTTP
+(OpenAI-compatible endpoints — the converged serving standard) and in-process
+Python plugins (Docling, Marker, MinerU). Distinct from the RAG adapter
+family (ADR-005); the two share serving patterns, not lifecycles.
+
+### ParseResult
+The output contract of a Parser adapter: one Markdown document per page.
+Structured blocks (bbox, category, table HTML, formula LaTeX) are optional;
+parsers that emit only Markdown still score on text and table metrics
+(markdown tables are converted to HTML for TEDS, as OmniDocBench does).
+
+### Parsing metrics
+The metric family scoring a ParseResult against document ground truth:
+CER/WER and normalized edit distance for text, TEDS for tables, computed
+after GT↔prediction alignment (vendored OmniDocBench `quick_match`
+semantics). The matching algorithm version is pinned in run metadata because
+scores are not comparable across alignment versions. Layout mAP, reading
+order, CDM (formulas), and charts are out of scope for v1.
+
+### Corpus parser
+The `corpus_parser` config knob that routes corpus construction of a RAG
+experiment through a Parser adapter instead of direct text loading.
+Chunking, retrieval, and evaluation run unchanged; parser identity and
+version are pinned in run metadata. This is the seam that makes parsing-metrics
+↔ RAG-outcomes correlation experiments possible in one provenance chain.
+
 ## Decided seams (do not re-propose)
 
 | Decision | ADR |
@@ -84,3 +113,4 @@ Slow and costly — disable via `RAGAS_ENABLED=false` for smoke tests.
 | YAML-first configuration only; legacy `.env` matrix removed; manifest required at the CLI | ADR-002 |
 | The worker is the only orchestration loop | ADR-003 |
 | Deferred batch: config grouping, evaluation merge, token-stats unification, multi-hop consolidation, result-model builder | ADR-004 |
+| Parser adapters are a separate family from RAG adapters; parsing evaluation is its own module group | ADR-005 |

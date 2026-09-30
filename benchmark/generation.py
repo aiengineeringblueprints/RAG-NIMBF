@@ -5,6 +5,7 @@ import operator
 import os
 import re
 import time
+from time import sleep
 from dataclasses import dataclass
 from typing import Literal
 
@@ -13,8 +14,9 @@ from langchain_core.messages import BaseMessage
 
 logger = logging.getLogger(__name__)
 
-_MAX_RETRIES = 5
+_MAX_RETRIES = 8
 _BASE_DELAY = 10  # seconds
+_MAX_DELAY = 120  # seconds; cap so total retry window covers a backend restart (~10 min)
 
 from benchmark.metrics import get_gpu_usage
 from benchmark.providers import get_chat_model
@@ -503,12 +505,12 @@ def generate_answer(
         except Exception as exc:
             if attempt == _MAX_RETRIES:
                 raise
-            delay = _BASE_DELAY * 2 ** (attempt - 1)
+            delay = min(_BASE_DELAY * 2 ** (attempt - 1), _MAX_DELAY)
             logger.warning(
                 "LLM call failed (attempt %d/%d): %s  — retrying in %ds",
                 attempt, _MAX_RETRIES, exc, delay,
             )
-            time.sleep(delay)
+            sleep(delay)
 
     # Post-process answer
     answer = _postprocess_answer(

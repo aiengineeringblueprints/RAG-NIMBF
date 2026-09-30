@@ -206,6 +206,12 @@ class BenchmarkConfig:
                 f"_{self.embedding_model}_{self.llm_model}"
                 f"_{self.prompt_template}"
             )
+        elif self.chunking_strategy == "paragraph":
+            # Paragraph chunking never splits — chunk size/overlap are unused.
+            parts = (
+                f"paragraph_{self.embedding_model}_{self.llm_model}"
+                f"_{self.prompt_template}"
+            )
         else:
             parts = (
                 f"{self.chunking_strategy}_cs{self.chunk_size}_co{self.chunk_overlap}"

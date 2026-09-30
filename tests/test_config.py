@@ -162,6 +162,12 @@ class TestBenchmarkConfig:
         cfg = _make_config()
         assert cfg.name == "recursive_cs1000_co200_nomic-embed-text:latest_gemma3:4b_concise"
 
+    def test_name_property_paragraph_omits_chunk_sizes(self):
+        cfg = _make_config(chunking_strategy="paragraph")
+        assert cfg.name == "paragraph_nomic-embed-text:latest_gemma3:4b_concise"
+        assert f"_cs{cfg.chunk_size}" not in cfg.name
+        assert f"_co{cfg.chunk_overlap}" not in cfg.name
+
     def test_frozen(self):
         cfg = _make_config()
         with pytest.raises(AttributeError):
@@ -543,6 +549,8 @@ class TestGetAllCombinations:
         "CHUNK_SIZES": "1000",
         "CHUNK_OVERLAPS": "200",
         "CHUNKING_STRATEGIES": "recursive",
+        "RETRIEVAL_MULTIHOP": "false",
+        "RETRIEVAL_MULTIHOP_ROUNDS": "1",
     }, clear=False)
     def test_multihop_defaults_off(self):
         configs = get_all_combinations()

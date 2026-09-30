@@ -421,3 +421,21 @@ class TestGenerateAnswer:
         result = generate_answer(mock_llm, "q", ["ctx"])
 
         assert result.ttft_seconds <= result.total_seconds
+
+    @patch("benchmark.generation.sleep")
+    @patch("benchmark.generation.get_gpu_usage", return_value=None)
+    def test_persistent_failure_retries_with_capped_backoff(self, mock_gpu, mock_sleep):
+        """A long backend outage should be retried ~8 times with backoff capped at 120s."""
+        mock_llm = MagicMock()
+        mock_llm.stream.side_effect = RuntimeError("502 Bad Gateway")
+        mock_llm.invoke.side_effect = RuntimeError("502 Bad Gateway")
+
+        with __import__("pytest").raises(RuntimeError):
+            generate_answer(mock_llm, "q", ["ctx"])
+
+        delays = [c.args[0] for c in mock_sleep.call_args_list]
+        assert mock_llm.stream.call_count == 8  # _MAX_RETRIES attempts
+        assert len(delays) == 7  # no sleep after the final failed attempt
+        assert all(d <= 120 for d in delays)  # capped
+        assert delays[0] == 10 and delays[1] == 20 and delays[2] == 40
+        assert sum(delays) >= 510  # ~8.5 min retry window, covers a backend restart
