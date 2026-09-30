@@ -80,6 +80,13 @@ New function `retrieve_multihop(vector_store, llm, question, top_k, rounds=...)`
 3. Stops early if the LLM answers `NONE` (context complete) or fails.
 4. Returns at most `top_k` documents, round-1 ranking first.
 
+**Per-round budget:** every round fetches `ceil(top_k / rounds)` documents
+(`_per_round_k`). Originally each round fetched the full `top_k`, which
+meant the merged list was already full after round 1 and *every* follow-up
+document was truncated away — multi-hop retrieval silently did nothing.
+The regression test
+`test_followup_docs_survive_when_round1_fills_top_k` locks this down.
+
 It composes with HyDE, MMR, and the reranker (reranking still runs on the
 merged result). Implementation: `retrieve_multihop()` +
 `_generate_followup_query()` in `benchmark/retrieval.py`; wired into the
@@ -111,6 +118,12 @@ CUSTOM_RETRIEVAL_METRICS_MODE=gold_doc   # to measure hop coverage directly
 ```
 
 ## Notes & gotchas
+
+- **Chunk size/overlap are unused with `paragraph` chunking.** The config
+  name omits the `_cs`/`_co` suffix for `CHUNKING_STRATEGIES=paragraph`, and
+  the vector-store cache/collection key ignores them too — so changing
+  `CHUNK_SIZES`/`CHUNK_OVERLAPS` no longer triggers a needless re-embed.
+  Leaving the variables set in `.env` is harmless.
 
 - **Index rebuild required:** the shared corpus + paragraph chunking changes
   the collection contents, so the first run with the new settings rebuilds

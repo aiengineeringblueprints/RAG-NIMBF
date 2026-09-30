@@ -513,7 +513,7 @@ def retrieve_multihop(
                 all_docs.append(doc)
 
     retrieved = retrieve(
-        vector_store, question, top_k,
+        vector_store, question, _per_round_k(top_k, rounds),
         retrieval_strategy=retrieval_strategy,
         fetch_k=fetch_k,
         mmr_lambda=mmr_lambda,
@@ -527,7 +527,7 @@ def retrieve_multihop(
             break
         _merge(
             retrieve(
-                vector_store, followup, top_k,
+                vector_store, followup, _per_round_k(top_k, rounds),
                 retrieval_strategy=retrieval_strategy,
                 fetch_k=fetch_k,
                 mmr_lambda=mmr_lambda,
@@ -536,6 +536,17 @@ def retrieve_multihop(
         )
 
     return all_docs[:top_k]
+
+
+def _per_round_k(top_k: int, rounds: int) -> int:
+    """Per-round fetch budget so later rounds can still add documents.
+
+    If every round fetched the full ``top_k``, the merged list would already
+    be full after round 1 and all follow-up documents would be truncated
+    away. Dividing the budget across rounds reserves room for them.
+    """
+    effective_rounds = max(1, rounds)
+    return max(1, -(-top_k // effective_rounds))
 
 
 def _generate_followup_query(

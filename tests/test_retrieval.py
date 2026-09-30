@@ -66,6 +66,15 @@ class TestCacheKey:
         k2 = _cache_key("model", 1000, 200, "recursive", vector_db_backend="lancedb")
         assert k1 != k2
 
+    def test_paragraph_strategy_ignores_chunk_size_and_overlap(self):
+        base = _cache_key("model", None, None, "paragraph")
+        assert base == _cache_key("model", 500, 200, "paragraph")
+        assert base == _cache_key("model", 1000, 0, "paragraph")
+        # other strategies must still honor chunk parameters
+        assert _cache_key("model", 500, 200, "recursive") != _cache_key(
+            "model", 1000, 200, "recursive"
+        )
+
 
 class TestVectorStoreBackends:
     @patch("benchmark.retrieval.get_embedding_model")
@@ -405,6 +414,42 @@ class TestMultiHopRetrieval:
         docs = retrieve_multihop(store, llm, "question", top_k=3, rounds=1)
         llm.invoke.assert_not_called()
         assert [d.metadata["doc_id"] for d in docs] == ["a"]
+
+    def test_followup_docs_survive_when_round1_fills_top_k(self):
+        """Regression: round-1 already returns top_k unique docs, so the
+        merged list was full and every round-2 document was truncated away.
+        Multi-hop retrieval must reserve budget for follow-up rounds."""
+        from benchmark.retrieval import retrieve_multihop
+
+        round1_pool = [
+            Document(page_content=f"d{i}", metadata={"doc_id": str(i)})
+            for i in range(4)
+        ]
+        followup_pool = [
+            Document(page_content="d5", metadata={"doc_id": "5"}),   # new
+            Document(page_content="d6", metadata={"doc_id": "6"}),   # new
+            Document(page_content="d2", metadata={"doc_id": "2"}),   # dup
+        ]
+        store = MagicMock()
+        responses = [round1_pool, followup_pool]
+        calls = {"n": 0}
+
+        def side_effect(query, k=3, **kwargs):
+            docs = responses[min(calls["n"], 1)]
+            calls["n"] += 1
+            return docs[:k]  # real stores respect k
+
+        store.similarity_search.side_effect = side_effect
+
+        docs = retrieve_multihop(
+            store, self._llm_reply("follow-up"), "question",
+            top_k=4, rounds=2,
+        )
+
+        retrieved = [d.metadata["doc_id"] for d in docs]
+        assert "5" in retrieved and "6" in retrieved, (
+            f"follow-up docs dropped: {retrieved}"
+        )
 
     def test_empty_content_from_llm_ends_iteration(self):
         from benchmark.retrieval import retrieve_multihop
