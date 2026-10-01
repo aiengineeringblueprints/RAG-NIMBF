@@ -210,7 +210,8 @@ datasets/chats created by that run; reused provider resources are never deleted.
 Each worker run writes into the selected `--run-dir`:
 
 - `progress.json`: resume/failure state for every configuration;
-- `configs/*.json`: normalized result per configuration;
+- `configs/*.json`: benchmark JSON per configuration (same schema as
+  `benchmark_*.json`, one result), written as soon as that configuration finishes;
 - `configs/*_qa.json`: question/answer log;
 - `worker_manifest.json`: experiment and configuration identities;
 - `reproducibility/`: environment, Git state, and package snapshot;

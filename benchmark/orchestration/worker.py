@@ -19,8 +19,12 @@ from benchmark.parsing.evaluation import (
     run_parsing_benchmark,
 )
 from benchmark.reporting import generate_report
-from benchmark.reporting.exports import _result_to_dict
-from benchmark.reporting.models import BenchmarkResultExtended
+from benchmark.reporting.exports import write_json_report
+from benchmark.reporting.models import (
+    BenchmarkResultExtended,
+    BenchmarkRun,
+    collect_system_info,
+)
 from benchmark.reproducibility import write_reproducibility_bundle
 from benchmark.resource_monitor import (
     ResourceMonitor,
@@ -220,8 +224,9 @@ class ExperimentWorker:
                             )
                         console.print(f"[dim]  Resource trace: {monitor.trace_path}[/dim]")
 
-
-                    progress.mark_completed(config)
+                    result_path = _write_config_report(run_dir, config, result)
+                    console.print(f"[green]  Config JSON saved to {result_path}[/green]")
+                    progress.mark_completed(config, result_path)
                     if self.options.log_mlflow:
                         log_benchmark_run(
                             result,
@@ -274,6 +279,23 @@ class ExperimentWorker:
 def config_result_path(run_dir: Path, config: BenchmarkConfig) -> Path:
     safe_name = config.name.replace(":", "_").replace("/", "_")
     return run_dir / "configs" / f"{safe_name}.json"
+
+
+def _write_config_report(
+    run_dir: Path,
+    config: BenchmarkConfig,
+    result: BenchmarkResultExtended,
+) -> Path:
+    """Persist one finished config in the benchmark JSON schema."""
+    run = BenchmarkRun(
+        timestamp=datetime.now().strftime("%Y%m%d_%H%M%S"),
+        dataset_name=config.dataset_name,
+        dataset_subset=config.dataset_subset,
+        dataset_sample_size=config.dataset_sample_size,
+        system_info=collect_system_info(),
+        results=(result,),
+    )
+    return write_json_report(run, config_result_path(run_dir, config))
 
 
 def _load_data_once(config: BenchmarkConfig) -> tuple[list[dict], list[dict] | None, float]:

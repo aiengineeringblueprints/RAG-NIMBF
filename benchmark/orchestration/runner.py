@@ -389,6 +389,9 @@ def _run_single_benchmark_impl(
                 critic_openai_compat_base_url=config.eval_critic_openai_compat_base_url,
                 critic_openai_compat_api_key=config.eval_critic_openai_compat_api_key,
                 critic_max_tokens=config.eval_critic_max_tokens,
+                critic_thinking_control=config.eval_critic_thinking_control,
+                critic_max_workers=config.eval_critic_max_workers,
+                critic_max_retries=config.eval_critic_max_retries,
             )
 
         if eval_result.error:

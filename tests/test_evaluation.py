@@ -51,6 +51,56 @@ class TestEvaluateResultsMetricSet:
         }
 
 
+class TestEvaluateResultsCriticRuntime:
+    @patch("benchmark.evaluation.LangchainEmbeddingsWrapper")
+    @patch("benchmark.evaluation.get_embedding_model")
+    @patch("benchmark.evaluation.LangchainLLMWrapper")
+    @patch("benchmark.evaluation.get_chat_model")
+    @patch("benchmark.evaluation.evaluate")
+    def test_critic_runtime_settings_reach_model_and_ragas(
+        self, mock_evaluate, mock_chat, *_mocks
+    ):
+        mock_evaluate.return_value = MagicMock(scores=[{"faithfulness": 0.9}])
+
+        evaluate_results(
+            questions=["q1"],
+            ground_truths=["gt1"],
+            answers=["a1"],
+            contexts=[["ctx1"]],
+            critic_llm_model="openai:glm-5.3-flash",
+            critic_thinking_control="reasoning_effort_low",
+            critic_max_workers=8,
+            critic_max_retries=5,
+        )
+
+        assert mock_chat.call_args[1]["thinking_control"] == "reasoning_effort_low"
+        run_config = mock_evaluate.call_args[1]["run_config"]
+        assert run_config.max_workers == 8
+        assert run_config.max_retries == 5
+
+    @patch("benchmark.evaluation.LangchainEmbeddingsWrapper")
+    @patch("benchmark.evaluation.get_embedding_model")
+    @patch("benchmark.evaluation.LangchainLLMWrapper")
+    @patch("benchmark.evaluation.get_chat_model")
+    @patch("benchmark.evaluation.evaluate")
+    def test_critic_runtime_defaults_stay_serial(
+        self, mock_evaluate, mock_chat, *_mocks
+    ):
+        mock_evaluate.return_value = MagicMock(scores=[{"faithfulness": 0.9}])
+
+        evaluate_results(
+            questions=["q1"],
+            ground_truths=["gt1"],
+            answers=["a1"],
+            contexts=[["ctx1"]],
+        )
+
+        assert mock_chat.call_args[1]["thinking_control"] == "chat_template_kwargs"
+        run_config = mock_evaluate.call_args[1]["run_config"]
+        assert run_config.max_workers == 1
+        assert run_config.max_retries == 2
+
+
 class TestEvaluateResultsModelInit:
     """Test that provider routing works during critic model initialization."""
 

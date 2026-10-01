@@ -39,6 +39,9 @@ def parse_model_id(model_string: str) -> tuple[str, str]:
     return ("ollama", model_string)
 
 
+THINKING_CONTROLS = ("chat_template_kwargs", "reasoning_effort_low", "none")
+
+
 def get_chat_model(
     *,
     provider: str,
@@ -47,6 +50,7 @@ def get_chat_model(
     api_key: str | None = None,
     max_tokens: int = 256,
     temperature: float = 0.0,
+    thinking_control: str = "chat_template_kwargs",
 ) -> BaseChatModel:
     """Create a chat model for the given provider.
 
@@ -64,12 +68,21 @@ def get_chat_model(
         Maximum tokens to generate.
     temperature:
         Sampling temperature.
+    thinking_control:
+        OpenAI-compatible only. How reasoning is disabled: one of
+        ``THINKING_CONTROLS`` (``"chat_template_kwargs"``,
+        ``"reasoning_effort_low"``, ``"none"``).
 
     Returns
     -------
     BaseChatModel
         A LangChain chat model instance.
     """
+    if thinking_control not in THINKING_CONTROLS:
+        raise ValueError(
+            f"Unknown thinking_control '{thinking_control}'. "
+            f"Supported: {', '.join(THINKING_CONTROLS)}."
+        )
     if provider == "ollama":
         from langchain_ollama import ChatOllama
 
@@ -96,15 +109,24 @@ def get_chat_model(
     if provider == "openai":
         from langchain_openai import ChatOpenAI
 
-        return ChatOpenAI(
+        openai_kwargs: dict[str, Any] = dict(
             model=model_name,
             base_url=base_url,
             api_key=api_key or "not-needed",
             max_tokens=max_tokens,
             temperature=temperature,
             stream_usage=True,
-            extra_body={"chat_template_kwargs": {"enable_thinking": False}},
         )
+        # How to suppress chain-of-thought differs per backend. vLLM/SGLang
+        # honor chat_template_kwargs; GLM behind LiteLLM ignores it and dumps
+        # its reasoning into message.content, but respects reasoning_effort.
+        if thinking_control == "chat_template_kwargs":
+            openai_kwargs["extra_body"] = {
+                "chat_template_kwargs": {"enable_thinking": False}
+            }
+        elif thinking_control == "reasoning_effort_low":
+            openai_kwargs["reasoning_effort"] = "low"
+        return ChatOpenAI(**openai_kwargs)
 
     raise ValueError(
         f"Unknown provider '{provider}'. Supported: 'ollama', 'openai'."
