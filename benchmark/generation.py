@@ -32,8 +32,11 @@ _VALUE_NUMBER_PATTERN = re.compile(
     r"-?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?%?|-?\d+\.\d+%?"
 )
 
-# Matches "FINAL: <value>" line from finqa template
+# Matches "FINAL: <value>" line from final-answer-line templates (finqa, cot, ...)
 _FINAL_LINE_PATTERN = re.compile(r"^FINAL:\s*(.+)$", re.MULTILINE)
+
+# Matches inline citation markers like "[1]", "[2, 3]" (cited template)
+_CITATION_PATTERN = re.compile(r"\s*\[\d+(?:\s*,\s*\d+)*\]")
 
 # Keywords that indicate a percentage-type question
 _PERCENTAGE_KEYWORDS = re.compile(
@@ -197,8 +200,28 @@ def extract_concise_fallback(text: str) -> str:
     return ""
 
 
+def _template_flag(prompt_template_name: str | None, flag: str) -> bool:
+    """Return a built-in template's behaviour flag; unknown names default to False."""
+    from benchmark.prompt_templates import BUILTIN_TEMPLATES
+
+    template = BUILTIN_TEMPLATES.get(prompt_template_name or "")
+    return bool(template and getattr(template, flag))
+
+
+def format_contexts(contexts: list[str], *, numbered: bool = False) -> str:
+    """Join retrieved chunks; ``numbered`` prefixes each with ``[n]`` for citation."""
+    if numbered:
+        return "\n\n".join(f"[{i}] {c}" for i, c in enumerate(contexts, start=1))
+    return "\n\n".join(contexts)
+
+
+def strip_citation_markers(text: str) -> str:
+    """Remove inline ``[n]`` citation markers so they do not skew answer metrics."""
+    return _CITATION_PATTERN.sub("", text).strip()
+
+
 def extract_final_value(text: str) -> str:
-    """Extract the value from a 'FINAL: <value>' line (finqa template)."""
+    """Extract the value from a 'FINAL: <value>' line (finqa/cot/chain_of_note)."""
     match = _FINAL_LINE_PATTERN.search(text)
     if match:
         value = match.group(1).strip()
@@ -446,9 +469,15 @@ def _postprocess_answer(
     if not answer and value_fallback and tag_clean:
         answer = extract_concise_fallback(tag_clean)
 
-    # Extract FINAL: value from finqa template
-    if prompt_template_name == "finqa" and answer:
-        answer = extract_final_value(answer)
+    # Extract FINAL: value; fall back to the tag-free text because "full"
+    # stripping may discard reasoning-shaped output that still ends in FINAL:
+    if _template_flag(prompt_template_name, "final_answer_line"):
+        source = answer or tag_clean
+        if source:
+            answer = extract_final_value(source)
+
+    if answer and _template_flag(prompt_template_name, "strip_citations"):
+        answer = strip_citation_markers(answer)
 
     # Normalize percentage answers (e.g. 12.0 -> 0.12)
     if answer and _try_parse_float(answer) is not None:
@@ -485,7 +514,9 @@ def generate_answer(
             "generation.prompt_template": prompt_template_name or "default",
         })
 
-    context_text = "\n\n".join(contexts)
+    context_text = format_contexts(
+        contexts, numbered=_template_flag(prompt_template_name, "number_contexts"),
+    )
     messages = [
         SystemMessage(content=system_prompt),
         HumanMessage(content=human_template.format(context=context_text, question=question)),

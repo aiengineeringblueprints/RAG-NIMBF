@@ -439,3 +439,58 @@ class TestGenerateAnswer:
         assert all(d <= 120 for d in delays)  # capped
         assert delays[0] == 10 and delays[1] == 20 and delays[2] == 40
         assert sum(delays) >= 510  # ~8.5 min retry window, covers a backend restart
+
+
+class TestTemplateDrivenGeneration:
+    @staticmethod
+    def _llm(content: str) -> MagicMock:
+        mock_llm = MagicMock()
+        mock_llm.stream.return_value = iter(
+            _mock_stream_chunks(content, usage={"output_tokens": 5})
+        )
+        return mock_llm
+
+    @patch("benchmark.generation.get_gpu_usage", return_value=None)
+    def test_cot_extracts_final_line(self, mock_gpu):
+        llm = self._llm("The context says Williams composed it.\nFINAL: John Williams.")
+        result = generate_answer(llm, "Who?", ["ctx"], prompt_template_name="cot")
+        assert result.answer == "John Williams."
+
+    @patch("benchmark.generation.get_gpu_usage", return_value=None)
+    def test_cot_final_line_survives_full_strip(self, mock_gpu):
+        llm = self._llm("To answer this, look at the score credits.\nFINAL: John Williams.")
+        result = generate_answer(
+            llm, "Who?", ["ctx"], strip_mode="full", value_fallback=False,
+            prompt_template_name="cot",
+        )
+        assert result.answer == "John Williams."
+
+    @patch("benchmark.generation.get_gpu_usage", return_value=None)
+    def test_cited_numbers_contexts_in_prompt(self, mock_gpu):
+        llm = self._llm("John Williams [2].")
+        generate_answer(llm, "Who?", ["alpha", "beta"], prompt_template_name="cited")
+        human = llm.stream.call_args[0][0][1].content
+        assert "[1] alpha\n\n[2] beta" in human
+
+    @patch("benchmark.generation.get_gpu_usage", return_value=None)
+    def test_cited_strips_citation_markers(self, mock_gpu):
+        llm = self._llm("John Williams composed it [1][2], see also [3, 4].")
+        result = generate_answer(llm, "Who?", ["a", "b"], prompt_template_name="cited")
+        assert result.answer == "John Williams composed it, see also."
+
+    @patch("benchmark.generation.get_gpu_usage", return_value=None)
+    def test_chain_of_note_numbers_and_extracts_final(self, mock_gpu):
+        llm = self._llm("Note [1]: irrelevant\nNote [2]: Williams.\nFINAL: John Williams.")
+        result = generate_answer(
+            llm, "Who?", ["alpha", "beta"], prompt_template_name="chain_of_note",
+        )
+        assert "[1] alpha" in llm.stream.call_args[0][0][1].content
+        assert result.answer == "John Williams."
+
+    @patch("benchmark.generation.get_gpu_usage", return_value=None)
+    def test_unnamed_template_keeps_plain_contexts(self, mock_gpu):
+        llm = self._llm("x")
+        generate_answer(llm, "Who?", ["alpha", "beta"])
+        human = llm.stream.call_args[0][0][1].content
+        assert "alpha\n\nbeta" in human
+        assert "[1]" not in human

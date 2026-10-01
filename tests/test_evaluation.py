@@ -22,6 +22,35 @@ class TestEvaluateResultsEmpty:
         assert result.per_sample_scores == []
 
 
+class TestEvaluateResultsMetricSet:
+    @patch("benchmark.evaluation.LangchainEmbeddingsWrapper")
+    @patch("benchmark.evaluation.get_embedding_model")
+    @patch("benchmark.evaluation.LangchainLLMWrapper")
+    @patch("benchmark.evaluation.get_chat_model")
+    @patch("benchmark.evaluation.evaluate")
+    def test_all_six_ragas_metrics_are_evaluated(self, mock_evaluate, *_mocks):
+        mock_result = MagicMock()
+        mock_result.scores = [{"faithfulness": 0.9}]
+        mock_evaluate.return_value = mock_result
+
+        evaluate_results(
+            questions=["q1"],
+            ground_truths=["gt1"],
+            answers=["a1"],
+            contexts=[["ctx1"]],
+        )
+
+        metric_names = {m.name for m in mock_evaluate.call_args[1]["metrics"]}
+        assert metric_names == {
+            "faithfulness",
+            "answer_relevancy",
+            "answer_correctness",
+            "context_precision",
+            "context_recall",
+            "semantic_similarity",
+        }
+
+
 class TestEvaluateResultsModelInit:
     """Test that provider routing works during critic model initialization."""
 
