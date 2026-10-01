@@ -138,17 +138,15 @@ def evaluate_results(
             samples_with_valid_scores={},
         )
 
-    # Keep the default RAGAS set intentionally small:
-    # - faithfulness: existing groundedness judge
-    # - context_recall: useful retrieval signal; avoids per-context precision calls
-    # - semantic_similarity: embedding-only answer/reference similarity
-    #
-    # Deliberately not enabled by default:
+    # Full RAGAS set. Cost notes for critic-LLM budgeting:
     # - answer_relevancy: generates multiple questions per answer (strictness)
     # - answer_correctness: combines LLM factuality judging with similarity
     # - context_precision: scales LLM judging with the number of retrieved contexts
     metrics = [
         faithfulness,
+        answer_relevancy,
+        answer_correctness,
+        context_precision,
         context_recall,
         SemanticSimilarity(),
     ]

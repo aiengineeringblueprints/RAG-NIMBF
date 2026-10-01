@@ -192,8 +192,12 @@ Concrete adapters:
   TTFT and collects usage metadata + `reasoning_content`. Answer post-processing
   (`_postprocess_answer`, generation.py:425): think-tag stripping (modes
   `full|tags_only|off`), thinking-heuristic detection, concise fallback extraction,
-  `finqa` final-value extraction, percentage normalization. Prompt templates live in
-  `benchmark/prompt_templates/` (`concise`, `detailed`, `finqa`).
+  `FINAL:` line extraction (templates with `final_answer_line`), citation-marker
+  stripping, percentage normalization. Prompt templates live in
+  `benchmark/prompt_templates/` (`concise`, `detailed`, `finqa`, `minimal`,
+  `no_context`, `cot`, `cited`, `abstain_strict`, `question_first`, `chain_of_note`);
+  their `final_answer_line` / `number_contexts` / `strip_citations` flags drive
+  context formatting and post-processing.
 
 ---
 

@@ -32,4 +32,5 @@ FINQA = PromptTemplate(
     name="finqa",
     system_prompt=SYSTEM_PROMPT,
     human_template=HUMAN_TEMPLATE,
+    final_answer_line=True,
 )
