@@ -1,0 +1,14 @@
+{
+  "configs": {
+    "recursive_cs500_co50_nomic-embed-text:latest_qwen3.8-27b_concise_k12": {
+      "status": "completed",
+      "started_at": "2026-10-01T08:58:38.250218+00:00",
+      "completed_at": "2026-10-01T09:38:55.599789+00:00"
+    },
+    "recursive_cs500_co50_nomic-embed-text:latest_qwen3.8-27b_detailed_k12": {
+      "status": "completed",
+      "started_at": "2026-10-01T09:38:55.775341+00:00",
+      "completed_at": "2026-10-01T10:24:46.125486+00:00"
+    }
+  }
+}
