@@ -999,3 +999,66 @@ def test_benchmark_stage_parsing_requires_parser():
         benchmark_stage="parsing", parser_adapter="http"
     )
     assert validate_benchmark_config(cfg).benchmark_stage == "parsing"
+
+
+# ---------------------------------------------------------------------------
+# Critic runtime knobs (thinking control, RAGAS concurrency/retries)
+# ---------------------------------------------------------------------------
+
+class TestCriticRuntimeConfig:
+    def test_defaults_keep_previous_behaviour(self):
+        cfg = _make_config()
+        assert cfg.eval_critic_thinking_control == "chat_template_kwargs"
+        assert cfg.eval_critic_max_workers == 1
+        assert cfg.eval_critic_max_retries == 2
+
+    def test_invalid_thinking_control_rejected(self):
+        cfg = _make_config(eval_critic_thinking_control="bogus")
+        with pytest.raises(ValueError, match="eval_critic_thinking_control"):
+            validate_benchmark_config(cfg)
+
+    def test_zero_workers_rejected(self):
+        cfg = _make_config(eval_critic_max_workers=0)
+        with pytest.raises(ValueError, match="eval_critic_max_workers"):
+            validate_benchmark_config(cfg)
+
+    def test_negative_retries_rejected(self):
+        cfg = _make_config(eval_critic_max_retries=-1)
+        with pytest.raises(ValueError, match="eval_critic_max_retries"):
+            validate_benchmark_config(cfg)
+
+    @patch.dict(os.environ, {
+        "LLM_MODELS": "gemma3:4b",
+        "EMBEDDING_MODELS": "nomic-embed-text:latest",
+        "CHUNK_SIZES": "1000",
+        "CHUNK_OVERLAPS": "200",
+        "CHUNKING_STRATEGIES": "recursive",
+        "EVAL_CRITIC_THINKING_CONTROL": "reasoning_effort_low",
+        "EVAL_CRITIC_MAX_WORKERS": "8",
+        "EVAL_CRITIC_MAX_RETRIES": "5",
+    }, clear=False)
+    def test_env_fallback(self):
+        cfg = get_all_combinations()[0]
+        assert cfg.eval_critic_thinking_control == "reasoning_effort_low"
+        assert cfg.eval_critic_max_workers == 8
+        assert cfg.eval_critic_max_retries == 5
+
+    def test_manifest_settings_coerce_strings(self):
+        from benchmark.orchestration.matrix import ExperimentSpec, build_configs_from_spec
+
+        spec = ExperimentSpec(
+            name="hosted-critic",
+            dataset={},
+            matrix={},
+            settings={
+                "eval_critic_thinking_control": "reasoning_effort_low",
+                "eval_critic_max_workers": "8",
+                "eval_critic_max_retries": "5",
+            },
+        )
+
+        cfg = build_configs_from_spec(spec, base_configs=[_make_config()])[0]
+
+        assert cfg.eval_critic_thinking_control == "reasoning_effort_low"
+        assert cfg.eval_critic_max_workers == 8
+        assert cfg.eval_critic_max_retries == 5

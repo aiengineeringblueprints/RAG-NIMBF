@@ -340,6 +340,8 @@ def _coerce_field_value(key: str, value: Any) -> Any:
         "max_new_tokens",
         "dataset_sample_size",
         "eval_critic_max_tokens",
+        "eval_critic_max_workers",
+        "eval_critic_max_retries",
         "semantic_breakpoint_amount",
         "llm_performance_call_counts",
         "mcp_max_agent_rounds",

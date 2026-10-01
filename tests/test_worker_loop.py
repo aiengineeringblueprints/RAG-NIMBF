@@ -249,3 +249,59 @@ def test_worker_resume_skips_completed_configs(tmp_path, fake_tracking, stubbed_
     assert _StubAdapter.instances == 1  # no adapter was re-prepared
     progress = json.loads((run_dir / "progress.json").read_text(encoding="utf-8"))
     assert progress["configs"][configs[0].name]["status"] == "completed"
+
+
+def test_worker_writes_benchmark_json_per_config_as_soon_as_it_finishes(
+    tmp_path, fake_tracking, stubbed_data, monkeypatch
+):
+    import benchmark.orchestration.worker as worker_module
+
+    spec = ExperimentSpec(
+        name="worker-loop",
+        dataset={},
+        settings={
+            "rag_system_adapter": STUB_ADAPTER_NAME,
+            "ragas_enabled": False,
+            "custom_metrics_enabled": False,
+        },
+        matrix={"retrieval_top_k": [3, 5]},
+    )
+    configs = build_configs_from_spec(spec)
+    assert len(configs) == 2
+    run_dir = tmp_path / "run1"
+
+    def path_for(config):
+        safe_name = config.name.replace(":", "_").replace("/", "_")
+        return run_dir / "configs" / f"{safe_name}.json"
+
+    seen_before_second: dict[str, bool] = {}
+    real_run_single = worker_module.run_single_benchmark
+
+    def spying_run_single(config, *args, **kwargs):
+        if config.name == configs[1].name:
+            seen_before_second["first"] = path_for(configs[0]).exists()
+        return real_run_single(config, *args, **kwargs)
+
+    monkeypatch.setattr(worker_module, "run_single_benchmark", spying_run_single)
+
+    ExperimentWorker(
+        configs, WorkerOptions(run_dir=run_dir, experiment_name="worker-loop")
+    ).run()
+
+    # First config's JSON existed before the second config started.
+    assert seen_before_second == {"first": True}
+
+    for config in configs:
+        report = json.loads(path_for(config).read_text(encoding="utf-8"))
+        assert report["num_configs"] == 1
+        assert [r["config_name"] for r in report["results"]] == [config.name]
+        assert report["results"][0]["per_sample"][0]["answer"] == (
+            "stub answer to: Where is the Eiffel Tower?"
+        )
+
+    progress = json.loads((run_dir / "progress.json").read_text(encoding="utf-8"))
+    for config in configs:
+        assert progress["configs"][config.name]["result_path"] == str(path_for(config))
+
+    # Aggregate report at the end is still produced.
+    assert len(list(run_dir.glob("benchmark_*.json"))) == 1

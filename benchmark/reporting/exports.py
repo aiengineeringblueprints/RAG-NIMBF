@@ -103,13 +103,9 @@ def _result_to_dict(r: BenchmarkResultExtended) -> dict:
     return d
 
 
-def save_json_report(run: BenchmarkRun, results_dir: Path) -> Path:
-    results_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = run.timestamp
-    filepath = results_dir / f"benchmark_{timestamp}.json"
-
-    output = {
-        "timestamp": timestamp,
+def _run_to_dict(run: BenchmarkRun) -> dict:
+    return {
+        "timestamp": run.timestamp,
         "num_configs": len(run.results),
         "dataset": {
             "name": run.dataset_name,
@@ -120,7 +116,17 @@ def save_json_report(run: BenchmarkRun, results_dir: Path) -> Path:
         "results": [_result_to_dict(r) for r in run.results],
     }
 
-    filepath.write_text(json.dumps(output, indent=2, default=str))
+
+def save_json_report(run: BenchmarkRun, results_dir: Path) -> Path:
+    results_dir.mkdir(parents=True, exist_ok=True)
+    filepath = results_dir / f"benchmark_{run.timestamp}.json"
+    return write_json_report(run, filepath)
+
+
+def write_json_report(run: BenchmarkRun, filepath: Path) -> Path:
+    """Write ``run`` in the benchmark JSON schema to an explicit path."""
+    filepath.parent.mkdir(parents=True, exist_ok=True)
+    filepath.write_text(json.dumps(_run_to_dict(run), indent=2, default=str))
     return filepath
 
 

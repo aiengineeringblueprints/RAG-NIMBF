@@ -10,7 +10,7 @@ from typing import cast
 from dotenv import load_dotenv
 
 from benchmark.generation import AnswerStripMode
-from benchmark.providers import parse_model_id
+from benchmark.providers import THINKING_CONTROLS, parse_model_id
 
 
 def _parse_list(value: str) -> list[str]:
@@ -68,6 +68,12 @@ class BenchmarkConfig:
     eval_critic_embedding: str
     custom_metrics_bert_model: str | None = None
     dataset_path: str | None = None
+    # Critic runtime: how reasoning is suppressed on OpenAI-compatible critics
+    # (see benchmark.providers.THINKING_CONTROLS) and RAGAS concurrency/retries.
+    # Defaults suit a local, serial critic; hosted endpoints can go wider.
+    eval_critic_thinking_control: str = "chat_template_kwargs"
+    eval_critic_max_workers: int = 1
+    eval_critic_max_retries: int = 2
     dataset_corpus_path: str | None = None
     dataset_question_field: str = "question"
     dataset_ground_truth_field: str = "ground_truth"
@@ -340,6 +346,15 @@ class BenchmarkConfig:
 
 def validate_benchmark_config(config: BenchmarkConfig) -> BenchmarkConfig:
     """Validate a concrete config after env, YAML, or tracker overrides."""
+    if config.eval_critic_thinking_control not in THINKING_CONTROLS:
+        raise ValueError(
+            "eval_critic_thinking_control must be one of: "
+            + ", ".join(THINKING_CONTROLS)
+        )
+    if config.eval_critic_max_workers <= 0:
+        raise ValueError("eval_critic_max_workers must be positive")
+    if config.eval_critic_max_retries < 0:
+        raise ValueError("eval_critic_max_retries must be non-negative")
     if config.benchmark_stage not in {"all", "index", "query", "retrieve", "parsing"}:
         raise ValueError("benchmark_stage must be one of: all, index, query, retrieve, parsing")
     if config.benchmark_stage == "parsing" and not config.parser_adapter and not config.parser_plugin_module:
@@ -619,6 +634,11 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
     embedding_ollama_base_url = os.getenv("EMBEDDING_OLLAMA_BASE_URL") or None
     embedding_ollama_api_key = os.getenv("EMBEDDING_OLLAMA_API_KEY") or None
     eval_critic_max_tokens = int(os.getenv("EVAL_CRITIC_MAX_TOKENS", "4096"))
+    eval_critic_thinking_control = (
+        os.getenv("EVAL_CRITIC_THINKING_CONTROL", "chat_template_kwargs").strip().lower()
+    )
+    eval_critic_max_workers = int(os.getenv("EVAL_CRITIC_MAX_WORKERS", "1"))
+    eval_critic_max_retries = int(os.getenv("EVAL_CRITIC_MAX_RETRIES", "2"))
 
     # Prompt templates
     prompt_templates = _parse_list(os.getenv("PROMPT_TEMPLATES", "concise"))
@@ -1039,6 +1059,9 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
                     embedding_ollama_base_url=embedding_ollama_base_url,
                     embedding_ollama_api_key=embedding_ollama_api_key,
                     eval_critic_max_tokens=eval_critic_max_tokens,
+                    eval_critic_thinking_control=eval_critic_thinking_control,
+                    eval_critic_max_workers=eval_critic_max_workers,
+                    eval_critic_max_retries=eval_critic_max_retries,
                     dataset_name=dataset_name,
                     dataset_subset=dataset_subset,
                     dataset_sample_size=dataset_sample_size,

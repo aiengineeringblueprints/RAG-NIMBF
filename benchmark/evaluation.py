@@ -51,6 +51,9 @@ def evaluate_results(
     critic_openai_compat_base_url: str | None = None,
     critic_openai_compat_api_key: str | None = None,
     critic_max_tokens: int = 10000,
+    critic_thinking_control: str = "chat_template_kwargs",
+    critic_max_workers: int = 1,
+    critic_max_retries: int = 2,
 ) -> EvaluationResult:
     if not questions:
         return EvaluationResult(
@@ -100,6 +103,7 @@ def evaluate_results(
             api_key=critic_key,
             max_tokens=critic_max_tokens,
             temperature=0.0,
+            thinking_control=critic_thinking_control,
         )
         critic_counter = _TokenCountingChatModel(critic_chat)
         critic_llm = LangchainLLMWrapper(wrap_for_ragas(critic_counter))
@@ -151,9 +155,14 @@ def evaluate_results(
         SemanticSimilarity(),
     ]
 
-    # max_workers=1: local models process requests serially anyway.
-    # More workers just cause queuing and timeouts. Raise timeout instead.
-    run_config = RunConfig(timeout=600, max_retries=2, max_wait=60, max_workers=1)
+    # Default max_workers=1: local models process requests serially anyway and
+    # more workers just cause queuing and timeouts. Hosted critics can go wider.
+    run_config = RunConfig(
+        timeout=600,
+        max_retries=critic_max_retries,
+        max_wait=60,
+        max_workers=critic_max_workers,
+    )
 
     try:
         result = evaluate(

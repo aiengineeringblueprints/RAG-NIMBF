@@ -101,6 +101,46 @@ class TestGetChatModel:
         )
         assert model.model_name == "test-model"
 
+    def test_openai_default_disables_thinking_via_chat_template_kwargs(self):
+        model = get_chat_model(
+            provider="openai",
+            model_name="Qwen/Qwen3-32B-AWQ",
+            base_url="https://example.com/v1",
+        )
+        assert model.extra_body == {"chat_template_kwargs": {"enable_thinking": False}}
+        assert model.reasoning_effort is None
+
+    def test_openai_reasoning_effort_low_thinking_control(self):
+        """GLM via LiteLLM leaks reasoning into content with enable_thinking=False;
+        reasoning_effort=low keeps content clean."""
+        model = get_chat_model(
+            provider="openai",
+            model_name="glm-5.3-flash",
+            base_url="https://example.com/v1",
+            thinking_control="reasoning_effort_low",
+        )
+        assert model.reasoning_effort == "low"
+        assert not model.extra_body
+
+    def test_openai_thinking_control_none_sends_nothing(self):
+        model = get_chat_model(
+            provider="openai",
+            model_name="glm-5.3-flash",
+            base_url="https://example.com/v1",
+            thinking_control="none",
+        )
+        assert model.reasoning_effort is None
+        assert not model.extra_body
+
+    def test_unknown_thinking_control_raises(self):
+        with pytest.raises(ValueError, match="thinking_control"):
+            get_chat_model(
+                provider="openai",
+                model_name="m",
+                base_url="https://example.com/v1",
+                thinking_control="bogus",
+            )
+
     def test_unknown_provider_raises(self):
         with pytest.raises(ValueError, match="Unknown provider 'huggingface'"):
             get_chat_model(

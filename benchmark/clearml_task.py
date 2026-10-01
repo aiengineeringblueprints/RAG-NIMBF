@@ -194,6 +194,8 @@ def _coerce_config_value(key: str, value: Any) -> Any:
         "retrieval_fetch_k",
         "max_new_tokens",
         "eval_critic_max_tokens",
+        "eval_critic_max_workers",
+        "eval_critic_max_retries",
         "dataset_sample_size",
         "reranker_top_k",
         "semantic_breakpoint_amount",
