@@ -116,6 +116,9 @@ def get_chat_model(
             max_tokens=max_tokens,
             temperature=temperature,
             stream_usage=True,
+            # LiteLLM proxies emit bursts of 500 "Connection error" during
+            # upstream hiccups; the SDK default (2) gives up before they clear.
+            max_retries=6,
         )
         # How to suppress chain-of-thought differs per backend. vLLM/SGLang
         # honor chat_template_kwargs; GLM behind LiteLLM ignores it and dumps

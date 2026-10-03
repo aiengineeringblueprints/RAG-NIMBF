@@ -51,6 +51,42 @@ class TestEvaluateResultsMetricSet:
         }
 
 
+class TestEvaluateResultsMetricIsolation:
+    @patch("benchmark.evaluation.LangchainEmbeddingsWrapper")
+    @patch("benchmark.evaluation.get_embedding_model")
+    @patch("benchmark.evaluation.LangchainLLMWrapper")
+    @patch("benchmark.evaluation.get_chat_model")
+    @patch("benchmark.evaluation.evaluate")
+    def test_each_call_gets_metrics_without_a_previous_critic(
+        self, mock_evaluate, *_mocks
+    ):
+        """RAGAS only binds the critic to metrics whose llm is None. Reused
+        metric instances keep the first config's critic in multi-config runs."""
+
+        def bind_like_ragas(**kwargs):
+            for m in kwargs["metrics"]:
+                if hasattr(m, "llm"):
+                    m.llm = kwargs["llm"]
+            return MagicMock(scores=[{"faithfulness": 0.9}])
+
+        mock_evaluate.side_effect = bind_like_ragas
+        call = dict(questions=["q1"], ground_truths=["gt1"], answers=["a1"], contexts=[["ctx1"]])
+
+        evaluate_results(**call)
+        second_metrics_before = []
+
+        def capture(**kwargs):
+            second_metrics_before.extend(
+                m.name for m in kwargs["metrics"] if getattr(m, "llm", None) is not None
+            )
+            return bind_like_ragas(**kwargs)
+
+        mock_evaluate.side_effect = capture
+        evaluate_results(**call)
+
+        assert second_metrics_before == []
+
+
 class TestEvaluateResultsCriticRuntime:
     @patch("benchmark.evaluation.LangchainEmbeddingsWrapper")
     @patch("benchmark.evaluation.get_embedding_model")

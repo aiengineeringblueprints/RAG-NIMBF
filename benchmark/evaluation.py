@@ -6,11 +6,11 @@ import mlflow
 from dataclasses import dataclass, field
 
 from ragas import evaluate, EvaluationDataset, SingleTurnSample, RunConfig
-from ragas.metrics._answer_relevance import answer_relevancy
-from ragas.metrics._answer_correctness import answer_correctness
-from ragas.metrics._context_precision import context_precision
-from ragas.metrics._context_recall import context_recall
-from ragas.metrics._faithfulness import faithfulness
+from ragas.metrics._answer_relevance import AnswerRelevancy
+from ragas.metrics._answer_correctness import AnswerCorrectness
+from ragas.metrics._context_precision import ContextPrecision
+from ragas.metrics._context_recall import ContextRecall
+from ragas.metrics._faithfulness import Faithfulness
 from ragas.metrics import SemanticSimilarity
 from ragas.llms import LangchainLLMWrapper
 from ragas.embeddings import LangchainEmbeddingsWrapper
@@ -146,12 +146,15 @@ def evaluate_results(
     # - answer_relevancy: generates multiple questions per answer (strictness)
     # - answer_correctness: combines LLM factuality judging with similarity
     # - context_precision: scales LLM judging with the number of retrieved contexts
+    # Fresh instances per call: RAGAS only binds the critic to metrics whose
+    # llm is None, so the module-level singletons would keep the first
+    # config's critic (and its token counter) for every later config.
     metrics = [
-        faithfulness,
-        answer_relevancy,
-        answer_correctness,
-        context_precision,
-        context_recall,
+        Faithfulness(),
+        AnswerRelevancy(),
+        AnswerCorrectness(),
+        ContextPrecision(),
+        ContextRecall(),
         SemanticSimilarity(),
     ]
 
