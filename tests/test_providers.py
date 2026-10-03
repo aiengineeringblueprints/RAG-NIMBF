@@ -101,6 +101,16 @@ class TestGetChatModel:
         )
         assert model.model_name == "test-model"
 
+    def test_openai_client_retries_transient_proxy_errors(self):
+        """LiteLLM proxies return short bursts of 500 'Connection error';
+        the client's default of 2 retries gives up before they clear."""
+        model = get_chat_model(
+            provider="openai",
+            model_name="deepseek-v4-flash",
+            base_url="https://example.com/v1",
+        )
+        assert model.max_retries >= 6
+
     def test_openai_default_disables_thinking_via_chat_template_kwargs(self):
         model = get_chat_model(
             provider="openai",
