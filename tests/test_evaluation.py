@@ -350,3 +350,105 @@ class TestCriticTokenFields:
         assert result.critic_input_tokens == 0
         assert result.critic_output_tokens == 0
         assert result.critic_total_tokens == 0
+
+
+def _llm_result(finish_reason, content="partial", output_tokens=16384):
+    from langchain_core.messages import AIMessage
+    from langchain_core.outputs import ChatGeneration, LLMResult
+
+    message = AIMessage(
+        content=content,
+        response_metadata={"finish_reason": finish_reason},
+        usage_metadata={
+            "input_tokens": 100,
+            "output_tokens": output_tokens,
+            "total_tokens": 100 + output_tokens,
+        },
+    )
+    return LLMResult(
+        generations=[[ChatGeneration(
+            message=message,
+            generation_info={"finish_reason": finish_reason},
+        )]]
+    )
+
+
+class TestCriticIsFinished:
+    def test_stop_counts_as_finished(self):
+        from benchmark.evaluation import critic_is_finished
+
+        assert critic_is_finished(_llm_result("stop")) is True
+
+    def test_truncated_response_is_unfinished_and_logs_why(self, caplog):
+        from benchmark.evaluation import critic_is_finished
+
+        with caplog.at_level("WARNING", logger="benchmark.evaluation"):
+            finished = critic_is_finished(
+                _llm_result("length", content="The answer is the answer is")
+            )
+
+        assert finished is False
+        assert "finish_reason=length" in caplog.text
+        assert "output_tokens=16384" in caplog.text
+        assert "The answer is the answer is" in caplog.text
+
+    @patch("benchmark.evaluation.LangchainEmbeddingsWrapper")
+    @patch("benchmark.evaluation.get_embedding_model")
+    @patch("benchmark.evaluation.LangchainLLMWrapper")
+    @patch("benchmark.evaluation.get_chat_model")
+    @patch("benchmark.evaluation.evaluate")
+    def test_critic_wrapper_uses_logging_finish_check(
+        self, mock_evaluate, _chat, mock_llm_wrapper, *_mocks
+    ):
+        from benchmark.evaluation import critic_is_finished
+
+        mock_evaluate.return_value = MagicMock(scores=[{"faithfulness": 0.9}])
+
+        evaluate_results(
+            questions=["q1"], ground_truths=["gt1"],
+            answers=["a1"], contexts=[["ctx1"]],
+        )
+
+        assert (
+            mock_llm_wrapper.call_args.kwargs["is_finished_parser"]
+            is critic_is_finished
+        )
+
+
+class TestCriticOutputFix:
+    """RAGAS re-prompts the critic to fix unparsable JSON and expects the
+    fix wrapped as ``{"text": "<json>"}``. deepseek returns the fixed JSON
+    object directly, which RAGAS used to reject as an invalid ``StringIO``.
+    """
+
+    def test_bare_fixed_json_from_critic_is_accepted(self):
+        import asyncio
+
+        from langchain_core.language_models.fake_chat_models import (
+            FakeListChatModel,
+        )
+        from pydantic import BaseModel
+        from ragas.llms import LangchainLLMWrapper
+        from ragas.prompt.pydantic_prompt import RagasOutputParser
+        from langchain_core.prompt_values import StringPromptValue
+
+        import benchmark.evaluation  # noqa: F401  (installs the fix)
+
+        class Statements(BaseModel):
+            statements: list[str]
+
+        critic = LangchainLLMWrapper(FakeListChatModel(
+            responses=['{"statements": ["Open is now called Sky Active."]}']
+        ))
+
+        parsed = asyncio.run(
+            RagasOutputParser(pydantic_object=Statements).parse_output_string(
+                output_string="Statements: Open is now called Sky Active.",
+                prompt_value=StringPromptValue(text="Break the answer into statements."),
+                llm=critic,
+                callbacks=None,
+                retries_left=1,
+            )
+        )
+
+        assert parsed == Statements(statements=["Open is now called Sky Active."])
