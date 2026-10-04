@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import json
 import logging
 import math
 import mlflow
 from dataclasses import dataclass, field
+
+from langchain_core.outputs import LLMResult
+from pydantic import model_validator
 
 from ragas import evaluate, EvaluationDataset, SingleTurnSample, RunConfig
 from ragas.metrics._answer_relevance import AnswerRelevancy
@@ -14,11 +18,68 @@ from ragas.metrics._faithfulness import Faithfulness
 from ragas.metrics import SemanticSimilarity
 from ragas.llms import LangchainLLMWrapper
 from ragas.embeddings import LangchainEmbeddingsWrapper
+from ragas.prompt import pydantic_prompt
+from ragas.prompt.base import StringIO
+from ragas.prompt.pydantic_prompt import FixOutputFormat
 
 from benchmark.providers import parse_model_id, get_chat_model, wrap_for_ragas, _TokenCountingChatModel
 from benchmark.embedding import get_embedding_model
 
 logger = logging.getLogger(__name__)
+
+
+class _LenientStringIO(StringIO):
+    """``StringIO`` that also accepts the fixed JSON without the wrapper.
+
+    RAGAS asks the critic to repair unparsable output and expects
+    ``{"text": "<json>"}``; deepseek answers with the repaired JSON itself.
+    """
+
+    @model_validator(mode="before")
+    @classmethod
+    def _wrap_bare_json(cls, data):
+        if isinstance(data, dict) and "text" in data:
+            return data
+        return {"text": json.dumps(data)}
+
+
+class _LenientFixOutputFormat(FixOutputFormat):
+    output_model = _LenientStringIO
+
+
+# RagasOutputParser looks this global up at call time.
+pydantic_prompt.fix_output_format_prompt = _LenientFixOutputFormat()
+
+# Same values RAGAS' default check accepts (OpenAI, Vertex AI, WatsonX).
+_FINISHED_REASONS = {"stop", "STOP", "MAX_TOKENS", "eos_token", "end_turn"}
+
+
+def critic_is_finished(response: LLMResult) -> bool:
+    """RAGAS finish check that logs why a critic response was rejected.
+
+    RAGAS raises a bare ``LLMDidNotFinishException`` without the finish
+    reason, which makes truncation (``length``) indistinguishable from
+    proxy quirks (``content_filter``, ``tool_calls``, ...).
+    """
+    finished = True
+    for generation in (g for gens in response.generations for g in gens):
+        message = getattr(generation, "message", None)
+        metadata = getattr(message, "response_metadata", None) or {}
+        reason = (generation.generation_info or {}).get("finish_reason") or (
+            metadata.get("finish_reason") or metadata.get("stop_reason")
+        )
+        if reason is None or reason in _FINISHED_REASONS:
+            continue
+        finished = False
+        usage = getattr(message, "usage_metadata", None) or {}
+        logger.warning(
+            "Critic response not finished: finish_reason=%s output_tokens=%s "
+            "content_start=%r",
+            reason,
+            usage.get("output_tokens"),
+            str(generation.text)[:300],
+        )
+    return finished
 
 
 @dataclass(frozen=True)
@@ -106,7 +167,10 @@ def evaluate_results(
             thinking_control=critic_thinking_control,
         )
         critic_counter = _TokenCountingChatModel(critic_chat)
-        critic_llm = LangchainLLMWrapper(wrap_for_ragas(critic_counter))
+        critic_llm = LangchainLLMWrapper(
+            wrap_for_ragas(critic_counter),
+            is_finished_parser=critic_is_finished,
+        )
 
         # Resolve critic embeddings via factory
         emb_provider, emb_model_name = parse_model_id(effective_critic_embedding)
