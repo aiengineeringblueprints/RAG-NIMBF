@@ -113,6 +113,7 @@ def evaluate_results(
     critic_openai_compat_api_key: str | None = None,
     critic_max_tokens: int = 10000,
     critic_thinking_control: str = "chat_template_kwargs",
+    critic_temperature: float | None = 0.0,
     critic_max_workers: int = 1,
     critic_max_retries: int = 2,
 ) -> EvaluationResult:
@@ -163,7 +164,7 @@ def evaluate_results(
             base_url=critic_base,
             api_key=critic_key,
             max_tokens=critic_max_tokens,
-            temperature=0.0,
+            temperature=critic_temperature,
             thinking_control=critic_thinking_control,
         )
         critic_counter = _TokenCountingChatModel(critic_chat)

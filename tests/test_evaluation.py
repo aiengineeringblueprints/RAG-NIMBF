@@ -132,9 +132,31 @@ class TestEvaluateResultsCriticRuntime:
         )
 
         assert mock_chat.call_args[1]["thinking_control"] == "chat_template_kwargs"
+        assert mock_chat.call_args[1]["temperature"] == 0.0
         run_config = mock_evaluate.call_args[1]["run_config"]
         assert run_config.max_workers == 1
         assert run_config.max_retries == 2
+
+    @patch("benchmark.evaluation.LangchainEmbeddingsWrapper")
+    @patch("benchmark.evaluation.get_embedding_model")
+    @patch("benchmark.evaluation.LangchainLLMWrapper")
+    @patch("benchmark.evaluation.get_chat_model")
+    @patch("benchmark.evaluation.evaluate")
+    def test_critic_temperature_none_reaches_model(
+        self, mock_evaluate, mock_chat, *_mocks
+    ):
+        mock_evaluate.return_value = MagicMock(scores=[{"faithfulness": 0.9}])
+
+        evaluate_results(
+            questions=["q1"],
+            ground_truths=["gt1"],
+            answers=["a1"],
+            contexts=[["ctx1"]],
+            critic_llm_model="openai:claude-opus-5-5",
+            critic_temperature=None,
+        )
+
+        assert mock_chat.call_args[1]["temperature"] is None
 
 
 class TestEvaluateResultsModelInit:

@@ -8,7 +8,12 @@ from itertools import product
 from pathlib import Path
 from typing import Any
 
-from config import BenchmarkConfig, get_env_combinations, validate_benchmark_config
+from config import (
+    BenchmarkConfig,
+    get_env_combinations,
+    parse_optional_float,
+    validate_benchmark_config,
+)
 from benchmark.providers import parse_model_id
 
 
@@ -315,6 +320,8 @@ def _updates_for_combo(combo: dict[str, Any]) -> dict[str, Any]:
 
 
 def _coerce_field_value(key: str, value: Any) -> Any:
+    if key == "eval_critic_temperature":
+        return parse_optional_float(value)
     if key in {
         "rag_managed_options_json",
         "ingestion_options_json",

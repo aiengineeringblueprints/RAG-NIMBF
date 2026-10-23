@@ -466,6 +466,7 @@ templates, vector backend, and evaluator settings belong in `experiments/*.yaml`
 | `EVAL_CRITIC_LLM` | Critic model used for RAGAS evaluation. |
 | `EVAL_CRITIC_EMBEDDING` | Embedding model used by evaluator metrics. |
 | `EVAL_CRITIC_THINKING_CONTROL` | How reasoning is disabled on an OpenAI-compatible critic: `chat_template_kwargs` (default, vLLM/SGLang), `reasoning_effort_low` (e.g. GLM behind LiteLLM, which leaks reasoning into the answer otherwise), or `none`. |
+| `EVAL_CRITIC_TEMPERATURE` | Critic sampling temperature; defaults to `0.0`. Set to `none` to omit it from requests for models that reject it (e.g. Claude Opus 5.5). |
 | `EVAL_CRITIC_MAX_WORKERS` | Parallel RAGAS critic jobs; defaults to `1` (local models). Raise for hosted endpoints. |
 | `EVAL_CRITIC_MAX_RETRIES` | RAGAS retries per failed critic call (e.g. proxy 500s); defaults to `2`. |
 | `ELECTRICITY_PRICE_EUR_PER_KWH` | Electricity price (€/kWh) for local energy-cost estimates. Falls back to `ELECTRICITY_PRICE_USD_PER_KWH`. |

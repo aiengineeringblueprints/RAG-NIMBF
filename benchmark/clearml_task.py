@@ -201,7 +201,7 @@ def _coerce_config_value(key: str, value: Any) -> Any:
         "semantic_breakpoint_amount",
     }:
         return int(value)
-    if key in {"rag_http_timeout_seconds", "retrieval_mmr_lambda"}:
+    if key in {"rag_http_timeout_seconds", "retrieval_mmr_lambda", "eval_critic_temperature"}:
         return float(value)
     if key in {"retrieval_use_hyde", "llm_answer_value_fallback"}:
         return _to_bool(value)
