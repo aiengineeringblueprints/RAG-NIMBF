@@ -1043,6 +1043,47 @@ class TestCriticRuntimeConfig:
         assert cfg.eval_critic_max_workers == 8
         assert cfg.eval_critic_max_retries == 5
 
+    def test_critic_temperature_defaults_to_zero(self):
+        assert _make_config().eval_critic_temperature == 0.0
+
+    def test_critic_temperature_out_of_range_rejected(self):
+        cfg = _make_config(eval_critic_temperature=3.0)
+        with pytest.raises(ValueError, match="eval_critic_temperature"):
+            validate_benchmark_config(cfg)
+
+    def test_critic_temperature_none_is_valid(self):
+        cfg = _make_config(eval_critic_temperature=None)
+        assert validate_benchmark_config(cfg).eval_critic_temperature is None
+
+    @pytest.mark.parametrize("raw, expected", [("none", None), ("", None), ("0.3", 0.3)])
+    def test_critic_temperature_env_fallback(self, raw, expected):
+        env = {
+            "LLM_MODELS": "gemma3:4b",
+            "EMBEDDING_MODELS": "nomic-embed-text:latest",
+            "CHUNK_SIZES": "1000",
+            "CHUNK_OVERLAPS": "200",
+            "CHUNKING_STRATEGIES": "recursive",
+            "EVAL_CRITIC_TEMPERATURE": raw,
+        }
+        with patch.dict(os.environ, env, clear=False):
+            cfg = get_all_combinations()[0]
+        assert cfg.eval_critic_temperature == expected
+
+    @pytest.mark.parametrize("raw, expected", [(None, None), ("none", None), ("0.2", 0.2)])
+    def test_critic_temperature_manifest_setting(self, raw, expected):
+        from benchmark.orchestration.matrix import ExperimentSpec, build_configs_from_spec
+
+        spec = ExperimentSpec(
+            name="no-temp-critic",
+            dataset={},
+            matrix={},
+            settings={"eval_critic_temperature": raw},
+        )
+
+        cfg = build_configs_from_spec(spec, base_configs=[_make_config()])[0]
+
+        assert cfg.eval_critic_temperature == expected
+
     def test_manifest_settings_coerce_strings(self):
         from benchmark.orchestration.matrix import ExperimentSpec, build_configs_from_spec
 

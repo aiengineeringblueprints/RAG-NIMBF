@@ -49,7 +49,7 @@ def get_chat_model(
     base_url: str,
     api_key: str | None = None,
     max_tokens: int = 256,
-    temperature: float = 0.0,
+    temperature: float | None = 0.0,
     thinking_control: str = "chat_template_kwargs",
 ) -> BaseChatModel:
     """Create a chat model for the given provider.
@@ -67,7 +67,8 @@ def get_chat_model(
     max_tokens:
         Maximum tokens to generate.
     temperature:
-        Sampling temperature.
+        Sampling temperature. ``None`` omits the parameter from the request
+        (required by models that reject it, e.g. Claude Opus 5.5).
     thinking_control:
         OpenAI-compatible only. How reasoning is disabled: one of
         ``THINKING_CONTROLS`` (``"chat_template_kwargs"``,

@@ -17,6 +17,15 @@ def _parse_list(value: str) -> list[str]:
     return [v.strip() for v in value.split(",") if v.strip()]
 
 
+def parse_optional_float(value: object) -> float | None:
+    """Parse a float where ``None``/``""``/``"none"``/``"null"`` mean unset."""
+    if value is None:
+        return None
+    if isinstance(value, str) and value.strip().lower() in {"", "none", "null"}:
+        return None
+    return float(value)  # type: ignore[arg-type]
+
+
 def _parse_int_list(value: str, env_var_name: str) -> list[int]:
     result: list[int] = []
     for v in value.split(","):
@@ -72,6 +81,8 @@ class BenchmarkConfig:
     # (see benchmark.providers.THINKING_CONTROLS) and RAGAS concurrency/retries.
     # Defaults suit a local, serial critic; hosted endpoints can go wider.
     eval_critic_thinking_control: str = "chat_template_kwargs"
+    # None omits temperature from critic requests (models that reject it).
+    eval_critic_temperature: float | None = 0.0
     eval_critic_max_workers: int = 1
     eval_critic_max_retries: int = 2
     dataset_corpus_path: str | None = None
@@ -351,6 +362,10 @@ def validate_benchmark_config(config: BenchmarkConfig) -> BenchmarkConfig:
             "eval_critic_thinking_control must be one of: "
             + ", ".join(THINKING_CONTROLS)
         )
+    if config.eval_critic_temperature is not None and not (
+        0.0 <= config.eval_critic_temperature <= 2.0
+    ):
+        raise ValueError("eval_critic_temperature must be between 0 and 2, or null")
     if config.eval_critic_max_workers <= 0:
         raise ValueError("eval_critic_max_workers must be positive")
     if config.eval_critic_max_retries < 0:
@@ -636,6 +651,9 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
     eval_critic_max_tokens = int(os.getenv("EVAL_CRITIC_MAX_TOKENS", "4096"))
     eval_critic_thinking_control = (
         os.getenv("EVAL_CRITIC_THINKING_CONTROL", "chat_template_kwargs").strip().lower()
+    )
+    eval_critic_temperature = parse_optional_float(
+        os.getenv("EVAL_CRITIC_TEMPERATURE", "0.0")
     )
     eval_critic_max_workers = int(os.getenv("EVAL_CRITIC_MAX_WORKERS", "1"))
     eval_critic_max_retries = int(os.getenv("EVAL_CRITIC_MAX_RETRIES", "2"))
@@ -1060,6 +1078,7 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
                     embedding_ollama_api_key=embedding_ollama_api_key,
                     eval_critic_max_tokens=eval_critic_max_tokens,
                     eval_critic_thinking_control=eval_critic_thinking_control,
+                    eval_critic_temperature=eval_critic_temperature,
                     eval_critic_max_workers=eval_critic_max_workers,
                     eval_critic_max_retries=eval_critic_max_retries,
                     dataset_name=dataset_name,

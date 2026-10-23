@@ -142,6 +142,26 @@ class TestGetChatModel:
         assert model.reasoning_effort is None
         assert not model.extra_body
 
+    def test_openai_temperature_none_is_omitted_from_request(self):
+        """Some hosted models (e.g. Claude Opus 5.5) reject the temperature param."""
+        model = get_chat_model(
+            provider="openai",
+            model_name="claude-opus-5-5",
+            base_url="https://example.com/v1",
+            temperature=None,
+        )
+        payload = model._get_request_payload([("user", "hi")])
+        assert "temperature" not in payload
+
+    def test_openai_default_temperature_is_sent(self):
+        model = get_chat_model(
+            provider="openai",
+            model_name="m",
+            base_url="https://example.com/v1",
+        )
+        payload = model._get_request_payload([("user", "hi")])
+        assert payload["temperature"] == 0.0
+
     def test_unknown_thinking_control_raises(self):
         with pytest.raises(ValueError, match="thinking_control"):
             get_chat_model(
