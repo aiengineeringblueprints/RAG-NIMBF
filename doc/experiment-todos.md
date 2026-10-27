@@ -45,6 +45,23 @@ For all smoke runs: `RAGAS_ENABLED=false CUSTOM_METRICS_ENABLED=false` and a sma
 - [ ] After the first full run: check `results/runN/` exports (JSON/CSV/Markdown), plots, and MLflow run/log records.
 - [ ] Run twice into the same `--run-dir` and confirm reports reflect both configs.
 
+## 7. MCP host benchmarking (Enterprise RAG Blueprint, `enterprise_rag_mcp`)
+
+Guide: `doc/mcp-host-benchmarking.md`. Dataset: `datasets/blueprint_mcp_host/`.
+
+- [ ] Full live run of the 1000-question dataset, MCP off vs. on; pick a cheaper Blueprint model or run the MCP-off baseline on a sample (about 4–5 Blueprint LLM calls per question).
+- [ ] Repeat runs (≥ 3) and report 95 % confidence intervals for `answer_match_rate`, `call_success_rate` and `tool_selection_f1` (no CI support in the adapter metrics yet).
+- [ ] Unanswerable / false-premise category: the system should decline without calling a tool; needs a "declined" check in `benchmark/answer_match.py` (e.g. `is_refusal_answer` from `benchmark/custom_metrics.py`).
+- [ ] Error-recovery category: questions that invite a wrong first call (product name instead of SKU) and score recovery after the tool error.
+- [ ] Decoy-tool sweep: 0 / 10 / 30 irrelevant tools on the fixture server, compare tool selection and answer match (gap noted in `doc/12-mcp-in-rag-state-of-the-art.md` §13).
+- [ ] Fault-injection server: slow (timeout), failing, oversized and prompt-injecting tools; check `unavailable_rate`, `result_too_large_rate` and answer behaviour.
+- [ ] Follow-up questions through the Blueprint `chat_history` (multi-turn).
+- [ ] ToolQA adapter (Apache-2.0, github.com/night-chen/ToolQA): text corpora (Agenda, SciREX) into the RAG index, tables/graph (Flight, Coffee, Yelp, Airbnb, DBLP) as MCP tools; derive `expected_tools` per question template.
+- [ ] CRAG adapter (CC BY-NC 4.0, github.com/facebookresearch/CRAG): web pages as corpus, mock KG APIs as MCP server; non-commercial use only, time-dependent answers need patterns or an LLM judge.
+- [ ] Blueprint trace gaps (Blueprint repo): duration for failed calls, separate `timeout` status, discovery timing, round count and token usage in `mcp.events`.
+- [ ] Chunk-size sweep (256 / 512 / 1024, overlap 0 / 64) on the `blueprint_mcp_host` corpus with the internal pipeline; documents are now long enough for chunking to matter.
+- [ ] Blueprint retrieval: dense-only top-5 misses near-identical datasheets; re-run after adding hybrid/keyword search and compare `doc_*` and `mixed` categories.
+
 ## Suggested commands
 
 ```bash

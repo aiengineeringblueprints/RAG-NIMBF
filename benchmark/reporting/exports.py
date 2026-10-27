@@ -54,6 +54,9 @@ def _result_to_dict(r: BenchmarkResultExtended) -> dict:
     d["llm_performance_artifact"] = r.llm_performance_artifact
     d["llm_performance_error"] = r.llm_performance_error
     d["adapter_metrics"] = r.adapter_metrics or {}
+    d["avg_contexts_per_question"] = r.avg_contexts_per_question
+    d["max_contexts_per_question"] = r.max_contexts_per_question
+    d["avg_context_chars_per_question"] = r.avg_context_chars_per_question
 
     # Stats summary (quality metrics only)
     d["stats"] = {
@@ -174,6 +177,9 @@ def save_csv_report(
             "avg_estimated_cost_per_answer_usd": r.avg_estimated_cost_per_answer_usd,
             "llm_performance_artifact": r.llm_performance_artifact,
             "llm_performance_error": r.llm_performance_error,
+            "avg_contexts_per_question": r.avg_contexts_per_question,
+            "max_contexts_per_question": r.max_contexts_per_question,
+            "avg_context_chars_per_question": r.avg_context_chars_per_question,
         }
         if r.llm_performance_metrics:
             for key, val in r.llm_performance_metrics.items():

@@ -18,6 +18,7 @@ from typing import Any
 from benchmark.adapters.base import AdapterCapabilities, RagSystemOutput
 from benchmark.costing import estimate_cost_usd
 from benchmark.generation import extract_concise_fallback, generate_answer, get_llm
+from benchmark.mcp_host import percentile as _percentile
 from benchmark.prompt_templates import get_template
 
 logger = logging.getLogger(__name__)
@@ -155,6 +156,31 @@ def _redact_arguments(arguments: dict[str, Any]) -> dict[str, Any]:
         )
         for key, value in arguments.items()
     }
+
+
+def _tool_input_schema(tool: Any) -> dict[str, Any] | None:
+    return getattr(tool, "inputSchema", None) or getattr(tool, "input_schema", None)
+
+
+def _schema_errors(tool: Any, arguments: dict[str, Any]) -> list[str]:
+    """Validate call arguments against the tool's declared input schema.
+
+    Messages name the failing path and rule but never echo argument values,
+    so secrets cannot leak into reports.
+    """
+    schema = _tool_input_schema(tool)
+    if not schema:
+        return []
+    from jsonschema import Draft202012Validator
+
+    errors: list[str] = []
+    for error in Draft202012Validator(schema).iter_errors(arguments):
+        if error.validator in {"required", "additionalProperties"}:
+            errors.append(error.message)
+        else:
+            path = "/".join(str(part) for part in error.path) or "<root>"
+            errors.append(f"{path}: violates {error.validator!r}")
+    return errors
 
 
 def _message_text(message: Any) -> str:
@@ -544,6 +570,12 @@ class McpRagAdapter:
                     "timeout": isinstance(exc, TimeoutError)
                     or bool(getattr(exc, "timed_out", False)),
                     "partial_completion": bool(diagnostics["tool_calls"]),
+                    "failure_kind": diagnostics.get("failure_kind")
+                    or (
+                        "transport"
+                        if isinstance(exc, McpToolCallFailure)
+                        else "other"
+                    ),
                 }
             )
             logger.warning("MCP sample failed: %s", exc)
@@ -591,6 +623,7 @@ class McpRagAdapter:
         diagnostics["tool_calls"].append(provenance)
         diagnostics["retry_count"] += provenance["attempts"] - 1
         if _tool_is_error(result):
+            diagnostics["failure_kind"] = "tool_error"
             raise RuntimeError(self._tool_error_message(self.tool_name, result))
 
         payload = _result_payload(result, self.result_field)
@@ -662,6 +695,11 @@ class McpRagAdapter:
         from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 
         schemas = [self._langchain_tool_schema(tool) for tool in self._tools.values()]
+        schema_chars = len(
+            json.dumps(schemas, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        )
+        diagnostics["model_calls"] = 0
+        diagnostics["tool_schema_chars"] = 0
         model = self.llm.bind_tools(schemas)
         messages: list[Any] = [
             SystemMessage(
@@ -683,6 +721,8 @@ class McpRagAdapter:
             model_started = time.perf_counter()
             response = model.invoke(messages)
             model_seconds += time.perf_counter() - model_started
+            diagnostics["model_calls"] += 1
+            diagnostics["tool_schema_chars"] += schema_chars
             usage = _message_usage(response)
             input_tokens += usage[0]
             output_tokens += usage[1]
@@ -698,8 +738,10 @@ class McpRagAdapter:
                 name = str(tool_call.get("name", ""))
                 arguments = tool_call.get("args", {})
                 if name not in self._tools:
+                    diagnostics["failure_kind"] = "agent"
                     raise ValueError(f"LLM requested disallowed MCP tool {name!r}")
                 if not isinstance(arguments, dict):
+                    diagnostics["failure_kind"] = "agent"
                     raise ValueError(
                         f"MCP tool arguments for {name!r} must be an object"
                     )
@@ -717,6 +759,7 @@ class McpRagAdapter:
                 diagnostics["tool_calls"].append(provenance)
                 diagnostics["retry_count"] += provenance["attempts"] - 1
                 if _tool_is_error(result):
+                    diagnostics["failure_kind"] = "tool_error"
                     raise RuntimeError(self._tool_error_message(name, result))
                 raw = _serialize_result(result)
                 raw_results.append(raw)
@@ -737,6 +780,7 @@ class McpRagAdapter:
                 )
         else:
             diagnostics["partial_completion"] = bool(diagnostics["tool_calls"])
+            diagnostics["failure_kind"] = "agent"
             raise RuntimeError(
                 f"MCP agent exceeded {self.max_agent_rounds} tool rounds"
             )
@@ -778,6 +822,7 @@ class McpRagAdapter:
     ) -> tuple[Any, dict[str, Any]]:
         if self._runner is None:
             raise RuntimeError("MCP adapter has not been prepared")
+        schema_errors = _schema_errors(self._tools.get(name), arguments)
         attempt_timings: list[float] = []
         attempt_errors: list[str] = []
         timeout_attempts = 0
@@ -795,6 +840,8 @@ class McpRagAdapter:
                     "is_error": _tool_is_error(result),
                     "attempt_errors": attempt_errors,
                     "timeout_attempts": timeout_attempts,
+                    "schema_valid": not schema_errors,
+                    "schema_errors": schema_errors,
                 }
             except Exception as exc:
                 attempt_timings.append(time.perf_counter() - started)
@@ -810,6 +857,8 @@ class McpRagAdapter:
                         "is_error": True,
                         "attempt_errors": attempt_errors,
                         "timeout_attempts": timeout_attempts,
+                        "schema_valid": not schema_errors,
+                        "schema_errors": schema_errors,
                     }
                     raise McpToolCallFailure(str(exc), provenance) from exc
                 time.sleep(self.retry_backoff_seconds * (2**attempt))
@@ -821,14 +870,25 @@ class McpRagAdapter:
 
     @staticmethod
     def _langchain_tool_schema(tool: Any) -> dict[str, Any]:
-        schema = getattr(tool, "inputSchema", None) or getattr(
-            tool, "input_schema", None
-        )
+        schema = _tool_input_schema(tool)
         return {
             "name": tool.name,
             "description": getattr(tool, "description", None) or "MCP tool",
             "parameters": schema or {"type": "object", "properties": {}},
         }
+
+
+def _duplicate_call_count(diagnostics: dict[str, Any]) -> int:
+    """Count calls repeating an earlier tool + arguments pair in one sample."""
+    seen: set[str] = set()
+    duplicates = 0
+    for call in diagnostics.get("tool_calls", []):
+        key = json.dumps(
+            [call.get("tool"), call.get("arguments")], sort_keys=True, default=str
+        )
+        duplicates += key in seen
+        seen.add(key)
+    return duplicates
 
 
 def _aggregate_mcp_metrics(
@@ -855,11 +915,35 @@ def _aggregate_mcp_metrics(
         for item in active
         for call in item.get("tool_calls", [])
     )
+    calls_per_sample = [len(item.get("tool_calls", [])) for item in active]
+    call_latencies = [
+        float(call.get("total_seconds", 0.0))
+        for item in active
+        for call in item.get("tool_calls", [])
+    ]
+    schema_invalid_calls = sum(
+        call.get("schema_valid") is False
+        for item in active
+        for call in item.get("tool_calls", [])
+    )
+    duplicate_calls = sum(_duplicate_call_count(item) for item in active)
+    total_calls = sum(calls_per_sample)
+    agent_rounds = [
+        int(item["agent_rounds"]) for item in active if "agent_rounds" in item
+    ]
+    failure_kinds = [item.get("failure_kind") for item in active]
+    schema_chars = [
+        int(item["tool_schema_chars"]) for item in active if "tool_schema_chars" in item
+    ]
     return {
         "sample_count": len(active),
         "successful_samples": len(active) - failures,
         "failure_count": failures,
         "failure_rate": failures / len(active),
+        "transport_failure_count": failure_kinds.count("transport"),
+        "tool_error_count": failure_kinds.count("tool_error"),
+        "agent_failure_count": failure_kinds.count("agent"),
+        "other_failure_count": failure_kinds.count("other"),
         "timed_out_sample_count": sum(bool(item.get("timeout")) for item in active),
         "timeout_attempt_count": timeout_attempts,
         "empty_response_count": sum(
@@ -871,9 +955,30 @@ def _aggregate_mcp_metrics(
         "retry_count": sum(int(item.get("retry_count", 0)) for item in active),
         "tool_call_count": sum(tool_names.values()),
         "tool_call_counts": tool_names,
+        "tool_calls_per_sample_mean": sum(calls_per_sample) / len(calls_per_sample),
+        "tool_calls_per_sample_max": max(calls_per_sample),
+        "agent_rounds_mean": (
+            sum(agent_rounds) / len(agent_rounds) if agent_rounds else None
+        ),
+        "agent_rounds_max": max(agent_rounds) if agent_rounds else None,
+        "schema_invalid_call_count": schema_invalid_calls,
+        "schema_invalid_call_rate": (
+            schema_invalid_calls / total_calls if total_calls else None
+        ),
+        "tool_schema_chars_total": sum(schema_chars) if schema_chars else None,
+        "tool_schema_chars_per_sample_mean": (
+            sum(schema_chars) / len(schema_chars) if schema_chars else None
+        ),
+        "duplicate_tool_call_count": duplicate_calls,
+        "duplicate_tool_call_rate": (
+            duplicate_calls / total_calls if total_calls else None
+        ),
         "connection_seconds": sum(
             float(item.get("connection_seconds", 0.0)) for item in active
         ),
+        "tool_latency_p50_seconds": _percentile(call_latencies, 0.50),
+        "tool_latency_p95_seconds": _percentile(call_latencies, 0.95),
+        "tool_latency_max_seconds": max(call_latencies) if call_latencies else None,
         "cold_tool_seconds": tool_latencies[0] if tool_latencies else None,
         "warm_tool_mean_seconds": (
             sum(tool_latencies[1:]) / len(tool_latencies[1:])

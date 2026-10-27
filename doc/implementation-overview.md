@@ -61,8 +61,9 @@ Entry points:
     applies `dataset:` + `settings:` (validated against config field names) as the base,
     then cartesian-products the `matrix:` axes with legacy-name normalization and type
     coercion. Deduplicates configs and runs MCP fairness validation
-    (`_validate_mcp_comparison_fairness`, matrix.py:113): RAG-vs-MCP matrices must agree
-    on dataset/corpus/top-k/generator.
+    (`_validate_mcp_comparison_fairness`): RAG-vs-MCP matrices must use the
+    `jsonl-shared` dataset (the only one whose internal index is built from
+    `corpus_path`) and agree on dataset/corpus/top-k/generator.
   - **Legacy env grid**: `get_all_combinations()` / `get_env_combinations()`
     (config.py:507/540) parse `LLM_MODELS`, `CHUNK_SIZES`, etc. from `.env`.
 
@@ -107,7 +108,9 @@ The core (`_run_single_benchmark_impl`, runner.py:167):
    (`compute_gold_doc_retrieval_metrics()`) for retrieve-stage /
    `custom_retrieval_metrics_mode=gold_doc`.
 5. Aggregate into `BenchmarkResultExtended` (`compute_stats`, energy/cost estimates,
-   adapter aggregate metrics).
+   adapter aggregate metrics, and the adapter-agnostic evidence budget
+   `avg_contexts_per_question` / `max_contexts_per_question` /
+   `avg_context_chars_per_question`).
 
 ---
 
@@ -153,7 +156,12 @@ Concrete adapters:
   asyncio thread, mcp.py:185), stdio or streamable-HTTP transport. `result_mode=context`
   (tool supplies evidence to the configured generator) vs. `answer` (tool is the full QA
   system); fixed or agentic multi-round tool-loop mode; retries/backoff; redacted
-  argument logging; stage timings + aggregate metrics.
+  argument logging; per-call input-schema validation; stage timings + aggregate
+  metrics (failure split by `failure_kind`, latency percentiles, calls/rounds per
+  question, duplicate and schema-invalid calls, tool-schema overhead). Full metric
+  reference and configuration: `doc/mcp-benchmarking.md`. The example server
+  `examples/corpus_mcp_server.py` can chunk its corpus (`--chunk-size`,
+  `--chunk-overlap`) to match the internal pipeline.
 - **ragflow** (`ragflow.py`) — managed RAGFlow integration: `RagflowClient`
   (ragflow.py:283) handles dataset/document upload, parsing, polling, retrieval, chat
   management; deterministic resource naming + corpus digest for reuse; full
@@ -320,6 +328,11 @@ Implements benchmarking of *document parsers* (OCR models) as a first-class stag
   `evaluation.py`.
 - `benchmark_stage=index` works only for the internal adapter.
 - MCP comparisons run fairness validation by default; disable only intentionally
-  (`MCP_ENFORCE_FAIRNESS=false`).
+  (`MCP_ENFORCE_FAIRNESS=false`). It cannot see server-side settings (e.g. the
+  example server's chunk size); compare the evidence-budget metrics before trusting
+  cross-system retrieval scores.
+- Fields missing from a YAML manifest fall back to `.env`; a `.env` prepared for
+  another dataset (e.g. `RETRIEVAL_MULTIHOP=true`) silently changes the run. Pin
+  such fields in the manifest.
 - `mlflow.db` (~750 MB) sits in the repo root — back up before destructive MLflow
   scripts; `results/runN` dirs are append-only.

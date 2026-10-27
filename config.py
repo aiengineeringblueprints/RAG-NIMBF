@@ -178,6 +178,27 @@ class BenchmarkConfig:
     mcp_continue_on_error: bool = True
     mcp_corpus_path: str | None = None
     mcp_enforce_fairness: bool = True
+    # Enterprise RAG Blueprint as an MCP host (examples.enterprise_rag_plugin).
+    # The Blueprint calls MCP servers itself; the benchmark observes its trace.
+    # The identity signing secret is read from MCP_IDENTITY_SECRET at runtime.
+    enterprise_rag_blueprint_path: str | None = None
+    enterprise_rag_mcp_transport: str = "inprocess"  # inprocess | http
+    enterprise_rag_mcp_endpoint_url: str | None = None
+    enterprise_rag_mcp_enabled: bool = True
+    enterprise_rag_mcp_roles: str = "General"  # comma-separated signed roles
+    enterprise_rag_mcp_subject: str = "benchmark"
+    enterprise_rag_mcp_prompt_key: str = "rag_source"
+    enterprise_rag_mcp_used_model: str | None = None
+    enterprise_rag_mcp_timeout_seconds: float = 120.0
+    enterprise_rag_mcp_index_corpus: bool = True
+    # In-process only: run the Blueprint with this config's llm_model,
+    # embedding_model, retrieval_top_k and generation_temperature.
+    enterprise_rag_mcp_apply_settings: bool = True
+    enterprise_rag_mcp_query_refinement: bool = True
+    enterprise_rag_mcp_guardrails: bool = True
+    # Optional name of the env var holding the Blueprint LLM's API key
+    # (instead of LLM_OPENAI_COMPAT_API_KEY / OPENAI_COMPAT_API_KEY).
+    enterprise_rag_mcp_llm_api_key_env: str | None = None
     # Managed external RAG lifecycle. These fields are provider-neutral; a
     # concrete adapter maps them to its API/SDK names and must reject settings
     # it cannot honor instead of silently ignoring benchmark dimensions.
@@ -304,6 +325,18 @@ class BenchmarkConfig:
                     "mcp_max_retries": self.mcp_max_retries,
                     "mcp_corpus_path": self.mcp_corpus_path,
                 }
+            elif self.rag_system_adapter == "enterprise_rag_mcp":
+                managed_dimensions = {
+                    "transport": self.enterprise_rag_mcp_transport,
+                    "endpoint_url": self.enterprise_rag_mcp_endpoint_url,
+                    "enabled": self.enterprise_rag_mcp_enabled,
+                    "roles": self.enterprise_rag_mcp_roles,
+                    "prompt_key": self.enterprise_rag_mcp_prompt_key,
+                    "used_model": self.enterprise_rag_mcp_used_model,
+                    "apply_settings": self.enterprise_rag_mcp_apply_settings,
+                    "query_refinement": self.enterprise_rag_mcp_query_refinement,
+                    "guardrails": self.enterprise_rag_mcp_guardrails,
+                }
             canonical = json.dumps(
                 managed_dimensions,
                 sort_keys=True,
@@ -419,6 +452,8 @@ def validate_benchmark_config(config: BenchmarkConfig) -> BenchmarkConfig:
             raise ValueError("mcp_max_retries must be non-negative")
         if config.mcp_retry_backoff_seconds < 0:
             raise ValueError("mcp_retry_backoff_seconds must be non-negative")
+    if config.rag_system_adapter == "enterprise_rag_mcp":
+        _validate_enterprise_rag_mcp(config)
     for value, name in (
         (config.retrieval_top_k, "retrieval_top_k"),
         (config.retrieval_candidate_k, "retrieval_candidate_k"),
@@ -482,6 +517,63 @@ def validate_benchmark_config(config: BenchmarkConfig) -> BenchmarkConfig:
         ):
             raise ValueError("mcp_args_json must contain a JSON array of strings")
     return config
+
+
+ENTERPRISE_RAG_MCP_PROMPT_KEYS = ("rag_source", "rag_summary", "rag_weekly_report")
+
+
+def _validate_enterprise_rag_mcp(config: BenchmarkConfig) -> None:
+    if config.benchmark_stage in {"index", "retrieve"}:
+        raise ValueError(
+            f"benchmark_stage={config.benchmark_stage} is unavailable for the "
+            "enterprise_rag_mcp answer adapter"
+        )
+    if config.enterprise_rag_mcp_transport not in {"inprocess", "http"}:
+        raise ValueError("enterprise_rag_mcp_transport must be 'inprocess' or 'http'")
+    if (
+        config.enterprise_rag_mcp_transport == "http"
+        and not config.enterprise_rag_mcp_endpoint_url
+    ):
+        raise ValueError(
+            "enterprise_rag_mcp_endpoint_url is required for the http transport"
+        )
+    if not _parse_list(config.enterprise_rag_mcp_roles):
+        raise ValueError("enterprise_rag_mcp_roles must name at least one role")
+    if not config.enterprise_rag_mcp_subject.strip():
+        raise ValueError("enterprise_rag_mcp_subject must not be empty")
+    if config.enterprise_rag_mcp_prompt_key not in ENTERPRISE_RAG_MCP_PROMPT_KEYS:
+        raise ValueError(
+            "enterprise_rag_mcp_prompt_key must be one of: "
+            + ", ".join(ENTERPRISE_RAG_MCP_PROMPT_KEYS)
+        )
+    if config.enterprise_rag_mcp_timeout_seconds <= 0:
+        raise ValueError("enterprise_rag_mcp_timeout_seconds must be positive")
+    if config.enterprise_rag_mcp_apply_settings:
+        _validate_enterprise_rag_mcp_settings(config)
+
+
+def _validate_enterprise_rag_mcp_settings(config: BenchmarkConfig) -> None:
+    """Reject config values the Blueprint cannot run with."""
+    if config.enterprise_rag_mcp_transport != "inprocess":
+        raise ValueError(
+            "enterprise_rag_mcp_apply_settings needs the inprocess transport; for "
+            "http set it to false and configure the chain service's environment"
+        )
+    if config.embedding_provider != "ollama":
+        raise ValueError(
+            "The Blueprint needs an Ollama embedding model; got "
+            f"{config.embedding_model!r}"
+        )
+    if config.llm_provider not in {"ollama", "openai"}:
+        raise ValueError(
+            "The Blueprint needs an ollama: or openai: LLM; got "
+            f"{config.llm_model!r}"
+        )
+    if config.llm_provider == "openai" and not config.llm_base_url():
+        raise ValueError(
+            f"llm_model {config.llm_model!r} needs LLM_OPENAI_COMPAT_BASE_URL "
+            "or OPENAI_COMPAT_BASE_URL"
+        )
 
 
 def _env_bool(name: str, default: bool = False) -> bool:
@@ -925,6 +1017,33 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
         ):
             raise ValueError("MCP_ARGS_JSON must contain a JSON array of strings")
 
+    enterprise_rag_blueprint_path = os.getenv("ENTERPRISE_RAG_BLUEPRINT_PATH") or None
+    enterprise_rag_mcp_transport = (
+        os.getenv("ENTERPRISE_RAG_MCP_TRANSPORT", "inprocess").strip().lower()
+    )
+    enterprise_rag_mcp_endpoint_url = os.getenv("ENTERPRISE_RAG_MCP_ENDPOINT_URL") or None
+    enterprise_rag_mcp_enabled = _env_bool("ENTERPRISE_RAG_MCP_ENABLED", True)
+    enterprise_rag_mcp_roles = os.getenv("ENTERPRISE_RAG_MCP_ROLES", "General")
+    enterprise_rag_mcp_subject = (
+        os.getenv("ENTERPRISE_RAG_MCP_SUBJECT", "benchmark").strip() or "benchmark"
+    )
+    enterprise_rag_mcp_prompt_key = (
+        os.getenv("ENTERPRISE_RAG_MCP_PROMPT_KEY", "rag_source").strip() or "rag_source"
+    )
+    enterprise_rag_mcp_used_model = os.getenv("ENTERPRISE_RAG_MCP_USED_MODEL") or None
+    enterprise_rag_mcp_timeout_seconds = float(
+        os.getenv("ENTERPRISE_RAG_MCP_TIMEOUT_SECONDS", "120")
+    )
+    enterprise_rag_mcp_index_corpus = _env_bool("ENTERPRISE_RAG_MCP_INDEX_CORPUS", True)
+    enterprise_rag_mcp_apply_settings = _env_bool("ENTERPRISE_RAG_MCP_APPLY_SETTINGS", True)
+    enterprise_rag_mcp_query_refinement = _env_bool(
+        "ENTERPRISE_RAG_MCP_QUERY_REFINEMENT", True
+    )
+    enterprise_rag_mcp_guardrails = _env_bool("ENTERPRISE_RAG_MCP_GUARDRAILS", True)
+    enterprise_rag_mcp_llm_api_key_env = (
+        os.getenv("ENTERPRISE_RAG_MCP_LLM_API_KEY_ENV", "").strip() or None
+    )
+
     rag_managed_base_url = os.getenv("RAG_MANAGED_BASE_URL") or None
     rag_managed_api_key_env = (
         os.getenv("RAG_MANAGED_API_KEY_ENV", "RAG_MANAGED_API_KEY").strip()
@@ -1152,6 +1271,20 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
                     mcp_continue_on_error=mcp_continue_on_error,
                     mcp_corpus_path=mcp_corpus_path,
                     mcp_enforce_fairness=mcp_enforce_fairness,
+                    enterprise_rag_blueprint_path=enterprise_rag_blueprint_path,
+                    enterprise_rag_mcp_transport=enterprise_rag_mcp_transport,
+                    enterprise_rag_mcp_endpoint_url=enterprise_rag_mcp_endpoint_url,
+                    enterprise_rag_mcp_enabled=enterprise_rag_mcp_enabled,
+                    enterprise_rag_mcp_roles=enterprise_rag_mcp_roles,
+                    enterprise_rag_mcp_subject=enterprise_rag_mcp_subject,
+                    enterprise_rag_mcp_prompt_key=enterprise_rag_mcp_prompt_key,
+                    enterprise_rag_mcp_used_model=enterprise_rag_mcp_used_model,
+                    enterprise_rag_mcp_timeout_seconds=enterprise_rag_mcp_timeout_seconds,
+                    enterprise_rag_mcp_index_corpus=enterprise_rag_mcp_index_corpus,
+                    enterprise_rag_mcp_apply_settings=enterprise_rag_mcp_apply_settings,
+                    enterprise_rag_mcp_query_refinement=enterprise_rag_mcp_query_refinement,
+                    enterprise_rag_mcp_guardrails=enterprise_rag_mcp_guardrails,
+                    enterprise_rag_mcp_llm_api_key_env=enterprise_rag_mcp_llm_api_key_env,
                     rag_managed_base_url=rag_managed_base_url,
                     rag_managed_api_key_env=rag_managed_api_key_env,
                     rag_managed_request_timeout_seconds=rag_managed_request_timeout_seconds,

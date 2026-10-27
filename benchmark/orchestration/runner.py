@@ -566,6 +566,9 @@ def _run_single_benchmark_impl(
                     vals.append(v)
         return vals
 
+    context_counts = [len(s.contexts) for s in per_sample]
+    context_chars = [sum(len(text) for text in s.contexts) for s in per_sample]
+
     priced_costs = [s.estimated_cost_usd for s in per_sample if s.estimated_cost_usd is not None]
     total_estimated_cost = sum(priced_costs) if priced_costs else None
 
@@ -656,6 +659,13 @@ def _run_single_benchmark_impl(
         host_energy_kwh=host_energy_kwh,
         estimated_energy_cost_usd=estimated_energy_cost,
         adapter_metrics=adapter_aggregate_metrics(rag_adapter, all_adapter_diagnostics),
+        avg_contexts_per_question=(
+            sum(context_counts) / len(context_counts) if context_counts else None
+        ),
+        max_contexts_per_question=max(context_counts) if context_counts else None,
+        avg_context_chars_per_question=(
+            sum(context_chars) / len(context_chars) if context_chars else None
+        ),
         corpus_parser=config.corpus_parser or None,
         parser_version=config.parser_version,
         dataset_license=config.dataset_license,

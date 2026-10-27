@@ -123,7 +123,7 @@ def test_rag_vs_mcp_manifest_enforces_shared_corpus(tmp_path):
     corpus.mkdir()
     spec = ExperimentSpec(
         name="fairness",
-        dataset={"corpus_path": str(corpus)},
+        dataset={"name": "jsonl-shared", "corpus_path": str(corpus)},
         settings={
             "mcp_command": "python",
             "mcp_corpus_path": str(corpus),
@@ -136,6 +136,28 @@ def test_rag_vs_mcp_manifest_enforces_shared_corpus(tmp_path):
     assert {config.rag_system_adapter for config in configs} == {"internal", "mcp"}
 
 
+def test_rag_vs_mcp_manifest_rejects_dataset_that_ignores_corpus_path(tmp_path):
+    # With dataset "jsonl" the internal pipeline indexes only the sampled
+    # questions' own contexts, while the MCP server searches corpus_path:
+    # identical paths, different corpora.
+    from benchmark.orchestration.matrix import ExperimentSpec, build_configs_from_spec
+
+    corpus = tmp_path / "corpus"
+    corpus.mkdir()
+    spec = ExperimentSpec(
+        name="silently-unfair",
+        dataset={"name": "jsonl", "corpus_path": str(corpus)},
+        settings={
+            "mcp_command": "python",
+            "mcp_corpus_path": str(corpus),
+        },
+        matrix={"rag_system_adapter": ["internal", "mcp"]},
+    )
+
+    with pytest.raises(ValueError, match="jsonl-shared"):
+        build_configs_from_spec(spec, base_configs=[_make_config()])
+
+
 def test_rag_vs_mcp_manifest_rejects_corpus_mismatch(tmp_path):
     from benchmark.orchestration.matrix import ExperimentSpec, build_configs_from_spec
 
@@ -145,7 +167,7 @@ def test_rag_vs_mcp_manifest_rejects_corpus_mismatch(tmp_path):
     mcp_corpus.mkdir()
     spec = ExperimentSpec(
         name="unfair",
-        dataset={"corpus_path": str(rag_corpus)},
+        dataset={"name": "jsonl-shared", "corpus_path": str(rag_corpus)},
         settings={
             "mcp_command": "python",
             "mcp_corpus_path": str(mcp_corpus),
@@ -1103,3 +1125,156 @@ class TestCriticRuntimeConfig:
         assert cfg.eval_critic_thinking_control == "reasoning_effort_low"
         assert cfg.eval_critic_max_workers == 8
         assert cfg.eval_critic_max_retries == 5
+
+
+class TestEnterpriseRagMcpConfig:
+    def test_defaults(self):
+        cfg = _make_config()
+        assert cfg.enterprise_rag_blueprint_path is None
+        assert cfg.enterprise_rag_mcp_transport == "inprocess"
+        assert cfg.enterprise_rag_mcp_enabled is True
+        assert cfg.enterprise_rag_mcp_roles == "General"
+        assert cfg.enterprise_rag_mcp_subject == "benchmark"
+        assert cfg.enterprise_rag_mcp_prompt_key == "rag_source"
+        assert cfg.enterprise_rag_mcp_used_model is None
+        assert cfg.enterprise_rag_mcp_timeout_seconds == 120.0
+        assert cfg.enterprise_rag_mcp_index_corpus is True
+        assert cfg.enterprise_rag_mcp_apply_settings is True
+        assert cfg.enterprise_rag_mcp_query_refinement is True
+        assert cfg.enterprise_rag_mcp_guardrails is True
+        assert cfg.enterprise_rag_mcp_llm_api_key_env is None
+
+    @pytest.mark.parametrize(
+        "overrides, message",
+        [
+            # The framework can only set the Blueprint's settings in-process.
+            ({"enterprise_rag_mcp_transport": "http",
+              "enterprise_rag_mcp_endpoint_url": "http://chain:8000/call_llm"},
+             "enterprise_rag_mcp_apply_settings"),
+            # The Blueprint embeds with Ollama only.
+            ({"embedding_model": "huggingface:BAAI/bge-small-en-v1.5"}, "Ollama embedding"),
+            # The Blueprint talks to LLMs through an OpenAI-compatible client.
+            ({"llm_model": "openai:qwen3", "llm_provider": "openai"}, "OPENAI_COMPAT_BASE_URL"),
+        ],
+    )
+    def test_applied_settings_the_blueprint_cannot_honor_are_rejected(self, overrides, message):
+        cfg = _make_config(rag_system_adapter="enterprise_rag_mcp", **overrides)
+        with pytest.raises(ValueError, match=message):
+            validate_benchmark_config(cfg)
+
+    def test_http_transport_without_applied_settings_is_valid(self):
+        cfg = _make_config(
+            rag_system_adapter="enterprise_rag_mcp",
+            enterprise_rag_mcp_transport="http",
+            enterprise_rag_mcp_endpoint_url="http://chain:8000/call_llm",
+            enterprise_rag_mcp_apply_settings=False,
+            embedding_model="huggingface:BAAI/bge-small-en-v1.5",
+        )
+        assert validate_benchmark_config(cfg) is cfg
+
+    @pytest.mark.parametrize(
+        "field",
+        [
+            "enterprise_rag_mcp_apply_settings",
+            "enterprise_rag_mcp_query_refinement",
+            "enterprise_rag_mcp_guardrails",
+        ],
+    )
+    def test_blueprint_toggles_get_distinct_run_names(self, field):
+        on = _make_config(rag_system_adapter="enterprise_rag_mcp")
+        off = _make_config(rag_system_adapter="enterprise_rag_mcp", **{field: False})
+        assert on.name != off.name
+
+    def test_http_transport_requires_endpoint(self):
+        cfg = _make_config(
+            rag_system_adapter="enterprise_rag_mcp",
+            enterprise_rag_mcp_transport="http",
+        )
+        with pytest.raises(ValueError, match="enterprise_rag_mcp_endpoint_url"):
+            validate_benchmark_config(cfg)
+
+    @pytest.mark.parametrize(
+        "overrides, message",
+        [
+            ({"enterprise_rag_mcp_transport": "grpc"}, "enterprise_rag_mcp_transport"),
+            ({"enterprise_rag_mcp_roles": " , "}, "enterprise_rag_mcp_roles"),
+            ({"enterprise_rag_mcp_timeout_seconds": 0}, "enterprise_rag_mcp_timeout_seconds"),
+            ({"enterprise_rag_mcp_prompt_key": "rag_mail"}, "enterprise_rag_mcp_prompt_key"),
+        ],
+    )
+    def test_invalid_values_rejected(self, overrides, message):
+        cfg = _make_config(rag_system_adapter="enterprise_rag_mcp", **overrides)
+        with pytest.raises(ValueError, match=message):
+            validate_benchmark_config(cfg)
+
+    def test_mcp_on_and_off_runs_get_distinct_names(self):
+        on = _make_config(rag_system_adapter="enterprise_rag_mcp")
+        off = _make_config(
+            rag_system_adapter="enterprise_rag_mcp", enterprise_rag_mcp_enabled=False
+        )
+        assert on.name != off.name
+
+    @patch.dict(os.environ, {
+        "LLM_MODELS": "gemma3:4b",
+        "EMBEDDING_MODELS": "nomic-embed-text:latest",
+        "CHUNK_SIZES": "1000",
+        "CHUNK_OVERLAPS": "200",
+        "CHUNKING_STRATEGIES": "recursive",
+        "ENTERPRISE_RAG_BLUEPRINT_PATH": "/opt/blueprint",
+        "ENTERPRISE_RAG_MCP_TRANSPORT": "http",
+        "ENTERPRISE_RAG_MCP_ENDPOINT_URL": "http://localhost:8080/call_llm",
+        "ENTERPRISE_RAG_MCP_ENABLED": "false",
+        "ENTERPRISE_RAG_MCP_ROLES": "General,Legal & Compliance",
+        "ENTERPRISE_RAG_MCP_SUBJECT": "bench-user",
+        "ENTERPRISE_RAG_MCP_PROMPT_KEY": "rag_summary",
+        "ENTERPRISE_RAG_MCP_USED_MODEL": "qwen3",
+        "ENTERPRISE_RAG_MCP_TIMEOUT_SECONDS": "30",
+        "ENTERPRISE_RAG_MCP_INDEX_CORPUS": "false",
+        "ENTERPRISE_RAG_MCP_APPLY_SETTINGS": "false",
+        "ENTERPRISE_RAG_MCP_QUERY_REFINEMENT": "false",
+        "ENTERPRISE_RAG_MCP_GUARDRAILS": "false",
+        "ENTERPRISE_RAG_MCP_LLM_API_KEY_ENV": "ANTHROPIC_API_KEY",
+    }, clear=False)
+    def test_env_fallback(self):
+        cfg = get_all_combinations()[0]
+        assert cfg.enterprise_rag_blueprint_path == "/opt/blueprint"
+        assert cfg.enterprise_rag_mcp_transport == "http"
+        assert cfg.enterprise_rag_mcp_endpoint_url == "http://localhost:8080/call_llm"
+        assert cfg.enterprise_rag_mcp_enabled is False
+        assert cfg.enterprise_rag_mcp_roles == "General,Legal & Compliance"
+        assert cfg.enterprise_rag_mcp_subject == "bench-user"
+        assert cfg.enterprise_rag_mcp_prompt_key == "rag_summary"
+        assert cfg.enterprise_rag_mcp_used_model == "qwen3"
+        assert cfg.enterprise_rag_mcp_timeout_seconds == 30.0
+        assert cfg.enterprise_rag_mcp_index_corpus is False
+        assert cfg.enterprise_rag_mcp_apply_settings is False
+        assert cfg.enterprise_rag_mcp_query_refinement is False
+        assert cfg.enterprise_rag_mcp_guardrails is False
+        assert cfg.enterprise_rag_mcp_llm_api_key_env == "ANTHROPIC_API_KEY"
+
+    def test_manifest_settings_and_matrix(self):
+        from benchmark.orchestration.matrix import ExperimentSpec, build_configs_from_spec
+
+        spec = ExperimentSpec(
+            name="blueprint-mcp",
+            dataset={},
+            settings={
+                "rag_system_adapter": "enterprise_rag_mcp",
+                "enterprise_rag_mcp_timeout_seconds": "45",
+                "enterprise_rag_mcp_index_corpus": "false",
+                "enterprise_rag_mcp_apply_settings": "false",
+                "enterprise_rag_mcp_query_refinement": "false",
+                "enterprise_rag_mcp_guardrails": "false",
+            },
+            matrix={"enterprise_rag_mcp_enabled": [False, True]},
+        )
+
+        configs = build_configs_from_spec(spec, base_configs=[_make_config()])
+
+        assert [c.enterprise_rag_mcp_enabled for c in configs] == [False, True]
+        assert configs[0].enterprise_rag_mcp_timeout_seconds == 45.0
+        assert configs[0].enterprise_rag_mcp_index_corpus is False
+        assert configs[0].enterprise_rag_mcp_apply_settings is False
+        assert configs[0].enterprise_rag_mcp_query_refinement is False
+        assert configs[0].enterprise_rag_mcp_guardrails is False
+        assert configs[0].name != configs[1].name

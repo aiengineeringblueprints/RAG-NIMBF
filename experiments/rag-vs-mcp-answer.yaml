@@ -1,7 +1,9 @@
 experiment_name: rag-vs-mcp-answer
 
 dataset:
-  name: jsonl
+  # jsonl-shared indexes corpus_path, the same corpus the MCP server searches.
+  name: jsonl-shared
+  subset: null
   path: datasets/northstar_facilities/questions.jsonl
   corpus_path: datasets/northstar_facilities/corpus
   sample_size: 20
@@ -12,6 +14,12 @@ settings:
   vector_db_backend: chroma
   retrieval_top_k: 5
   max_new_tokens: 512
+  # Pin values that a legacy .env matrix would otherwise inject.
+  retrieval_multihop: false
+  retrieval_use_hyde: false
+  retrieval_strategy: similarity
+  dataset_question_field: question
+  dataset_ground_truth_field: ground_truth
   eval_critic_llm: ollama:gemma3:12b
   eval_critic_embedding: nomic-embed-text:latest
   custom_retrieval_metrics_mode: gold_doc

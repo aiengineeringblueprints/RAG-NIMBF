@@ -19,4 +19,8 @@ Generated: 2026-05-18 | Sources: 40+ | Agents: 3 parallel
 
 | Document | Contents |
 |----------|----------|
+| [MCP Benchmarking](mcp-benchmarking.md) | Evaluating MCP servers: result/execution modes, YAML + `.env` configuration, full metric reference (reliability, latency, tool use, evidence budget), fairness validation, troubleshooting |
+| [Enterprise RAG Blueprint Setup](enterprise-rag-blueprint-setup.md) | Step-by-step guide for evaluating the Enterprise RAG Blueprint with MCP: `.env` block, MCP server config, model endpoints with Bearer keys (OpenAI-compatible, Ollama, proxies), manifest with LLM / embedding / top-k matrix, smoke and full runs, `http` variant, troubleshooting |
+| [MCP Host Benchmarking](mcp-host-benchmarking.md) | Benchmarking a RAG system that calls MCP servers itself (Enterprise RAG Blueprint `enterprise_rag_mcp` adapter): Blueprint LLM / embedding / top-k selected from the manifest matrix, call success rates, latency, budget exhaustion, tool selection vs. `expected_tools`, deterministic answer match per category, 1000-question / 240-document fixture with its own MCP server, reference result MCP off vs. on |
+| [Change Log](changes/README.md) | One record per coding session: what changed, why, migration, verification. Format and template inside |
 | [Multi-Hop Retrieval](multihop-retrieval.md) | Why "I cannot answer" refusals happen on HotpotQA; paragraph-level shared corpus, `paragraph` chunking, `RETRIEVAL_MULTIHOP` iterative retrieval, recommended .env |

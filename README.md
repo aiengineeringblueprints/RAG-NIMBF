@@ -146,6 +146,7 @@ logs scalar benchmark metrics to ClearML, and keeps MLflow logging enabled unles
 ## Benchmark RAG Systems
 
 - Enterprise RAG Blueprint: see [doc/Enterprise_RAG_Blueprint_Benchmark.md](doc/Enterprise_RAG_Blueprint_Benchmark.md).
+- RAG systems that call MCP servers themselves (Blueprint MCP host): see [doc/mcp-host-benchmarking.md](doc/mcp-host-benchmarking.md).
 - optimiseRAG quickstart and operations: see [doc/OptimiseRAG_Benchmark.md](doc/OptimiseRAG_Benchmark.md).
 - Generic managed RAG adapters: see [doc/Managed_RAG_System_Usage.md](doc/Managed_RAG_System_Usage.md).
 - Your own RAG system: see [doc/Benchmark_Your_RAG.md](doc/Benchmark_Your_RAG.md).
@@ -374,6 +375,12 @@ pip install -r requirements.txt
 BENCHMARK_CONFIG_FILE=experiments/rag-vs-mcp.yaml python main.py
 ```
 
+The example server (`examples/corpus_mcp_server.py`) searches whole documents
+by default. Pass `--chunk-size` and `--chunk-overlap` in `mcp_args_json` to
+split the corpus like the internal `recursive` chunking strategy; the shipped
+manifests use the same values as their `chunk_sizes`/`chunk_overlaps` so both
+systems receive passages of the same size.
+
 Additional ready-to-run comparisons are provided:
 
 ```bash
@@ -403,13 +410,36 @@ needs. HTTP headers and static tool arguments are JSON objects in
 
 The client session is initialized once during adapter preparation and reused
 for the full configuration. Reports preserve per-call tool names, redacted
-arguments, attempts, latency, source metadata, and errors. Aggregate adapter
-metrics include connection time, cold and warm tool latency, calls, retries,
-timeouts, empty responses, partial completions, and failure rate.
+arguments, attempts, latency, input-schema validation results, source
+metadata, and errors. Aggregate adapter metrics (logged to MLflow as
+`adapter_*`) include:
+
+- Reliability: failure rate, split into `transport_failure_count` (connection
+  or timeout after retries), `tool_error_count` (the server answered with
+  `isError`), `agent_failure_count` (disallowed tool, malformed arguments, or
+  round limit exceeded), and `other_failure_count`; plus timeouts, retries,
+  empty responses, and partial completions.
+- Latency: connection time, cold and warm tool latency, and per-call
+  `tool_latency_p50_seconds`, `tool_latency_p95_seconds`,
+  `tool_latency_max_seconds`.
+- Tool-use behavior: `tool_calls_per_sample_mean`/`_max`,
+  `agent_rounds_mean`/`_max` (agentic only), `duplicate_tool_call_count`/`_rate`
+  (same tool and arguments repeated within one question), and
+  `schema_invalid_call_count`/`_rate` (arguments violating the tool's declared
+  input schema; such calls are still sent and the server decides).
+- Overhead: `tool_schema_chars_total` and `tool_schema_chars_per_sample_mean`,
+  the characters of tool definitions sent to the model on every agentic call.
+
+Every adapter, internal included, also reports `avg_contexts_per_question`,
+`max_contexts_per_question`, and `avg_context_chars_per_question`. Compare
+these before reading context precision/recall across systems: an agentic MCP
+run can gather far more evidence than the internal pipeline's top-k.
 
 When an experiment contains both `internal` and `mcp`, fairness validation is
-enabled by default. `MCP_CORPUS_PATH` must resolve to the same corpus as
-`dataset.corpus_path`, and context-mode comparisons must share the dataset,
+enabled by default. The dataset must be `jsonl-shared` (the only dataset type
+whose internal index is built from `dataset.corpus_path`; plain `jsonl` indexes
+just the sampled questions' own contexts), `MCP_CORPUS_PATH` must resolve to
+the same corpus as `dataset.corpus_path`, and context-mode comparisons must share the dataset,
 top-k, generator, prompt, and token limit. Set `MCP_ENFORCE_FAIRNESS=false` only
 for intentionally asymmetric experiments.
 
@@ -453,6 +483,21 @@ templates, vector backend, and evaluator settings belong in `experiments/*.yaml`
 | `MCP_MAX_RETRIES` | Transport exception retries per tool call; defaults to `1`. |
 | `MCP_CONTINUE_ON_ERROR` | Record a failed sample and continue instead of aborting; defaults to `true`. |
 | `MCP_CORPUS_PATH` | Declares the MCP corpus for RAG-vs-MCP fairness validation. |
+| `ENTERPRISE_RAG_BLUEPRINT_PATH` | Enterprise RAG Blueprint checkout for the `enterprise_rag` / `enterprise_rag_mcp` plugins. |
+| `ENTERPRISE_RAG_MCP_TRANSPORT` | `inprocess` (default) or `http` for `enterprise_rag_mcp`. |
+| `ENTERPRISE_RAG_MCP_ENDPOINT_URL` | Blueprint `/call_llm` URL; required for the `http` transport. |
+| `ENTERPRISE_RAG_MCP_ENABLED` | Send `use_mcp: true`; `false` benchmarks the Blueprint without MCP. Defaults to `true`. |
+| `ENTERPRISE_RAG_MCP_ROLES` | Comma-separated roles in the signed identity; defaults to `General`. |
+| `ENTERPRISE_RAG_MCP_SUBJECT` | Identity subject; defaults to `benchmark`. |
+| `ENTERPRISE_RAG_MCP_PROMPT_KEY` | `rag_source` (default), `rag_summary` or `rag_weekly_report`. |
+| `ENTERPRISE_RAG_MCP_USED_MODEL` | Optional Blueprint LLM source key sent as `used_model`. |
+| `ENTERPRISE_RAG_MCP_TIMEOUT_SECONDS` | Blueprint request timeout; defaults to `120`. |
+| `ENTERPRISE_RAG_MCP_INDEX_CORPUS` | Rebuild the Blueprint index from the dataset corpus; defaults to `true`. |
+| `ENTERPRISE_RAG_MCP_APPLY_SETTINGS` | Run the Blueprint with the config's LLM, embedding model, top-k and temperature (in-process only); defaults to `true`. |
+| `ENTERPRISE_RAG_MCP_LLM_API_KEY_ENV` | Name of the env var holding the Blueprint LLM's API key (e.g. `ANTHROPIC_API_KEY`); unset uses the generator LLM key. |
+| `ENTERPRISE_RAG_MCP_QUERY_REFINEMENT` | Blueprint query refinement with applied settings; defaults to `true`. |
+| `ENTERPRISE_RAG_MCP_GUARDRAILS` | Blueprint input guardrails with applied settings; defaults to `true`. |
+| `MCP_IDENTITY_SECRET` | Blueprint identity signing secret (≥ 32 chars) for `enterprise_rag_mcp`; must match the Blueprint. |
 | `DATASET_NAME` | Dataset adapter to benchmark; built-ins include `jsonl` and `csv` for local files. |
 | `DATASET_PATH` | Required for `DATASET_NAME=jsonl` or `csv`. |
 | `DATASET_QUESTION_FIELD` | Local dataset question field; defaults to `question`. |

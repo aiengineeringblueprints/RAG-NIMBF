@@ -252,6 +252,27 @@ def test_adapter_diagnostics_surface_in_run_result(stubbed_seam):
     )
 
 
+def _context_budget(result):
+    return (
+        result.avg_contexts_per_question,
+        result.max_contexts_per_question,
+        result.avg_context_chars_per_question,
+    )
+
+
+def test_context_budget_is_measured_identically_for_every_adapter(stubbed_seam):
+    """Systems are only comparable when they receive the same evidence budget."""
+    internal = main.run_single_benchmark(UniformityConfig(), SAMPLES, corpus=CORPUS)
+    external = main.run_single_benchmark(
+        UniformityConfig(rag_system_adapter="stub-external"),
+        SAMPLES,
+        corpus=CORPUS,
+    )
+
+    assert _context_budget(external) == (1.0, 1, float(len(DOC_A)))
+    assert _context_budget(internal) == _context_budget(external)
+
+
 def test_injected_stub_embedder_drives_internal_index(stubbed_seam, monkeypatch):
     built: dict[str, Any] = {}
 

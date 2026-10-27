@@ -1,0 +1,19 @@
+{
+  "servers": [
+    {
+      "id": "kestrel",
+      "transport": "stdio",
+      "command": "${FRAMEWORK_DIR}/.venv/bin/python",
+      "args": ["${FRAMEWORK_DIR}/datasets/blueprint_mcp_host/mcp_server.py"],
+      "roles": ["General"],
+      "read_only_tools": [
+        "search_directory", "get_order_status", "get_stock_level",
+        "convert_currency", "count_open_tickets", "get_shipping_quote",
+        "get_project_status", "get_invoice_balance", "get_weather", "get_stock_price"
+      ],
+      "resource_uris": [],
+      "env": {}
+    }
+  ],
+  "request_timeout_seconds": 120
+}

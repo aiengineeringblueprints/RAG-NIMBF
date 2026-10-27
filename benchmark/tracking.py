@@ -216,6 +216,14 @@ def log_benchmark_run(
         metrics["total_estimated_cost_usd"] = result.total_estimated_cost_usd
     if result.avg_estimated_cost_per_answer_usd is not None:
         metrics["avg_estimated_cost_per_answer_usd"] = result.avg_estimated_cost_per_answer_usd
+    for key in (
+        "avg_contexts_per_question",
+        "max_contexts_per_question",
+        "avg_context_chars_per_question",
+    ):
+        value = getattr(result, key)
+        if value is not None:
+            metrics[key] = float(value)
     if result.avg_gpu_power_w is not None:
         metrics["avg_gpu_power_w"] = result.avg_gpu_power_w
     if result.energy_kwh is not None:

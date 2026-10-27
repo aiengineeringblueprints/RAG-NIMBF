@@ -1,0 +1,65 @@
+experiment_name: enterprise-rag-mcp-host
+
+# The Enterprise RAG Blueprint acts as the MCP host: it calls its configured
+# MCP servers itself. The benchmark compares MCP off vs. on and reports the
+# Blueprint's tool-call success rates, latencies and tool selection.
+# Requires RAG_ADAPTER_MODULES=examples.enterprise_rag_plugin.mcp_adapter,
+# ENTERPRISE_RAG_BLUEPRINT_PATH and MCP_IDENTITY_SECRET; see
+# doc/enterprise-rag-blueprint-setup.md.
+
+dataset:
+  name: jsonl-shared
+  subset: null
+  path: datasets/blueprint_mcp_host/questions.jsonl
+  corpus_path: datasets/blueprint_mcp_host/corpus
+  # 1000 questions available. The loader takes the first N rows; the file is
+  # stored in seeded random order, so any prefix mixes all categories. Each question costs about 4-5 Blueprint LLM calls; raise to
+  # 1000 for the full benchmark.
+  sample_size: 200
+
+settings:
+  rag_system_adapter: enterprise_rag_mcp
+  # Chunker + embedder build the Blueprint index; the Blueprint retrieves and
+  # answers itself, with the models selected in the matrix below.
+  rag_adapter_accepts: "chunker,embedder"
+  benchmark_stage: all
+  retrieval_mode: retrieval
+  retrieval_multihop: false
+  retrieval_use_hyde: false
+  dataset_question_field: question
+  dataset_ground_truth_field: ground_truth
+  # Blueprint default; sent as LLM_TEMPERATURE.
+  generation_temperature: 0
+
+  enterprise_rag_mcp_transport: inprocess
+  # Run the Blueprint with llm_models, embedding_models, retrieval_top_k and
+  # generation_temperature from this manifest (in-process transport only).
+  enterprise_rag_mcp_apply_settings: true
+  enterprise_rag_mcp_query_refinement: true
+  enterprise_rag_mcp_guardrails: true
+  enterprise_rag_mcp_roles: General
+  enterprise_rag_mcp_subject: benchmark
+  enterprise_rag_mcp_prompt_key: rag_source
+  enterprise_rag_mcp_timeout_seconds: 120
+  enterprise_rag_mcp_index_corpus: true
+  # Endpoints and Bearer keys come from .env like for every experiment:
+  # openai: models use LLM_OPENAI_COMPAT_* / OPENAI_COMPAT_*, ollama: models
+  # LLM_OLLAMA_* / OLLAMA_*, embeddings EMBEDDING_OLLAMA_* / OLLAMA_*.
+  # Another OpenAI-compatible endpoint for this manifest only:
+  # llm_openai_compat_base_url: https://coassist.de/hostedmodels/v1/
+  # enterprise_rag_mcp_llm_api_key_env: COASSIST_API_KEY   # key in .env
+
+matrix:
+  enterprise_rag_mcp_enabled: [false, true]
+  # The Blueprint answers with these models: openai:<model> via the
+  # OpenAI-compatible endpoint, ollama:<model> via Ollama's /v1 API. Both
+  # must support tool calling for MCP on.
+  llm_models: [openai:nvidia/Qwen3.6-35B-A3B-NVFP4]
+  # Ollama embedding models only (the Blueprint embeds with Ollama).
+  embedding_models: [nomic-embed-text:latest]
+  retrieval_top_k: [5]
+  chunking_strategies: [recursive]
+  chunk_sizes: [512]
+  chunk_overlaps: [64]
+  prompt_templates: [concise]  # unused: the Blueprint uses its own prompts
+  reranker_models: [null]

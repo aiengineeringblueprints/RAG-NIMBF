@@ -126,6 +126,16 @@ def _validate_mcp_comparison_fairness(configs: list[BenchmarkConfig]) -> None:
     if not internal or not mcp:
         return
 
+    for config in [*internal, *mcp]:
+        # Only jsonl-shared indexes dataset_corpus_path; every other dataset
+        # builds the internal index from the questions' own contexts, so equal
+        # paths would still hide different corpora.
+        if config.dataset_name != "jsonl-shared":
+            raise ValueError(
+                "Fair RAG-vs-MCP comparison requires dataset name 'jsonl-shared' "
+                f"(got {config.dataset_name!r}): only it makes the internal "
+                "pipeline index the same corpus_path the MCP server searches"
+            )
     for config in mcp:
         if not config.dataset_corpus_path or not config.mcp_corpus_path:
             raise ValueError(
@@ -373,6 +383,11 @@ def _coerce_field_value(key: str, value: Any) -> Any:
         "llm_performance_warmup",
         "mcp_continue_on_error",
         "mcp_enforce_fairness",
+        "enterprise_rag_mcp_enabled",
+        "enterprise_rag_mcp_index_corpus",
+        "enterprise_rag_mcp_apply_settings",
+        "enterprise_rag_mcp_query_refinement",
+        "enterprise_rag_mcp_guardrails",
     }:
         return _to_bool(value)
     if key in {
@@ -391,6 +406,7 @@ def _coerce_field_value(key: str, value: Any) -> Any:
         "llm_performance_timeout_seconds",
         "mcp_timeout_seconds",
         "mcp_retry_backoff_seconds",
+        "enterprise_rag_mcp_timeout_seconds",
     }:
         return float(value)
     if key in {
@@ -433,6 +449,12 @@ def _coerce_field_value(key: str, value: Any) -> Any:
         "parser_http_model",
         "parser_http_prompt",
         "parser_http_headers",
+        "enterprise_rag_blueprint_path",
+        "enterprise_rag_mcp_endpoint_url",
+        "enterprise_rag_mcp_roles",
+        "enterprise_rag_mcp_subject",
+        "enterprise_rag_mcp_prompt_key",
+        "enterprise_rag_mcp_used_model",
     }:
         return None if value is None else str(value)
     if key in {
@@ -448,6 +470,7 @@ def _coerce_field_value(key: str, value: Any) -> Any:
         "mcp_transport",
         "mcp_result_mode",
         "mcp_execution_mode",
+        "enterprise_rag_mcp_transport",
     }:
         return str(value).lower()
     if key == "dataset_subset":

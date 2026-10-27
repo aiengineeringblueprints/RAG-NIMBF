@@ -242,6 +242,9 @@ def _scalar_metrics(result: BenchmarkResultExtended) -> dict[str, float]:
         "ragas_context_recall": result.ragas_context_recall,
         "ragas_semantic_similarity": result.ragas_semantic_similarity,
         "total_time_seconds": result.total_time_seconds,
+        "avg_contexts_per_question": result.avg_contexts_per_question,
+        "max_contexts_per_question": result.max_contexts_per_question,
+        "avg_context_chars_per_question": result.avg_context_chars_per_question,
     }
     if result.custom_metric_means:
         metrics.update(result.custom_metric_means)

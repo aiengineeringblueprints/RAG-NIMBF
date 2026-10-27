@@ -20,8 +20,8 @@ Installiere die Framework- und Blueprint-Abhängigkeiten:
 
 ```bash
 pip install -r requirements.txt
-pip install -r Enterprise_RAG_Blueprint/chain/requirements.txt
-pip install -r Enterprise_RAG_Blueprint/loader/requirements.txt
+pip install -r ../Enterprise_RAG_Blueprint/chain/requirements.txt
+pip install -r ../Enterprise_RAG_Blueprint/loader/requirements.txt
 ```
 
 Stelle sicher, dass die benötigten Modelle und Endpoints erreichbar sind:
@@ -88,16 +88,25 @@ Führe den Benchmark aus dem Repository-Root aus:
 ```bash
 set -a
 source .env
-source Enterprise_RAG_Blueprint/.env
+source ../Enterprise_RAG_Blueprint/.env
 set +a
 
-PYTHONPATH=.:Enterprise_RAG_Blueprint:Enterprise_RAG_Blueprint/chain \
+ENTERPRISE_RAG_BLUEPRINT_PATH=../Enterprise_RAG_Blueprint \
 RAG_ADAPTER_MODULES=examples.enterprise_rag_plugin.adapter \
 BENCHMARK_CONFIG_FILE=experiments/enterprise_rag_demo.yaml \
 python main.py
 ```
 
 `set -a` exportiert alle Variablen aus den `.env`-Dateien in die Prozessumgebung. `set +a` schaltet dieses Verhalten danach wieder aus. Das ist wichtig, weil Python-Unterprozesse und LangChain/Ollama-Clients die Variablen als echte Environment-Variablen sehen müssen.
+
+`ENTERPRISE_RAG_BLUEPRINT_PATH` points at the Blueprint checkout (a sibling
+directory of this repository); the adapter puts its root and `chain/` on
+`sys.path`.
+
+> **MCP host benchmarking:** to benchmark the Blueprint's own MCP client
+> (`use_mcp: true`, tool-call success rates, latencies, tool selection), use
+> the `enterprise_rag_mcp` adapter described in
+> [MCP Host Benchmarking](mcp-host-benchmarking.md).
 
 ## Resumierbarer Lauf
 
@@ -106,10 +115,10 @@ Für längere Runs nutze den Worker:
 ```bash
 set -a
 source .env
-source Enterprise_RAG_Blueprint/.env
+source ../Enterprise_RAG_Blueprint/.env
 set +a
 
-PYTHONPATH=.:Enterprise_RAG_Blueprint:Enterprise_RAG_Blueprint/chain \
+ENTERPRISE_RAG_BLUEPRINT_PATH=../Enterprise_RAG_Blueprint \
 RAG_ADAPTER_MODULES=examples.enterprise_rag_plugin.adapter \
 python -m benchmark.worker run experiments/enterprise_rag_demo.yaml --keep-going
 ```

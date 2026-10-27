@@ -13,7 +13,7 @@ Demonstrates component-injection contract with the real Blueprint API:
 
 Activation (bash):
 
-    PYTHONPATH=.:Enterprise_RAG_Blueprint:Enterprise_RAG_Blueprint/chain \
+    ENTERPRISE_RAG_BLUEPRINT_PATH=../Enterprise_RAG_Blueprint \
     RAG_ADAPTER_MODULES=examples.enterprise_rag_plugin.adapter \
     BENCHMARK_CONFIG_FILE=experiments/enterprise_rag_demo.yaml \
     python main.py
@@ -27,7 +27,9 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
 import time
+from pathlib import Path
 from typing import Any
 
 from langchain_core.documents import Document
@@ -37,6 +39,28 @@ from benchmark.adapters.base import RagSystemOutput
 from benchmark.adapters.components import ComponentBundle
 
 log = logging.getLogger(__name__)
+
+
+def ensure_blueprint_importable(config: Any) -> None:
+    """Put the Blueprint root and its ``chain/`` directory on ``sys.path``.
+
+    Blueprint modules import their siblings absolutely (``from prompts...``),
+    so ``chain/`` itself must be importable next to the ``chain`` package.
+    Without a configured path the Blueprint must already be on PYTHONPATH.
+    """
+    raw = getattr(config, "enterprise_rag_blueprint_path", None) or os.environ.get(
+        "ENTERPRISE_RAG_BLUEPRINT_PATH"
+    )
+    if not raw or not isinstance(raw, str):
+        return
+    root = Path(raw).expanduser().resolve()
+    if not (root / "chain").is_dir():
+        raise ValueError(
+            f"ENTERPRISE_RAG_BLUEPRINT_PATH={raw!r} has no chain/ directory"
+        )
+    for entry in (root / "chain", root):
+        if str(entry) not in sys.path:
+            sys.path.insert(0, str(entry))
 
 
 class EnterpriseRagAdapter:
@@ -68,9 +92,10 @@ class EnterpriseRagAdapter:
         data: list[dict],
         corpus: list[dict] | None = None,
     ) -> None:
-        from Enterprise_RAG_Blueprint.chain.load_chain import load_chain
-        from Enterprise_RAG_Blueprint.chain.prompts.promt_manager import PromptKey
-        from Enterprise_RAG_Blueprint.chain.retriever import create_retriever
+        ensure_blueprint_importable(config)
+        from chain.load_chain import load_chain
+        from chain.prompts.promt_manager import PromptKey
+        from chain.retriever import create_retriever
 
         self._replace_blueprint_index(config, data=data, corpus=corpus)
 
@@ -98,74 +123,7 @@ class EnterpriseRagAdapter:
         data: list[dict],
         corpus: list[dict] | None = None,
     ) -> None:
-        """Replace the Blueprint Chroma collection with the benchmark corpus."""
-        if self.bundle.embedder is None:
-            raise ValueError(
-                "EnterpriseRagAdapter requires an injected embedder. "
-                "Use RAG_ADAPTER_MODULES and RAG_SYSTEM_ADAPTER=enterprise_rag "
-                "with a config that provides an embedding model."
-            )
-
-        chunker = self.bundle.chunker
-        if chunker is None:
-            from benchmark.chunking import get_chunker
-
-            chunker = get_chunker(
-                getattr(config, "chunking_strategy", "recursive") or "recursive",
-                int(getattr(config, "chunk_size", 512) or 512),
-                int(getattr(config, "chunk_overlap", 64) or 64),
-            )
-
-        source_docs = corpus if corpus else data
-        documents = self._documents_from_dataset(source_docs)
-        chunks = chunker.split_documents(documents)
-        chunks = [chunk for chunk in chunks if chunk.page_content.strip()] or documents
-        for index, chunk in enumerate(chunks):
-            chunk.metadata = self._sanitize_metadata(
-                {
-                    **(chunk.metadata or {}),
-                    "chunk_index": index,
-                    "category": "General",
-                    "category_bitmask": 1,
-                }
-            )
-
-        from langchain_chroma import Chroma
-
-        index_name = os.environ.get("INDEX_NAME", "langchain-test-index")
-        vector_db_dir = os.environ.get("VECTORDB_DIR", "/data/vectordb")
-        os.makedirs(vector_db_dir, exist_ok=True)
-
-        vectorstore = Chroma(
-            collection_name=index_name,
-            embedding_function=self.bundle.embedder,
-            persist_directory=vector_db_dir,
-        )
-        try:
-            vectorstore.delete_collection()
-        except Exception:
-            log.debug("Blueprint collection %s did not need deletion", index_name)
-
-        vectorstore = Chroma(
-            collection_name=index_name,
-            embedding_function=self.bundle.embedder,
-            persist_directory=vector_db_dir,
-        )
-        vectorstore.add_documents(chunks)
-
-        persist_fn = getattr(vectorstore, "persist", None)
-        client = getattr(vectorstore, "_client", None)
-        if callable(persist_fn):
-            persist_fn()
-        elif client is not None and callable(getattr(client, "persist", None)):
-            client.persist()
-
-        log.info(
-            "Indexed %s dataset chunks into Blueprint Chroma collection %s at %s",
-            len(chunks),
-            index_name,
-            vector_db_dir,
-        )
+        replace_blueprint_index(self.bundle, config, data=data, corpus=corpus)
 
     @staticmethod
     def _documents_from_dataset(items: list[dict]) -> list[Document]:
@@ -259,6 +217,86 @@ class EnterpriseRagAdapter:
             metadata=metadata,
             total_seconds=elapsed,
         )
+
+
+def replace_blueprint_index(
+    bundle: ComponentBundle,
+    config: Any,
+    data: list[dict],
+    corpus: list[dict] | None = None,
+) -> None:
+    """Replace the Blueprint Chroma collection with the benchmark corpus.
+
+    Chunks are tagged ``General`` (bitmask 1), the role every benchmark
+    identity needs so role filters and the MCP document policy admit them.
+    """
+    if bundle.embedder is None:
+        raise ValueError(
+            "Indexing into the Blueprint requires an injected embedder. "
+            "Include 'embedder' in rag_adapter_accepts and configure an "
+            "embedding model."
+        )
+
+    chunker = bundle.chunker
+    if chunker is None:
+        from benchmark.chunking import get_chunker
+
+        chunker = get_chunker(
+            getattr(config, "chunking_strategy", "recursive") or "recursive",
+            int(getattr(config, "chunk_size", 512) or 512),
+            int(getattr(config, "chunk_overlap", 64) or 64),
+        )
+
+    source_docs = corpus if corpus else data
+    documents = EnterpriseRagAdapter._documents_from_dataset(source_docs)
+    chunks = chunker.split_documents(documents)
+    chunks = [chunk for chunk in chunks if chunk.page_content.strip()] or documents
+    for index, chunk in enumerate(chunks):
+        chunk.metadata = EnterpriseRagAdapter._sanitize_metadata(
+            {
+                **(chunk.metadata or {}),
+                "chunk_index": index,
+                "category": "General",
+                "category_bitmask": 1,
+            }
+        )
+
+    from langchain_chroma import Chroma
+
+    index_name = os.environ.get("INDEX_NAME", "langchain-test-index")
+    vector_db_dir = os.environ.get("VECTORDB_DIR", "/data/vectordb")
+    os.makedirs(vector_db_dir, exist_ok=True)
+
+    vectorstore = Chroma(
+        collection_name=index_name,
+        embedding_function=bundle.embedder,
+        persist_directory=vector_db_dir,
+    )
+    try:
+        vectorstore.delete_collection()
+    except Exception:
+        log.debug("Blueprint collection %s did not need deletion", index_name)
+
+    vectorstore = Chroma(
+        collection_name=index_name,
+        embedding_function=bundle.embedder,
+        persist_directory=vector_db_dir,
+    )
+    vectorstore.add_documents(chunks)
+
+    persist_fn = getattr(vectorstore, "persist", None)
+    client = getattr(vectorstore, "_client", None)
+    if callable(persist_fn):
+        persist_fn()
+    elif client is not None and callable(getattr(client, "persist", None)):
+        client.persist()
+
+    log.info(
+        "Indexed %s dataset chunks into Blueprint Chroma collection %s at %s",
+        len(chunks),
+        index_name,
+        vector_db_dir,
+    )
 
 
 register_rag_adapter("enterprise_rag", lambda c: EnterpriseRagAdapter(c))

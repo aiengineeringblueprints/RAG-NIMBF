@@ -103,6 +103,11 @@ class BenchmarkResultExtended:
     llm_performance_artifact: str | None = None
     llm_performance_error: str | None = None
     adapter_metrics: dict[str, Any] | None = None
+    # Evidence budget handed to the generator, measured identically for every
+    # adapter so cross-system comparisons can check retrieval fairness.
+    avg_contexts_per_question: float | None = None
+    max_contexts_per_question: int | None = None
+    avg_context_chars_per_question: float | None = None
     # Corpus-parser provenance (OCR-07): pinned into run metadata so the
     # parsing → chunking → answer-quality chain stays traceable.
     corpus_parser: str | None = None
