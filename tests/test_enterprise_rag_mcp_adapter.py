@@ -161,8 +161,11 @@ def test_answer_and_evidence_are_normalized():
 
     assert out.answer == "Retention is 30 days."
     assert out.answer_valid is True
-    assert out.contexts[0] == "Doc text"
+    # The Blueprint shows the model each document's name, so the evaluator
+    # sees it too and can check answers that cite their source.
+    assert out.contexts[0] == "Document: handbook.pdf\nDoc text"
     assert "30 days" in out.contexts[1]
+    assert not out.contexts[1].startswith("Document:")
     assert out.metadata[0]["evidence_type"] == "document"
     assert out.metadata[0]["doc_id"] == "handbook"
     assert out.metadata[1]["evidence_type"] == "mcp"

@@ -28,8 +28,19 @@ own prompt and Chroma retriever. Setup and endpoints:
 (skip the MCP server config and `MCP_IDENTITY_SECRET`; neither is needed with
 MCP off).
 
+- `examples/enterprise_rag_plugin/mcp_adapter.py` (`_evidence`): document
+  contexts handed to the evaluator now start with `Document: <source>`, the
+  label the Blueprint puts before each document in its prompt
+  (`chain/load_chain.py` `format_docs`). The Blueprint prompt (`rag_source`)
+  makes the model name the documents it used; without the label RAGAS could
+  not verify those sentences and counted them as unsupported. MCP evidence is
+  unchanged.
+
 ## Behaviour changes and migration
-None.
+`enterprise_rag_mcp` runs from now on report contexts with the
+`Document: <source>` prefix. Faithfulness and context metrics are not directly
+comparable with earlier `enterprise_rag_mcp` runs (e.g. `results/run98` on the
+Spark); re-run the baseline when comparing.
 
 ## Verification
 - `python -m benchmark.worker plan experiments/enterprise-rag-blueprint-rag.yaml`

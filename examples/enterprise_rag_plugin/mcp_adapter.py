@@ -346,6 +346,9 @@ def _evidence(
                     "doc_id": source_id,
                 }
             )
+            # Same label the Blueprint puts before each document in the prompt
+            # (chain/load_chain.py format_docs), so citations are checkable.
+            content = f"Document: {label}\n{content}"
         contexts.append(content)
     return contexts, metadata
 
