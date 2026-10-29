@@ -52,6 +52,17 @@ Spark); re-run the baseline when comparing.
   `answer_match_rate` 1.0 (3/3), 5.0 contexts per question (top-k applied),
   6.2 s total. No Blueprint chain packages had to be installed in the Spark
   venv.
+- Full run on the Spark (20 SQuAD questions, critic `openai:claude-opus-5-5`,
+  before the context label): faithfulness 0.59, answer correctness 0.52,
+  context recall 0.95, context precision 0.91, `answer_match_rate` 0.80.
+- Re-scoring the same 20 answers with RAGAS: with `Document: <source>`
+  contexts faithfulness rises to 0.87; additionally dropping the citation
+  sentences from the answers gives 0.92. Answer correctness stays at 0.53
+  with the label and reaches 0.60 without the citation sentences; it compares
+  against the short SQuAD span, so the Blueprint's three-sentence answers
+  keep it low. Context recall moved 0.95 → 0.85 between two scorings of
+  identical contexts, so differences below about 0.1 on 20 questions are
+  critic noise.
 - Not reported for this adapter: token counts (0) and `num_chunks` (0); the
   Blueprint does not return token usage and the adapter builds the index.
 
