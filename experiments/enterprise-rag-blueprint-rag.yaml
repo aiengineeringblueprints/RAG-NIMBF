@@ -1,0 +1,49 @@
+experiment_name: enterprise-rag-blueprint-rag
+
+# Plain RAG benchmark of the Enterprise RAG Blueprint, without MCP. Every
+# question goes through the Blueprint's /call_llm endpoint (guardrails, query
+# refinement, Blueprint retriever, Blueprint prompt), with MCP off. The
+# framework rebuilds the Blueprint's Chroma index from the dataset and sets the
+# Blueprint's model settings per request from this manifest, so llm_models,
+# embedding_models, retrieval_top_k, generation_temperature and the chunking
+# axes take effect. prompt_templates and reranker_models are not used by the
+# Blueprint.
+# Requires a Blueprint checkout with per-request settings (feat/mcp-integration,
+# c5780df or later) and
+#   RAG_ADAPTER_MODULES=examples.enterprise_rag_plugin.mcp_adapter
+#   ENTERPRISE_RAG_BLUEPRINT_PATH=<Blueprint checkout>
+#   VECTORDB_DIR=<writable dir>  INDEX_NAME=bench-blueprint-rag
+# See doc/enterprise-rag-blueprint-setup.md.
+
+dataset:
+  name: squad
+  subset: null
+  sample_size: 20
+
+settings:
+  rag_system_adapter: enterprise_rag_mcp
+  # Chunker + embedder build the Blueprint index; the Blueprint retrieves and
+  # answers itself.
+  rag_adapter_accepts: "chunker,embedder"
+  benchmark_stage: all
+  # Pin retrieval fields: the local .env may carry another dataset's settings.
+  retrieval_mode: retrieval
+  retrieval_multihop: false
+  retrieval_use_hyde: false
+  generation_temperature: 0        # Blueprint default; framework default is 0.1
+  enterprise_rag_mcp_transport: inprocess
+  enterprise_rag_mcp_enabled: false         # plain RAG, no MCP
+  enterprise_rag_mcp_apply_settings: true   # manifest controls the Blueprint
+  enterprise_rag_mcp_query_refinement: true # false skips the LLM query rewrite
+  enterprise_rag_mcp_guardrails: true       # false skips the LLM input check
+  enterprise_rag_mcp_index_corpus: true
+
+matrix:
+  llm_models: [openai:qwen3.8-27b]
+  embedding_models: [nomic-embed-text:latest]
+  retrieval_top_k: [5]             # Blueprint default
+  chunking_strategies: [recursive]
+  chunk_sizes: [512]
+  chunk_overlaps: [64]
+  prompt_templates: [concise]      # unused by the Blueprint
+  reranker_models: [null]
