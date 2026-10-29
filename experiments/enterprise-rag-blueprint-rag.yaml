@@ -28,6 +28,7 @@ settings:
   benchmark_stage: all
   # Pin retrieval fields: the local .env may carry another dataset's settings.
   retrieval_mode: retrieval
+  retrieval_strategy: similarity   # the Blueprint retriever is similarity-only
   retrieval_multihop: false
   retrieval_use_hyde: false
   generation_temperature: 0        # Blueprint default; framework default is 0.1

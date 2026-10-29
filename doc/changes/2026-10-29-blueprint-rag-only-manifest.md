@@ -14,7 +14,10 @@ path runs while the manifest controls its models and retrieval settings.
   dataset `squad` (20 samples), `llm_models: [openai:qwen3.8-27b]`,
   `embedding_models: [nomic-embed-text:latest]`, `retrieval_top_k: [5]`,
   recursive 512/64 chunking. Retrieval fields (`retrieval_mode`,
-  `retrieval_multihop`, `retrieval_use_hyde`) are pinned against `.env` drift.
+  `retrieval_strategy`, `retrieval_multihop`, `retrieval_use_hyde`) are pinned
+  against `.env` drift; without the `retrieval_strategy` pin a `.env` with
+  `RETRIEVAL_STRATEGY=mmr` puts `mmr` into the config name although the
+  Blueprint retriever ignores it.
 
 Manifest fields that reach the Blueprint: `llm_models`, `embedding_models`,
 `retrieval_top_k`, `generation_temperature`, the chunking axes (index build),
@@ -31,7 +34,15 @@ None.
 ## Verification
 - `python -m benchmark.worker plan experiments/enterprise-rag-blueprint-rag.yaml`
   expands to one config, 20 questions.
-- Smoke run on the DGX Spark: see below.
+- Smoke run on the DGX Spark (Blueprint `feat/mcp-integration` at c5780df,
+  models from the Spark `.env`: `openai:qwen3.8-27b` via `OPENAI_COMPAT_*`,
+  `nomic-embed-text` on local Ollama), 3 SQuAD questions,
+  `RAGAS_ENABLED=false CUSTOM_METRICS_ENABLED=false --no-mlflow`: exit 0,
+  `answer_match_rate` 1.0 (3/3), 5.0 contexts per question (top-k applied),
+  6.2 s total. No Blueprint chain packages had to be installed in the Spark
+  venv.
+- Not reported for this adapter: token counts (0) and `num_chunks` (0); the
+  Blueprint does not return token usage and the adapter builds the index.
 
 ## Follow-ups
 - Blueprint `main` reads its model settings only at import and hard-codes
