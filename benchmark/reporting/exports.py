@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gzip
 import json
 from dataclasses import asdict
 from datetime import datetime
@@ -127,10 +128,93 @@ def save_json_report(run: BenchmarkRun, results_dir: Path) -> Path:
 
 
 def write_json_report(run: BenchmarkRun, filepath: Path) -> Path:
-    """Write ``run`` in the benchmark JSON schema to an explicit path."""
+    """Write ``run`` in the benchmark JSON schema to an explicit path.
+
+    The JSON keeps only the summary; per-sample data goes to a gzipped
+    sidecar (see ``samples_path``). ``load_json_report`` joins both again.
+    """
     filepath.parent.mkdir(parents=True, exist_ok=True)
-    filepath.write_text(json.dumps(_run_to_dict(run), indent=2, default=str))
+    _write_split_report(_run_to_dict(run), filepath)
     return filepath
+
+
+def samples_path(filepath: Path) -> Path:
+    """Sidecar holding the per-sample data of the report at ``filepath``."""
+    return filepath.with_name(f"{filepath.stem}.samples.json.gz")
+
+
+def _write_split_report(report: dict, filepath: Path) -> None:
+    # Retrieved contexts dominate the size and repeat across samples and
+    # configs, so each distinct text is stored once and referenced by index.
+    contexts: dict[str, int] = {}
+    per_result = []
+    summary_results = []
+    for result in report.get("results", []):
+        if "per_sample" not in result:
+            per_result.append(None)
+            summary_results.append(result)
+            continue
+        samples = []
+        for sample in result["per_sample"]:
+            sample = dict(sample)
+            if "contexts" in sample:
+                sample["context_ids"] = [
+                    contexts.setdefault(c, len(contexts))
+                    for c in sample.pop("contexts")
+                ]
+            samples.append(sample)
+        per_result.append(samples)
+        summary_results.append({k: v for k, v in result.items() if k != "per_sample"})
+
+    sidecar = samples_path(filepath)
+    payload = {"format": 1, "contexts": list(contexts), "results": per_result}
+    with gzip.open(sidecar, "wt", encoding="utf-8") as fh:
+        json.dump(payload, fh, ensure_ascii=False, separators=(",", ":"), default=str)
+
+    summary = {**report, "samples_file": sidecar.name, "results": summary_results}
+    tmp = filepath.with_name(filepath.name + ".tmp")
+    tmp.write_text(json.dumps(summary, indent=2, default=str), encoding="utf-8")
+    tmp.replace(filepath)
+
+
+def load_json_report(filepath: Path) -> dict:
+    """Load a benchmark report with ``per_sample`` inlined in every result.
+
+    Reads both the split layout and legacy reports with inline samples.
+    """
+    report = json.loads(Path(filepath).read_text(encoding="utf-8"))
+    samples_file = report.pop("samples_file", None)
+    if not samples_file:
+        return report
+    with gzip.open(Path(filepath).with_name(samples_file), "rt", encoding="utf-8") as fh:
+        payload = json.load(fh)
+    contexts = payload["contexts"]
+    for result, samples in zip(report["results"], payload["results"]):
+        if samples is None:
+            continue
+        for sample in samples:
+            if "context_ids" in sample:
+                sample["contexts"] = [contexts[i] for i in sample.pop("context_ids")]
+        result["per_sample"] = samples
+    return report
+
+
+def compact_json_report(filepath: Path) -> bool:
+    """Rewrite a legacy inline report into the split layout, losslessly.
+
+    Returns False when the report is already split.
+    """
+    filepath = Path(filepath)
+    original = filepath.read_text(encoding="utf-8")
+    report = json.loads(original)
+    if "samples_file" in report:
+        return False
+    _write_split_report(report, filepath)
+    if load_json_report(filepath) != report:
+        filepath.write_text(original, encoding="utf-8")
+        samples_path(filepath).unlink(missing_ok=True)
+        raise RuntimeError(f"Compacted report {filepath} does not round-trip")
+    return True
 
 
 def save_csv_report(

@@ -212,6 +212,9 @@ Each worker run writes into the selected `--run-dir`:
 - `progress.json`: resume/failure state for every configuration;
 - `configs/*.json`: benchmark JSON per configuration (same schema as
   `benchmark_*.json`, one result), written as soon as that configuration finishes;
+- `*.samples.json.gz`: per-sample data (answers, contexts, scores) next to each
+  report JSON, which itself holds only the summary. Read both together with
+  `benchmark.reporting.exports.load_json_report(path)`;
 - `configs/*_qa.json`: question/answer log;
 - `worker_manifest.json`: experiment and configuration identities;
 - `reproducibility/`: environment, Git state, and package snapshot;

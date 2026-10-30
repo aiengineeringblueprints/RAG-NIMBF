@@ -623,6 +623,8 @@ def log_aggregate_artifacts_to_mlflow(
 
     for path in sorted(results_dir.glob("benchmark_*.json")):
         artifact_groups.append((path, "reports"))
+    for path in sorted(results_dir.glob("benchmark_*.samples.json.gz")):
+        artifact_groups.append((path, "reports"))
 
     repro_dir = reproducibility_dir or (results_dir / "reproducibility")
 

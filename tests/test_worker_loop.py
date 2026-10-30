@@ -28,6 +28,7 @@ from benchmark.orchestration.matrix import (
     build_configs_from_spec,
 )
 from benchmark.orchestration.worker import ExperimentWorker, WorkerOptions
+from benchmark.reporting.exports import load_json_report
 
 DOC_A = "The Eiffel Tower is a wrought-iron lattice tower in Paris, France."
 SAMPLES = [
@@ -292,7 +293,7 @@ def test_worker_writes_benchmark_json_per_config_as_soon_as_it_finishes(
     assert seen_before_second == {"first": True}
 
     for config in configs:
-        report = json.loads(path_for(config).read_text(encoding="utf-8"))
+        report = load_json_report(path_for(config))
         assert report["num_configs"] == 1
         assert [r["config_name"] for r in report["results"]] == [config.name]
         assert report["results"][0]["per_sample"][0]["answer"] == (

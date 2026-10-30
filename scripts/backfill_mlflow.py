@@ -11,6 +11,9 @@ from pathlib import Path
 
 import mlflow
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from benchmark.reporting.exports import load_json_report  # noqa: E402
+
 # Map EVAL_MATRIX LLM names to result JSON model names
 LLM_ALIASES = {
     "Qwen3-32B": ["Qwen/Qwen3-32B-AWQ", "Qwen3-32B"],
@@ -79,8 +82,7 @@ def load_result_jsons(results_dir: Path) -> list[tuple[Path, dict]]:
             continue
         for json_file in subdir.glob("benchmark_*.json"):
             try:
-                with open(json_file) as f:
-                    data = json.load(f)
+                data = load_json_report(json_file)
                 results.append((json_file, data))
             except Exception as e:
                 print(f"  Warning: Could not load {json_file}: {e}")

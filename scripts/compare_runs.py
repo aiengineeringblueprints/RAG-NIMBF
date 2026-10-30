@@ -5,12 +5,14 @@ Usage:
     python compare_runs.py results/run12_RTX_No-Think results/run15_SPARK_GPToss:20b
 """
 
-import json
 import sys
 from pathlib import Path
 
 from rich.console import Console
 from rich.table import Table
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from benchmark.reporting.exports import load_json_report  # noqa: E402
 
 
 def _load_run(run_dir: Path) -> dict | None:
@@ -18,8 +20,7 @@ def _load_run(run_dir: Path) -> dict | None:
     json_files = sorted(run_dir.glob("benchmark_*.json"))
     if not json_files:
         return None
-    with open(json_files[0]) as f:
-        return json.load(f)
+    return load_json_report(json_files[0])
 
 
 def _get_run_label(run_dir: Path) -> str:

@@ -133,7 +133,8 @@ results/runN/
 
 Wichtige Dateien und Ordner:
 
-- `benchmark_*.json`: vollständiger Ergebnisreport
+- `benchmark_*.json`: Ergebnisreport (Kennzahlen, wenige KB pro Konfiguration)
+- `benchmark_*.samples.json.gz`: Per-Sample-Daten (Antworten, Kontexte, Scores); zusammen geladen über `benchmark.reporting.exports.load_json_report(path)`
 - `configs/`: per-Konfiguration JSON und QA-Logs
 - `reproducibility/`: Manifest, Git-Stand und Paketliste
 - `plots/`, `reports/`, `results_summary.csv`: aggregierte Auswertung, wenn Reports erzeugt wurden

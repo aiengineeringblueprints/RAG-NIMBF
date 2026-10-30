@@ -101,8 +101,8 @@ Prof will nicht nur Scores, sondern **Charakterisierung** der Ergebnisse. Framew
 .venv/bin/python -c "import main; print('ok')"
 
 # Letzte Run-Daten prüfen
-.venv/bin/python -c "import json; \
-  d=json.load(open('results/run87/benchmark_20260610_092401.json')); \
+.venv/bin/python -c "from benchmark.reporting.exports import load_json_report; \
+  d=load_json_report('results/run87/benchmark_20260610_092401.json'); \
   print(d['num_configs'], 'configs,', len(d['results'][0]['per_sample']), 'samples')"
 
 # Paper kompiliert

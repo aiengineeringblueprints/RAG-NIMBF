@@ -531,6 +531,13 @@ as nested child runs.
 
 ## MLflow Run Comparison
 
+Each `benchmark_*.json` report holds only the summary; per-sample data
+(answers, contexts, scores) sits next to it in `benchmark_*.samples.json.gz`
+with each distinct context stored once. Load both with
+`benchmark.reporting.exports.load_json_report(path)`. Older reports that still
+inline `per_sample` load the same way and can be shrunk losslessly with
+`python scripts/compact_results.py [results/...]` (`--dry-run` lists candidates).
+
 Start the MLflow UI against the local SQLite store:
 
 ```bash
