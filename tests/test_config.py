@@ -1278,3 +1278,36 @@ class TestEnterpriseRagMcpConfig:
         assert configs[0].enterprise_rag_mcp_query_refinement is False
         assert configs[0].enterprise_rag_mcp_guardrails is False
         assert configs[0].name != configs[1].name
+
+
+def test_manifest_dataset_split_sets_config_field():
+    from benchmark.orchestration.matrix import ExperimentSpec, build_configs_from_spec
+
+    spec = ExperimentSpec(
+        name="techqa-train",
+        dataset={"name": "ragbench", "subset": "techqa", "split": "train"},
+        matrix={},
+        settings={},
+    )
+
+    cfg = build_configs_from_spec(spec, base_configs=[_make_config()])[0]
+
+    assert cfg.dataset_split == "train"
+
+
+def test_dataset_split_defaults_to_adapter_choice():
+    assert _make_config().dataset_split is None
+
+
+def test_dataset_split_env_fallback():
+    with patch.dict(os.environ, {
+        "LLM_MODELS": "gemma3:4b",
+        "EMBEDDING_MODELS": "nomic-embed-text:latest",
+        "CHUNK_SIZES": "1000",
+        "CHUNK_OVERLAPS": "200",
+        "CHUNKING_STRATEGIES": "recursive",
+        "DATASET_SPLIT": "validation",
+    }, clear=False):
+        configs = get_all_combinations()
+
+    assert configs[0].dataset_split == "validation"

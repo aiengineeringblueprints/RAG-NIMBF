@@ -230,3 +230,6 @@ the service's secret.
 | `ResponseError Unauthorized (401)` while embedding | embedding host needs a key: `EMBEDDING_OLLAMA_API_KEY` or `OLLAMA_API_KEY` |
 | `Temporary failure in name resolution` for `dgx-spark` | host only reachable in its network; connect VPN or add it to `/etc/hosts` |
 | answers ignore documents of non-`General` roles | the index is tagged `General`; keep `enterprise_rag_mcp_roles: General` |
+| `Batch size of N is greater than max batch size of M` while indexing | fixed: the Blueprint index is now written in Chroma-sized batches; update the framework checkout |
+| fewer questions loaded than `sample_size` (e.g. 314 for ragbench/techqa) | the adapter's default split is smaller; pick a larger one with `dataset: split: train` (ragbench/techqa train has 1192) |
+| stuck at `Loading <dataset>...`, Ctrl+C ignored | the HuggingFace Xet download hangs on a reset connection; kill the process and rerun with `HF_HUB_DISABLE_XET=1` |

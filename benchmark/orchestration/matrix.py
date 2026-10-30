@@ -154,6 +154,7 @@ def _validate_mcp_comparison_fairness(configs: list[BenchmarkConfig]) -> None:
         return (
             config.dataset_name,
             config.dataset_subset,
+            config.dataset_split,
             config.dataset_path,
             config.dataset_corpus_path,
             config.dataset_sample_size,
@@ -288,6 +289,10 @@ def _apply_dataset(config: BenchmarkConfig, dataset: dict[str, Any]) -> Benchmar
         )
     if "sample_size" in dataset:
         updates["dataset_sample_size"] = int(dataset["sample_size"])
+    if "split" in dataset:
+        updates["dataset_split"] = (
+            None if dataset["split"] is None else str(dataset["split"])
+        )
     if "path" in dataset:
         updates["dataset_path"] = (
             None if dataset["path"] is None else str(dataset["path"])
@@ -423,6 +428,7 @@ def _coerce_field_value(key: str, value: Any) -> Any:
         "ingestion_options_json",
         "dataset_path",
         "dataset_corpus_path",
+        "dataset_split",
         "dataset_question_field",
         "dataset_ground_truth_field",
         "dataset_context_field",

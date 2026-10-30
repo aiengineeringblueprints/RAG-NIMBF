@@ -506,6 +506,7 @@ templates, vector backend, and evaluator settings belong in `experiments/*.yaml`
 | `DATASET_METADATA_FIELD` | Local dataset metadata field; defaults to `metadata`. |
 | `DATASET_SUBSET` | Optional dataset subset/config. |
 | `DATASET_SAMPLE_SIZE` | Number of benchmark samples. |
+| `DATASET_SPLIT` | HuggingFace split to load (manifest: `dataset: split:`); unset keeps the adapter's default split. A split missing from the dataset is an error. |
 | `RAGAS_ENABLED` | Set to `false` to skip RAGAS critic metrics. |
 | `CUSTOM_METRICS_ENABLED` | Set to `false` to skip custom embedding/BERTScore metrics. |
 | `EVAL_CRITIC_LLM` | Critic model used for RAGAS evaluation. |

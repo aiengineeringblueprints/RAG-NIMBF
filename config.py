@@ -86,6 +86,8 @@ class BenchmarkConfig:
     eval_critic_max_workers: int = 1
     eval_critic_max_retries: int = 2
     dataset_corpus_path: str | None = None
+    # HuggingFace split to load; None keeps the adapter's preferred split.
+    dataset_split: str | None = None
     dataset_question_field: str = "question"
     dataset_ground_truth_field: str = "ground_truth"
     dataset_context_field: str = "context"
@@ -684,6 +686,7 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
     dataset_sample_size = int(os.getenv("DATASET_SAMPLE_SIZE", "50"))
     dataset_path = os.getenv("DATASET_PATH") or None
     dataset_corpus_path = os.getenv("DATASET_CORPUS_PATH") or None
+    dataset_split = os.getenv("DATASET_SPLIT", "").strip() or None
     dataset_question_field = (
         os.getenv("DATASET_QUESTION_FIELD", "question").strip() or "question"
     )
@@ -1205,6 +1208,7 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
                     dataset_sample_size=dataset_sample_size,
                     dataset_path=dataset_path,
                     dataset_corpus_path=dataset_corpus_path,
+                    dataset_split=dataset_split,
                     dataset_question_field=dataset_question_field,
                     dataset_ground_truth_field=dataset_ground_truth_field,
                     dataset_context_field=dataset_context_field,

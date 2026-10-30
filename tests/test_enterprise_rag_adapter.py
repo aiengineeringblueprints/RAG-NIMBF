@@ -169,3 +169,25 @@ def test_answer_raises_if_not_prepared(fake_blueprint):
     adapter = EnterpriseRagAdapter(MagicMock())
     with pytest.raises(RuntimeError, match="prepare\\(\\) was not called"):
         adapter.answer({"question": "x"}, MagicMock())
+
+
+def test_replace_blueprint_index_batches_above_chroma_max_batch_size(tmp_path, monkeypatch):
+    """A corpus larger than Chroma's max batch size must still index fully."""
+    import chromadb
+    from langchain_core.embeddings import DeterministicFakeEmbedding
+
+    from examples.enterprise_rag_plugin.adapter import replace_blueprint_index
+
+    monkeypatch.setenv("VECTORDB_DIR", str(tmp_path))
+    monkeypatch.setenv("INDEX_NAME", "batch-test")
+    max_batch = chromadb.PersistentClient(path=str(tmp_path)).get_max_batch_size()
+    corpus = [{"context": f"document {i}"} for i in range(max_batch + 1)]
+    bundle = types.SimpleNamespace(
+        embedder=DeterministicFakeEmbedding(size=4),
+        chunker=types.SimpleNamespace(split_documents=lambda docs: docs),
+    )
+
+    replace_blueprint_index(bundle, MagicMock(), data=[], corpus=corpus)
+
+    collection = chromadb.PersistentClient(path=str(tmp_path)).get_collection("batch-test")
+    assert collection.count() == max_batch + 1

@@ -101,6 +101,7 @@ def load_benchmark_data(
     ground_truth_field: str | None = None,
     context_field: str | None = None,
     metadata_field: str | None = None,
+    split: str | None = None,
 ) -> list[dict]:
     adapter = resolve_adapter(dataset_name)
 
@@ -136,9 +137,18 @@ def load_benchmark_data(
         kwargs["name"] = subset
     ds = load_dataset(adapter.hf_id, **kwargs)
 
-    split = adapter.preferred_split
-    if split not in ds:
-        split = list(ds.keys())[0]
+    if split:
+        # An explicitly requested split must exist; silently falling back
+        # would benchmark a different question set than the manifest says.
+        if split not in ds:
+            raise ValueError(
+                f"Split {split!r} not found in {adapter.hf_id}; "
+                f"available: {', '.join(ds.keys())}"
+            )
+    else:
+        split = adapter.preferred_split
+        if split not in ds:
+            split = list(ds.keys())[0]
     data = ds[split]
 
     if sample_size and sample_size < len(data):
@@ -184,6 +194,7 @@ def load_corpus_and_questions(
     context_field: str | None = None,
     metadata_field: str | None = None,
     corpus_parser: Any | None = None,
+    split: str | None = None,
 ) -> tuple[list[dict], list[dict]]:
     """Load data and split into a deduplicated corpus and per-question entries.
 
@@ -233,6 +244,7 @@ def load_corpus_and_questions(
             ground_truth_field=ground_truth_field,
             context_field=context_field,
             metadata_field=metadata_field,
+            split=split,
         ),
         source=dataset_name,
     )

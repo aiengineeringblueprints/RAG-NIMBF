@@ -322,6 +322,7 @@ def _load_data_once(config: BenchmarkConfig) -> tuple[list[dict], list[dict] | N
                 context_field=config.dataset_context_field,
                 metadata_field=config.dataset_metadata_field,
                 corpus_parser=corpus_parser,
+                split=config.dataset_split,
             )
         else:
             corpus = None
@@ -334,6 +335,7 @@ def _load_data_once(config: BenchmarkConfig) -> tuple[list[dict], list[dict] | N
                 ground_truth_field=config.dataset_ground_truth_field,
                 context_field=config.dataset_context_field,
                 metadata_field=config.dataset_metadata_field,
+                split=config.dataset_split,
             )
     return data, corpus, load_stage.get("load_data", 0.0)
 

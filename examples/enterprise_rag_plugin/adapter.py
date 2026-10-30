@@ -282,7 +282,14 @@ def replace_blueprint_index(
         embedding_function=bundle.embedder,
         persist_directory=vector_db_dir,
     )
-    vectorstore.add_documents(chunks)
+    # Chroma rejects a single add larger than its max batch size.
+    batch_size = 5000
+    client = getattr(vectorstore, "_client", None)
+    max_batch = getattr(client, "get_max_batch_size", lambda: None)()
+    if isinstance(max_batch, int) and max_batch > 0:
+        batch_size = min(batch_size, max_batch)
+    for start in range(0, len(chunks), batch_size):
+        vectorstore.add_documents(chunks[start : start + batch_size])
 
     persist_fn = getattr(vectorstore, "persist", None)
     client = getattr(vectorstore, "_client", None)

@@ -616,3 +616,38 @@ def test_jsonl_shared_rejects_symlinked_corpus_files(tmp_path):
             dataset_path=str(questions),
             corpus_path=str(corpus_dir),
         )
+
+
+def _ragbench_dataset_dict():
+    from datasets import Dataset, DatasetDict
+
+    def rows(prefix, n):
+        return Dataset.from_list(
+            [
+                {"question": f"{prefix} q{i}", "response": "a", "documents": ["d"],
+                 "id": f"{prefix}{i}", "dataset_name": "techqa"}
+                for i in range(n)
+            ]
+        )
+
+    return DatasetDict({"train": rows("train", 5), "test": rows("test", 2)})
+
+
+@patch("benchmark.dataset.load_dataset")
+def test_explicit_split_overrides_adapter_preferred_split(mock_load):
+    mock_load.return_value = _ragbench_dataset_dict()
+
+    samples = load_benchmark_data(
+        dataset_name="ragbench", subset="techqa", sample_size=4, split="train"
+    )
+
+    assert len(samples) == 4
+    assert all(s["question"].startswith("train") for s in samples)
+
+
+@patch("benchmark.dataset.load_dataset")
+def test_explicit_split_missing_from_dataset_raises(mock_load):
+    mock_load.return_value = _ragbench_dataset_dict()
+
+    with pytest.raises(ValueError, match="validation.*train, test"):
+        load_benchmark_data(dataset_name="ragbench", subset="techqa", split="validation")
