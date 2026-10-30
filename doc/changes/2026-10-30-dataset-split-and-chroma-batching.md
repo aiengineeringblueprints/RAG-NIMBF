@@ -25,6 +25,11 @@ batches.
   `doc/enterprise-rag-blueprint-setup.md` (incl. the HuggingFace Xet download
   hang, workaround `HF_HUB_DISABLE_XET=1`).
 
+- **Run script** — `scripts/run_blueprint_rag.sh <run-dir> [manifest]` sets
+  the Blueprint plain-RAG environment (adapter module, Blueprint path, vector
+  DB dir, index name, `MCP_ENABLED=false`, `HF_HUB_DISABLE_XET=1`) and runs
+  the worker, so a fresh tmux session needs no manual exports.
+
 ## Behaviour changes and migration
 `DATASET_SPLIT` was previously read only by env-driven adapters
 (`hf-generic`, …); it now applies to every HuggingFace adapter. A stale

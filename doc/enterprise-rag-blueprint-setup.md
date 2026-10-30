@@ -188,6 +188,18 @@ Results land in `results/runN/` and MLflow. The MCP metrics are under
 independent of the Blueprint model. Metric definitions:
 [MCP Host Benchmarking](mcp-host-benchmarking.md#metrics).
 
+### Shortcut for the plain-RAG manifest
+
+`scripts/run_blueprint_rag.sh <run-dir> [manifest]` exports
+`RAG_ADAPTER_MODULES`, `ENTERPRISE_RAG_BLUEPRINT_PATH`, `VECTORDB_DIR`,
+`INDEX_NAME`, `MCP_ENABLED=false` and `HF_HUB_DISABLE_XET=1` (each overridable
+from the shell) and runs `experiments/enterprise-rag-blueprint-rag.yaml` with
+`--keep-going`, logging to `~/bp-rag-<run-dir name>.log`:
+
+```bash
+scripts/run_blueprint_rag.sh results/Enterprise-RAG/run4
+```
+
 ## What the manifest does not control
 
 - Prompts: the Blueprint uses its own (`enterprise_rag_mcp_prompt_key`:
