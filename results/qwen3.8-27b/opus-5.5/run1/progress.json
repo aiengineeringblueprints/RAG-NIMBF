@@ -1,0 +1,16 @@
+{
+  "configs": {
+    "recursive_cs1000_co100_nomic-embed-text:latest_qwen3.8-27b_concise_k12_mmr-l0.5": {
+      "status": "completed",
+      "started_at": "2026-10-23T08:17:30.240259+00:00",
+      "completed_at": "2026-10-23T10:04:08.852160+00:00",
+      "result_path": "results/qwen3.8-27b/opus-5.5/run1/configs/recursive_cs1000_co100_nomic-embed-text_latest_qwen3.8-27b_concise_k12_mmr-l0.5.json"
+    },
+    "recursive_cs1000_co100_nomic-embed-text:latest_qwen3.8-27b_detailed_k12_mmr-l0.5": {
+      "status": "completed",
+      "started_at": "2026-10-23T10:04:08.960558+00:00",
+      "completed_at": "2026-10-23T11:52:51.585370+00:00",
+      "result_path": "results/qwen3.8-27b/opus-5.5/run1/configs/recursive_cs1000_co100_nomic-embed-text_latest_qwen3.8-27b_detailed_k12_mmr-l0.5.json"
+    }
+  }
+}

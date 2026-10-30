@@ -1,0 +1,124 @@
+{
+  "configs": {
+    "recursive_cs500_co50_nomic-embed-text:latest_qwen3.8-27b_concise_k12_mmr-l0.5": {
+      "status": "completed",
+      "started_at": "2026-10-21T13:05:20.685977+00:00",
+      "completed_at": "2026-10-21T14:55:44.187509+00:00",
+      "result_path": "results/qwen3.8-27b/deepseek-v4-flash/run3/configs/recursive_cs500_co50_nomic-embed-text_latest_qwen3.8-27b_concise_k12_mmr-l0.5.json"
+    },
+    "recursive_cs500_co100_nomic-embed-text:latest_qwen3.8-27b_concise_k12_mmr-l0.5": {
+      "status": "completed",
+      "started_at": "2026-10-21T14:55:44.414410+00:00",
+      "completed_at": "2026-10-21T16:44:36.322200+00:00",
+      "result_path": "results/qwen3.8-27b/deepseek-v4-flash/run3/configs/recursive_cs500_co100_nomic-embed-text_latest_qwen3.8-27b_concise_k12_mmr-l0.5.json"
+    },
+    "recursive_cs500_co150_nomic-embed-text:latest_qwen3.8-27b_concise_k12_mmr-l0.5": {
+      "status": "completed",
+      "started_at": "2026-10-21T16:44:36.455523+00:00",
+      "completed_at": "2026-10-21T18:33:29.474842+00:00",
+      "result_path": "results/qwen3.8-27b/deepseek-v4-flash/run3/configs/recursive_cs500_co150_nomic-embed-text_latest_qwen3.8-27b_concise_k12_mmr-l0.5.json"
+    },
+    "recursive_cs1000_co50_nomic-embed-text:latest_qwen3.8-27b_concise_k12_mmr-l0.5": {
+      "status": "completed",
+      "started_at": "2026-10-21T18:33:29.618025+00:00",
+      "completed_at": "2026-10-21T20:24:41.216608+00:00",
+      "result_path": "results/qwen3.8-27b/deepseek-v4-flash/run3/configs/recursive_cs1000_co50_nomic-embed-text_latest_qwen3.8-27b_concise_k12_mmr-l0.5.json"
+    },
+    "recursive_cs1000_co100_nomic-embed-text:latest_qwen3.8-27b_concise_k12_mmr-l0.5": {
+      "status": "completed",
+      "started_at": "2026-10-21T20:24:41.455841+00:00",
+      "completed_at": "2026-10-21T22:12:34.657623+00:00",
+      "result_path": "results/qwen3.8-27b/deepseek-v4-flash/run3/configs/recursive_cs1000_co100_nomic-embed-text_latest_qwen3.8-27b_concise_k12_mmr-l0.5.json"
+    },
+    "recursive_cs1000_co150_nomic-embed-text:latest_qwen3.8-27b_concise_k12_mmr-l0.5": {
+      "status": "completed",
+      "started_at": "2026-10-21T22:12:34.910642+00:00",
+      "completed_at": "2026-10-22T00:08:14.735714+00:00",
+      "result_path": "results/qwen3.8-27b/deepseek-v4-flash/run3/configs/recursive_cs1000_co150_nomic-embed-text_latest_qwen3.8-27b_concise_k12_mmr-l0.5.json"
+    },
+    "recursive_cs2000_co50_nomic-embed-text:latest_qwen3.8-27b_concise_k12_mmr-l0.5": {
+      "status": "completed",
+      "started_at": "2026-10-22T00:08:15.049421+00:00",
+      "completed_at": "2026-10-22T02:13:42.941081+00:00",
+      "result_path": "results/qwen3.8-27b/deepseek-v4-flash/run3/configs/recursive_cs2000_co50_nomic-embed-text_latest_qwen3.8-27b_concise_k12_mmr-l0.5.json"
+    },
+    "recursive_cs2000_co100_nomic-embed-text:latest_qwen3.8-27b_concise_k12_mmr-l0.5": {
+      "status": "completed",
+      "started_at": "2026-10-22T02:13:43.195018+00:00",
+      "completed_at": "2026-10-22T04:02:07.482673+00:00",
+      "result_path": "results/qwen3.8-27b/deepseek-v4-flash/run3/configs/recursive_cs2000_co100_nomic-embed-text_latest_qwen3.8-27b_concise_k12_mmr-l0.5.json"
+    },
+    "recursive_cs2000_co150_nomic-embed-text:latest_qwen3.8-27b_concise_k12_mmr-l0.5": {
+      "status": "completed",
+      "started_at": "2026-10-22T04:02:07.633239+00:00",
+      "completed_at": "2026-10-22T05:53:01.645476+00:00",
+      "result_path": "results/qwen3.8-27b/deepseek-v4-flash/run3/configs/recursive_cs2000_co150_nomic-embed-text_latest_qwen3.8-27b_concise_k12_mmr-l0.5.json"
+    },
+    "recursive_cs500_co50_nomic-embed-text:latest_qwen3.8-27b_detailed_k12_mmr-l0.5": {
+      "status": "completed",
+      "started_at": "2026-10-22T05:53:01.772335+00:00",
+      "completed_at": "2026-10-22T07:45:22.797821+00:00",
+      "result_path": "results/qwen3.8-27b/deepseek-v4-flash/run3/configs/recursive_cs500_co50_nomic-embed-text_latest_qwen3.8-27b_detailed_k12_mmr-l0.5.json"
+    },
+    "recursive_cs500_co100_nomic-embed-text:latest_qwen3.8-27b_detailed_k12_mmr-l0.5": {
+      "status": "completed",
+      "started_at": "2026-10-22T07:45:23.009963+00:00",
+      "completed_at": "2026-10-22T09:36:31.289646+00:00",
+      "result_path": "results/qwen3.8-27b/deepseek-v4-flash/run3/configs/recursive_cs500_co100_nomic-embed-text_latest_qwen3.8-27b_detailed_k12_mmr-l0.5.json"
+    },
+    "recursive_cs500_co150_nomic-embed-text:latest_qwen3.8-27b_detailed_k12_mmr-l0.5": {
+      "status": "completed",
+      "started_at": "2026-10-22T09:36:31.421218+00:00",
+      "completed_at": "2026-10-22T11:24:51.368644+00:00",
+      "result_path": "results/qwen3.8-27b/deepseek-v4-flash/run3/configs/recursive_cs500_co150_nomic-embed-text_latest_qwen3.8-27b_detailed_k12_mmr-l0.5.json"
+    },
+    "recursive_cs1000_co50_nomic-embed-text:latest_qwen3.8-27b_detailed_k12_mmr-l0.5": {
+      "status": "completed",
+      "started_at": "2026-10-22T11:24:51.518326+00:00",
+      "completed_at": "2026-10-22T13:14:26.402759+00:00",
+      "result_path": "results/qwen3.8-27b/deepseek-v4-flash/run3/configs/recursive_cs1000_co50_nomic-embed-text_latest_qwen3.8-27b_detailed_k12_mmr-l0.5.json"
+    },
+    "recursive_cs1000_co100_nomic-embed-text:latest_qwen3.8-27b_detailed_k12_mmr-l0.5": {
+      "status": "completed",
+      "started_at": "2026-10-22T13:14:26.676976+00:00",
+      "completed_at": "2026-10-22T15:04:29.731959+00:00",
+      "result_path": "results/qwen3.8-27b/deepseek-v4-flash/run3/configs/recursive_cs1000_co100_nomic-embed-text_latest_qwen3.8-27b_detailed_k12_mmr-l0.5.json"
+    },
+    "recursive_cs1000_co150_nomic-embed-text:latest_qwen3.8-27b_detailed_k12_mmr-l0.5": {
+      "status": "completed",
+      "started_at": "2026-10-22T15:04:30.049794+00:00",
+      "completed_at": "2026-10-22T16:55:47.727380+00:00",
+      "result_path": "results/qwen3.8-27b/deepseek-v4-flash/run3/configs/recursive_cs1000_co150_nomic-embed-text_latest_qwen3.8-27b_detailed_k12_mmr-l0.5.json"
+    },
+    "recursive_cs2000_co50_nomic-embed-text:latest_qwen3.8-27b_detailed_k12_mmr-l0.5": {
+      "status": "completed",
+      "started_at": "2026-10-22T16:55:47.913265+00:00",
+      "completed_at": "2026-10-22T18:44:09.158606+00:00",
+      "result_path": "results/qwen3.8-27b/deepseek-v4-flash/run3/configs/recursive_cs2000_co50_nomic-embed-text_latest_qwen3.8-27b_detailed_k12_mmr-l0.5.json"
+    },
+    "recursive_cs2000_co100_nomic-embed-text:latest_qwen3.8-27b_detailed_k12_mmr-l0.5": {
+      "status": "completed",
+      "started_at": "2026-10-22T18:44:09.294100+00:00",
+      "completed_at": "2026-10-22T20:35:40.393014+00:00",
+      "result_path": "results/qwen3.8-27b/deepseek-v4-flash/run3/configs/recursive_cs2000_co100_nomic-embed-text_latest_qwen3.8-27b_detailed_k12_mmr-l0.5.json"
+    },
+    "recursive_cs2000_co150_nomic-embed-text:latest_qwen3.8-27b_detailed_k12_mmr-l0.5": {
+      "status": "completed",
+      "started_at": "2026-10-22T20:35:40.758101+00:00",
+      "completed_at": "2026-10-22T22:31:10.744339+00:00",
+      "result_path": "results/qwen3.8-27b/deepseek-v4-flash/run3/configs/recursive_cs2000_co150_nomic-embed-text_latest_qwen3.8-27b_detailed_k12_mmr-l0.5.json"
+    },
+    "semantic_bppercentile95_nomic-embed-text:latest_qwen3.8-27b_concise_k12_mmr-l0.5": {
+      "status": "completed",
+      "started_at": "2026-10-22T22:31:10.849058+00:00",
+      "completed_at": "2026-10-23T00:16:57.605107+00:00",
+      "result_path": "results/qwen3.8-27b/deepseek-v4-flash/run3/configs/semantic_bppercentile95_nomic-embed-text_latest_qwen3.8-27b_concise_k12_mmr-l0.5.json"
+    },
+    "semantic_bppercentile95_nomic-embed-text:latest_qwen3.8-27b_detailed_k12_mmr-l0.5": {
+      "status": "completed",
+      "started_at": "2026-10-23T00:16:57.731812+00:00",
+      "completed_at": "2026-10-23T02:04:33.236620+00:00",
+      "result_path": "results/qwen3.8-27b/deepseek-v4-flash/run3/configs/semantic_bppercentile95_nomic-embed-text_latest_qwen3.8-27b_detailed_k12_mmr-l0.5.json"
+    }
+  }
+}

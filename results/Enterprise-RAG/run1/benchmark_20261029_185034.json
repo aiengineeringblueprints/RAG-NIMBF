@@ -1,0 +1,279 @@
+{
+  "timestamp": "20261029_185034",
+  "num_configs": 1,
+  "dataset": {
+    "name": "squad",
+    "subset": "",
+    "sample_size": 20
+  },
+  "system_info": {
+    "python": "3.12.3",
+    "os": "Linux",
+    "os_version": "6.17.0-1014-nvidia",
+    "platform": "Linux-6.17.0-1014-nvidia-aarch64-with-glibc2.39",
+    "gpu": "NVIDIA GB10",
+    "gpu_memory_total_mb": "[N/A]"
+  },
+  "results": [
+    {
+      "config_name": "recursive_cs512_co64_nomic-embed-text:latest_qwen3.8-27b_concise_temp0_enterprise_rag_mcp_managed-baadea32f1",
+      "llm_model": "qwen3.8-27b",
+      "embedding_model": "nomic-embed-text:latest",
+      "prompt_template": "concise",
+      "chunking_strategy": "recursive",
+      "chunk_size": 512,
+      "chunk_overlap": 64,
+      "num_chunks": 0,
+      "num_questions": 20,
+      "ragas_faithfulness": 0.5895238095238096,
+      "ragas_answer_relevancy": 0.8338243657247805,
+      "ragas_answer_correctness": 0.5234243487627535,
+      "ragas_context_precision": 0.9083333332520833,
+      "ragas_context_recall": 0.95,
+      "ragas_semantic_similarity": 0.6072255335791519,
+      "stage_timings": {
+        "load_data": 1.3316153759951703,
+        "adapter_prepare": 0.4214106080471538,
+        "external_rag": 21.83924652787391,
+        "ragas_eval": 288.4052359839552,
+        "custom_metrics": 8.842808064015117,
+        "total": 319.59113084798446
+      },
+      "vector_db_backend": "chroma",
+      "total_input_tokens": 0,
+      "total_output_tokens": 0,
+      "total_tokens": 0,
+      "critic_input_tokens": 337979,
+      "critic_output_tokens": 49163,
+      "critic_total_tokens": 387142,
+      "total_estimated_cost_usd": null,
+      "avg_estimated_cost_per_answer_usd": null,
+      "llm_performance_metrics": {},
+      "llm_performance_artifact": null,
+      "llm_performance_error": null,
+      "adapter_metrics": {
+        "answer_match_count": 16,
+        "answer_match_rate": 0.8,
+        "per_category": {}
+      },
+      "avg_contexts_per_question": 5.0,
+      "max_contexts_per_question": 5,
+      "avg_context_chars_per_question": 1996.4,
+      "stats": {
+        "ragas_faithfulness": {
+          "mean": 0.5895238095238096,
+          "std": 0.2775240039012432,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 0.6666666666666666,
+          "count": 20
+        },
+        "ragas_answer_relevancy": {
+          "mean": 0.8338243657247805,
+          "std": 0.21142175154806475,
+          "min": 0.0,
+          "max": 0.997003430706295,
+          "median": 0.8758608033551298,
+          "count": 20
+        },
+        "ragas_answer_correctness": {
+          "mean": 0.5234243487627533,
+          "std": 0.14388675950145402,
+          "min": 0.114844584347789,
+          "max": 0.7796915262858323,
+          "median": 0.5329205374701842,
+          "count": 20
+        },
+        "ragas_context_precision": {
+          "mean": 0.9083333332520833,
+          "std": 0.2619930359085587,
+          "min": 0.0,
+          "max": 0.99999999995,
+          "median": 0.9999999999,
+          "count": 20
+        },
+        "ragas_context_recall": {
+          "mean": 0.95,
+          "std": 0.22360679774997896,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 20
+        },
+        "ragas_semantic_similarity": {
+          "mean": 0.607225533579152,
+          "std": 0.11268021760250005,
+          "min": 0.38009866299913625,
+          "max": 0.8046475784837609,
+          "median": 0.6313965685079802,
+          "count": 20
+        }
+      },
+      "hit@1": 0.7,
+      "ndcg@1": 0.7,
+      "recall@1": 0.35583333333333333,
+      "hit@3": 0.7,
+      "ndcg@3": 0.6694499757585473,
+      "recall@3": 0.6341666666666667,
+      "hit@5": 0.75,
+      "ndcg@5": 0.7081479548681634,
+      "recall@5": 0.75,
+      "context_relevance": 0.5895544960839534,
+      "vec_dist_q_gt": 0.5130270468026816,
+      "vec_dist_q_answer": 0.20901030717233823,
+      "rouge_l": 0.10315255338929474,
+      "bleu": 0.024408048118484276,
+      "meteor": 0.25085047361213253,
+      "bert_score_precision": 0.6621994972229004,
+      "bert_score_recall": 0.6862904131412506,
+      "bert_score_f1": 0.6740093227995921,
+      "custom_stats": {
+        "hit@1": {
+          "mean": 0.7,
+          "std": 0.47016234598162726,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 20
+        },
+        "ndcg@1": {
+          "mean": 0.7,
+          "std": 0.47016234598162726,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 20
+        },
+        "recall@1": {
+          "mean": 0.35583333333333333,
+          "std": 0.3344837603904146,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 0.3333333333333333,
+          "count": 20
+        },
+        "hit@3": {
+          "mean": 0.7,
+          "std": 0.47016234598162726,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 20
+        },
+        "ndcg@3": {
+          "mean": 0.6694499757585471,
+          "std": 0.4567562121750838,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 20
+        },
+        "recall@3": {
+          "mean": 0.6341666666666667,
+          "std": 0.44532907209853295,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 0.875,
+          "count": 20
+        },
+        "hit@5": {
+          "mean": 0.75,
+          "std": 0.44426165831931924,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 20
+        },
+        "ndcg@5": {
+          "mean": 0.7081479548681634,
+          "std": 0.44063495683191,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 0.9914460409783439,
+          "count": 20
+        },
+        "recall@5": {
+          "mean": 0.75,
+          "std": 0.44426165831931924,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 20
+        },
+        "context_relevance": {
+          "mean": 0.5895544960839534,
+          "std": 0.05325727100173079,
+          "min": 0.47213044396803844,
+          "max": 0.6670214203402043,
+          "median": 0.6009428199652675,
+          "count": 20
+        },
+        "vec_dist_q_gt": {
+          "mean": 0.5130270468026816,
+          "std": 0.09264625589587445,
+          "min": 0.3443677119679356,
+          "max": 0.6607639138169994,
+          "median": 0.5366681613936689,
+          "count": 20
+        },
+        "vec_dist_q_answer": {
+          "mean": 0.20901030717233823,
+          "std": 0.06692323816742253,
+          "min": 0.12723212483310609,
+          "max": 0.43244066996224306,
+          "median": 0.2009346716200559,
+          "count": 20
+        },
+        "rouge_l": {
+          "mean": 0.10315255338929474,
+          "std": 0.11334913890445734,
+          "min": 0.0,
+          "max": 0.375,
+          "median": 0.07291666666666666,
+          "count": 20
+        },
+        "bleu": {
+          "mean": 0.024408048118484276,
+          "std": 0.05328956718621829,
+          "min": 0.0,
+          "max": 0.16079298647562637,
+          "median": 0.0,
+          "count": 20
+        },
+        "meteor": {
+          "mean": 0.25085047361213253,
+          "std": 0.23612056638509307,
+          "min": 0.0,
+          "max": 0.6861724281549355,
+          "median": 0.208984375,
+          "count": 20
+        },
+        "bert_score_precision": {
+          "mean": 0.6621994972229004,
+          "std": 0.4449019072030034,
+          "min": 0.0,
+          "max": 0.9627960324287415,
+          "median": 0.942136287689209,
+          "count": 20
+        },
+        "bert_score_recall": {
+          "mean": 0.6862904131412506,
+          "std": 0.4609845769456579,
+          "min": 0.0,
+          "max": 0.9907722473144531,
+          "median": 0.9759933352470398,
+          "count": 20
+        },
+        "bert_score_f1": {
+          "mean": 0.6740093227995921,
+          "std": 0.4527640832024743,
+          "min": 0.0,
+          "max": 0.9730825586178765,
+          "median": 0.9601264358524821,
+          "count": 20
+        }
+      }
+    }
+  ],
+  "samples_file": "benchmark_20261029_185034.samples.json.gz"
+}

@@ -1,0 +1,10 @@
+{
+  "configs": {
+    "recursive_cs512_co64_nomic-embed-text:latest_qwen3.8-27b_concise_temp0_enterprise_rag_mcp_managed-baadea32f1": {
+      "status": "completed",
+      "started_at": "2026-10-29T17:45:14.937911+00:00",
+      "completed_at": "2026-10-29T17:50:34.551242+00:00",
+      "result_path": "results/run98/configs/recursive_cs512_co64_nomic-embed-text_latest_qwen3.8-27b_concise_temp0_enterprise_rag_mcp_managed-baadea32f1.json"
+    }
+  }
+}

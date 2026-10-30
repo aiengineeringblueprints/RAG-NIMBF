@@ -1,0 +1,8 @@
+{
+  "experiment_name": "enterprise-rag-blueprint-rag",
+  "created_at": "2026-10-29T17:45:14.874132+00:00",
+  "num_configs": 1,
+  "configs": [
+    "recursive_cs512_co64_nomic-embed-text:latest_qwen3.8-27b_concise_temp0_enterprise_rag_mcp_managed-baadea32f1"
+  ]
+}

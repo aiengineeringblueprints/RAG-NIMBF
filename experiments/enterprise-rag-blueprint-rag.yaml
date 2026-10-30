@@ -15,10 +15,15 @@ experiment_name: enterprise-rag-blueprint-rag
 #   VECTORDB_DIR=<writable dir>  INDEX_NAME=bench-blueprint-rag
 # See doc/enterprise-rag-blueprint-setup.md.
 
+#dataset:
+#  name: squad
+#  subset: null
+#  sample_size: 500
+
 dataset:
-  name: squad
-  subset: null
-  sample_size: 20
+  name: ragbench
+  subset: techqa
+  sample_size: 500
 
 settings:
   rag_system_adapter: enterprise_rag_mcp
@@ -43,8 +48,8 @@ matrix:
   llm_models: [openai:qwen3.8-27b]
   embedding_models: [nomic-embed-text:latest]
   retrieval_top_k: [5]             # Blueprint default
-  chunking_strategies: [recursive]
-  chunk_sizes: [512]
-  chunk_overlaps: [64]
+  chunking_strategies: [recursive, semantic]
+  chunk_sizes: [512, 1024]
+  chunk_overlaps: [64, 128]
   prompt_templates: [concise]      # unused by the Blueprint
   reranker_models: [null]
