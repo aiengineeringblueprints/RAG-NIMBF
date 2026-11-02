@@ -106,6 +106,9 @@ def build_configs_from_spec(
                     f"chunk_overlap ({cfg.chunk_overlap}) must be less than "
                     f"chunk_size ({cfg.chunk_size})"
                 )
+        if not cfg.enterprise_rag_mcp_enabled and cfg.enterprise_rag_mcp_retrieval != "context":
+            # Without MCP the Blueprint always preloads documents; collapse to RAG only.
+            cfg = replace(cfg, enterprise_rag_mcp_retrieval="context")
         cfg = validate_benchmark_config(cfg)
         if cfg in seen_configs:
             continue
@@ -393,6 +396,7 @@ def _coerce_field_value(key: str, value: Any) -> Any:
         "enterprise_rag_mcp_apply_settings",
         "enterprise_rag_mcp_query_refinement",
         "enterprise_rag_mcp_guardrails",
+        "enterprise_rag_mcp_decline_judge",
     }:
         return _to_bool(value)
     if key in {

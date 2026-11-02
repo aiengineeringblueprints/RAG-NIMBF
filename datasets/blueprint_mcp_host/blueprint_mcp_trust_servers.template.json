@@ -1,0 +1,56 @@
+{
+  "servers": [
+    {
+      "id": "kestrel",
+      "transport": "stdio",
+      "command": "${FRAMEWORK_DIR}/.venv/bin/python",
+      "args": ["${FRAMEWORK_DIR}/datasets/blueprint_mcp_host/mcp_server.py"],
+      "roles": ["General"],
+      "read_only_tools": [
+        "search_directory", "get_order_status", "get_stock_level",
+        "convert_currency", "count_open_tickets", "get_shipping_quote",
+        "get_project_status", "get_invoice_balance", "get_weather", "get_stock_price"
+      ],
+      "resource_uris": [],
+      "env": {}
+    },
+    {
+      "id": "kestrel_live",
+      "transport": "stdio",
+      "command": "${FRAMEWORK_DIR}/.venv/bin/python",
+      "args": ["${FRAMEWORK_DIR}/datasets/blueprint_mcp_host/trust_mcp_server.py", "kestrel_live"],
+      "roles": ["General"],
+      "read_only_tools": ["get_price_list_entry", "get_firmware_release"],
+      "resource_uris": [],
+      "env": {}
+    },
+    {
+      "id": "kestrel_finance",
+      "transport": "stdio",
+      "command": "${FRAMEWORK_DIR}/.venv/bin/python",
+      "args": ["${FRAMEWORK_DIR}/datasets/blueprint_mcp_host/trust_mcp_server.py", "kestrel_finance"],
+      "roles": ["Finance"],
+      "read_only_tools": ["get_customer_margin", "get_cost_rate"],
+      "resource_uris": [],
+      "env": {}
+    },
+    {
+      "id": "kestrel_service",
+      "transport": "stdio",
+      "command": "${FRAMEWORK_DIR}/.venv/bin/python",
+      "args": ["${FRAMEWORK_DIR}/datasets/blueprint_mcp_host/trust_mcp_server.py", "kestrel_service"],
+      "roles": ["General"],
+      "read_only_tools": [
+        "get_supplier_rating", "get_product_reviews", "get_calibration_info",
+        "get_warranty_status", "get_service_history"
+      ],
+      "resource_uris": [],
+      "env": {}
+    }
+  ],
+  "timeout_seconds": 8,
+  "request_timeout_seconds": 120,
+  "max_rounds": 4,
+  "max_calls": 8,
+  "max_result_bytes": 16000
+}

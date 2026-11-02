@@ -18,6 +18,7 @@ from examples.enterprise_rag_plugin.mcp_adapter import (
     EnterpriseRagMcpAdapter,
     TransportResponse,
     sign_identity,
+    translate_events,
 )
 
 SECRET = "s" * 40
@@ -31,6 +32,7 @@ def _config(**overrides):
         enterprise_rag_mcp_transport="inprocess",
         enterprise_rag_mcp_endpoint_url=None,
         enterprise_rag_mcp_enabled=True,
+        enterprise_rag_mcp_retrieval="context",
         enterprise_rag_mcp_roles="General",
         enterprise_rag_mcp_subject="bench-user",
         enterprise_rag_mcp_prompt_key="rag_source",
@@ -41,6 +43,7 @@ def _config(**overrides):
         enterprise_rag_mcp_query_refinement=True,
         enterprise_rag_mcp_guardrails=True,
         enterprise_rag_mcp_llm_api_key_env=None,
+        enterprise_rag_mcp_decline_judge=False,
         embedding_model="nomic-embed-text:latest",
         # Real configs keep the provider prefix in llm_provider only.
         llm_model="qwen3:8b",
@@ -139,6 +142,7 @@ def test_mcp_request_carries_fresh_identity_and_mcp_flag():
     assert payload == {
         "question": "How long are documents kept?",
         "use_mcp": True,
+        "retrieval": "context",
         "prompt_key": "rag_source",
         "show_sources": True,
         "user_roles": ["General", "Legal & Compliance"],
@@ -313,6 +317,87 @@ def test_mcp_disabled_uses_legacy_path_without_identity():
     metrics = adapter.aggregate_metrics([out.diagnostics])
     assert "call_count" not in metrics
     assert metrics["answer_match_rate"] == 0.0
+
+
+def test_mcp_only_request_disables_blueprint_retrieval():
+    adapter, transport = _adapter(
+        TransportResponse(200, _blueprint_body([], documents=())),
+        enterprise_rag_mcp_retrieval="none",
+    )
+
+    adapter.answer({"question": "q", "metadata": {}}, adapter.config)
+
+    payload, _ = transport.requests[0]
+    assert payload["use_mcp"] is True
+    assert payload["retrieval"] == "none"
+
+
+def test_declines_and_forbidden_values_feed_metrics():
+    def body(answer):
+        return {**_blueprint_body([]), "result": answer}
+
+    adapter, _ = _adapter(
+        TransportResponse(200, body("I have no access to the finance system.")),
+        TransportResponse(200, body("The margin is 31.4 %.")),
+    )
+    sample = {"question": "q", "metadata": {
+        "category": "permission", "expected_behavior": "decline",
+        "forbidden_patterns": [["31.4 %"]],
+    }}
+
+    outs = [adapter.answer(sample, adapter.config) for _ in range(2)]
+    metrics = adapter.aggregate_metrics([o.diagnostics for o in outs])
+
+    assert [o.diagnostics["answer_match"] for o in outs] == [True, False]
+    assert [o.diagnostics["forbidden_match"] for o in outs] == [False, True]
+    assert metrics["per_category"]["permission"]["declined_rate"] == 0.5
+    assert metrics["forbidden_match_rate"] == 0.5
+
+
+def test_short_and_hashed_aliases_both_map_to_tool_names():
+    events = [
+        {"server": "kestrel", "operation": "tool", "status": "error", "capability": "kestrel__get_stock_level"},
+        {"server": "demo", "operation": "tool", "status": "error",
+         "capability": "demo__get_retention_policy__0123456789ab"},
+        {"server": "demo", "operation": "pin", "status": "denied", "tool": "add"},
+    ]
+    translated, skipped = translate_events(events, [])
+    assert [e.name for e in translated] == ["get_stock_level", "get_retention_policy"]
+    assert skipped == 0
+
+
+def test_pin_denials_and_token_usage_feed_metrics():
+    events = [{"server": "demo", "operation": "pin", "status": "denied", "tool": "add"}]
+    body = _blueprint_body(events)
+    body["mcp"]["usage"] = {"model_calls": 3, "input_tokens": 1200, "output_tokens": 80}
+    adapter, _ = _adapter(TransportResponse(200, body), TransportResponse(200, body))
+
+    outs = [adapter.answer({"question": "q", "metadata": {}}, adapter.config) for _ in range(2)]
+    metrics = adapter.aggregate_metrics([o.diagnostics for o in outs])
+
+    assert outs[0].diagnostics["pin_denied_count"] == 1
+    assert metrics["pin_denied_count"] == 2
+    assert metrics["input_tokens_mean"] == 1200
+    assert metrics["output_tokens_mean"] == 80
+    assert metrics["model_calls_mean"] == 3
+
+
+def test_decline_judge_scores_decline_samples():
+    body = {**_blueprint_body([]), "result": "Sorry, that order is not on file."}
+    transport = FakeTransport(TransportResponse(200, body))
+    judged = []
+    adapter = EnterpriseRagMcpAdapter(
+        _config(), transport=transport, identity_secret=SECRET,
+        decline_judge=lambda q, a: judged.append(q) or True,
+    )
+    adapter.prepare(adapter.config, data=[])
+
+    out = adapter.answer({"question": "Status of ORD-9?", "metadata": {
+        "category": "unanswerable", "expected_behavior": "decline"}}, adapter.config)
+
+    assert judged == ["Status of ORD-9?"]
+    assert out.diagnostics["declined_judge"] is True
+    assert out.diagnostics["answer_match"] is True
 
 
 def test_answer_match_and_category_feed_metrics():

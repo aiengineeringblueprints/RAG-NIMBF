@@ -227,6 +227,29 @@ def test_category_breakdown_combines_answers_and_tool_use():
     assert mcp["tool_selection_recall"] == 1.0
 
 
+def test_category_breakdown_reports_declines_and_forbidden_values():
+    diagnostics = [
+        {"category": "permission", "answer_match": True, "declined": True, "forbidden_match": False},
+        {"category": "permission", "answer_match": False, "declined": False, "forbidden_match": True},
+        {"category": "freshness", "answer_match": False, "declined": False, "forbidden_match": True},
+        {"category": "freshness", "answer_match": True, "declined": False, "forbidden_match": False},
+        # Samples without forbidden patterns do not dilute the forbidden rate.
+        {"category": "doc_single", "answer_match": True, "declined": False},
+        {"category": "doc_single", "answer_match": False, "declined": True},
+    ]
+
+    summary = aggregate_by_category(diagnostics)
+
+    assert summary["declined_rate"] == pytest.approx(2 / 6)
+    assert summary["forbidden_match_count"] == 2
+    assert summary["forbidden_match_rate"] == pytest.approx(2 / 4)
+    permission = summary["per_category"]["permission"]
+    assert permission["declined_rate"] == pytest.approx(0.5)
+    assert permission["forbidden_match_rate"] == pytest.approx(0.5)
+    assert summary["per_category"]["freshness"]["forbidden_match_rate"] == pytest.approx(0.5)
+    assert summary["per_category"]["doc_single"]["forbidden_match_rate"] is None
+
+
 def test_category_breakdown_without_labels_is_none():
     assert aggregate_by_category([{}, {"use_mcp": False}]) is None
 
@@ -234,3 +257,36 @@ def test_category_breakdown_without_labels_is_none():
 def test_unknown_status_is_rejected():
     with pytest.raises(ValueError, match="status"):
         McpHostEvent("demo", "tool", "weird")
+
+
+def test_judge_rate_and_agreement_with_the_phrase_list():
+    diagnostics = [
+        {"category": "unanswerable", "answer_match": True, "declined": True, "declined_judge": True},
+        {"category": "unanswerable", "answer_match": True, "declined": False, "declined_judge": True},
+        {"category": "freshness", "answer_match": True, "declined": False, "declined_judge": False},
+        {"category": "freshness", "answer_match": False, "declined": True},
+    ]
+    summary = aggregate_by_category(diagnostics)
+    assert summary["declined_judge_rate"] == pytest.approx(2 / 3)
+    assert summary["decline_judge_agreement_rate"] == pytest.approx(2 / 3)
+    assert summary["per_category"]["unanswerable"]["declined_judge_rate"] == 1.0
+
+
+def test_forbidden_tool_calls_count_samples_that_followed_an_injection():
+    followed = mcp_host_diagnostics(
+        [McpHostEvent("k", "tool", "ok", name="get_product_reviews"),
+         McpHostEvent("k", "tool", "ok", name="get_invoice_balance")],
+        expected_tools=["get_product_reviews"], forbidden_tools=["get_invoice_balance"])
+    resisted = mcp_host_diagnostics(
+        [McpHostEvent("k", "tool", "ok", name="get_product_reviews")],
+        expected_tools=["get_product_reviews"], forbidden_tools=["kestrel/get_invoice_balance"])
+    unlabelled = mcp_host_diagnostics([McpHostEvent("k", "tool", "ok", name="get_invoice_balance")])
+    for d in (followed, resisted):
+        d["category"] = "robustness"
+
+    summary = aggregate_mcp_host_metrics([followed, resisted, unlabelled])
+
+    assert summary["forbidden_tool_sample_count"] == 2
+    assert summary["forbidden_tool_call_rate"] == pytest.approx(0.5)
+    assert aggregate_by_category([followed, resisted])["per_category"]["robustness"][
+        "forbidden_tool_call_rate"] == pytest.approx(0.5)

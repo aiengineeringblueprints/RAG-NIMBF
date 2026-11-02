@@ -487,6 +487,8 @@ templates, vector backend, and evaluator settings belong in `experiments/*.yaml`
 | `ENTERPRISE_RAG_MCP_TRANSPORT` | `inprocess` (default) or `http` for `enterprise_rag_mcp`. |
 | `ENTERPRISE_RAG_MCP_ENDPOINT_URL` | Blueprint `/call_llm` URL; required for the `http` transport. |
 | `ENTERPRISE_RAG_MCP_ENABLED` | Send `use_mcp: true`; `false` benchmarks the Blueprint without MCP. Defaults to `true`. |
+| `ENTERPRISE_RAG_MCP_RETRIEVAL` | Blueprint retrieval with MCP on: `context` (default, documents preloaded), `tool` (the model calls a document-search tool) or `none` (MCP alone). |
+| `ENTERPRISE_RAG_MCP_DECLINE_JUDGE` | `true` lets the critic LLM (`EVAL_CRITIC_LLM`) judge declines next to the phrase list. Defaults to `false`. |
 | `ENTERPRISE_RAG_MCP_ROLES` | Comma-separated roles in the signed identity; defaults to `General`. |
 | `ENTERPRISE_RAG_MCP_SUBJECT` | Identity subject; defaults to `benchmark`. |
 | `ENTERPRISE_RAG_MCP_PROMPT_KEY` | `rag_source` (default), `rag_summary` or `rag_weekly_report`. |

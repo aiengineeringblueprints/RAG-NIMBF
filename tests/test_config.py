@@ -1200,6 +1200,14 @@ class TestEnterpriseRagMcpConfig:
             ({"enterprise_rag_mcp_roles": " , "}, "enterprise_rag_mcp_roles"),
             ({"enterprise_rag_mcp_timeout_seconds": 0}, "enterprise_rag_mcp_timeout_seconds"),
             ({"enterprise_rag_mcp_prompt_key": "rag_mail"}, "enterprise_rag_mcp_prompt_key"),
+            (
+                {"enterprise_rag_mcp_enabled": False, "enterprise_rag_mcp_retrieval": "tool"},
+                "enterprise_rag_mcp_retrieval",
+            ),
+            (
+                {"enterprise_rag_mcp_retrieval": "sometimes"},
+                "enterprise_rag_mcp_retrieval",
+            ),
         ],
     )
     def test_invalid_values_rejected(self, overrides, message):
@@ -1213,6 +1221,10 @@ class TestEnterpriseRagMcpConfig:
             rag_system_adapter="enterprise_rag_mcp", enterprise_rag_mcp_enabled=False
         )
         assert on.name != off.name
+        mcp_only = _make_config(
+            rag_system_adapter="enterprise_rag_mcp", enterprise_rag_mcp_retrieval="none"
+        )
+        assert mcp_only.name not in {on.name, off.name}
 
     @patch.dict(os.environ, {
         "LLM_MODELS": "gemma3:4b",
@@ -1224,6 +1236,8 @@ class TestEnterpriseRagMcpConfig:
         "ENTERPRISE_RAG_MCP_TRANSPORT": "http",
         "ENTERPRISE_RAG_MCP_ENDPOINT_URL": "http://localhost:8080/call_llm",
         "ENTERPRISE_RAG_MCP_ENABLED": "false",
+        "ENTERPRISE_RAG_MCP_RETRIEVAL": "tool",
+        "ENTERPRISE_RAG_MCP_DECLINE_JUDGE": "true",
         "ENTERPRISE_RAG_MCP_ROLES": "General,Legal & Compliance",
         "ENTERPRISE_RAG_MCP_SUBJECT": "bench-user",
         "ENTERPRISE_RAG_MCP_PROMPT_KEY": "rag_summary",
@@ -1241,6 +1255,8 @@ class TestEnterpriseRagMcpConfig:
         assert cfg.enterprise_rag_mcp_transport == "http"
         assert cfg.enterprise_rag_mcp_endpoint_url == "http://localhost:8080/call_llm"
         assert cfg.enterprise_rag_mcp_enabled is False
+        assert cfg.enterprise_rag_mcp_retrieval == "tool"
+        assert cfg.enterprise_rag_mcp_decline_judge is True
         assert cfg.enterprise_rag_mcp_roles == "General,Legal & Compliance"
         assert cfg.enterprise_rag_mcp_subject == "bench-user"
         assert cfg.enterprise_rag_mcp_prompt_key == "rag_summary"
@@ -1265,19 +1281,28 @@ class TestEnterpriseRagMcpConfig:
                 "enterprise_rag_mcp_apply_settings": "false",
                 "enterprise_rag_mcp_query_refinement": "false",
                 "enterprise_rag_mcp_guardrails": "false",
+                "enterprise_rag_mcp_decline_judge": "true",
             },
-            matrix={"enterprise_rag_mcp_enabled": [False, True]},
+            matrix={
+                "enterprise_rag_mcp_enabled": [False, True],
+                "enterprise_rag_mcp_retrieval": ["context", "tool", "none"],
+            },
         )
 
         configs = build_configs_from_spec(spec, base_configs=[_make_config()])
 
-        assert [c.enterprise_rag_mcp_enabled for c in configs] == [False, True]
+        # MCP off always retrieves into the context, so the matrix yields four
+        # arms: RAG only, RAG + MCP, retrieval as a tool + MCP, and MCP only.
+        assert [(c.enterprise_rag_mcp_enabled, c.enterprise_rag_mcp_retrieval) for c in configs] == [
+            (False, "context"), (True, "context"), (True, "tool"), (True, "none"),
+        ]
         assert configs[0].enterprise_rag_mcp_timeout_seconds == 45.0
         assert configs[0].enterprise_rag_mcp_index_corpus is False
         assert configs[0].enterprise_rag_mcp_apply_settings is False
         assert configs[0].enterprise_rag_mcp_query_refinement is False
         assert configs[0].enterprise_rag_mcp_guardrails is False
-        assert configs[0].name != configs[1].name
+        assert configs[0].enterprise_rag_mcp_decline_judge is True
+        assert len({c.name for c in configs}) == 4
 
 
 def test_manifest_dataset_split_sets_config_field():

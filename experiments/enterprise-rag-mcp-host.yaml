@@ -50,7 +50,11 @@ settings:
   # enterprise_rag_mcp_llm_api_key_env: COASSIST_API_KEY   # key in .env
 
 matrix:
+  # enabled x retrieval gives four runs: RAG only (MCP off always preloads
+  # documents; the duplicates collapse), RAG + MCP (context), retrieval as a
+  # tool + MCP (tool) and MCP only (none).
   enterprise_rag_mcp_enabled: [false, true]
+  enterprise_rag_mcp_retrieval: [context, tool, none]
   # The Blueprint answers with these models: openai:<model> via the
   # OpenAI-compatible endpoint, ollama:<model> via Ollama's /v1 API. Both
   # must support tool calling for MCP on.

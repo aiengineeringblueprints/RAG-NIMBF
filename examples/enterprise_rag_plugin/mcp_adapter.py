@@ -34,6 +34,7 @@ import hmac
 import json
 import logging
 import os
+import re
 import time
 import urllib.error
 import urllib.request
@@ -44,7 +45,7 @@ from typing import Any, Iterator
 from benchmark.adapters import register_rag_adapter
 from benchmark.adapters.base import RagSystemOutput
 from benchmark.adapters.components import ComponentBundle
-from benchmark.answer_match import answer_matches
+from benchmark.answer_match import make_decline_judge, score_answer
 from benchmark.providers import parse_model_id
 from benchmark.mcp_host import (
     McpHostEvent,
@@ -247,18 +248,33 @@ def _expected_tools(metadata: dict[str, Any]) -> list[str] | None:
     return [str(item) for item in raw]
 
 
-def _answer_labels(sample: dict, answer: str) -> dict[str, Any]:
-    """Category and deterministic answer match for one sample, when labelled."""
+def _answer_labels(sample: dict, answer: str, judge: Any = None) -> dict[str, Any]:
+    """Category plus answer, decline (phrase list, optional judge) and forbidden-value labels."""
     metadata = sample.get("metadata") or {}
     labels: dict[str, Any] = {}
     if metadata.get("category"):
         labels["category"] = str(metadata["category"])
-    patterns = metadata.get("answer_patterns")
-    if not patterns and sample.get("ground_truth"):
-        patterns = [[str(sample["ground_truth"])]]
-    if patterns:
-        labels["answer_match"] = answer_matches(answer, patterns)
+    labels.update(score_answer(
+        answer, metadata, ground_truth=sample.get("ground_truth"),
+        judge=judge, question=str(sample.get("question", "")),
+    ))
     return labels
+
+
+def _critic_judge(config: Any):
+    """Decline judge on the critic LLM (EVAL_CRITIC_LLM and its endpoint)."""
+    from benchmark.providers import get_chat_model, parse_model_id
+
+    provider, model_name = parse_model_id(config.eval_critic_llm)
+    return make_decline_judge(get_chat_model(
+        provider=provider,
+        model_name=model_name,
+        base_url=config.eval_critic_base_url(provider),
+        api_key=config.eval_critic_api_key(provider),
+        max_tokens=8,
+        temperature=config.eval_critic_temperature,
+        thinking_control=config.eval_critic_thinking_control,
+    ))
 
 
 def _capability_name(server: str, alias: str, names: dict[str, str]) -> str:
@@ -266,7 +282,9 @@ def _capability_name(server: str, alias: str, names: dict[str, str]) -> str:
     if alias in names:
         return names[alias]
     if alias.startswith(f"{server}__"):
-        label = alias[len(server) + 2 :].rsplit("__", 1)[0]
+        # "<server>__<name>", or "<server>__<name>__<digest>" on collisions and
+        # in Blueprints before 2026-10-29.
+        label = re.sub(r"__[0-9a-f]{12}$", "", alias[len(server) + 2 :])
         if label:
             return label
     return alias
@@ -288,6 +306,8 @@ def translate_events(
     translated: list[McpHostEvent] = []
     skipped = 0
     for event in events:
+        if event.get("operation") == "pin":
+            continue  # counted separately as pin_denied_count
         status = _STATUS_MAP.get(str(event.get("status")))
         operation = str(event.get("operation"))
         if status is None or operation not in {
@@ -363,11 +383,13 @@ class EnterpriseRagMcpAdapter:
         config: Any,
         transport: Any = None,
         identity_secret: str | None = None,
+        decline_judge: Any = None,
     ) -> None:
         self.config = config
         self.bundle = ComponentBundle()
         self._transport = transport
         self._identity_secret = identity_secret
+        self._judge = decline_judge
         self._secret = ""
 
     def supports_components(self) -> dict[str, bool]:
@@ -432,6 +454,8 @@ class EnterpriseRagMcpAdapter:
                     "enterprise_rag_mcp_apply_settings or disable "
                     "enterprise_rag_mcp_index_corpus"
                 )
+        if self._judge is None and config.enterprise_rag_mcp_decline_judge:
+            self._judge = _critic_judge(config)
         if index:
             replace_blueprint_index(self.bundle, config, data, corpus=corpus)
 
@@ -442,6 +466,7 @@ class EnterpriseRagMcpAdapter:
         payload: dict[str, Any] = {
             "question": str(sample.get("question", "")),
             "use_mcp": use_mcp,
+            "retrieval": config.enterprise_rag_mcp_retrieval if use_mcp else "context",
             "prompt_key": config.enterprise_rag_mcp_prompt_key,
             "show_sources": True,
             "user_roles": self._roles,
@@ -494,11 +519,16 @@ class EnterpriseRagMcpAdapter:
         sources = list((trace or {}).get("sources") or [])
         contexts, metadata = _evidence(list(body.get("relevant_documents") or []), sources)
         answer = str(body.get("result") or "")
-        diagnostics: dict[str, Any] = {"use_mcp": use_mcp, **_answer_labels(sample, answer)}
+        diagnostics: dict[str, Any] = {"use_mcp": use_mcp, **_answer_labels(sample, answer, self._judge)}
         if use_mcp:
             events, skipped = translate_events(list((trace or {}).get("events") or []), sources)
-            diagnostics.update(mcp_host_diagnostics(events, expected_tools=expected))
+            forbidden = _expected_tools({"expected_tools": (sample.get("metadata") or {}).get("forbidden_tools")})
+            diagnostics.update(mcp_host_diagnostics(events, expected_tools=expected, forbidden_tools=forbidden))
             diagnostics["untranslated_event_count"] = skipped
+            raw_events = list((trace or {}).get("events") or [])
+            diagnostics["pin_denied_count"] = sum(e.get("operation") == "pin" for e in raw_events)
+            if isinstance((trace or {}).get("usage"), dict):
+                diagnostics["usage"] = dict(trace["usage"])
             diagnostics["request_id"] = (trace or {}).get("request_id")
             if trace is None:
                 diagnostics["failure_kind"] = "missing_mcp_trace"
@@ -547,8 +577,24 @@ class EnterpriseRagMcpAdapter:
         summary = {
             **(aggregate_mcp_host_metrics(diagnostics) or {}),
             **(aggregate_by_category(diagnostics) or {}),
+            **_blueprint_trace_summary(diagnostics),
         }
         return summary or None
+
+
+def _blueprint_trace_summary(diagnostics: list[dict[str, Any]]) -> dict[str, Any]:
+    """Pin denials and model token usage reported by the Blueprint (MCP on)."""
+    summary: dict[str, Any] = {}
+    traced = [d for d in diagnostics if d and "pin_denied_count" in d]
+    if traced:
+        summary["pin_denied_count"] = sum(d["pin_denied_count"] for d in traced)
+    usages = [d["usage"] for d in diagnostics if d and isinstance(d.get("usage"), dict)]
+    for key in ("input_tokens", "output_tokens", "model_calls"):
+        values = [float(u[key]) for u in usages if u.get(key) is not None]
+        if values:
+            summary[f"{key}_mean"] = sum(values) / len(values)
+            summary[f"{key}_total"] = sum(values)
+    return summary
 
 
 register_rag_adapter("enterprise_rag_mcp", lambda c: EnterpriseRagMcpAdapter(c))

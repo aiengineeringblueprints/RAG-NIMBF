@@ -188,6 +188,24 @@ Results land in `results/runN/` and MLflow. The MCP metrics are under
 independent of the Blueprint model. Metric definitions:
 [MCP Host Benchmarking](mcp-host-benchmarking.md#metrics).
 
+Both manifests run four variants: RAG only, RAG + MCP, retrieval as a tool +
+MCP and MCP only (`enterprise_rag_mcp_retrieval: context | tool | none`, needs
+the Blueprint from 2026-10-29).
+
+Trust questions (freshness, permission, robustness, unanswerable) need their
+own server config; pass it for that run only:
+
+```bash
+FRAMEWORK_DIR=$PWD envsubst '${FRAMEWORK_DIR}' \
+  < datasets/blueprint_mcp_host/blueprint_mcp_trust_servers.template.json \
+  > ~/.config/blueprint-bench/mcp_trust_servers.json
+MCP_CONFIG_FILE=~/.config/blueprint-bench/mcp_trust_servers.json \
+  python -m benchmark.worker run experiments/enterprise-rag-mcp-trust.yaml --keep-going
+```
+
+Shell variables win over `.env`, so the core runs keep the core config.
+See [MCP Host Benchmarking](mcp-host-benchmarking.md#trust-questions).
+
 ### Shortcut for the plain-RAG manifest
 
 `scripts/run_blueprint_rag.sh <run-dir> [manifest]` exports

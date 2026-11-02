@@ -51,10 +51,12 @@ Guide: `doc/mcp-host-benchmarking.md`. Dataset: `datasets/blueprint_mcp_host/`.
 
 - [ ] Full live run of the 1000-question dataset, MCP off vs. on; pick a cheaper Blueprint model or run the MCP-off baseline on a sample (about 4–5 Blueprint LLM calls per question).
 - [ ] Repeat runs (≥ 3) and report 95 % confidence intervals for `answer_match_rate`, `call_success_rate` and `tool_selection_f1` (no CI support in the adapter metrics yet).
-- [ ] Unanswerable / false-premise category: the system should decline without calling a tool; needs a "declined" check in `benchmark/answer_match.py` (e.g. `is_refusal_answer` from `benchmark/custom_metrics.py`).
+- [x] Unanswerable / false-premise category: `unanswerable` in `questions_trust.jsonl`, scored with `expected_behavior: decline` (`benchmark/answer_match.py::score_answer`).
+- [ ] Live run of `experiments/enterprise-rag-mcp-trust.yaml` (210 questions × RAG only / RAG + MCP / MCP only) and of the core manifest with the MCP-only variant.
+- [ ] Permission on document level: tag part of the corpus `Finance` in the adapter index and check that `General` answers never contain it.
 - [ ] Error-recovery category: questions that invite a wrong first call (product name instead of SKU) and score recovery after the tool error.
 - [ ] Decoy-tool sweep: 0 / 10 / 30 irrelevant tools on the fixture server, compare tool selection and answer match (gap noted in `doc/12-mcp-in-rag-state-of-the-art.md` §13).
-- [ ] Fault-injection server: slow (timeout), failing, oversized and prompt-injecting tools; check `unavailable_rate`, `result_too_large_rate` and answer behaviour.
+- [x] Fault-injection server: `kestrel_service` in the trust set (prompt injection, timeout, failing and oversized tools; `robustness` category).
 - [ ] Follow-up questions through the Blueprint `chat_history` (multi-turn).
 - [ ] ToolQA adapter (Apache-2.0, github.com/night-chen/ToolQA): text corpora (Agenda, SciREX) into the RAG index, tables/graph (Flight, Coffee, Yelp, Airbnb, DBLP) as MCP tools; derive `expected_tools` per question template.
 - [ ] CRAG adapter (CC BY-NC 4.0, github.com/facebookresearch/CRAG): web pages as corpus, mock KG APIs as MCP server; non-commercial use only, time-dependent answers need patterns or an LLM judge.

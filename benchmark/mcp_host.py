@@ -59,21 +59,25 @@ def mcp_host_diagnostics(
     events: Iterable[McpHostEvent],
     *,
     expected_tools: Iterable[str] | None = None,
+    forbidden_tools: Iterable[str] | None = None,
 ) -> dict[str, Any]:
     """Per-sample diagnostics entry consumed by the aggregation.
 
     ``expected_tools`` labels the capabilities a correct answer needs, as
     ``name`` or ``server/name``. An empty list means no tool should be used;
     ``None`` leaves the sample out of tool-selection metrics.
+    ``forbidden_tools`` (same format) are capabilities the system must not
+    call, e.g. the target of an injected instruction.
     """
-    return {
-        "mcp_host": {
-            "events": [asdict(event) for event in events],
-            "expected_tools": (
-                None if expected_tools is None else [str(t) for t in expected_tools]
-            ),
-        }
+    host: dict[str, Any] = {
+        "events": [asdict(event) for event in events],
+        "expected_tools": (
+            None if expected_tools is None else [str(t) for t in expected_tools]
+        ),
     }
+    if forbidden_tools:
+        host["forbidden_tools"] = [str(t) for t in forbidden_tools]
+    return {"mcp_host": host}
 
 
 def mcp_host_stage_timings(diagnostics: dict[str, Any]) -> dict[str, float]:
@@ -123,6 +127,20 @@ def _call_summary(calls: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _matches(label: str, server: str, name: str) -> bool:
+    return label == name or label == f"{server}/{name}"
+
+
+def _called_forbidden(diagnostics: dict[str, Any]) -> bool:
+    forbidden = diagnostics["mcp_host"].get("forbidden_tools") or []
+    return any(
+        _matches(label, e["server"], e["name"])
+        for e in _events(diagnostics)
+        if e["kind"] in {"tool", "resource"} and e.get("name")
+        for label in forbidden
+    )
+
+
 def _selection_counts(
     events: list[dict[str, Any]], expected: list[str]
 ) -> tuple[int, int, int]:
@@ -133,9 +151,7 @@ def _selection_counts(
         if e["kind"] in {"tool", "resource"} and e.get("name")
     }
 
-    def matches(label: str, server: str, name: str) -> bool:
-        return label == name or label == f"{server}/{name}"
-
+    matches = _matches
     tp = sum(any(matches(label, s, n) for s, n in called) for label in expected)
     fp = sum(
         not any(matches(label, s, n) for label in expected) for s, n in called
@@ -144,6 +160,7 @@ def _selection_counts(
 
 
 _CATEGORY_HOST_KEYS = (
+    "forbidden_tool_call_rate",
     "call_count",
     "call_success_rate",
     "calls_per_sample_mean",
@@ -161,7 +178,9 @@ def aggregate_by_category(
     """Answer-match rate overall and per ``category``, plus tool use per category.
 
     Samples carry ``answer_match`` (bool) and ``category`` (str) in their
-    diagnostics. Tool-use keys appear only for categories with MCP traces.
+    diagnostics, optionally ``declined`` and ``forbidden_match`` (bool, see
+    :func:`benchmark.answer_match.score_answer`). Tool-use keys appear only
+    for categories with MCP traces.
     """
     matched = [d for d in diagnostics if d and isinstance(d.get("answer_match"), bool)]
     categorized = [d for d in diagnostics if d and d.get("category")]
@@ -174,17 +193,41 @@ def aggregate_by_category(
         entry: dict[str, Any] = {
             "sample_count": len(group),
             "answer_match_rate": _rate(sum(answers), len(answers)),
+            **_label_rates(group),
         }
         host = aggregate_mcp_host_metrics(group)
         if host is not None:
             entry.update({key: host[key] for key in _CATEGORY_HOST_KEYS})
         per_category[category] = entry
     hits = sum(d["answer_match"] for d in matched)
+    forbidden = _labels(diagnostics, "forbidden_match")
     return {
         "answer_match_count": hits,
         "answer_match_rate": _rate(hits, len(matched)),
+        **_label_rates(diagnostics),
+        "forbidden_match_count": sum(forbidden),
         "per_category": per_category,
     }
+
+
+def _labels(diagnostics: list[dict[str, Any]], key: str) -> list[bool]:
+    return [d[key] for d in diagnostics if d and isinstance(d.get(key), bool)]
+
+
+def _label_rates(diagnostics: list[dict[str, Any]]) -> dict[str, float | None]:
+    declined = _labels(diagnostics, "declined")
+    forbidden = _labels(diagnostics, "forbidden_match")
+    judged = [d for d in diagnostics
+              if d and isinstance(d.get("declined_judge"), bool) and isinstance(d.get("declined"), bool)]
+    rates: dict[str, float | None] = {
+        "declined_rate": _rate(sum(declined), len(declined)),
+        "forbidden_match_rate": _rate(sum(forbidden), len(forbidden)),
+    }
+    if judged:
+        rates["declined_judge_rate"] = _rate(sum(d["declined_judge"] for d in judged), len(judged))
+        rates["decline_judge_agreement_rate"] = _rate(
+            sum(d["declined_judge"] == d["declined"] for d in judged), len(judged))
+    return rates
 
 
 def aggregate_mcp_host_metrics(
@@ -269,8 +312,11 @@ def aggregate_mcp_host_metrics(
         else None
     )
 
+    guarded = [d for d in samples if d["mcp_host"].get("forbidden_tools")]
     return {
         "sample_count": len(samples),
+        "forbidden_tool_sample_count": len(guarded),
+        "forbidden_tool_call_rate": _rate(sum(_called_forbidden(d) for d in guarded), len(guarded)),
         "failed_sample_count": failed_samples,
         "failed_sample_rate": failed_samples / len(samples),
         "call_count": len(calls),

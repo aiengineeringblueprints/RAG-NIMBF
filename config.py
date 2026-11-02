@@ -187,6 +187,11 @@ class BenchmarkConfig:
     enterprise_rag_mcp_transport: str = "inprocess"  # inprocess | http
     enterprise_rag_mcp_endpoint_url: str | None = None
     enterprise_rag_mcp_enabled: bool = True
+    # Blueprint retrieval with MCP on: context (documents preloaded), tool
+    # (the model calls a document-search tool) or none (MCP alone).
+    enterprise_rag_mcp_retrieval: str = "context"
+    # Let the critic LLM (EVAL_CRITIC_LLM) judge declines next to the phrase list.
+    enterprise_rag_mcp_decline_judge: bool = False
     enterprise_rag_mcp_roles: str = "General"  # comma-separated signed roles
     enterprise_rag_mcp_subject: str = "benchmark"
     enterprise_rag_mcp_prompt_key: str = "rag_source"
@@ -332,6 +337,8 @@ class BenchmarkConfig:
                     "transport": self.enterprise_rag_mcp_transport,
                     "endpoint_url": self.enterprise_rag_mcp_endpoint_url,
                     "enabled": self.enterprise_rag_mcp_enabled,
+                    "retrieval": self.enterprise_rag_mcp_retrieval,
+                    "decline_judge": self.enterprise_rag_mcp_decline_judge,
                     "roles": self.enterprise_rag_mcp_roles,
                     "prompt_key": self.enterprise_rag_mcp_prompt_key,
                     "used_model": self.enterprise_rag_mcp_used_model,
@@ -522,6 +529,7 @@ def validate_benchmark_config(config: BenchmarkConfig) -> BenchmarkConfig:
 
 
 ENTERPRISE_RAG_MCP_PROMPT_KEYS = ("rag_source", "rag_summary", "rag_weekly_report")
+ENTERPRISE_RAG_MCP_RETRIEVAL_MODES = ("context", "tool", "none")
 
 
 def _validate_enterprise_rag_mcp(config: BenchmarkConfig) -> None:
@@ -538,6 +546,16 @@ def _validate_enterprise_rag_mcp(config: BenchmarkConfig) -> None:
     ):
         raise ValueError(
             "enterprise_rag_mcp_endpoint_url is required for the http transport"
+        )
+    if config.enterprise_rag_mcp_retrieval not in ENTERPRISE_RAG_MCP_RETRIEVAL_MODES:
+        raise ValueError(
+            "enterprise_rag_mcp_retrieval must be one of: "
+            + ", ".join(ENTERPRISE_RAG_MCP_RETRIEVAL_MODES)
+        )
+    if config.enterprise_rag_mcp_retrieval != "context" and not config.enterprise_rag_mcp_enabled:
+        raise ValueError(
+            f"enterprise_rag_mcp_retrieval={config.enterprise_rag_mcp_retrieval} "
+            "requires enterprise_rag_mcp_enabled=true"
         )
     if not _parse_list(config.enterprise_rag_mcp_roles):
         raise ValueError("enterprise_rag_mcp_roles must name at least one role")
@@ -1026,6 +1044,10 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
     )
     enterprise_rag_mcp_endpoint_url = os.getenv("ENTERPRISE_RAG_MCP_ENDPOINT_URL") or None
     enterprise_rag_mcp_enabled = _env_bool("ENTERPRISE_RAG_MCP_ENABLED", True)
+    enterprise_rag_mcp_retrieval = (
+        os.getenv("ENTERPRISE_RAG_MCP_RETRIEVAL", "context").strip().lower() or "context"
+    )
+    enterprise_rag_mcp_decline_judge = _env_bool("ENTERPRISE_RAG_MCP_DECLINE_JUDGE", False)
     enterprise_rag_mcp_roles = os.getenv("ENTERPRISE_RAG_MCP_ROLES", "General")
     enterprise_rag_mcp_subject = (
         os.getenv("ENTERPRISE_RAG_MCP_SUBJECT", "benchmark").strip() or "benchmark"
@@ -1279,6 +1301,8 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
                     enterprise_rag_mcp_transport=enterprise_rag_mcp_transport,
                     enterprise_rag_mcp_endpoint_url=enterprise_rag_mcp_endpoint_url,
                     enterprise_rag_mcp_enabled=enterprise_rag_mcp_enabled,
+                    enterprise_rag_mcp_retrieval=enterprise_rag_mcp_retrieval,
+                    enterprise_rag_mcp_decline_judge=enterprise_rag_mcp_decline_judge,
                     enterprise_rag_mcp_roles=enterprise_rag_mcp_roles,
                     enterprise_rag_mcp_subject=enterprise_rag_mcp_subject,
                     enterprise_rag_mcp_prompt_key=enterprise_rag_mcp_prompt_key,
