@@ -1,6 +1,7 @@
 import hashlib
 import json
 import logging
+import math
 import mlflow
 import threading
 from dataclasses import dataclass
@@ -578,6 +579,147 @@ def _generate_followup_query(
     if not content or content.upper().startswith("NONE"):
         return ""
     return content
+
+
+_HYBRID_RRF_K = 60  # standard RRF dampening constant
+
+
+def _tokenize(text: str) -> list[str]:
+    """Lowercase word tokens for BM25 scoring."""
+    import re
+
+    return re.findall(r"\w+", text.lower())
+
+
+class BM25Index:
+    """Minimal in-memory BM25 (Okapi) index over chunked Documents.
+
+    Pure-Python implementation so hybrid retrieval needs no extra
+    dependency; corpus sizes here (thousands of chunks) index in seconds.
+    """
+
+    def __init__(
+        self,
+        chunks: list[Any],
+        *,
+        k1: float = 1.5,
+        b: float = 0.75,
+    ) -> None:
+        self._docs = list(chunks)
+        self._k1 = k1
+        self._b = b
+        self._term_freqs: list[dict[str, int]] = []
+        self._doc_lens: list[int] = []
+        self._inverted: dict[str, list[int]] = {}
+        for doc in self._docs:
+            tokens = _tokenize(getattr(doc, "page_content", "") or "")
+            freqs: dict[str, int] = {}
+            for token in tokens:
+                freqs[token] = freqs.get(token, 0) + 1
+            self._term_freqs.append(freqs)
+            self._doc_lens.append(len(tokens))
+            for token in freqs:
+                self._inverted.setdefault(token, []).append(len(self._term_freqs) - 1)
+        total = sum(self._doc_lens)
+        self._avg_len = total / len(self._docs) if self._docs else 0.0
+
+    def __len__(self) -> int:
+        return len(self._docs)
+
+    def search(self, query: str, k: int) -> list[Any]:
+        """Return the top-k documents ranked by BM25 score (best first)."""
+        if not self._docs or k <= 0:
+            return []
+        n_docs = len(self._docs)
+        scores = [0.0] * n_docs
+        for token in _tokenize(query):
+            postings = self._inverted.get(token)
+            if not postings:
+                continue
+            idf = math.log(1.0 + (n_docs - len(postings) + 0.5) / (len(postings) + 0.5))
+            for doc_idx in postings:
+                freq = self._term_freqs[doc_idx][token]
+                denom = freq + self._k1 * (
+                    1.0 - self._b + self._b * self._doc_lens[doc_idx] / self._avg_len
+                )
+                scores[doc_idx] += idf * (freq * (self._k1 + 1.0)) / denom
+        ranked = sorted(range(n_docs), key=lambda i: scores[i], reverse=True)
+        return [self._docs[i] for i in ranked[:k] if scores[i] > 0]
+
+
+def retrieve_hybrid(
+    vector_store: Any,
+    query: str,
+    top_k: int = 3,
+    *,
+    chunks: list[Any] | None = None,
+    alpha: float = 0.5,
+    fetch_k: int | None = None,
+    callbacks: list | None = None,
+) -> list[Any]:
+    """Hybrid retrieval: dense similarity search fused with BM25 keyword search.
+
+    Both retrievers produce candidate rankings which are merged with
+    weighted Reciprocal Rank Fusion (RRF):
+
+        score(doc) = alpha / (rrf_k + rank_dense) + (1 - alpha) / (rrf_k + rank_bm25)
+
+    ``alpha = 1.0`` reduces to dense ranking, ``alpha = 0.0`` to pure BM25.
+    Rank fusion works on ranks, so no score normalization between the two
+    retrievers is needed.
+    """
+    span = mlflow.get_current_active_span()
+    if span:
+        span.set_attributes({
+            "retrieval.top_k": top_k,
+            "retrieval.strategy": "hybrid",
+            "retrieval.hybrid_alpha": alpha,
+        })
+    effective_fetch_k = fetch_k if fetch_k is not None else top_k * 4
+
+    dense_docs = retrieve(
+        vector_store,
+        query,
+        effective_fetch_k,
+        retrieval_strategy="similarity",
+        callbacks=callbacks,
+    )
+
+    keyword_index = BM25Index(chunks or [])
+    keyword_docs = keyword_index.search(query, effective_fetch_k)
+
+    # Endpoint weights: skip the disabled retriever entirely so zero-weight
+    # documents can never enter the result set.
+    if alpha >= 1.0:
+        return dense_docs[:top_k]
+    if alpha <= 0.0:
+        return keyword_docs[:top_k]
+    if not keyword_docs:
+        return dense_docs[:top_k]
+
+    def _ranks(docs: list[Any]) -> dict[tuple, float]:
+        return {_doc_key(doc): 1.0 / (_HYBRID_RRF_K + rank + 1) for rank, doc in enumerate(docs)}
+
+    dense_ranks = _ranks(dense_docs)
+    keyword_ranks = _ranks(keyword_docs)
+
+    doc_by_key: dict[tuple, Any] = {_doc_key(doc): doc for doc in keyword_docs}
+    doc_by_key.update({_doc_key(doc): doc for doc in dense_docs})
+
+    # Deterministic candidate order (dense side first, then keyword-only) so
+    # score ties always resolve to the same ranking across processes.
+    candidates = list(dense_ranks) + [k for k in keyword_ranks if k not in dense_ranks]
+
+    fused = [
+        (
+            alpha * dense_ranks.get(key, 0.0) + (1.0 - alpha) * keyword_ranks.get(key, 0.0),
+            position,
+            doc_by_key[key],
+        )
+        for position, key in enumerate(candidates)
+    ]
+    fused.sort(key=lambda item: (-item[0], item[1]))
+    return [doc for _, _, doc in fused[:top_k]]
 
 
 def cleanup_collection(collection_name: str, cache_key: str | None = None) -> None:

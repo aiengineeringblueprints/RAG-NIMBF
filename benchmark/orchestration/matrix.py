@@ -401,6 +401,7 @@ def _coerce_field_value(key: str, value: Any) -> Any:
         return _to_bool(value)
     if key in {
         "retrieval_mmr_lambda",
+        "retrieval_hybrid_alpha",
         "rag_http_timeout_seconds",
         "rag_managed_request_timeout_seconds",
         "rag_managed_poll_interval_seconds",

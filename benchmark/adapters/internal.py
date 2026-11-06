@@ -38,6 +38,7 @@ class InternalRagAdapter:
         self._generator = generator or generate_answer
         self._bundle = ComponentBundle()
         self._store: Any = None
+        self._chunks: list[Any] = []
         self._custom_generator = generator is not None
 
     @classmethod
@@ -189,6 +190,7 @@ class InternalRagAdapter:
         chunker = self._chunker(config)
         chunk_source = corpus if corpus else data
         chunks = chunk_documents(chunker, chunk_source)
+        self._chunks = chunks
         fingerprint = cache_corpus_fingerprint(chunk_source)
         logger.info("Internal adapter chunked corpus into %d pieces", len(chunks))
 
@@ -274,14 +276,24 @@ class InternalRagAdapter:
         # disk under a content-addressed collection; releasing the
         # reference is all the cleanup the internal pipeline needs.
         self._store = None
+        self._chunks = []
 
     # ------------------------------------------------------------------
     # Search internals
     # ------------------------------------------------------------------
 
     def _search(self, query: str, config: Any, llm: Any) -> list:
-        from benchmark.retrieval import retrieve, retrieve_multihop
+        from benchmark.retrieval import retrieve, retrieve_hybrid, retrieve_multihop
 
+        if getattr(config, "retrieval_strategy", "similarity") == "hybrid":
+            return retrieve_hybrid(
+                self._store,
+                query,
+                config.retrieval_top_k,
+                chunks=getattr(self, "_chunks", None),
+                alpha=getattr(config, "retrieval_hybrid_alpha", 0.5),
+                fetch_k=config.retrieval_fetch_k,
+            )
         if getattr(config, "retrieval_multihop", False):
             return retrieve_multihop(
                 self._store,

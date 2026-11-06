@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 from langchain_core.embeddings import Embeddings
@@ -26,6 +27,7 @@ from benchmark.adapters import (
 from benchmark.adapters.components import ComponentBundle
 from benchmark.adapters.internal import InternalRagAdapter
 from benchmark.generation import GenerationResult
+from benchmark.retrieval import retrieve_hybrid
 
 ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789 "
 
@@ -90,6 +92,7 @@ class InternalConfig:
     retrieval_strategy: str = "similarity"
     retrieval_fetch_k: int | None = None
     retrieval_mmr_lambda: float = 0.5
+    retrieval_hybrid_alpha: float = 0.5
     retrieval_use_hyde: bool = False
     retrieval_multihop: bool = False
     retrieval_multihop_rounds: int = 2
@@ -194,6 +197,41 @@ def test_full_lifecycle_prepare_retrieve_generate_cleanup():
 
     cleanup_adapter(adapter, target, config)
     assert adapter._store is None
+
+
+def test_hybrid_strategy_routes_through_bm25_fusion():
+    """retrieval_strategy='hybrid' must call retrieve_hybrid with the prepared
+    chunks and the configured alpha, instead of the plain dense retrieve()."""
+    adapter = make_adapter()
+    config = InternalConfig(
+        retrieval_strategy="hybrid",
+        retrieval_hybrid_alpha=0.25,
+        retrieval_top_k=2,
+    )
+    target = prepare_adapter(adapter, config, [], corpus=CORPUS)
+
+    with patch("benchmark.retrieval.retrieve_hybrid", wraps=retrieve_hybrid) as spy:
+        retrieval = retrieve_adapter(adapter, target, SAMPLE, config)
+
+    spy.assert_called_once()
+    kwargs = spy.call_args.kwargs
+    assert kwargs["alpha"] == 0.25
+    assert kwargs["chunks"], "prepared chunks must be passed for BM25 indexing"
+
+    assert "Eiffel" in retrieval.chunks[0].text
+    cleanup_adapter(adapter, target, config)
+
+
+def test_non_hybrid_strategy_does_not_touch_bm25():
+    adapter = make_adapter()
+    config = InternalConfig(retrieval_strategy="similarity")
+    target = prepare_adapter(adapter, config, [], corpus=CORPUS)
+
+    with patch("benchmark.retrieval.retrieve_hybrid") as spy:
+        retrieve_adapter(adapter, target, SAMPLE, config)
+
+    spy.assert_not_called()
+    cleanup_adapter(adapter, target, config)
 
 
 def test_generate_without_prior_retrieval_runs_retrieval_itself():

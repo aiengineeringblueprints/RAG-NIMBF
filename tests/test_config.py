@@ -585,6 +585,32 @@ class TestGetAllCombinations:
         "CHUNK_SIZES": "1000",
         "CHUNK_OVERLAPS": "200",
         "CHUNKING_STRATEGIES": "recursive",
+        "RETRIEVAL_STRATEGY": "hybrid",
+        "RETRIEVAL_HYBRID_ALPHA": "0.7",
+    }, clear=False)
+    def test_hybrid_config_loaded(self):
+        configs = get_all_combinations()
+        assert configs[0].retrieval_strategy == "hybrid"
+        assert configs[0].retrieval_hybrid_alpha == 0.7
+
+    @patch.dict(os.environ, {
+        "LLM_MODELS": "gemma3:4b",
+        "EMBEDDING_MODELS": "nomic-embed-text:latest",
+        "CHUNK_SIZES": "1000",
+        "CHUNK_OVERLAPS": "200",
+        "CHUNKING_STRATEGIES": "recursive",
+    }, clear=False)
+    def test_hybrid_defaults(self):
+        configs = get_all_combinations()
+        assert configs[0].retrieval_strategy == "similarity"
+        assert configs[0].retrieval_hybrid_alpha == 0.5
+
+    @patch.dict(os.environ, {
+        "LLM_MODELS": "gemma3:4b",
+        "EMBEDDING_MODELS": "nomic-embed-text:latest",
+        "CHUNK_SIZES": "1000",
+        "CHUNK_OVERLAPS": "200",
+        "CHUNKING_STRATEGIES": "recursive",
         "VECTOR_DB_BACKEND": "lancedb",
         "LANCEDB_PATH": ".test-lancedb",
         "BENCHMARK_STAGE": "query",

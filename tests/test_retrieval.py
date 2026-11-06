@@ -465,6 +465,179 @@ class TestMultiHopRetrieval:
         assert len(docs) == 1
 
 
+class TestHybridRetrieval:
+    """Hybrid retrieval: dense vector search fused with BM25 via weighted RRF."""
+
+    def _store_returning(self, dense_docs):
+        store = MagicMock()
+        store.similarity_search.return_value = dense_docs
+        return store
+
+    def _chunks(self):
+        return [
+            Document(page_content="the quick brown fox jumps over the lazy dog", metadata={"doc_id": "fox"}),
+            Document(page_content="quantum flux capacitor calibration", metadata={"doc_id": "flux"}),
+            Document(page_content="a completely different story about pirates", metadata={"doc_id": "pirates"}),
+        ]
+
+    def test_alpha_zero_prefers_bm25_ranking(self):
+        from benchmark.retrieval import retrieve_hybrid
+
+        dense = [
+            Document(page_content="the quick brown fox jumps over the lazy dog", metadata={"doc_id": "fox"}),
+            Document(page_content="quantum flux capacitor calibration", metadata={"doc_id": "flux"}),
+        ]
+        store = self._store_returning(dense)
+
+        docs = retrieve_hybrid(
+            store, "flux capacitor", 2,
+            chunks=self._chunks(), alpha=0.0,
+        )
+
+        assert docs[0].metadata["doc_id"] == "flux"
+
+    def test_alpha_zero_returns_keyword_side_only(self):
+        from benchmark.retrieval import retrieve_hybrid
+
+        dense = [
+            Document(page_content="unrelated dense hit one", metadata={"doc_id": "d1"}),
+            Document(page_content="unrelated dense hit two", metadata={"doc_id": "d2"}),
+            Document(page_content="unrelated dense hit three", metadata={"doc_id": "d3"}),
+        ]
+        store = self._store_returning(dense)
+
+        docs = retrieve_hybrid(
+            store, "flux capacitor", 3,
+            chunks=self._chunks(), alpha=0.0,
+        )
+
+        doc_ids = [d.metadata["doc_id"] for d in docs]
+        assert "d1" not in doc_ids and "d2" not in doc_ids, (
+            f"alpha=0 must not leak dense-only docs: {doc_ids}"
+        )
+
+    def test_alpha_one_returns_dense_side_only(self):
+        from benchmark.retrieval import retrieve_hybrid
+
+        store = self._store_returning([
+            Document(page_content="the quick brown fox jumps over the lazy dog", metadata={"doc_id": "fox"}),
+        ])
+
+        docs = retrieve_hybrid(
+            store, "quick brown", 3,
+            chunks=self._chunks(), alpha=1.0,
+        )
+
+        assert [d.metadata["doc_id"] for d in docs] == ["fox"]
+
+    def test_bm25_ranking_matches_known_okapi_order(self):
+        """Worked example: standard Okapi BM25 with the log-IDF must rank the
+        document containing the rare query terms first, and rank by term
+        frequency when every doc contains the term."""
+        from benchmark.retrieval import BM25Index
+
+        chunks = [
+            Document(page_content="cache cache cache eviction policy"),
+            Document(page_content="cache brief note"),
+        ]
+        index = BM25Index(chunks)
+        assert index.search("cache eviction", 2)[0].page_content.startswith("cache cache")
+
+    def test_fusion_order_deterministic_on_ties(self):
+        """Two docs tied at the same fused score (same ranks on both sides)
+        must always come out in dense-side order, in every process."""
+        from benchmark.retrieval import retrieve_hybrid
+
+        dense = [
+            Document(page_content="alpha term", metadata={"doc_id": "first"}),
+            Document(page_content="alpha term", metadata={"doc_id": "second"}),
+        ]
+        store = self._store_returning(dense)
+
+        for _ in range(3):
+            docs = retrieve_hybrid(
+                store, "alpha term", 2,
+                chunks=dense, alpha=0.5,
+            )
+            assert [d.metadata["doc_id"] for d in docs] == ["first", "second"]
+
+    def test_alpha_one_prefers_dense_ranking(self):
+        from benchmark.retrieval import retrieve_hybrid
+
+        dense = [
+            Document(page_content="the quick brown fox jumps over the lazy dog", metadata={"doc_id": "fox"}),
+            Document(page_content="quantum flux capacitor calibration", metadata={"doc_id": "flux"}),
+        ]
+        store = self._store_returning(dense)
+
+        docs = retrieve_hybrid(
+            store, "flux capacitor", 2,
+            chunks=self._chunks(), alpha=1.0,
+        )
+
+        assert docs[0].metadata["doc_id"] == "fox"
+
+    def test_fusion_merges_keyword_only_docs(self):
+        from benchmark.retrieval import retrieve_hybrid
+
+        dense = [
+            Document(page_content="quantum flux capacitor calibration", metadata={"doc_id": "flux"}),
+        ]
+        store = self._store_returning(dense)
+
+        docs = retrieve_hybrid(
+            store, "pirates story", 3,
+            chunks=self._chunks(), alpha=0.5,
+        )
+
+        doc_ids = [d.metadata["doc_id"] for d in docs]
+        assert "pirates" in doc_ids
+        assert len(docs) <= 3
+
+    def test_deduplicates_docs_found_by_both_retrievers(self):
+        from benchmark.retrieval import retrieve_hybrid
+
+        dense = [
+            Document(page_content="quantum flux capacitor calibration", metadata={"doc_id": "flux"}),
+        ]
+        store = self._store_returning(dense)
+
+        docs = retrieve_hybrid(
+            store, "flux capacitor", 3,
+            chunks=self._chunks(), alpha=0.5,
+        )
+
+        doc_ids = [d.metadata["doc_id"] for d in docs]
+        assert len(doc_ids) == len(set(doc_ids))
+
+    def test_respects_top_k(self):
+        from benchmark.retrieval import retrieve_hybrid
+
+        dense = [
+            Document(page_content="the quick brown fox jumps over the lazy dog", metadata={"doc_id": "fox"}),
+            Document(page_content="quantum flux capacitor calibration", metadata={"doc_id": "flux"}),
+            Document(page_content="a completely different story about pirates", metadata={"doc_id": "pirates"}),
+        ]
+        store = self._store_returning(dense)
+
+        docs = retrieve_hybrid(
+            store, "flux capacitor pirates", 2,
+            chunks=self._chunks(), alpha=0.5,
+        )
+
+        assert len(docs) == 2
+
+    def test_empty_corpus_falls_back_to_dense(self):
+        from benchmark.retrieval import retrieve_hybrid
+
+        dense = [Document(page_content="doc1", metadata={"doc_id": "a"})]
+        store = self._store_returning(dense)
+
+        docs = retrieve_hybrid(store, "query", 3, chunks=[], alpha=0.5)
+
+        assert [d.metadata["doc_id"] for d in docs] == ["a"]
+
+
 class TestCleanupCollection:
     @patch("benchmark.retrieval._get_client")
     def test_deletes_existing_collection(self, mock_get_client):

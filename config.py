@@ -108,9 +108,10 @@ class BenchmarkConfig:
     llm_answer_strip_mode: AnswerStripMode = "tags_only"
     llm_answer_value_fallback: bool = True
     # Retrieval strategy
-    retrieval_strategy: str = "similarity"  # "similarity" | "mmr"
-    retrieval_fetch_k: int | None = None  # MMR oversampling
+    retrieval_strategy: str = "similarity"  # "similarity" | "mmr" | "hybrid"
+    retrieval_fetch_k: int | None = None  # MMR oversampling / hybrid candidate pool
     retrieval_mmr_lambda: float = 0.5  # 0 = max diversity, 1 = max relevance
+    retrieval_hybrid_alpha: float = 0.5  # 0 = pure BM25, 1 = pure dense
     retrieval_use_hyde: bool = False  # HyDE query expansion
     retrieval_multihop: bool = False  # iterative multi-hop retrieval
     retrieval_multihop_rounds: int = 1  # total retrieval rounds when enabled
@@ -267,8 +268,10 @@ class BenchmarkConfig:
             parts += f"_rerank-{self.reranker_model}"
         if self.retrieval_top_k != 5:
             parts += f"_k{self.retrieval_top_k}"
-        if self.retrieval_strategy != "similarity":
+        if self.retrieval_strategy == "mmr":
             parts += f"_mmr-l{self.retrieval_mmr_lambda}"
+        if self.retrieval_strategy == "hybrid":
+            parts += f"_hybrid-a{self.retrieval_hybrid_alpha:g}"
         if self.retrieval_use_hyde:
             parts += "_hyde"
         if self.retrieval_multihop:
@@ -804,9 +807,9 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
 
     # Retrieval strategy
     retrieval_strategy = os.getenv("RETRIEVAL_STRATEGY", "similarity").strip().lower()
-    if retrieval_strategy not in ("similarity", "mmr"):
+    if retrieval_strategy not in ("similarity", "mmr", "hybrid"):
         raise ValueError(
-            f"Invalid RETRIEVAL_STRATEGY={retrieval_strategy!r}. Use: similarity, mmr"
+            f"Invalid RETRIEVAL_STRATEGY={retrieval_strategy!r}. Use: similarity, mmr, hybrid"
         )
     _fk_raw = os.getenv("RETRIEVAL_FETCH_K", "").strip()
     retrieval_fetch_k = int(_fk_raw) if _fk_raw else None
@@ -819,6 +822,13 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
     # HyDE query expansion
     _hyde_raw = os.getenv("RETRIEVAL_USE_HYDE", "false").strip().lower()
     retrieval_use_hyde = _hyde_raw in ("1", "true", "yes", "on")
+
+    # Hybrid retrieval (dense + BM25 fusion)
+    retrieval_hybrid_alpha = float(os.getenv("RETRIEVAL_HYBRID_ALPHA", "0.5"))
+    if not 0.0 <= retrieval_hybrid_alpha <= 1.0:
+        raise ValueError(
+            f"RETRIEVAL_HYBRID_ALPHA must be between 0.0 and 1.0, got {retrieval_hybrid_alpha}"
+        )
 
     # Iterative multi-hop retrieval
     _mh_raw = os.getenv("RETRIEVAL_MULTIHOP", "false").strip().lower()
@@ -1202,6 +1212,7 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
                     retrieval_strategy=retrieval_strategy,
                     retrieval_fetch_k=retrieval_fetch_k,
                     retrieval_mmr_lambda=retrieval_mmr_lambda,
+                    retrieval_hybrid_alpha=retrieval_hybrid_alpha,
                     retrieval_use_hyde=retrieval_use_hyde,
                     retrieval_multihop=retrieval_multihop,
                     retrieval_multihop_rounds=retrieval_multihop_rounds,
