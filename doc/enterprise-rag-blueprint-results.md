@@ -1,6 +1,6 @@
 # Enterprise RAG Blueprint — Results Overview
 
-Status: 2026-11-01. Source: `results/Enterprise-RAG/run1..run4` on the DGX Spark
+Status: 2026-11-07. Source: `results/Enterprise-RAG/run1..run5` on the DGX Spark
 (`~/source/Benchmarking-Framework`), manifest `experiments/enterprise-rag-blueprint-rag.yaml`.
 Setup guide: [enterprise-rag-blueprint-setup.md](enterprise-rag-blueprint-setup.md).
 
@@ -14,7 +14,7 @@ Blueprint retrieves and answers itself, with guardrails and query refinement on.
 | Setting | Value |
 |---|---|
 | Generator LLM | `qwen3.8-27b` (OpenAI-compatible), temperature 0, top_p 0.3 |
-| Retrieval | similarity, `retrieval_top_k` 5 (5 contexts per question), threshold 0.2, no HyDE / multihop / reranker |
+| Retrieval | similarity, `retrieval_top_k` 5 in run1–run4, 10 / 12 in run5 (= contexts per question), threshold 0.2, no HyDE / multihop / reranker |
 | Vector DB | Chroma (Blueprint) |
 | Blueprint flags | guardrails on, query refinement on, MCP off, role `General` |
 | Prompt template | `concise` (not used by the Blueprint) |
@@ -28,16 +28,19 @@ Blueprint retrieves and answers itself, with guardrails and query refinement on.
 | run2 | 2026-10-29 → 30 | SQuAD | 500 | nomic-embed-text | deepseek-v4-flash / nomic | rec 512/64, 512/128, 1024/64, 1024/128, semantic p95 | 5/5 done |
 | run3 | 2026-10-30 → 31 | RAGBench TechQA (train) | 500 | Qwen3-Embedding-4B | deepseek-v4-flash / Qwen3-Embedding-4B | same 5 | 4/5 done, semantic **failed** |
 | run4 | 2026-10-31 | RAGBench TechQA (train) | 500 | nomic-embed-text | deepseek-v4-flash / nomic | same 5 | 3/5 done, rec 1024/128 **hung, stopped manually**, semantic not started |
+| run5 | 2026-11-04 → 06 | RAGBench TechQA (train) | 500 | nomic-embed-text | deepseek-v4-flash / nomic | rec 512/1024/2048 × overlap 64/128 + semantic p95, each at top-k 10 and 12 (14) | 14/14 done |
 
 Combination matrix (✅ done, ❌ failed, ⏹ aborted, — not run):
 
-| Chunking | SQuAD · nomic (run2) | TechQA · Qwen3-Emb-4B (run3) | TechQA · nomic (run4) |
-|---|---|---|---|
-| recursive 512 / 64 | ✅ (+ run1 smoke) | ✅ | ✅ |
-| recursive 512 / 128 | ✅ | ✅ | ✅ |
-| recursive 1024 / 64 | ✅ | ✅ | ✅ |
-| recursive 1024 / 128 | ✅ | ✅ | ⏹ |
-| semantic (percentile 95) | ✅ | ❌ | — |
+| Chunking | SQuAD · nomic (run2, k5) | TechQA · Qwen3-Emb-4B (run3, k5) | TechQA · nomic (run4, k5) | TechQA · nomic (run5, k10 + k12) |
+|---|---|---|---|---|
+| recursive 512 / 64 | ✅ (+ run1 smoke) | ✅ | ✅ | ✅ |
+| recursive 512 / 128 | ✅ | ✅ | ✅ | ✅ |
+| recursive 1024 / 64 | ✅ | ✅ | ✅ | ✅ |
+| recursive 1024 / 128 | ✅ | ✅ | ⏹ | ✅ |
+| recursive 2048 / 64 | — | — | — | ✅ |
+| recursive 2048 / 128 | — | — | — | ✅ |
+| semantic (percentile 95) | ✅ | ❌ | — | ✅ |
 
 Failure details:
 
@@ -78,6 +81,40 @@ answer match 0.80. Different critic and n — not comparable to run2.
 \* Embedding-dependent metric, scored with the run's own embedding model —
 not comparable between run3 and run4 (see caveats).
 
+### RAGBench TechQA, nomic-embed-text, top-k 10 / 12 (run5, n = 500)
+
+Same generator, critic, critic embedding and dataset sample as run4; only
+`retrieval_top_k` (5 → 10 / 12) and the chunking axes differ, so run4 and run5
+are directly comparable. "Ctx chars" is the mean retrieved context length per
+question.
+
+| Chunking | k | Faithf. | Ans. rel. | Ans. corr. | Ctx prec. | Ctx recall | BERT F1 | Ctx chars | Refusals |
+|---|---|---|---|---|---|---|---|---|---|
+| rec 512/64 | 10 | 0.791 | 0.539 | 0.401 | 0.536 | 0.359 | 0.502 | 4 037 | 40 % |
+| rec 512/128 | 10 | 0.811 | 0.507 | 0.422 | 0.605 | 0.422 | 0.502 | 4 097 | 38 % |
+| rec 1024/64 | 10 | 0.830 | 0.532 | 0.478 | 0.619 | 0.525 | 0.489 | 8 251 | 39 % |
+| rec 1024/128 | 10 | 0.820 | 0.532 | **0.513** | 0.623 | 0.541 | 0.516 | 8 315 | 39 % |
+| rec 2048/64 | 10 | 0.816 | 0.520 | **0.513** | 0.599 | 0.581 | 0.504 | 16 705 | 36 % |
+| rec 2048/128 | 10 | 0.841 | 0.527 | 0.486 | 0.602 | 0.578 | 0.512 | 16 758 | 37 % |
+| semantic p95 | 10 | 0.826 | 0.512 | 0.493 | 0.582 | **0.606** | 0.520 | 35 893 | 38 % |
+| rec 512/64 | 12 | 0.804 | 0.524 | 0.476 | 0.603 | 0.507 | 0.494 | 4 832 | 39 % |
+| rec 512/128 | 12 | 0.837 | 0.522 | 0.482 | 0.621 | 0.502 | 0.475 | 4 929 | 38 % |
+| rec 1024/64 | 12 | 0.850 | 0.524 | 0.484 | 0.595 | 0.577 | 0.516 | 9 929 | 38 % |
+| rec 1024/128 | 12 | 0.843 | 0.535 | 0.488 | **0.627** | 0.564 | 0.520 | 10 005 | 38 % |
+| rec 2048/64 | 12 | 0.843 | **0.549** | 0.498 | 0.601 | 0.603 | **0.525** | 19 958 | 35 % |
+| rec 2048/128 | 12 | **0.853** | 0.546 | 0.494 | 0.581 | 0.605 | 0.514 | 20 109 | 37 % |
+| semantic p95 | 12 | 0.842 | 0.543 | 0.497 | 0.572 | 0.604 | 0.523 | 42 768 | 34 % |
+
+Refusals: share of answers matching a "context does not contain / cannot
+answer" pattern (regex over the sample answers; run4 had 43–45 %). Heuristic
+hit@k is ~0.99 for every config and omitted (see caveats).
+
+Paired bootstrap (95 % CI, per-question differences) against rec 1024/128 k10
+for answer correctness: rec 2048/64 k10 is tied (−0.002, CI [−0.019, +0.014]);
+semantic k12 is borderline (−0.016, CI [−0.033, +0.001]); every other config
+is significantly lower, rec 512/64 k10 (−0.114) and rec 512/128 k10 (−0.091)
+by a wide margin.
+
 ### Runtime (seconds per config, n = 500)
 
 | Run | Index build (`adapter_prepare`) | Blueprint answering | RAGAS eval | Custom metrics | Total | Critic tokens |
@@ -85,8 +122,12 @@ not comparable between run3 and run4 (see caveats).
 | run2 SQuAD · nomic | 3–17 | 490–498 | 6 934–7 482 | 160–168 | 7 603–8 163 (~2.1–2.3 h) | 6.4–7.0 M |
 | run3 TechQA · Qwen3-4B | 1 031–1 830 | 663–692 | 7 151–8 037 | 711–841 | 9 732–11 161 (~2.7–3.1 h) | 8.7–9.7 M |
 | run4 TechQA · nomic | 83–151 | 618–641 | 7 205–7 890 | 216–225 | 8 201–8 852 (~2.3–2.5 h) | 8.8–10.6 M |
+| run5 TechQA · nomic, k10/12 | 59–319 | 641–1 225 | 9 297–13 597 | 278–480 | 10 379–15 660 (~2.9–4.4 h) | 12.8–33.1 M |
 
-RAGAS (critic LLM) dominates every config at ~85–90 % of the wall time.
+RAGAS (critic LLM) dominates every config at ~85–90 % of the wall time. In
+run5, larger chunks and semantic chunking raise Blueprint answering time
+(median 1.3 s/question at 512 → 1.6–1.7 s at 2048 → 2.1–2.4 s semantic, p95 up
+to 3.7 s) and critic tokens, because the context grows.
 
 ## Findings
 
@@ -108,7 +149,26 @@ RAGAS (critic LLM) dominates every config at ~85–90 % of the wall time.
 4. **Overlap 64 vs 128 makes little difference** (≤ 0.03 on most metrics).
 5. **Best configs so far:** SQuAD — semantic p95 (best correctness 0.566 and
    hit@5 0.822) or rec 512/128 (best context recall and answer match). TechQA —
-   rec 1024/64 with nomic (best faithfulness, relevancy, correctness, precision).
+   rec 1024/128 at top-k 10 with nomic (run5, correctness 0.513, tied with
+   rec 2048/64 k10 at half the context length).
+6. **Higher top-k lifts context recall much more than correctness (run5 vs
+   run4).** rec 1024/64: context recall 0.370 (k5) → 0.525 (k10) → 0.577 (k12),
+   correctness only 0.468 → 0.478 → 0.484. k12 adds recall and faithfulness but
+   no correctness over the best k10 configs. 512-token chunks stay clearly worst
+   at k10.
+7. **Refusals are the main TechQA bottleneck.** ~34–40 % of answers say the
+   context does not contain the answer (run4: 43–45 %); they score answer
+   relevancy ≈ 0 and explain most of the low mean relevancy (~0.53). About 35 %
+   of answerable questions (reference is not a refusal; ~155 of 500 questions)
+   are refused. Refused
+   questions have low context recall (0.18–0.44 vs 0.48–0.70 when answered),
+   so retrieval misses dominate, but 10–29 refusals per config have context
+   recall ≥ 0.8 — the generator is over-cautious there. When the Blueprint does
+   answer, correctness (0.55–0.57) and relevancy (~0.71) are almost
+   config-independent: chunking and top-k mainly move the refusal rate.
+8. **Semantic p95 chunks are long** (~3.6 k chars each, 36–43 k context chars at
+   k10/12, about twice rec 2048), yet not better than rec 1024/2048, and the
+   slowest. Compare it only at a matched context budget.
 
 ## Caveats
 
@@ -116,9 +176,11 @@ RAGAS (critic LLM) dominates every config at ~85–90 % of the wall time.
   (`ground_truth_doc_ids` is empty), hit@k / nDCG / recall@k count a context as
   relevant when cosine(ground-truth answer, context) ≥ 0.5 under the critic
   embedding (`benchmark/custom_metrics.py`, `determine_relevance`). nomic gives
-  high baseline similarity in-domain, so run4 scores hit@1 = 1.0 for every config —
-  a threshold artefact, not perfect retrieval (RAGAS context recall is 0.27–0.37
-  in the same run). Use RAGAS context precision/recall for retrieval quality.
+  high baseline similarity in-domain, so run4 scores hit@1 = 1.0 for every config
+  (run5: 0.99) — a threshold artefact, not perfect retrieval (RAGAS context
+  recall is 0.27–0.37 in run4). In run5, recall@k is simply k/10 because all ten
+  contexts count as relevant. Use RAGAS context precision/recall for retrieval
+  quality.
 - **Embedding-based metrics differ by critic embedding**: run3 scores semantic
   similarity, context relevance, vector distances and heuristic hit@k with
   Qwen3-Embedding-4B, run4 with nomic. RAGAS answer correctness and answer
@@ -128,18 +190,27 @@ RAGAS (critic LLM) dominates every config at ~85–90 % of the wall time.
   answers (SQuAD spans); long-form TechQA references never match.
 - Retrieved doc IDs repeat (several chunks of the same document in the top 5), so
   the five contexts cover fewer than five distinct documents.
+- **The TechQA corpus contains duplicate documents** under different IDs (e.g.
+  `dataset-doc-0` and `dataset-doc-271` share text). In run5 only ~7.2–7.8 of 10
+  (k10) and ~8.7–9.4 of 12 (k12) retrieved contexts are distinct texts, and
+  5.6–9.1 distinct doc IDs.
 - n = 500 gives roughly ±0.02–0.04 standard error on the means; differences below
-  ~0.03 are noise.
+  ~0.03 are noise. Paired comparisons per question (as in run5) are tighter
+  (CI half-width ~0.016 for correctness).
+- run5 reports token counts of 0 and empty `llm_performance_metrics` although
+  `llm_performance_enabled` is true: the `enterprise_rag_mcp` adapter does not
+  report generator tokens and the load test does not run for it.
 
 ## Open / next
 
-- Finish the TechQA · nomic matrix: rec 1024/128 and semantic p95 (resume with
-  `python -m benchmark.worker run experiments/enterprise-rag-blueprint-rag.yaml --keep-going --run-dir results/Enterprise-RAG/run4`
-  after restoring the run4 matrix) and retry semantic with Qwen3-4B.
-- The manifest on the Spark is already edited for the next sweep and has not run
-  yet: `retrieval_top_k [10, 12]`, `chunk_sizes [512, 1024, 2048]`,
-  `chunk_overlaps [64, 128]`, recursive + semantic, nomic → 14 configs, ~33–35 h
-  at the current per-config time. A higher top-k targets the low TechQA context recall.
+- The run4 gaps (rec 1024/128, semantic at k5) are superseded by run5; retry
+  semantic with Qwen3-4B only if the embedder comparison is still needed.
+- Deduplicate the TechQA corpus before indexing: about a quarter of the context
+  slots are duplicate texts.
+- Inspect the Blueprint prompt and query refinement on refusals with high
+  context recall (over-cautious generator).
+- Re-test semantic chunking with a bounded chunk size or a matched context
+  budget.
 - Gold-doc retrieval metrics for TechQA (map RAGBench documents to
   `ground_truth_doc_ids`, `custom_retrieval_metrics_mode: gold_doc`) would replace
   the heuristic hit@k.
