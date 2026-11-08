@@ -169,6 +169,12 @@ def _retrieval_env(config: Any) -> dict[str, str]:
     env = {"RETRIEVER_SEARCH_TYPE": strategy}
     if strategy == "hybrid":
         fetch_k = config.retrieval_fetch_k
+        if fetch_k is not None and fetch_k < config.retrieval_top_k:
+            raise ValueError(
+                f"retrieval_fetch_k ({fetch_k}) is below retrieval_top_k "
+                f"({config.retrieval_top_k}); hybrid would return too few documents. "
+                "Pin retrieval_fetch_k in the manifest (it may come from .env)"
+            )
         env["RETRIEVER_HYBRID_ALPHA"] = f"{config.retrieval_hybrid_alpha:g}"
         # Empty overrides a value from the Blueprint .env with its default.
         env["RETRIEVER_HYBRID_FETCH_K"] = "" if fetch_k is None else str(fetch_k)

@@ -495,6 +495,23 @@ def test_hybrid_retrieval_settings_map_to_blueprint_environment():
     assert env["RETRIEVER_HYBRID_FETCH_K"] == "40"
 
 
+def test_hybrid_candidate_pool_smaller_than_top_k_fails_before_the_run():
+    # e.g. RETRIEVAL_FETCH_K=3 from a .env meant for MMR would cap results at 6.
+    adapter = EnterpriseRagMcpAdapter(
+        _config(
+            enterprise_rag_mcp_apply_settings=True,
+            retrieval_strategy="hybrid",
+            retrieval_top_k=10,
+            retrieval_fetch_k=3,
+        ),
+        transport=FakeTransport(),
+        identity_secret=SECRET,
+    )
+
+    with pytest.raises(ValueError, match="retrieval_fetch_k"):
+        adapter.prepare(adapter.config, data=[])
+
+
 def test_retrieval_strategy_the_blueprint_lacks_fails_before_the_run():
     adapter = EnterpriseRagMcpAdapter(
         _config(enterprise_rag_mcp_apply_settings=True, retrieval_strategy="mmr"),

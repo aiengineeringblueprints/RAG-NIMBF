@@ -29,6 +29,9 @@ the Blueprint runs with.
   `feat/hybrid-retrieval`, `chain/retriever.py` has `retriever_search_type`).
   Older checkouts are rejected with "has no hybrid retrieval" instead of
   silently running dense search.
+  Pin `retrieval_fetch_k` in the manifest: a `RETRIEVAL_FETCH_K` in `.env`
+  (often set for MMR) otherwise applies, and values below `retrieval_top_k`
+  are rejected.
 - Blueprint chain dependencies in the framework venv (once):
 
   ```bash

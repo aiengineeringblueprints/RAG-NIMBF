@@ -21,10 +21,15 @@ adapter forwards the strategy, alpha and fetch-k per request.
   sets `RETRIEVER_SEARCH_TYPE` (and for hybrid `RETRIEVER_HYBRID_ALPHA`,
   `RETRIEVER_HYBRID_FETCH_K` from `retrieval_fetch_k`, empty = Blueprint
   default 4 * top-k). `retrieval_strategy: mmr` is rejected before the run.
+  For hybrid, `retrieval_fetch_k` below `retrieval_top_k` is rejected: the
+  Spark `.env` sets `RETRIEVAL_FETCH_K=3` (meant for MMR), which would have
+  capped every hybrid result at 6 documents without an error.
   The in-process transport rejects `hybrid` on a Blueprint checkout without
   `retriever.retriever_search_type`, so no run is mislabelled again.
 - `experiments/enterprise-rag-blueprint-rag.yaml`: `retrieval_strategy:
-  hybrid` with alpha 0.5, comments corrected (Blueprint top-k default is 5).
+  hybrid` with alpha 0.5 and `retrieval_fetch_k: 50` pinned (fixed rather than
+  4 * top-k so k10 and k12 fuse the same candidate pool; with RRF k 60 ranks
+  past 50 add almost nothing), comments corrected (Blueprint top-k default is 5).
 - `doc/enterprise-rag-blueprint-setup.md`: prerequisites and "what the
   manifest controls" updated.
 
@@ -44,10 +49,14 @@ adapter forwards the strategy, alpha and fetch-k per request.
   mutation. Chain suite 243 passed, coverage 96.6 %; hybrid, retriever,
   load-chain and handle-llms tests also pass under the framework venv.
 - Framework: `tests/test_enterprise_rag_mcp_adapter.py` (env mapping, mmr
-  rejection, old-Blueprint rejection); full suite 773 passed. Manifest
-  expands to 14 configs, all `hybrid` alpha 0.5.
+  rejection, fetch-k below top-k, old-Blueprint rejection); full suite 774
+  passed. Manifest expands to 14 configs, all `hybrid` alpha 0.5, fetch-k 50,
+  also on the Spark with its `.env`.
 
 ## Follow-ups
+- The internal pipeline (hybrid and MMR) has the same `RETRIEVAL_FETCH_K` <
+  top-k pitfall and no check yet; the Spark `.env` comment ("calculated as
+  TOP_K * FETCH_K") is wrong, the value is absolute.
 - No benchmark run with hybrid yet; compare against run5 (same matrix, dense).
 - The older `enterprise_rag` adapter (`examples/enterprise_rag_plugin/adapter.py`)
   calls `create_retriever` without setting the search type, so it stays dense.
