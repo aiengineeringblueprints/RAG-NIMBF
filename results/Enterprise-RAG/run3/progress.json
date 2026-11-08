@@ -1,0 +1,34 @@
+{
+  "configs": {
+    "recursive_cs512_co64_ryanshillington/Qwen3-Embedding-4B:latest_qwen3.8-27b_concise_temp0_enterprise_rag_mcp_managed-baadea32f1": {
+      "status": "completed",
+      "started_at": "2026-10-30T18:11:08.908501+00:00",
+      "completed_at": "2026-10-30T21:17:10.234835+00:00",
+      "result_path": "results/Enterprise-RAG/run3/configs/recursive_cs512_co64_ryanshillington_Qwen3-Embedding-4B_latest_qwen3.8-27b_concise_temp0_enterprise_rag_mcp_managed-baadea32f1.json"
+    },
+    "recursive_cs512_co128_ryanshillington/Qwen3-Embedding-4B:latest_qwen3.8-27b_concise_temp0_enterprise_rag_mcp_managed-baadea32f1": {
+      "status": "completed",
+      "started_at": "2026-10-30T21:17:10.350642+00:00",
+      "completed_at": "2026-10-31T00:14:54.763231+00:00",
+      "result_path": "results/Enterprise-RAG/run3/configs/recursive_cs512_co128_ryanshillington_Qwen3-Embedding-4B_latest_qwen3.8-27b_concise_temp0_enterprise_rag_mcp_managed-baadea32f1.json"
+    },
+    "recursive_cs1024_co64_ryanshillington/Qwen3-Embedding-4B:latest_qwen3.8-27b_concise_temp0_enterprise_rag_mcp_managed-baadea32f1": {
+      "status": "completed",
+      "started_at": "2026-10-31T00:14:54.871041+00:00",
+      "completed_at": "2026-10-31T02:57:07.433239+00:00",
+      "result_path": "results/Enterprise-RAG/run3/configs/recursive_cs1024_co64_ryanshillington_Qwen3-Embedding-4B_latest_qwen3.8-27b_concise_temp0_enterprise_rag_mcp_managed-baadea32f1.json"
+    },
+    "recursive_cs1024_co128_ryanshillington/Qwen3-Embedding-4B:latest_qwen3.8-27b_concise_temp0_enterprise_rag_mcp_managed-baadea32f1": {
+      "status": "completed",
+      "started_at": "2026-10-31T02:57:07.545094+00:00",
+      "completed_at": "2026-10-31T05:39:35.173816+00:00",
+      "result_path": "results/Enterprise-RAG/run3/configs/recursive_cs1024_co128_ryanshillington_Qwen3-Embedding-4B_latest_qwen3.8-27b_concise_temp0_enterprise_rag_mcp_managed-baadea32f1.json"
+    },
+    "semantic_bppercentile95_ryanshillington/Qwen3-Embedding-4B:latest_qwen3.8-27b_concise_temp0_enterprise_rag_mcp_managed-baadea32f1": {
+      "status": "failed",
+      "started_at": "2026-10-31T05:39:35.276192+00:00",
+      "failed_at": "2026-10-31T06:51:19.440307+00:00",
+      "error": "Post \"http://127.0.0.1:41851/tokenize\": read tcp 127.0.0.1:56816->127.0.0.1:41851: read: connection reset by peer (status code: 400)"
+    }
+  }
+}

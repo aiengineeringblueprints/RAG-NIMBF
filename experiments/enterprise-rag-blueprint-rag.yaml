@@ -23,6 +23,7 @@ experiment_name: enterprise-rag-blueprint-rag
 dataset:
   name: ragbench
   subset: techqa
+  split: train
   sample_size: 500
 
 settings:
@@ -43,13 +44,16 @@ settings:
   enterprise_rag_mcp_query_refinement: true # false skips the LLM query rewrite
   enterprise_rag_mcp_guardrails: true       # false skips the LLM input check
   enterprise_rag_mcp_index_corpus: true
+  eval_critic_llm: openai:deepseek-v4-flash        # wie bisher aus .env, jetzt gepinnt
+  eval_critic_embedding: ollama:nomic-embed-text:latest  # wie bisher aus .env, jetzt gepinnt
 
 matrix:
   llm_models: [openai:qwen3.8-27b]
   embedding_models: [nomic-embed-text:latest]
-  retrieval_top_k: [5]             # Blueprint default
+  #embedding_models: ["ryanshillington/Qwen3-Embedding-4B:latest"]
+  retrieval_top_k: [10, 12]             # Blueprint default
   chunking_strategies: [recursive, semantic]
-  chunk_sizes: [512, 1024]
+  chunk_sizes: [512, 1024, 2048]
   chunk_overlaps: [64, 128]
   prompt_templates: [concise]      # unused by the Blueprint
   reranker_models: [null]

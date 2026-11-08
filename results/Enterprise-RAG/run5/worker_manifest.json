@@ -1,0 +1,21 @@
+{
+  "experiment_name": "enterprise-rag-blueprint-rag",
+  "created_at": "2026-11-04T17:50:51.144591+00:00",
+  "num_configs": 14,
+  "configs": [
+    "recursive_cs512_co64_nomic-embed-text:latest_qwen3.8-27b_concise_k10_temp0_enterprise_rag_mcp_managed-baadea32f1",
+    "recursive_cs512_co128_nomic-embed-text:latest_qwen3.8-27b_concise_k10_temp0_enterprise_rag_mcp_managed-baadea32f1",
+    "recursive_cs1024_co64_nomic-embed-text:latest_qwen3.8-27b_concise_k10_temp0_enterprise_rag_mcp_managed-baadea32f1",
+    "recursive_cs1024_co128_nomic-embed-text:latest_qwen3.8-27b_concise_k10_temp0_enterprise_rag_mcp_managed-baadea32f1",
+    "recursive_cs2048_co64_nomic-embed-text:latest_qwen3.8-27b_concise_k10_temp0_enterprise_rag_mcp_managed-baadea32f1",
+    "recursive_cs2048_co128_nomic-embed-text:latest_qwen3.8-27b_concise_k10_temp0_enterprise_rag_mcp_managed-baadea32f1",
+    "semantic_bppercentile95_nomic-embed-text:latest_qwen3.8-27b_concise_k10_temp0_enterprise_rag_mcp_managed-baadea32f1",
+    "recursive_cs512_co64_nomic-embed-text:latest_qwen3.8-27b_concise_k12_temp0_enterprise_rag_mcp_managed-baadea32f1",
+    "recursive_cs512_co128_nomic-embed-text:latest_qwen3.8-27b_concise_k12_temp0_enterprise_rag_mcp_managed-baadea32f1",
+    "recursive_cs1024_co64_nomic-embed-text:latest_qwen3.8-27b_concise_k12_temp0_enterprise_rag_mcp_managed-baadea32f1",
+    "recursive_cs1024_co128_nomic-embed-text:latest_qwen3.8-27b_concise_k12_temp0_enterprise_rag_mcp_managed-baadea32f1",
+    "recursive_cs2048_co64_nomic-embed-text:latest_qwen3.8-27b_concise_k12_temp0_enterprise_rag_mcp_managed-baadea32f1",
+    "recursive_cs2048_co128_nomic-embed-text:latest_qwen3.8-27b_concise_k12_temp0_enterprise_rag_mcp_managed-baadea32f1",
+    "semantic_bppercentile95_nomic-embed-text:latest_qwen3.8-27b_concise_k12_temp0_enterprise_rag_mcp_managed-baadea32f1"
+  ]
+}

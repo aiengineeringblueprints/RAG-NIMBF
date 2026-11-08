@@ -1,0 +1,1056 @@
+{
+  "timestamp": "20261031_075119",
+  "num_configs": 4,
+  "dataset": {
+    "name": "ragbench",
+    "subset": "techqa",
+    "sample_size": 500
+  },
+  "system_info": {
+    "python": "3.12.3",
+    "os": "Linux",
+    "os_version": "6.17.0-1014-nvidia",
+    "platform": "Linux-6.17.0-1014-nvidia-aarch64-with-glibc2.39",
+    "gpu": "NVIDIA GB10",
+    "gpu_memory_total_mb": "[N/A]"
+  },
+  "results": [
+    {
+      "config_name": "recursive_cs512_co64_ryanshillington/Qwen3-Embedding-4B:latest_qwen3.8-27b_concise_temp0_enterprise_rag_mcp_managed-baadea32f1",
+      "llm_model": "qwen3.8-27b",
+      "embedding_model": "ryanshillington/Qwen3-Embedding-4B:latest",
+      "prompt_template": "concise",
+      "chunking_strategy": "recursive",
+      "chunk_size": 512,
+      "chunk_overlap": 64,
+      "num_chunks": 0,
+      "num_questions": 500,
+      "ragas_faithfulness": 0.7840333333333332,
+      "ragas_answer_relevancy": 0.4594837643665547,
+      "ragas_answer_correctness": 0.39262805835427345,
+      "ragas_context_precision": 0.49343888886496967,
+      "ragas_context_recall": 0.2584358964706791,
+      "ragas_semantic_similarity": 0.7318523901841485,
+      "stage_timings": {
+        "load_data": 2.7510677440441214,
+        "adapter_prepare": 1742.5542549440288,
+        "external_rag": 662.8785889917053,
+        "ragas_eval": 8036.875828335993,
+        "custom_metrics": 710.9007224480156,
+        "total": 11161.218055151985
+      },
+      "vector_db_backend": "chroma",
+      "total_input_tokens": 0,
+      "total_output_tokens": 0,
+      "total_tokens": 0,
+      "critic_input_tokens": 7310551,
+      "critic_output_tokens": 1566498,
+      "critic_total_tokens": 8877049,
+      "total_estimated_cost_usd": null,
+      "avg_estimated_cost_per_answer_usd": null,
+      "llm_performance_metrics": {},
+      "llm_performance_artifact": null,
+      "llm_performance_error": null,
+      "adapter_metrics": {
+        "answer_match_count": 0,
+        "answer_match_rate": 0.0,
+        "per_category": {}
+      },
+      "avg_contexts_per_question": 5.0,
+      "max_contexts_per_question": 5,
+      "avg_context_chars_per_question": 1648.842,
+      "stats": {
+        "ragas_faithfulness": {
+          "mean": 0.7840333333333334,
+          "std": 0.2418488878686054,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 0.8333333333333334,
+          "count": 500
+        },
+        "ragas_answer_relevancy": {
+          "mean": 0.4594837643665547,
+          "std": 0.38285945207554434,
+          "min": 0.0,
+          "max": 0.9789735350510838,
+          "median": 0.6183614937365602,
+          "count": 500
+        },
+        "ragas_answer_correctness": {
+          "mean": 0.3926280583542735,
+          "std": 0.1825160687417728,
+          "min": 0.09482344623732357,
+          "max": 0.9402504433723713,
+          "median": 0.3832620262215468,
+          "count": 494
+        },
+        "ragas_context_precision": {
+          "mean": 0.49343888886496967,
+          "std": 0.4019144664402706,
+          "min": 0.0,
+          "max": 0.99999999998,
+          "median": 0.48888888885592596,
+          "count": 500
+        },
+        "ragas_context_recall": {
+          "mean": 0.25843589647067905,
+          "std": 0.3353821441543385,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 0.11805555555555555,
+          "count": 500
+        },
+        "ragas_semantic_similarity": {
+          "mean": 0.7318523901841485,
+          "std": 0.10661670477969051,
+          "min": 0.33793045132279786,
+          "max": 0.9680947425081856,
+          "median": 0.7333028711220768,
+          "count": 500
+        }
+      },
+      "hit@1": 0.764,
+      "ndcg@1": 0.764,
+      "recall@1": 0.21806666666666666,
+      "hit@3": 0.828,
+      "ndcg@3": 0.7570164726081072,
+      "recall@3": 0.5521999999999999,
+      "hit@5": 0.854,
+      "ndcg@5": 0.8058730951211667,
+      "recall@5": 0.854,
+      "context_relevance": 0.6711052165536545,
+      "vec_dist_q_gt": 0.20084148609441166,
+      "vec_dist_q_answer": 0.28444769310572027,
+      "rouge_l": 0.0985655191701191,
+      "bleu": 0.023509233057586877,
+      "meteor": 0.11328440033673876,
+      "bert_score_precision": 0.4097052482366562,
+      "bert_score_recall": 0.4058339022397995,
+      "bert_score_f1": 0.40774908021943523,
+      "custom_stats": {
+        "hit@1": {
+          "mean": 0.764,
+          "std": 0.42504744518856086,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 500
+        },
+        "ndcg@1": {
+          "mean": 0.764,
+          "std": 0.42504744518856086,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 500
+        },
+        "recall@1": {
+          "mean": 0.21806666666666666,
+          "std": 0.20040661182848632,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 0.2,
+          "count": 500
+        },
+        "hit@3": {
+          "mean": 0.828,
+          "std": 0.37775839210480977,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 500
+        },
+        "ndcg@3": {
+          "mean": 0.7570164726081072,
+          "std": 0.38261716202536167,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 500
+        },
+        "recall@3": {
+          "mean": 0.5522,
+          "std": 0.29248861946812577,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 0.6,
+          "count": 500
+        },
+        "hit@5": {
+          "mean": 0.854,
+          "std": 0.3534598530745337,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 500
+        },
+        "ndcg@5": {
+          "mean": 0.8058730951211667,
+          "std": 0.3558197404948983,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 500
+        },
+        "recall@5": {
+          "mean": 0.854,
+          "std": 0.3534598530745337,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 500
+        },
+        "context_relevance": {
+          "mean": 0.6711052165536545,
+          "std": 0.0949708244375455,
+          "min": 0.36641423692895936,
+          "max": 0.8699597349151004,
+          "median": 0.6709922199935328,
+          "count": 500
+        },
+        "vec_dist_q_gt": {
+          "mean": 0.2008414860944117,
+          "std": 0.08982521262874817,
+          "min": 0.025130796029856017,
+          "max": 0.6037791591115034,
+          "median": 0.1870276759929902,
+          "count": 500
+        },
+        "vec_dist_q_answer": {
+          "mean": 0.28444769310572027,
+          "std": 0.1039908898103747,
+          "min": 0.052735241309837644,
+          "max": 0.6262229105951549,
+          "median": 0.2782884286604016,
+          "count": 500
+        },
+        "rouge_l": {
+          "mean": 0.0985655191701191,
+          "std": 0.13329272859261784,
+          "min": 0.0,
+          "max": 0.7883211678832117,
+          "median": 0.0,
+          "count": 500
+        },
+        "bleu": {
+          "mean": 0.023509233057586877,
+          "std": 0.06084189546152429,
+          "min": 0.0,
+          "max": 0.5841515464424856,
+          "median": 0.0,
+          "count": 500
+        },
+        "meteor": {
+          "mean": 0.11328440033673876,
+          "std": 0.15962352182048592,
+          "min": 0.0,
+          "max": 0.823936855670103,
+          "median": 0.0,
+          "count": 500
+        },
+        "bert_score_precision": {
+          "mean": 0.4097052482366562,
+          "std": 0.478033843668974,
+          "min": 0.0,
+          "max": 0.9892886281013489,
+          "median": 0.0,
+          "count": 500
+        },
+        "bert_score_recall": {
+          "mean": 0.4058339022397995,
+          "std": 0.4735435691378901,
+          "min": 0.0,
+          "max": 0.9912033081054688,
+          "median": 0.0,
+          "count": 500
+        },
+        "bert_score_f1": {
+          "mean": 0.40774908021943523,
+          "std": 0.4757533552654708,
+          "min": 0.0,
+          "max": 0.9864223046109489,
+          "median": 0.0,
+          "count": 500
+        }
+      }
+    },
+    {
+      "config_name": "recursive_cs512_co128_ryanshillington/Qwen3-Embedding-4B:latest_qwen3.8-27b_concise_temp0_enterprise_rag_mcp_managed-baadea32f1",
+      "llm_model": "qwen3.8-27b",
+      "embedding_model": "ryanshillington/Qwen3-Embedding-4B:latest",
+      "prompt_template": "concise",
+      "chunking_strategy": "recursive",
+      "chunk_size": 512,
+      "chunk_overlap": 128,
+      "num_chunks": 0,
+      "num_questions": 500,
+      "ragas_faithfulness": 0.7733218614718614,
+      "ragas_answer_relevancy": 0.4851231710174455,
+      "ragas_answer_correctness": 0.3633972426560295,
+      "ragas_context_precision": 0.5289833333080899,
+      "ragas_context_recall": 0.2838551869859549,
+      "ragas_semantic_similarity": 0.7243711435275685,
+      "stage_timings": {
+        "load_data": 2.7510677440441214,
+        "adapter_prepare": 1830.1932542079594,
+        "external_rag": 666.7698584798491,
+        "ragas_eval": 7433.240282096027,
+        "custom_metrics": 723.679012448003,
+        "total": 10664.303188239981
+      },
+      "vector_db_backend": "chroma",
+      "total_input_tokens": 0,
+      "total_output_tokens": 0,
+      "total_tokens": 0,
+      "critic_input_tokens": 7154083,
+      "critic_output_tokens": 1520012,
+      "critic_total_tokens": 8674095,
+      "total_estimated_cost_usd": null,
+      "avg_estimated_cost_per_answer_usd": null,
+      "llm_performance_metrics": {},
+      "llm_performance_artifact": null,
+      "llm_performance_error": null,
+      "adapter_metrics": {
+        "answer_match_count": 0,
+        "answer_match_rate": 0.0,
+        "per_category": {}
+      },
+      "avg_contexts_per_question": 5.0,
+      "max_contexts_per_question": 5,
+      "avg_context_chars_per_question": 1786.116,
+      "stats": {
+        "ragas_faithfulness": {
+          "mean": 0.7733218614718614,
+          "std": 0.23412673752763635,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 0.8,
+          "count": 500
+        },
+        "ragas_answer_relevancy": {
+          "mean": 0.4851231710174455,
+          "std": 0.37750607759897004,
+          "min": 0.0,
+          "max": 0.9855936494018391,
+          "median": 0.6425038232409193,
+          "count": 500
+        },
+        "ragas_answer_correctness": {
+          "mean": 0.3633972426560295,
+          "std": 0.1770485782256728,
+          "min": 0.06637266957982992,
+          "max": 0.8953271800115876,
+          "median": 0.3565753308684339,
+          "count": 500
+        },
+        "ragas_context_precision": {
+          "mean": 0.5289833333080899,
+          "std": 0.40433592879469554,
+          "min": 0.0,
+          "max": 0.99999999998,
+          "median": 0.5333333333155555,
+          "count": 500
+        },
+        "ragas_context_recall": {
+          "mean": 0.2838551869859549,
+          "std": 0.3437964013904469,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 0.14285714285714285,
+          "count": 500
+        },
+        "ragas_semantic_similarity": {
+          "mean": 0.7243711435275686,
+          "std": 0.11595368046584902,
+          "min": 0.26549067831931966,
+          "max": 0.9696877802428739,
+          "median": 0.7414821925197886,
+          "count": 500
+        }
+      },
+      "hit@1": 0.782,
+      "ndcg@1": 0.782,
+      "recall@1": 0.20683333333333334,
+      "hit@3": 0.834,
+      "ndcg@3": 0.7740129572551259,
+      "recall@3": 0.5463333333333333,
+      "hit@5": 0.868,
+      "ndcg@5": 0.8218948548856817,
+      "recall@5": 0.868,
+      "context_relevance": 0.6800258491556924,
+      "vec_dist_q_gt": 0.20084148609441166,
+      "vec_dist_q_answer": 0.293073485781923,
+      "rouge_l": 0.10664832085879063,
+      "bleu": 0.026626627935831686,
+      "meteor": 0.12531455481436948,
+      "bert_score_precision": 0.4406890912055969,
+      "bert_score_recall": 0.43668113720417023,
+      "bert_score_f1": 0.4386632303754618,
+      "custom_stats": {
+        "hit@1": {
+          "mean": 0.782,
+          "std": 0.4133009016086719,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 500
+        },
+        "ndcg@1": {
+          "mean": 0.782,
+          "std": 0.4133009016086719,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 500
+        },
+        "recall@1": {
+          "mean": 0.20683333333333334,
+          "std": 0.16861082177142983,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 0.2,
+          "count": 500
+        },
+        "hit@3": {
+          "mean": 0.834,
+          "std": 0.37245327611093926,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 500
+        },
+        "ndcg@3": {
+          "mean": 0.7740129572551259,
+          "std": 0.3776114082281245,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 500
+        },
+        "recall@3": {
+          "mean": 0.5463333333333333,
+          "std": 0.2784030148896047,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 0.6,
+          "count": 500
+        },
+        "hit@5": {
+          "mean": 0.868,
+          "std": 0.33882976732047154,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 500
+        },
+        "ndcg@5": {
+          "mean": 0.8218948548856817,
+          "std": 0.3446905289944261,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 500
+        },
+        "recall@5": {
+          "mean": 0.868,
+          "std": 0.33882976732047154,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 500
+        },
+        "context_relevance": {
+          "mean": 0.6800258491556924,
+          "std": 0.09837882968385007,
+          "min": 0.3953814512050333,
+          "max": 0.8699597349151004,
+          "median": 0.6817586747567825,
+          "count": 500
+        },
+        "vec_dist_q_gt": {
+          "mean": 0.2008414860944117,
+          "std": 0.08982521262874817,
+          "min": 0.025130796029856017,
+          "max": 0.6037791591115034,
+          "median": 0.1870276759929902,
+          "count": 500
+        },
+        "vec_dist_q_answer": {
+          "mean": 0.29307348578192305,
+          "std": 0.10945940879258144,
+          "min": 0.05571372097825644,
+          "max": 0.6565462665599988,
+          "median": 0.27809658885513744,
+          "count": 500
+        },
+        "rouge_l": {
+          "mean": 0.10664832085879061,
+          "std": 0.13310283413105936,
+          "min": 0.0,
+          "max": 0.5655172413793104,
+          "median": 0.0,
+          "count": 500
+        },
+        "bleu": {
+          "mean": 0.026626627935831686,
+          "std": 0.06156864117302504,
+          "min": 0.0,
+          "max": 0.356586717758054,
+          "median": 0.0,
+          "count": 500
+        },
+        "meteor": {
+          "mean": 0.12531455481436948,
+          "std": 0.16843399313173285,
+          "min": 0.0,
+          "max": 0.823936855670103,
+          "median": 0.0,
+          "count": 500
+        },
+        "bert_score_precision": {
+          "mean": 0.4406890912055969,
+          "std": 0.4818438906879313,
+          "min": 0.0,
+          "max": 0.9820874929428101,
+          "median": 0.0,
+          "count": 500
+        },
+        "bert_score_recall": {
+          "mean": 0.43668113720417023,
+          "std": 0.4774948766891171,
+          "min": 0.0,
+          "max": 0.9922893047332764,
+          "median": 0.0,
+          "count": 500
+        },
+        "bert_score_f1": {
+          "mean": 0.43866323037546184,
+          "std": 0.47963269496732763,
+          "min": 0.0,
+          "max": 0.9871620419228053,
+          "median": 0.0,
+          "count": 500
+        }
+      }
+    },
+    {
+      "config_name": "recursive_cs1024_co64_ryanshillington/Qwen3-Embedding-4B:latest_qwen3.8-27b_concise_temp0_enterprise_rag_mcp_managed-baadea32f1",
+      "llm_model": "qwen3.8-27b",
+      "embedding_model": "ryanshillington/Qwen3-Embedding-4B:latest",
+      "prompt_template": "concise",
+      "chunking_strategy": "recursive",
+      "chunk_size": 1024,
+      "chunk_overlap": 64,
+      "num_chunks": 0,
+      "num_questions": 500,
+      "ragas_faithfulness": 0.8099551948051947,
+      "ragas_answer_relevancy": 0.504966522331671,
+      "ragas_answer_correctness": 0.39928878849354255,
+      "ragas_context_precision": 0.5270527777508951,
+      "ragas_context_recall": 0.3723499485022902,
+      "ragas_semantic_similarity": 0.7267309932990856,
+      "stage_timings": {
+        "load_data": 2.7510677440441214,
+        "adapter_prepare": 1031.0924132959917,
+        "external_rag": 688.3377222569543,
+        "ragas_eval": 7161.765719807998,
+        "custom_metrics": 841.2893130400334,
+        "total": 9732.419737295946
+      },
+      "vector_db_backend": "chroma",
+      "total_input_tokens": 0,
+      "total_output_tokens": 0,
+      "total_tokens": 0,
+      "critic_input_tokens": 8111071,
+      "critic_output_tokens": 1510063,
+      "critic_total_tokens": 9621134,
+      "total_estimated_cost_usd": null,
+      "avg_estimated_cost_per_answer_usd": null,
+      "llm_performance_metrics": {},
+      "llm_performance_artifact": null,
+      "llm_performance_error": null,
+      "adapter_metrics": {
+        "answer_match_count": 0,
+        "answer_match_rate": 0.0,
+        "per_category": {}
+      },
+      "avg_contexts_per_question": 5.0,
+      "max_contexts_per_question": 5,
+      "avg_context_chars_per_question": 3776.666,
+      "stats": {
+        "ragas_faithfulness": {
+          "mean": 0.8099551948051948,
+          "std": 0.2194595433544715,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 0.8571428571428571,
+          "count": 500
+        },
+        "ragas_answer_relevancy": {
+          "mean": 0.504966522331671,
+          "std": 0.36715270369555575,
+          "min": 0.0,
+          "max": 0.9855936494018391,
+          "median": 0.66596940988142,
+          "count": 500
+        },
+        "ragas_answer_correctness": {
+          "mean": 0.39928878849354255,
+          "std": 0.20045056034091746,
+          "min": 0.0562294080351183,
+          "max": 0.9956432415106633,
+          "median": 0.39338762659020216,
+          "count": 500
+        },
+        "ragas_context_precision": {
+          "mean": 0.5270527777508951,
+          "std": 0.42198159007683744,
+          "min": 0.0,
+          "max": 0.99999999998,
+          "median": 0.499999999975,
+          "count": 500
+        },
+        "ragas_context_recall": {
+          "mean": 0.3723499485022902,
+          "std": 0.37601659594886017,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 0.2727272727272727,
+          "count": 499
+        },
+        "ragas_semantic_similarity": {
+          "mean": 0.7267309932990856,
+          "std": 0.12030012628123718,
+          "min": 0.2248876550594556,
+          "max": 0.9827142432936234,
+          "median": 0.7327225344541222,
+          "count": 500
+        }
+      },
+      "hit@1": 0.81,
+      "ndcg@1": 0.81,
+      "recall@1": 0.22603333333333334,
+      "hit@3": 0.884,
+      "ndcg@3": 0.8162870963702513,
+      "recall@3": 0.5999333333333333,
+      "hit@5": 0.91,
+      "ndcg@5": 0.8585780365014736,
+      "recall@5": 0.91,
+      "context_relevance": 0.6614612015273613,
+      "vec_dist_q_gt": 0.20084148609441166,
+      "vec_dist_q_answer": 0.2948272173042728,
+      "rouge_l": 0.12264502083926943,
+      "bleu": 0.031029874603439558,
+      "meteor": 0.14352185906986653,
+      "bert_score_precision": 0.49095930314064024,
+      "bert_score_recall": 0.48681009221076965,
+      "bert_score_f1": 0.4888638258712865,
+      "custom_stats": {
+        "hit@1": {
+          "mean": 0.81,
+          "std": 0.39269379525740833,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 500
+        },
+        "ndcg@1": {
+          "mean": 0.81,
+          "std": 0.39269379525740833,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 500
+        },
+        "recall@1": {
+          "mean": 0.22603333333333334,
+          "std": 0.18430857087666105,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 0.2,
+          "count": 500
+        },
+        "hit@3": {
+          "mean": 0.884,
+          "std": 0.3205456270143082,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 500
+        },
+        "ndcg@3": {
+          "mean": 0.8162870963702513,
+          "std": 0.3402714844500384,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 500
+        },
+        "recall@3": {
+          "mean": 0.5999333333333333,
+          "std": 0.2675607007171412,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 0.6,
+          "count": 500
+        },
+        "hit@5": {
+          "mean": 0.91,
+          "std": 0.2864683721748581,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 500
+        },
+        "ndcg@5": {
+          "mean": 0.8585780365014736,
+          "std": 0.30049711616826263,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 500
+        },
+        "recall@5": {
+          "mean": 0.91,
+          "std": 0.2864683721748581,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 500
+        },
+        "context_relevance": {
+          "mean": 0.6614612015273614,
+          "std": 0.0901426326489452,
+          "min": 0.4051883191609663,
+          "max": 0.8904918887015894,
+          "median": 0.6625633343227408,
+          "count": 500
+        },
+        "vec_dist_q_gt": {
+          "mean": 0.2008414860944117,
+          "std": 0.08982521262874817,
+          "min": 0.025130796029856017,
+          "max": 0.6037791591115034,
+          "median": 0.1870276759929902,
+          "count": 500
+        },
+        "vec_dist_q_answer": {
+          "mean": 0.29482721730427275,
+          "std": 0.11135493862694729,
+          "min": 0.047786064666526795,
+          "max": 0.6594263033060173,
+          "median": 0.28432547110960343,
+          "count": 500
+        },
+        "rouge_l": {
+          "mean": 0.12264502083926943,
+          "std": 0.1414928515866862,
+          "min": 0.0,
+          "max": 0.7605633802816901,
+          "median": 0.10300905004639505,
+          "count": 500
+        },
+        "bleu": {
+          "mean": 0.031029874603439558,
+          "std": 0.06963302018082407,
+          "min": 0.0,
+          "max": 0.5831733711416419,
+          "median": 0.0,
+          "count": 500
+        },
+        "meteor": {
+          "mean": 0.14352185906986653,
+          "std": 0.17207679121662306,
+          "min": 0.0,
+          "max": 0.823936855670103,
+          "median": 0.10492617152918485,
+          "count": 500
+        },
+        "bert_score_precision": {
+          "mean": 0.49095930314064024,
+          "std": 0.4836784227400674,
+          "min": 0.0,
+          "max": 0.9889410138130188,
+          "median": 0.9494314789772034,
+          "count": 500
+        },
+        "bert_score_recall": {
+          "mean": 0.48681009221076965,
+          "std": 0.47961869184498357,
+          "min": 0.0,
+          "max": 0.9934183955192566,
+          "median": 0.9422788023948669,
+          "count": 500
+        },
+        "bert_score_f1": {
+          "mean": 0.4888638258712865,
+          "std": 0.4816159834932123,
+          "min": 0.0,
+          "max": 0.991174648331033,
+          "median": 0.948947179949968,
+          "count": 500
+        }
+      }
+    },
+    {
+      "config_name": "recursive_cs1024_co128_ryanshillington/Qwen3-Embedding-4B:latest_qwen3.8-27b_concise_temp0_enterprise_rag_mcp_managed-baadea32f1",
+      "llm_model": "qwen3.8-27b",
+      "embedding_model": "ryanshillington/Qwen3-Embedding-4B:latest",
+      "prompt_template": "concise",
+      "chunking_strategy": "recursive",
+      "chunk_size": 1024,
+      "chunk_overlap": 128,
+      "num_chunks": 0,
+      "num_questions": 500,
+      "ragas_faithfulness": 0.8034986291486291,
+      "ragas_answer_relevancy": 0.5007638063954893,
+      "ragas_answer_correctness": 0.3952451468777531,
+      "ragas_context_precision": 0.5787083333063174,
+      "ragas_context_recall": 0.37627744424029924,
+      "ragas_semantic_similarity": 0.7222093987763598,
+      "stage_timings": {
+        "load_data": 2.7510677440441214,
+        "adapter_prepare": 1053.9343283359776,
+        "external_rag": 691.9510983999935,
+        "ragas_eval": 7150.671307712037,
+        "custom_metrics": 838.5701748320134,
+        "total": 9747.47184750397
+      },
+      "vector_db_backend": "chroma",
+      "total_input_tokens": 0,
+      "total_output_tokens": 0,
+      "total_tokens": 0,
+      "critic_input_tokens": 8188721,
+      "critic_output_tokens": 1544874,
+      "critic_total_tokens": 9733595,
+      "total_estimated_cost_usd": null,
+      "avg_estimated_cost_per_answer_usd": null,
+      "llm_performance_metrics": {},
+      "llm_performance_artifact": null,
+      "llm_performance_error": null,
+      "adapter_metrics": {
+        "answer_match_count": 0,
+        "answer_match_rate": 0.0,
+        "per_category": {}
+      },
+      "avg_contexts_per_question": 5.0,
+      "max_contexts_per_question": 5,
+      "avg_context_chars_per_question": 3900.824,
+      "stats": {
+        "ragas_faithfulness": {
+          "mean": 0.8034986291486291,
+          "std": 0.23080653389622863,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 0.8571428571428571,
+          "count": 500
+        },
+        "ragas_answer_relevancy": {
+          "mean": 0.5007638063954893,
+          "std": 0.3673099638556652,
+          "min": 0.0,
+          "max": 0.9792434771816657,
+          "median": 0.6535580424284613,
+          "count": 500
+        },
+        "ragas_answer_correctness": {
+          "mean": 0.3952451468777531,
+          "std": 0.2038493854413198,
+          "min": 0.06009808957566552,
+          "max": 0.9761933991306124,
+          "median": 0.3759526331331073,
+          "count": 497
+        },
+        "ragas_context_precision": {
+          "mean": 0.5787083333063174,
+          "std": 0.40733382922975236,
+          "min": 0.0,
+          "max": 0.99999999998,
+          "median": 0.6791666666496875,
+          "count": 500
+        },
+        "ragas_context_recall": {
+          "mean": 0.37627744424029924,
+          "std": 0.3750175911813359,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 0.2857142857142857,
+          "count": 500
+        },
+        "ragas_semantic_similarity": {
+          "mean": 0.7222093987763598,
+          "std": 0.11725093921891062,
+          "min": 0.24041652197965585,
+          "max": 0.9700691476526981,
+          "median": 0.72979667742488,
+          "count": 500
+        }
+      },
+      "hit@1": 0.808,
+      "ndcg@1": 0.808,
+      "recall@1": 0.22886666666666666,
+      "hit@3": 0.9,
+      "ndcg@3": 0.8253261249903328,
+      "recall@3": 0.6081,
+      "hit@5": 0.916,
+      "ndcg@5": 0.865137607967854,
+      "recall@5": 0.916,
+      "context_relevance": 0.6639890146068701,
+      "vec_dist_q_gt": 0.20084148609441166,
+      "vec_dist_q_answer": 0.30367704988554617,
+      "rouge_l": 0.1210168538174994,
+      "bleu": 0.03254969160795821,
+      "meteor": 0.1415196726096158,
+      "bert_score_precision": 0.46789891612529755,
+      "bert_score_recall": 0.46385491514205934,
+      "bert_score_f1": 0.46585608139579526,
+      "custom_stats": {
+        "hit@1": {
+          "mean": 0.808,
+          "std": 0.39426754087494337,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 500
+        },
+        "ndcg@1": {
+          "mean": 0.808,
+          "std": 0.39426754087494337,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 500
+        },
+        "recall@1": {
+          "mean": 0.22886666666666666,
+          "std": 0.19636544984006962,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 0.2,
+          "count": 500
+        },
+        "hit@3": {
+          "mean": 0.9,
+          "std": 0.30030045075131484,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 500
+        },
+        "ndcg@3": {
+          "mean": 0.8253261249903329,
+          "std": 0.33050077768393216,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 500
+        },
+        "recall@3": {
+          "mean": 0.6081,
+          "std": 0.2585424326683945,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 0.6,
+          "count": 500
+        },
+        "hit@5": {
+          "mean": 0.916,
+          "std": 0.27766561975294235,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 500
+        },
+        "ndcg@5": {
+          "mean": 0.865137607967854,
+          "std": 0.2929033442215606,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 500
+        },
+        "recall@5": {
+          "mean": 0.916,
+          "std": 0.27766561975294235,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 500
+        },
+        "context_relevance": {
+          "mean": 0.6639890146068701,
+          "std": 0.08904532351122796,
+          "min": 0.3928822746513641,
+          "max": 0.8962218977676685,
+          "median": 0.6661044690124094,
+          "count": 500
+        },
+        "vec_dist_q_gt": {
+          "mean": 0.2008414860944117,
+          "std": 0.08982521262874817,
+          "min": 0.025130796029856017,
+          "max": 0.6037791591115034,
+          "median": 0.1870276759929902,
+          "count": 500
+        },
+        "vec_dist_q_answer": {
+          "mean": 0.30367704988554617,
+          "std": 0.1126438241155117,
+          "min": 0.053140402893925076,
+          "max": 0.6320940728188699,
+          "median": 0.28988614836637167,
+          "count": 500
+        },
+        "rouge_l": {
+          "mean": 0.1210168538174994,
+          "std": 0.14553100734393712,
+          "min": 0.0,
+          "max": 0.7777777777777779,
+          "median": 0.0,
+          "count": 500
+        },
+        "bleu": {
+          "mean": 0.03254969160795821,
+          "std": 0.07256949770623032,
+          "min": 0.0,
+          "max": 0.6373622915256211,
+          "median": 0.0,
+          "count": 500
+        },
+        "meteor": {
+          "mean": 0.14151967260961576,
+          "std": 0.17747837234998298,
+          "min": 0.0,
+          "max": 0.823936855670103,
+          "median": 0.0,
+          "count": 500
+        },
+        "bert_score_precision": {
+          "mean": 0.46789891612529755,
+          "std": 0.48362930823826056,
+          "min": 0.0,
+          "max": 0.9867704510688782,
+          "median": 0.0,
+          "count": 500
+        },
+        "bert_score_recall": {
+          "mean": 0.46385491514205934,
+          "std": 0.47948189703556926,
+          "min": 0.0,
+          "max": 0.9912033081054688,
+          "median": 0.0,
+          "count": 500
+        },
+        "bert_score_f1": {
+          "mean": 0.46585608139579526,
+          "std": 0.48152203882504957,
+          "min": 0.0,
+          "max": 0.9865384748744539,
+          "median": 0.0,
+          "count": 500
+        }
+      }
+    }
+  ],
+  "samples_file": "benchmark_20261031_075119.samples.json.gz"
+}
