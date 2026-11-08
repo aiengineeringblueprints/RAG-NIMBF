@@ -64,6 +64,8 @@ log = logging.getLogger(__name__)
 # The Blueprint embeds queries with EMBEDDING_MODEL (chain/retriever.py), by
 # default this Ollama model; an index built with another model is unreadable.
 BLUEPRINT_EMBEDDING_MODEL = "nomic-embed-text"
+# Search types of the Blueprint retriever (RETRIEVER_SEARCH_TYPE).
+BLUEPRINT_SEARCH_TYPES = ("similarity", "hybrid")
 
 _STATUS_MAP = {
     "ok": "ok",
@@ -150,9 +152,27 @@ def blueprint_settings_env(config: Any) -> dict[str, str]:
         # Sent as Bearer by the Blueprint; empty means no auth header.
         "OLLAMA_API_KEY": config.embedding_api_key() or "",
         "RETRIEVER_TOP_K": str(config.retrieval_top_k),
+        **_retrieval_env(config),
         "DISABLE_QUERY_REFINEMENT": _disabled_flag(config.enterprise_rag_mcp_query_refinement),
         "DISABLE_GUARDRAILS": _disabled_flag(config.enterprise_rag_mcp_guardrails),
     }
+
+
+def _retrieval_env(config: Any) -> dict[str, str]:
+    """Blueprint search settings (chain/retriever.py); it has no MMR."""
+    strategy = config.retrieval_strategy
+    if strategy not in BLUEPRINT_SEARCH_TYPES:
+        raise ValueError(
+            f"The Blueprint supports retrieval_strategy {BLUEPRINT_SEARCH_TYPES}, "
+            f"got {strategy!r}"
+        )
+    env = {"RETRIEVER_SEARCH_TYPE": strategy}
+    if strategy == "hybrid":
+        fetch_k = config.retrieval_fetch_k
+        env["RETRIEVER_HYBRID_ALPHA"] = f"{config.retrieval_hybrid_alpha:g}"
+        # Empty overrides a value from the Blueprint .env with its default.
+        env["RETRIEVER_HYBRID_FETCH_K"] = "" if fetch_k is None else str(fetch_k)
+    return env
 
 
 @contextlib.contextmanager
@@ -227,6 +247,17 @@ class InProcessTransport:
                     "This Blueprint checkout reads its model settings only at "
                     "import; update the Blueprint or set "
                     "enterprise_rag_mcp_apply_settings: false"
+                )
+            import retriever  # Blueprint chain/retriever.py
+
+            # Older Blueprints ignore RETRIEVER_SEARCH_TYPE and would run dense
+            # search under a hybrid label.
+            if config.retrieval_strategy == "hybrid" and not hasattr(
+                retriever, "retriever_search_type"
+            ):
+                raise ValueError(
+                    "This Blueprint checkout has no hybrid retrieval; update it "
+                    "(feat/hybrid-retrieval) or set retrieval_strategy: similarity"
                 )
         from chain_api import app  # Blueprint chain/chain_api.py
         from fastapi.testclient import TestClient

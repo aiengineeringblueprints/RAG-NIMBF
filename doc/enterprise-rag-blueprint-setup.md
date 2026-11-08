@@ -14,8 +14,10 @@ the Blueprint's `/call_llm` endpoint, once with MCP off and once with MCP on.
 The Blueprint retrieves, calls its MCP servers and answers by itself. With
 `enterprise_rag_mcp_apply_settings: true` the framework first sets the
 Blueprint's model variables from the benchmark config for that request, so
-`llm_models`, `embedding_models`, `retrieval_top_k` and
-`generation_temperature` in the manifest decide what the Blueprint runs with.
+`llm_models`, `embedding_models`, `retrieval_top_k`, `retrieval_strategy`
+(`similarity` or `hybrid`, with `retrieval_hybrid_alpha` and
+`retrieval_fetch_k`) and `generation_temperature` in the manifest decide what
+the Blueprint runs with.
 
 ## Prerequisites
 
@@ -23,6 +25,10 @@ Blueprint's model variables from the benchmark config for that request, so
   per-request settings change of 2026-10-27 (`chain/handle_llms.py` has
   `retriever_top_k`). Older checkouts are rejected with
   "reads its model settings only at import".
+- For `retrieval_strategy: hybrid`: a checkout with hybrid retrieval (branch
+  `feat/hybrid-retrieval`, `chain/retriever.py` has `retriever_search_type`).
+  Older checkouts are rejected with "has no hybrid retrieval" instead of
+  silently running dense search.
 - Blueprint chain dependencies in the framework venv (once):
 
   ```bash
@@ -223,8 +229,10 @@ scripts/run_blueprint_rag.sh results/Enterprise-RAG/run4
 - Prompts: the Blueprint uses its own (`enterprise_rag_mcp_prompt_key`:
   `rag_source`, `rag_summary`, `rag_weekly_report`); `prompt_templates` has
   no effect.
-- Reranker, retrieval strategy, HyDE, multi-hop: the Blueprint has none of
-  these options.
+- Reranker, MMR, HyDE, multi-hop: the Blueprint has none of these options
+  (`retrieval_strategy: mmr` is rejected). Hybrid retrieval (dense + BM25,
+  weighted RRF, same algorithm as the internal pipeline) is supported, see
+  above and the Blueprint's `docs/hybrid-retrieval.md`.
 - MCP servers, roles, tool allowlist, budgets: the Blueprint's
   `MCP_CONFIG_FILE`.
 

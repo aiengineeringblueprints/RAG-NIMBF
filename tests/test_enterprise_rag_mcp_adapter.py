@@ -49,6 +49,9 @@ def _config(**overrides):
         llm_model="qwen3:8b",
         llm_provider="ollama",
         retrieval_top_k=7,
+        retrieval_strategy="similarity",
+        retrieval_hybrid_alpha=0.5,
+        retrieval_fetch_k=None,
         generation_temperature=0.0,
     )
     urls = {
@@ -470,9 +473,37 @@ def test_ollama_llm_settings_map_to_blueprint_environment():
         "OLLAMA_BASE_URL": "http://emb-host:11434",
         "OLLAMA_API_KEY": "",
         "RETRIEVER_TOP_K": "7",
+        "RETRIEVER_SEARCH_TYPE": "similarity",
         "DISABLE_QUERY_REFINEMENT": "false",
         "DISABLE_GUARDRAILS": "false",
     }
+
+
+def test_hybrid_retrieval_settings_map_to_blueprint_environment():
+    env = mcp_adapter.blueprint_settings_env(
+        _config(retrieval_strategy="hybrid", retrieval_hybrid_alpha=0.3)
+    )
+
+    assert env["RETRIEVER_SEARCH_TYPE"] == "hybrid"
+    assert env["RETRIEVER_HYBRID_ALPHA"] == "0.3"
+    # Empty overrides a fetch_k from the Blueprint .env: Blueprint default (4 * top_k).
+    assert env["RETRIEVER_HYBRID_FETCH_K"] == ""
+
+    env = mcp_adapter.blueprint_settings_env(
+        _config(retrieval_strategy="hybrid", retrieval_fetch_k=40)
+    )
+    assert env["RETRIEVER_HYBRID_FETCH_K"] == "40"
+
+
+def test_retrieval_strategy_the_blueprint_lacks_fails_before_the_run():
+    adapter = EnterpriseRagMcpAdapter(
+        _config(enterprise_rag_mcp_apply_settings=True, retrieval_strategy="mmr"),
+        transport=FakeTransport(),
+        identity_secret=SECRET,
+    )
+
+    with pytest.raises(ValueError, match="mmr"):
+        adapter.prepare(adapter.config, data=[])
 
 
 def test_ollama_behind_bearer_proxy_gets_keys_for_llm_and_embeddings():
@@ -626,6 +657,25 @@ def test_inprocess_transport_rejects_blueprint_without_per_request_settings(
     )
 
     with pytest.raises(ValueError, match="update the Blueprint"):
+        mcp_adapter.InProcessTransport(config, timeout_seconds=5)
+
+
+def test_inprocess_transport_rejects_hybrid_on_blueprint_without_it(monkeypatch, tmp_path):
+    import sys
+
+    (tmp_path / "chain").mkdir()
+    (tmp_path / "chain" / "handle_llms.py").write_text("def retriever_top_k():\n    return 5\n")
+    (tmp_path / "chain" / "retriever.py").write_text("def create_retriever():\n    pass\n")
+    monkeypatch.setattr(sys, "path", list(sys.path))
+    monkeypatch.delitem(sys.modules, "handle_llms", raising=False)
+    monkeypatch.delitem(sys.modules, "retriever", raising=False)
+    config = _config(
+        enterprise_rag_blueprint_path=str(tmp_path),
+        enterprise_rag_mcp_apply_settings=True,
+        retrieval_strategy="hybrid",
+    )
+
+    with pytest.raises(ValueError, match="hybrid"):
         mcp_adapter.InProcessTransport(config, timeout_seconds=5)
 
 
