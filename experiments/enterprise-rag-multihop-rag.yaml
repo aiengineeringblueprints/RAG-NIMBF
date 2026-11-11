@@ -1,0 +1,73 @@
+experiment_name: enterprise-rag-multihop-rag
+
+# Retrieval baseline of the Enterprise RAG Blueprint with gold-document
+# metrics on MultiHop-RAG: similarity vs. hybrid. Plain RAG, no MCP. Shows
+# whether queries needing 2-4 documents fall behind, i.e. whether a
+# graph-based retriever is worth testing.
+# Prepare the dataset first (articles are not committed):
+#   python datasets/multihop_rag/prepare.py
+# Requires
+#   RAG_ADAPTER_MODULES=examples.enterprise_rag_plugin.mcp_adapter
+#   ENTERPRISE_RAG_BLUEPRINT_PATH=<Blueprint checkout with hybrid retrieval>
+#   VECTORDB_DIR=<writable dir>  INDEX_NAME=bench-blueprint-multihop-rag
+# See doc/enterprise-rag-blueprint-setup.md.
+# Per question_type breakdown afterwards (the runner averages over all samples
+# and computes gold metrics only for k = 1, 3, 5):
+#   python scripts/retrieval_by_category.py <run dir> \
+#     --dataset datasets/multihop_rag/questions.jsonl --k 1 3 5 10 20
+
+dataset:
+  # jsonl-shared indexes corpus_path; questions carry gold_doc_ids (MHR-001,
+  # ...), which the adapter matches against Blueprint sources MHR-001.md.
+  name: jsonl-shared
+  subset: null
+  path: datasets/multihop_rag/questions.jsonl
+  corpus_path: datasets/multihop_rag/corpus
+  # 2556 questions available. The file is in seeded random order, so a prefix
+  # mixes all question types (1000: ~336 comparison, 314 inference,
+  # 233 temporal, 117 null). Raise to 2556 for the full benchmark.
+  sample_size: 1000
+
+settings:
+  rag_system_adapter: enterprise_rag_mcp
+  rag_adapter_accepts: "chunker,embedder"
+  benchmark_stage: all
+  retrieval_mode: retrieval
+  retrieval_multihop: false
+  retrieval_use_hyde: false
+  dataset_question_field: question
+  dataset_ground_truth_field: ground_truth
+  generation_temperature: 0        # Blueprint default; framework default is 0.1
+
+  # Gold-document hit/nDCG/recall@1,3,5 instead of the embedding heuristic.
+  custom_retrieval_metrics_mode: gold_doc
+  # Pinned so a .env cannot switch it. The retrieval question needs no LLM
+  # judge (gold metrics + answer_match); true adds RAGAS answer/context scores.
+  ragas_enabled: false
+
+  # Only used by hybrid cells. Fixed pool so k10 and k20 fuse the same candidates.
+  retrieval_hybrid_alpha: 0.5      # 0 = pure BM25, 1 = pure dense
+  retrieval_fetch_k: 50
+
+  enterprise_rag_mcp_transport: inprocess
+  enterprise_rag_mcp_enabled: false         # plain RAG, no MCP
+  enterprise_rag_mcp_apply_settings: true   # manifest controls the Blueprint
+  enterprise_rag_mcp_query_refinement: true
+  enterprise_rag_mcp_guardrails: true
+  enterprise_rag_mcp_roles: General
+  enterprise_rag_mcp_index_corpus: true
+  eval_critic_llm: openai:deepseek-v4-flash
+  eval_critic_embedding: ollama:nomic-embed-text:latest
+
+matrix:
+  retrieval_strategy: [similarity, hybrid]
+  # Up to four gold articles of ~2k tokens each: k5 cannot cover them in
+  # 512-character chunks, so the sweep starts at 10.
+  retrieval_top_k: [10, 20]
+  llm_models: [openai:qwen3.8-27b]
+  embedding_models: [nomic-embed-text:latest]
+  chunking_strategies: [recursive]
+  chunk_sizes: [512]
+  chunk_overlaps: [64]
+  prompt_templates: [concise]      # unused by the Blueprint
+  reranker_models: [null]
