@@ -1,0 +1,10 @@
+{
+  "configs": {
+    "recursive_cs512_co64_nomic-embed-text:latest_qwen3.8-27b_concise_k30_hybrid-a0.5_temp0_enterprise_rag_mcp_managed-a6b2f4cd80": {
+      "status": "completed",
+      "started_at": "2026-11-12T12:03:21.145185+00:00",
+      "completed_at": "2026-11-12T13:03:55.102610+00:00",
+      "result_path": "results/Enterprise-RAG/multihop/run2/configs/recursive_cs512_co64_nomic-embed-text_latest_qwen3.8-27b_concise_k30_hybrid-a0.5_temp0_enterprise_rag_mcp_managed-a6b2f4cd80.json"
+    }
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "configs": {
+    "recursive_cs512_co64_nomic-embed-text:latest_qwen3.8-27b_concise_k10_hybrid-a0.5_temp0_enterprise_rag_mcp_managed-a6b2f4cd80": {
+      "status": "completed",
+      "started_at": "2026-11-08T19:15:15.364578+00:00",
+      "completed_at": "2026-11-08T22:42:40.475807+00:00",
+      "result_path": "results/Enterprise-RAG/run6/configs/recursive_cs512_co64_nomic-embed-text_latest_qwen3.8-27b_concise_k10_hybrid-a0.5_temp0_enterprise_rag_mcp_managed-a6b2f4cd80.json"
+    },
+    "recursive_cs512_co128_nomic-embed-text:latest_qwen3.8-27b_concise_k10_hybrid-a0.5_temp0_enterprise_rag_mcp_managed-a6b2f4cd80": {
+      "status": "completed",
+      "started_at": "2026-11-08T22:42:40.592272+00:00",
+      "completed_at": "2026-11-09T02:20:24.582130+00:00",
+      "result_path": "results/Enterprise-RAG/run6/configs/recursive_cs512_co128_nomic-embed-text_latest_qwen3.8-27b_concise_k10_hybrid-a0.5_temp0_enterprise_rag_mcp_managed-a6b2f4cd80.json"
+    },
+    "recursive_cs1024_co64_nomic-embed-text:latest_qwen3.8-27b_concise_k10_hybrid-a0.5_temp0_enterprise_rag_mcp_managed-a6b2f4cd80": {
+      "status": "completed",
+      "started_at": "2026-11-09T02:20:24.685268+00:00",
+      "completed_at": "2026-11-09T05:51:46.952788+00:00",
+      "result_path": "results/Enterprise-RAG/run6/configs/recursive_cs1024_co64_nomic-embed-text_latest_qwen3.8-27b_concise_k10_hybrid-a0.5_temp0_enterprise_rag_mcp_managed-a6b2f4cd80.json"
+    },
+    "recursive_cs1024_co128_nomic-embed-text:latest_qwen3.8-27b_concise_k10_hybrid-a0.5_temp0_enterprise_rag_mcp_managed-a6b2f4cd80": {
+      "status": "completed",
+      "started_at": "2026-11-09T05:51:47.065810+00:00",
+      "completed_at": "2026-11-09T09:20:12.478262+00:00",
+      "result_path": "results/Enterprise-RAG/run6/configs/recursive_cs1024_co128_nomic-embed-text_latest_qwen3.8-27b_concise_k10_hybrid-a0.5_temp0_enterprise_rag_mcp_managed-a6b2f4cd80.json"
+    },
+    "recursive_cs2048_co64_nomic-embed-text:latest_qwen3.8-27b_concise_k10_hybrid-a0.5_temp0_enterprise_rag_mcp_managed-a6b2f4cd80": {
+      "status": "completed",
+      "started_at": "2026-11-09T09:20:12.588558+00:00",
+      "completed_at": "2026-11-09T12:55:45.118072+00:00",
+      "result_path": "results/Enterprise-RAG/run6/configs/recursive_cs2048_co64_nomic-embed-text_latest_qwen3.8-27b_concise_k10_hybrid-a0.5_temp0_enterprise_rag_mcp_managed-a6b2f4cd80.json"
+    },
+    "recursive_cs2048_co128_nomic-embed-text:latest_qwen3.8-27b_concise_k10_hybrid-a0.5_temp0_enterprise_rag_mcp_managed-a6b2f4cd80": {
+      "status": "completed",
+      "started_at": "2026-11-09T12:55:45.236129+00:00",
+      "completed_at": "2026-11-09T16:35:11.317722+00:00",
+      "result_path": "results/Enterprise-RAG/run6/configs/recursive_cs2048_co128_nomic-embed-text_latest_qwen3.8-27b_concise_k10_hybrid-a0.5_temp0_enterprise_rag_mcp_managed-a6b2f4cd80.json"
+    },
+    "semantic_bppercentile95_nomic-embed-text:latest_qwen3.8-27b_concise_k10_hybrid-a0.5_temp0_enterprise_rag_mcp_managed-a6b2f4cd80": {
+      "status": "completed",
+      "started_at": "2026-11-11T13:06:12.530367+00:00",
+      "failed_at": "2026-11-11T13:04:04.714546+00:00",
+      "error": "Unsupported RAG_SYSTEM_ADAPTER='enterprise_rag_mcp'. Available: http, internal, mcp, optimaiserag, ragflow",
+      "completed_at": "2026-11-11T17:02:00.415891+00:00",
+      "result_path": "results/Enterprise-RAG/run6/configs/semantic_bppercentile95_nomic-embed-text_latest_qwen3.8-27b_concise_k10_hybrid-a0.5_temp0_enterprise_rag_mcp_managed-a6b2f4cd80.json"
+    },
+    "recursive_cs512_co64_nomic-embed-text:latest_qwen3.8-27b_concise_k12_hybrid-a0.5_temp0_enterprise_rag_mcp_managed-a6b2f4cd80": {
+      "status": "completed",
+      "started_at": "2026-11-09T16:40:21.497982+00:00",
+      "completed_at": "2026-11-09T20:25:56.489037+00:00",
+      "result_path": "results/Enterprise-RAG/run6/configs/recursive_cs512_co64_nomic-embed-text_latest_qwen3.8-27b_concise_k12_hybrid-a0.5_temp0_enterprise_rag_mcp_managed-a6b2f4cd80.json"
+    },
+    "recursive_cs512_co128_nomic-embed-text:latest_qwen3.8-27b_concise_k12_hybrid-a0.5_temp0_enterprise_rag_mcp_managed-a6b2f4cd80": {
+      "status": "completed",
+      "started_at": "2026-11-09T20:25:56.607261+00:00",
+      "completed_at": "2026-11-10T00:11:57.185539+00:00",
+      "result_path": "results/Enterprise-RAG/run6/configs/recursive_cs512_co128_nomic-embed-text_latest_qwen3.8-27b_concise_k12_hybrid-a0.5_temp0_enterprise_rag_mcp_managed-a6b2f4cd80.json"
+    },
+    "recursive_cs1024_co64_nomic-embed-text:latest_qwen3.8-27b_concise_k12_hybrid-a0.5_temp0_enterprise_rag_mcp_managed-a6b2f4cd80": {
+      "status": "completed",
+      "started_at": "2026-11-10T00:11:57.322498+00:00",
+      "completed_at": "2026-11-10T03:55:16.367845+00:00",
+      "result_path": "results/Enterprise-RAG/run6/configs/recursive_cs1024_co64_nomic-embed-text_latest_qwen3.8-27b_concise_k12_hybrid-a0.5_temp0_enterprise_rag_mcp_managed-a6b2f4cd80.json"
+    },
+    "recursive_cs1024_co128_nomic-embed-text:latest_qwen3.8-27b_concise_k12_hybrid-a0.5_temp0_enterprise_rag_mcp_managed-a6b2f4cd80": {
+      "status": "completed",
+      "started_at": "2026-11-10T03:55:16.500252+00:00",
+      "completed_at": "2026-11-10T07:40:40.777265+00:00",
+      "result_path": "results/Enterprise-RAG/run6/configs/recursive_cs1024_co128_nomic-embed-text_latest_qwen3.8-27b_concise_k12_hybrid-a0.5_temp0_enterprise_rag_mcp_managed-a6b2f4cd80.json"
+    },
+    "recursive_cs2048_co64_nomic-embed-text:latest_qwen3.8-27b_concise_k12_hybrid-a0.5_temp0_enterprise_rag_mcp_managed-a6b2f4cd80": {
+      "status": "completed",
+      "started_at": "2026-11-10T07:40:40.897708+00:00",
+      "completed_at": "2026-11-10T11:32:32.583775+00:00",
+      "result_path": "results/Enterprise-RAG/run6/configs/recursive_cs2048_co64_nomic-embed-text_latest_qwen3.8-27b_concise_k12_hybrid-a0.5_temp0_enterprise_rag_mcp_managed-a6b2f4cd80.json"
+    },
+    "recursive_cs2048_co128_nomic-embed-text:latest_qwen3.8-27b_concise_k12_hybrid-a0.5_temp0_enterprise_rag_mcp_managed-a6b2f4cd80": {
+      "status": "completed",
+      "started_at": "2026-11-10T11:32:32.727956+00:00",
+      "completed_at": "2026-11-10T15:26:35.854360+00:00",
+      "result_path": "results/Enterprise-RAG/run6/configs/recursive_cs2048_co128_nomic-embed-text_latest_qwen3.8-27b_concise_k12_hybrid-a0.5_temp0_enterprise_rag_mcp_managed-a6b2f4cd80.json"
+    },
+    "semantic_bppercentile95_nomic-embed-text:latest_qwen3.8-27b_concise_k12_hybrid-a0.5_temp0_enterprise_rag_mcp_managed-a6b2f4cd80": {
+      "status": "completed",
+      "started_at": "2026-11-10T15:26:35.988348+00:00",
+      "completed_at": "2026-11-10T19:55:38.022147+00:00",
+      "result_path": "results/Enterprise-RAG/run6/configs/semantic_bppercentile95_nomic-embed-text_latest_qwen3.8-27b_concise_k12_hybrid-a0.5_temp0_enterprise_rag_mcp_managed-a6b2f4cd80.json"
+    }
+  }
+}

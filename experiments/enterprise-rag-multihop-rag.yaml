@@ -60,10 +60,10 @@ settings:
   eval_critic_embedding: ollama:nomic-embed-text:latest
 
 matrix:
-  retrieval_strategy: [similarity, hybrid]
+  retrieval_strategy: [hybrid]
   # Up to four gold articles of ~2k tokens each: k5 cannot cover them in
   # 512-character chunks, so the sweep starts at 10.
-  retrieval_top_k: [10, 20]
+  retrieval_top_k: [30]
   llm_models: [openai:qwen3.8-27b]
   embedding_models: [nomic-embed-text:latest]
   chunking_strategies: [recursive]
