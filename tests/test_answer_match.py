@@ -148,3 +148,46 @@ def test_decline_judge_parses_the_critic_verdict():
     assert judge("q", "a") is True
     assert judge("q", "a") is False
     assert judge("q", "a") is None
+
+
+# --- LLM judge for answer correctness ------------------------------------------
+
+from benchmark.answer_match import make_answer_judge
+
+
+def test_answer_judge_sends_question_reference_and_answer_to_the_critic():
+    prompts = []
+
+    def invoke(prompt):
+        prompts.append(prompt)
+        return SimpleNamespace(content="CORRECT")
+
+    judge = make_answer_judge(SimpleNamespace(invoke=invoke))
+
+    assert judge("Did both outlets agree?", "Yes", "Both reports describe the same fraud.") == "correct"
+    assert "Did both outlets agree?" in prompts[0]
+    assert "Yes" in prompts[0]
+    assert "Both reports describe the same fraud." in prompts[0]
+
+
+@pytest.mark.parametrize(
+    "reply, verdict",
+    [
+        ("CORRECT", "correct"),
+        ("incorrect", "incorrect"),
+        ("**DECLINED**", "declined"),
+        ("Verdict: INCORRECT", "incorrect"),
+        ("maybe", None),
+        ("", None),
+    ],
+)
+def test_answer_judge_parses_the_critic_verdict(reply, verdict):
+    model = SimpleNamespace(invoke=lambda prompt: SimpleNamespace(content=reply))
+    assert make_answer_judge(model)("q", "ref", "a") == verdict
+
+
+def test_answer_judge_failure_returns_none():
+    def invoke(prompt):
+        raise RuntimeError("endpoint down")
+
+    assert make_answer_judge(SimpleNamespace(invoke=invoke))("q", "ref", "a") is None

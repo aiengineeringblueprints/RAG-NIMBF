@@ -471,6 +471,15 @@ templates, vector backend, and evaluator settings belong in `experiments/*.yaml`
 | `PARSER_VERSION` | Optional parser version pinned into run metadata. |
 | `RETRIEVAL_STRATEGY` | Internal pipeline retrieval: `similarity` (default), `mmr`, or `hybrid` (dense + BM25 fusion). |
 | `RETRIEVAL_HYBRID_ALPHA` | Hybrid fusion weight: `1.0` pure dense, `0.0` pure BM25; defaults to `0.5`. |
+| `RETRIEVAL_TOP_K` | Number of retrieved passages per question. |
+| `RETRIEVAL_FETCH_K` | Candidates fetched from the vector store before filtering; defaults to a multiple of `RETRIEVAL_TOP_K`. |
+| `RETRIEVAL_CANDIDATE_K` | Hybrid retrieval dense candidate pool size; defaults to `1024`. |
+| `RETRIEVAL_VECTOR_SIMILARITY_WEIGHT` | Weight of the dense similarity score in hybrid RRF fusion; between `0` and `1`, defaults to `0.3`. |
+| `RETRIEVAL_MMR_LAMBDA` | MMR diversity/divergence trade-off for `RETRIEVAL_STRATEGY=mmr`; between `0` and `1`, defaults to `0.5`. |
+| `RETRIEVAL_SIMILARITY_THRESHOLD` | Minimum similarity score for retrieved contexts; between `0` and `1`, defaults to `0.2`. |
+| `RETRIEVAL_USE_HYDE` | Set to `true` to rewrite the question into a hypothetical document before retrieval (HyDE). |
+| `RETRIEVAL_MULTIHOP` | Set to `true` for iterative multi-hop retrieval: an LLM generates follow-up questions from the first-round contexts and retrieves again. |
+| `RETRIEVAL_MULTIHOP_ROUNDS` | Total retrieval rounds when `RETRIEVAL_MULTIHOP=true`; defaults to `1` (one follow-up round). |
 | `CORPUS_PARSER` | Registered parser name for RAG corpus ingestion; when set, documents under `DATASET_CORPUS_PATH` are parsed to Markdown before chunking (requires `DATASET_NAME=jsonl-shared`). |
 | `DATASET_LICENSE` | Dataset/corpus license pinned into run metadata; defaults to the dataset adapter's license when it declares one. |
 | `MCP_TRANSPORT` | `stdio` or `streamable_http`; defaults to `stdio`. |
@@ -511,6 +520,15 @@ templates, vector backend, and evaluator settings belong in `experiments/*.yaml`
 | `DATASET_SUBSET` | Optional dataset subset/config. |
 | `DATASET_SAMPLE_SIZE` | Number of benchmark samples. |
 | `DATASET_SPLIT` | HuggingFace split to load (manifest: `dataset: split:`); unset keeps the adapter's default split. A split missing from the dataset is an error. |
+| `VECTOR_DB_BACKEND` | Vector store backend for the internal pipeline; defaults to `chroma`. |
+| `LANCEDB_PATH` | Local path for the `lance` vector store backend. |
+| `GENERATION_TEMPERATURE` | Internal generator sampling temperature; between `0` and `2`, defaults to `0.1`. |
+| `GENERATION_TOP_P` | Internal generator nucleus-sampling cut-off; between `0` and `1`, defaults to `0.3`. |
+| `MAX_NEW_TOKENS` | Maximum tokens the internal generator may produce; defaults to `256`. |
+| `LLM_ANSWER_STRIP_MODE` | How generated answers are stripped before scoring: `tags_only` (default), `full`, or `off`. |
+| `LLM_ANSWER_VALUE_FALLBACK` | Fall back to the raw answer when tag stripping finds nothing; defaults to `true`. |
+| `RERANKER_MODELS` | Comma-separated reranker models applied after retrieval (empty disables reranking). |
+| `RERANKER_TOP_K` | Number of passages kept after reranking; defaults to `3`. |
 | `RAGAS_ENABLED` | Set to `false` to skip RAGAS critic metrics. |
 | `CUSTOM_METRICS_ENABLED` | Set to `false` to skip custom embedding/BERTScore metrics. |
 | `EVAL_CRITIC_LLM` | Critic model used for RAGAS evaluation. |
@@ -532,6 +550,26 @@ and scores each document resumably (per-document checkpoints), and a
 leaderboard report (`parsing_leaderboard_<timestamp>.json` with per-parser,
 per-category, and per-page text/TEDS scores) lands in the run dir plus MLflow
 as nested child runs.
+
+## Re-Score Finished Runs With the LLM Answer Judge
+
+`answer_match` is a deterministic string-match scorer. When references are
+short labels ("Yes"/"no") and the system answers in prose, it under-scores
+heavily. The LLM answer judge re-scores the answers of finished runs as
+`correct`, `incorrect`, or `declined` — offline, without a new benchmark run:
+
+```bash
+python scripts/judge_answers.py results/run1 results/run2
+```
+
+The script uses `EVAL_CRITIC_LLM` and its endpoint from `.env` (`--critic`
+overrides, `--workers` defaults to `EVAL_CRITIC_MAX_WORKERS`). Each distinct
+`(question, answer)` pair is judged once; verdicts are appended to a JSONL
+cache as they arrive, so an interrupted judging run resumes. Samples with
+`expected_behavior: decline` count as correct when judged declined. The judge
+reports per-variant and per-category `judge_correct`/`judge_incorrect`/
+`judge_declined` rates next to the stored `answer_match` score and never
+modifies the stored run data.
 
 ## MLflow Run Comparison
 
@@ -561,3 +599,7 @@ Use the aggregate run when you want all tables and plots for one sweep in one pl
 
 Each run writes artifacts to `results/runN/`, including per-config JSON files,
 QA logs, CSV/Markdown summaries, plots, reproducibility manifests, and MLflow run data.
+
+## Publication
+
+- [RAG-NIMBF: A Non-Invasive, Modular Benchmarking Framework for Automated RAG Configuration Analysis](https://doi.org/10.48550/arXiv.2610.27816) — Niclas Hart and Nicolas Weeger, Ansbach University of Applied Sciences. Describes the framework architecture, the hybrid evaluation methodology, and an empirical configuration study across six generation models on SQuAD.

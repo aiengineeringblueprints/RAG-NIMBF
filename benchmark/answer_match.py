@@ -103,6 +103,39 @@ def make_decline_judge(chat_model: Any) -> DeclineJudge:
     return judge
 
 
+AnswerVerdict = str  # "correct" | "incorrect" | "declined"
+AnswerJudge = Callable[[str, str, str], "AnswerVerdict | None"]
+
+_ANSWER_JUDGE_PROMPT = (
+    "Grade the ANSWER to the QUESTION against the REFERENCE answer.\n"
+    "- CORRECT: the answer gives a substantive answer whose conclusion agrees with the "
+    "REFERENCE, even if phrased differently or with extra explanation (a 'yes' reference "
+    "is matched by an answer that affirms the question).\n"
+    "- INCORRECT: the answer gives a substantive answer that contradicts or misses the "
+    "REFERENCE.\n"
+    "- DECLINED: the answer gives no substantive answer; it says it cannot answer or "
+    "that the information is missing.\n"
+    "Reply with CORRECT, INCORRECT or DECLINED only.\n\n"
+    "QUESTION: {question}\n\nREFERENCE: {reference}\n\nANSWER: {answer}"
+)
+_ANSWER_VERDICT = re.compile(r"\b(correct|incorrect|declined)\b")
+
+
+def make_answer_judge(chat_model: Any) -> AnswerJudge:
+    """Wrap a LangChain chat model as a CORRECT/INCORRECT/DECLINED judge (None when unparseable)."""
+
+    def judge(question: str, reference: str, answer: str) -> AnswerVerdict | None:
+        prompt = _ANSWER_JUDGE_PROMPT.format(question=question, reference=reference, answer=answer)
+        try:
+            reply = chat_model.invoke(prompt)
+        except Exception:  # noqa: BLE001 -- a failed judge call leaves the sample unjudged
+            return None
+        match = _ANSWER_VERDICT.search(str(getattr(reply, "content", reply)).lower())
+        return match.group(1) if match else None
+
+    return judge
+
+
 def score_answer(
     answer: str,
     metadata: Mapping[str, Any],

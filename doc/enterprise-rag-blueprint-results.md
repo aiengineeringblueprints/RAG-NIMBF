@@ -29,7 +29,7 @@ Blueprint retrieves and answers itself, with guardrails and query refinement on.
 | run3 | 2026-10-30 → 31 | RAGBench TechQA (train) | 500 | Qwen3-Embedding-4B | deepseek-v4-flash / Qwen3-Embedding-4B | same 5 | 4/5 done, semantic **failed** |
 | run4 | 2026-10-31 | RAGBench TechQA (train) | 500 | nomic-embed-text | deepseek-v4-flash / nomic | same 5 | 3/5 done, rec 1024/128 **hung, stopped manually**, semantic not started |
 | run5 | 2026-11-04 → 06 | RAGBench TechQA (train) | 500 | nomic-embed-text | deepseek-v4-flash / nomic | rec 512/1024/2048 × overlap 64/128 + semantic p95, each at top-k 10 and 12 (14) | 14/14 done |
-| run6 | 2026-11-08 → 11 | RAGBench TechQA (train) | 500 | nomic-embed-text | deepseek-v4-flash / nomic | same 14 as run5, **hybrid retrieval** | 13/14 done, semantic k10 **failed**, re-run in progress |
+| run6 | 2026-11-08 → 11 | RAGBench TechQA (train) | 500 | nomic-embed-text | deepseek-v4-flash / nomic | same 14 as run5, **hybrid retrieval** | 14/14 done (semantic k10 failed once, re-run 2026-11-11) |
 
 Combination matrix (✅ done, ❌ failed, ⏹ aborted, — not run):
 
@@ -123,8 +123,10 @@ RRF, `retrieval_hybrid_alpha` 0.5, `retrieval_fetch_k` 50, Blueprint branch
 `feat/hybrid-retrieval` 8409d63). Everything else is identical (same 500
 questions, generator, critic, critic embedding, chunking, top-k), so all
 differences are paired per question. Values are run5 → run6; `*` marks a
-paired-bootstrap 95 % CI that excludes 0. semantic p95 k10 failed in run6
-(Ollama `/tokenize` reset) and is being re-run.
+paired-bootstrap 95 % CI that excludes 0. semantic p95 k10 failed in the first
+run6 pass (Ollama `/tokenize` reset) and was re-run on 2026-11-11 into the same
+run dir (separate summary `benchmark_20261111_180200.json` and a separate MLflow
+parent run).
 
 Two extra columns use the RAGBench labels (see
 [enterprise-rag-techqa-refusal-analysis.md](enterprise-rag-techqa-refusal-analysis.md)):
@@ -141,7 +143,7 @@ refusal regex, not `declined_rate`.
 | rec 1024/128 | 10 | 0.513 → 0.504 | 0.820 → 0.854* | 0.623 → 0.644 | 0.541 → 0.589* | 39.0 → 35.0 %* | 0.844 → 0.906* | 0.530 → 0.576* |
 | rec 2048/64 | 10 | 0.513 → 0.502 | 0.816 → 0.851* | 0.599 → 0.634* | 0.581 → 0.643* | 38.6 → 34.4 %* | 0.866 → 0.938* | 0.628 → 0.712* |
 | rec 2048/128 | 10 | 0.486 → 0.501 | 0.841 → 0.849 | 0.602 → 0.633* | 0.578 → 0.626* | 39.6 → 33.2 %* | 0.842 → 0.942* | 0.621 → 0.710* |
-| semantic p95 | 10 | 0.493 → pending | | | | | | |
+| semantic p95 | 10 | 0.493 → 0.475* (lower) | 0.826 → 0.852* | 0.582 → 0.616* | 0.606 → 0.670* | 38.0 → 32.8 %* | 0.858 → 0.964* | 0.680 → 0.819* |
 | rec 512/64 | 12 | 0.476 → 0.487 | 0.804 → 0.841* | 0.603 → 0.608 | 0.507 → 0.512 | 41.4 → 37.6 % | 0.874 → 0.920* | 0.378 → 0.413* |
 | rec 512/128 | 12 | 0.482 → 0.485 | 0.837 → 0.827 | 0.621 → 0.620 | 0.502 → 0.521 | 39.8 → 37.2 % | 0.868 → 0.914* | 0.387 → 0.416* |
 | rec 1024/64 | 12 | 0.484 → 0.498 | 0.850 → 0.834 | 0.595 → 0.617 | 0.577 → 0.615* | 38.8 → 33.8 %* | 0.860 → 0.934* | 0.535 → 0.597* |
@@ -150,8 +152,13 @@ refusal regex, not `declined_rate`.
 | rec 2048/128 | 12 | 0.494 → 0.503 | 0.853 → 0.864 | 0.581 → 0.620* | 0.605 → 0.646* | 38.8 → 31.4 %* | 0.880 → 0.954* | 0.640 → 0.733* |
 | semantic p95 | 12 | 0.497 → **0.523*** | 0.842 → 0.858 | 0.572 → 0.642* | 0.604 → **0.672*** | 34.6 → **31.2 %** | 0.872 → **0.966*** | 0.692 → **0.843*** |
 
-Pooled over the 13 matched configs (paired; the CIs treat question × config
-as independent and are therefore optimistic): answer correctness +0.018,
+semantic p95 k10 is the only config where answer correctness drops
+significantly (−0.018) although every retrieval metric improves (Gold@k
++0.106, relevant-sentence coverage +0.140, refusals −5.2 pp) and answer
+relevancy rises by +0.072. Context grows from 35 k to 44 k chars per question.
+
+Pooled over the first 13 matched configs, without semantic k10 (paired; the
+CIs treat question × config as independent and are therefore optimistic): answer correctness +0.018,
 faithfulness +0.017, answer relevancy +0.019, context precision +0.030, context
 recall +0.056, refusals −4.2 pp, Gold@k +0.071, relevant-sentence coverage
 +0.066. Refusal flips: 719 refused → answered, 446 answered → refused. The
@@ -159,11 +166,13 @@ answerable subset (questions with RAGBench relevant sentences) shows the same
 deltas.
 
 Hybrid retrieval concentrates the chunks on fewer documents (distinct doc IDs
-per question 5.7–9.1 → 5.0–8.2) and picks slightly longer chunks (+3–6 %
-context chars for recursive, +27 % for semantic, 41 k → 52 k), while
+per question 5.6–9.1 → 5.0–8.2) and picks slightly longer chunks (+3–6 %
+context chars for recursive, +26–27 % for semantic, 35 k → 44 k at k10 and
+41 k → 52 k at k12), while
 distinct context texts stay at ~k. Blueprint answering time rises from
 641–863 s to 1,148–1,390 s per config for recursive chunking (~1.3 → ~2.4 s
-per question) and from 1,225 to 1,690 s for semantic k12.
+per question), from 1,110 to 1,515 s for semantic k10 and from 1,225 to
+1,690 s for semantic k12.
 
 
 | Run | Index build (`adapter_prepare`) | Blueprint answering | RAGAS eval | Custom metrics | Total | Critic tokens |
@@ -222,13 +231,17 @@ to 3.7 s) and critic tokens, because the context grows.
    Gold@k rises in every config (+0.05–0.10), relevant-sentence coverage
    +0.03–0.15, context recall +0.04–0.14 and refusals drop by 3–7 pp in most
    configs. Answer correctness rises significantly only where dense retrieval
-   was weakest (rec 512 k10: +0.05–0.07) and for semantic k12 (+0.030). The
-   former best configs (rec 1024/128 and 2048/64 at k10, 0.513) stay tied
-   (−0.01, n.s.). **New best TechQA config: semantic p95 k12 hybrid** (correctness
-   0.523, context recall 0.672, refusals 31 %), at the cost of ~52 k context
-   chars per question; rec 2048/64 k12 hybrid (0.512, 20 k chars) is the
-   cheaper alternative. Hybrid roughly doubles the Blueprint's answering time
-   per question.
+   was weakest (rec 512 k10: +0.05–0.07) and for semantic k12 (+0.030); for
+   semantic k10 it drops (−0.018) despite the best retrieval gain. The former
+   best configs (rec 1024/128 and 2048/64 at k10, 0.513) stay tied (−0.01,
+   n.s.). Best TechQA config by correctness is **semantic p95 k12 hybrid**
+   (0.523, context recall 0.672, refusals 31 %), but at ~52 k context chars per
+   question and with the opposite sign at k10, so its lead is not robust. **rec
+   2048/64 k12 hybrid** (0.512, 20 k chars, refusals 32 %) is the recommended
+   default. Hybrid roughly doubles the Blueprint's answering time per question.
+   Better retrieval converts into correctness only weakly: answer correctness
+   is no longer limited mainly by retrieval but by refusals, judge noise and
+   the reference quality (see the refusal analysis).
 
 ## Caveats
 

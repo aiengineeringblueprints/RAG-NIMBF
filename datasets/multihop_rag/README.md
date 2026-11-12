@@ -38,6 +38,19 @@ This writes `corpus/MHR-001.md` … `MHR-609.md` and `questions.jsonl`.
 - Questions are shuffled with a fixed seed, so any `sample_size` prefix mixes
   all question types.
 
+## Evaluate
+
+`answer_match` undercounts comparison and temporal queries: their references
+are yes/no-style words, while generators often answer in prose. Re-score a
+finished run with the critic LLM and break retrieval down per question type:
+
+```bash
+python scripts/judge_answers.py <run dir> \
+  --dataset datasets/multihop_rag/questions.jsonl --cache /tmp/<run>-verdicts.jsonl
+python scripts/retrieval_by_category.py <run dir> \
+  --dataset datasets/multihop_rag/questions.jsonl --k 1 3 5 10 20
+```
+
 ## License
 
 Dataset: ODC-BY (as published on Hugging Face). The articles remain the
