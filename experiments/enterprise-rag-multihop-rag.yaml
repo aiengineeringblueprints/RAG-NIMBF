@@ -15,6 +15,10 @@ experiment_name: enterprise-rag-multihop-rag
 # and computes gold metrics only for k = 1, 3, 5):
 #   python scripts/retrieval_by_category.py <run dir> \
 #     --dataset datasets/multihop_rag/questions.jsonl --k 1 3 5 10 20
+# answer_match misses prose answers to yes/no references; judge them with the
+# critic LLM instead:
+#   python scripts/judge_answers.py <run dir> \
+#     --dataset datasets/multihop_rag/questions.jsonl --cache /tmp/<run>-verdicts.jsonl
 
 dataset:
   # jsonl-shared indexes corpus_path; questions carry gold_doc_ids (MHR-001,

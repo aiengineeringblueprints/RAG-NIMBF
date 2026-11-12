@@ -28,7 +28,14 @@ differ only in `retrieval_strategy`, `retrieval_hybrid_alpha`,
 Questions matched per index across runs. Paired bootstrap (2,000 resamples) per
 config. 13 of 14 configs compared; semantic p95 k10 is being re-run.
 
+## Update 2026-11-12
+The semantic p95 k10 re-run finished; its row and the semantic findings were
+added to `doc/enterprise-rag-blueprint-results.md`. It is the only config where
+answer correctness drops with hybrid (0.493 → 0.475, significant) although
+retrieval improves most (Gold@k +0.106, relevant-sentence coverage +0.140).
+The recommended default changed from semantic p95 k12 to rec 2048/64 k12
+hybrid.
+
 ## Follow-ups
-- Add the semantic p95 k10 row once the re-run finishes.
 - Next steps from `doc/enterprise-rag-techqa-refusal-analysis.md` remain open
   (gold metrics, `declined_rate`, ablation, runtime).
