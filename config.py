@@ -127,7 +127,7 @@ class BenchmarkConfig:
     lancedb_path: str = ".lancedb"
     benchmark_stage: str = "all"  # all | index | query | retrieve | parsing
     # RAG system adapter
-    rag_system_adapter: str = "internal"  # internal | http | mcp
+    rag_system_adapter: str = "internal"  # internal | http | mcp | ragflow (alias optimaiserag) | registered plugin
     rag_adapter_accepts: str = (
         ""  # comma-separated: chunker,embedder,retriever,reranker,llm,prompt
     )

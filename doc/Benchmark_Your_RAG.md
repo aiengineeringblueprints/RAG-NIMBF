@@ -4,15 +4,17 @@ Diese Anleitung beschreibt die Schritte, die ein Nutzer des Frameworks durchfüh
 
 ## 1. Integrationsart wählen
 
-Es gibt drei sinnvolle Wege:
+Es gibt fünf sinnvolle Wege:
 
-| Ziel | Empfohlener Weg |
-| --- | --- |
-| Bestehendes RAG hat einen HTTP-Endpunkt | HTTP-Adapter (`RAG_SYSTEM_ADAPTER=http`) |
-| Bestehendes RAG ist Python-Code im Repo oder importierbar | Python-Adapter-Plugin |
-| Du willst die Framework-Pipeline selbst benchmarken | Interner Modus (`RAG_SYSTEM_ADAPTER=internal`) |
+| Ziel | Empfohlener Weg | Detail-Guide |
+| --- | --- | --- |
+| Bestehendes RAG hat einen HTTP-Endpunkt | HTTP-Adapter (`RAG_SYSTEM_ADAPTER=http`) | [External_RAG_System_Usage.md](External_RAG_System_Usage.md) |
+| Bestehendes RAG ist Python-Code im Repo oder importierbar | Python-Adapter-Plugin (`RAG_ADAPTER_MODULES` + eigener Name) | [External_RAG_Python_Adapter.md](External_RAG_Python_Adapter.md) |
+| RAG-System indexiert und verwaltet den Corpus selbst (managed/hosted, eigener Lifecycle) | Managed-Adapter (`RAG_SYSTEM_ADAPTER=ragflow`, z. B. OptimiseRAG) | [Managed_RAG_System_Usage.md](Managed_RAG_System_Usage.md) |
+| RAG-System ist ein MCP-Server (oder ruft MCP-Tools auf) | MCP-Adapter (`RAG_SYSTEM_ADAPTER=mcp`) | [mcp-benchmarking.md](mcp-benchmarking.md), [mcp-host-benchmarking.md](mcp-host-benchmarking.md) |
+| Du willst die Framework-Pipeline selbst benchmarken | Interner Modus (`RAG_SYSTEM_ADAPTER=internal`) | — |
 
-Für die meisten externen Systeme ist der HTTP-Adapter der einfachste Einstieg. Ein Python-Adapter ist sinnvoll, wenn dein RAG keinen HTTP-Endpunkt hat oder du Framework-Komponenten wie Chunker, Embedder oder LLM direkt injizieren willst.
+Für die meisten externen Systeme ist der HTTP-Adapter der einfachste Einstieg. Ein Python-Adapter ist sinnvoll, wenn dein RAG keinen HTTP-Endpunkt hat oder du Framework-Komponenten wie Chunker, Embedder oder LLM direkt injizieren willst. Ein Managed-Adapter passt, wenn dein System den Corpus selbst indexiert (das Framework übergibt Dokumente einmalig über `ingest()` statt `prepare()` + `answer()`). Details zum Adapter-Protocol: `benchmark/adapters/base.py`.
 
 ## 2. Datensatz vorbereiten
 
@@ -84,9 +86,10 @@ Dein RAG-Service muss einen JSON `POST`-Endpunkt anbieten. Das Framework sendet:
   "metadata": {"id": "sample-1"},
   "ground_truth": "Expected answer",
   "config": {
+    "name": "my-rag-eval",
     "retrieval_top_k": 5,
-    "dataset_name": "jsonl",
-    "prompt_template": "concise"
+    "prompt_template": "concise",
+    "dataset_name": "jsonl"
   }
 }
 ```
@@ -174,6 +177,11 @@ RAG_SYSTEM_ADAPTER=myrag \
 BENCHMARK_CONFIG_FILE=experiments/my_rag_eval.yaml \
 python main.py
 ```
+
+> **Wichtig:** Es gibt kein Manifest-Feld für `rag_adapter_modules` — Plugin-Module
+> werden ausschließlich über `RAG_ADAPTER_MODULES` (`.env` oder Umgebungsvariable)
+> geladen und importiert. Steht die Variable nicht, schlägt die Config-Validierung
+> mit `Invalid RAG_SYSTEM_ADAPTER` fehl, auch wenn der Name im Manifest steht.
 
 ## 6. Optional: Framework-Komponenten injizieren
 

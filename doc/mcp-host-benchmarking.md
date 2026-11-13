@@ -16,6 +16,11 @@ sits behind an MCP server.
 | What is measured | an MCP server as a retrieval/QA backend | the system's MCP client, tool loop and tool choice |
 | Trace source | framework-side provenance | the system's reported operation events |
 
+> **Note:** `enterprise_rag_mcp` is a plugin adapter — set `RAG_ADAPTER_MODULES`
+> in `.env` (e.g. `RAG_ADAPTER_MODULES=enterprise_rag_plugin.mcp_adapter` with
+> `PYTHONPATH=examples`). There is no manifest-level field for plugin modules;
+> without the env var, config validation fails with `Invalid RAG_SYSTEM_ADAPTER`.
+
 ## Architecture
 
 - `benchmark/mcp_host.py`: system-independent contract and metrics.

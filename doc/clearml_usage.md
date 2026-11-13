@@ -1,5 +1,7 @@
 Nutzung:
 
+  > English reference: see doc/clearml-agent.md (moved there from README).
+
   python -m benchmark.clearml_task experiments/full-grid-example.yaml \
     --project-name "RAG Benchmarking" \
     --task-name rag_eval_baseline

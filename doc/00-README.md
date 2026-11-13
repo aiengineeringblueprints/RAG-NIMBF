@@ -19,6 +19,16 @@ Generated: 2026-05-18 | Sources: 40+ | Agents: 3 parallel
 
 | Document | Contents |
 |----------|----------|
+| [Benchmark Your RAG](Benchmark_Your_RAG.md) | **Main integration guide**: choose an integration mode (HTTP / Python plugin / managed / MCP / internal), dataset prep, minimal manifest, smoke-test checklist |
+| [Environment Variables Reference](env-vars.md) | Full reference for every env var (moved out of the root README): core, HTTP adapter, parsers, retrieval, datasets, MCP, Blueprint plugins, generation, evaluation, cost monitoring |
+| [LLM Load Test](llm-load-test.md) | Integrated LLM latency/throughput testing inside a benchmark run: `llm_performance_*` settings, `generation` vs `load_test` sources, where results land |
+| [ClearML Agent Workflow](clearml-agent.md) | Clone/edit/enqueue benchmark tasks via ClearML: baseline task creation, agent daemon, hyperparameter cloning, what is (not) published |
+| [Results and MLflow](results-and-mlflow.md) | Output layout, compacted sample reports, LLM answer judge re-scoring, MLflow UI comparison and aggregate summary runs |
+| [External RAG System Usage](External_RAG_System_Usage.md) | HTTP adapter in depth: request/response contract, dotted fields, auth headers, token/cost fields, env vars, plugin loading via `RAG_ADAPTER_MODULES` |
+| [External RAG Python Adapter](External_RAG_Python_Adapter.md) | Python plugin adapter without HTTP: skeleton, `RagSystemOutput` fields, component sweep options, component injection (`supports_components` / `RAG_ADAPTER_ACCEPTS`) |
+| [Managed RAG System Usage](Managed_RAG_System_Usage.md) | Managed/hosted adapters with their own index lifecycle (`rag_managed_*` config, `ingest()` protocol, OptimiseRAG reference, how to add another provider) |
+| [OptimiseRAG Benchmark](OptimiseRAG_Benchmark.md) | Concrete managed-adapter benchmark setup (manifests, smoke runs) |
+| [Benchmark Your Parser](Benchmark_Your_Parser.md) | Parser adapter family: `benchmark/parsing/` protocol, HTTP parser adapter, `PARSER_*` config, corpus parsing |
 | [MCP Benchmarking](mcp-benchmarking.md) | Evaluating MCP servers: result/execution modes, YAML + `.env` configuration, full metric reference (reliability, latency, tool use, evidence budget), fairness validation, troubleshooting |
 | [Enterprise RAG Blueprint Setup](enterprise-rag-blueprint-setup.md) | Step-by-step guide for evaluating the Enterprise RAG Blueprint with MCP: `.env` block, MCP server config, model endpoints with Bearer keys (OpenAI-compatible, Ollama, proxies), manifest with LLM / embedding / top-k matrix, dense or hybrid (BM25 + RRF) Blueprint retrieval, smoke and full runs, `http` variant, troubleshooting |
 | [Enterprise RAG Blueprint Results](enterprise-rag-blueprint-results.md) | Results overview of the Blueprint plain-RAG runs on the DGX Spark (`results/Enterprise-RAG/run1..run6`): SQuAD and RAGBench TechQA, nomic vs Qwen3-Embedding-4B, recursive 512/1024/2048 × overlap 64/128 and semantic chunking, top-k 5/10/12, dense vs hybrid retrieval (run5 vs run6), refusal analysis, combination matrix, failures, runtime, findings and metric caveats |

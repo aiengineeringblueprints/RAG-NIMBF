@@ -196,7 +196,7 @@ RAG_ADAPTER_MODULES=my_package.my_adapter RAG_SYSTEM_ADAPTER=myrag python main.p
 
 | Variable | Purpose |
 | --- | --- |
-| `RAG_SYSTEM_ADAPTER` | `internal`, `http`, or a registered custom adapter. |
+| `RAG_SYSTEM_ADAPTER` | `internal`, `http`, `mcp`, `ragflow` (alias `optimaiserag`), or a registered custom adapter. |
 | `RAG_ADAPTER_MODULES` | Comma-separated Python modules imported before adapter validation. |
 | `RAG_HTTP_ENDPOINT_URL` | Required for `RAG_SYSTEM_ADAPTER=http`. |
 | `RAG_HTTP_ANSWER_FIELD` | Dotted response path for answer text. |

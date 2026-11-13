@@ -120,6 +120,10 @@ BENCHMARK_CONFIG_FILE=experiments/my_rag_eval.yaml \
 python main.py
 ```
 
+> **Wichtig:** `RAG_ADAPTER_MODULES` muss in `.env` oder als Umgebungsvariable
+> gesetzt sein — es gibt dafür **kein Manifest-Feld**. Ohne die Variable schlägt
+> die Config-Validierung mit `Invalid RAG_SYSTEM_ADAPTER` fehl.
+
 ---
 
 ## 4. Minimal-Manifest
@@ -207,7 +211,7 @@ bauen (z.B. eigenen Retriever in `benchmark/retrieval.py` registrieren).
 - `benchmark/adapters/base.py` — `RagSystemAdapter` Protocol + `RagSystemOutput` Dataclass
 - `benchmark/adapters/__init__.py` — `register_rag_adapter` Registry
 - `benchmark/adapters/components.py` — `ComponentBundle` + `build_components`
-- `main.py:199-300` — Adapter-Wiring im Benchmark-Loop
+- `benchmark/orchestration/runner.py` — Adapter-Wiring im Benchmark-Loop (`get_rag_adapter`, `build_injected_components`, `inject_components`)
 - `examples/http_rag_server.py` — Beispiel-Endpoint (HTTP)
 - `examples/enterprise_rag_plugin/adapter.py` — Referenz-Adapter mit Component Injection
 
@@ -246,8 +250,17 @@ EMBEDDING_MODELS=ollama:nomic-embed-text
 LLM_MODELS=ollama:gemma3:4b
 ```
 
+`RAG_ADAPTER_ACCEPTS` ist **optional** und dient nur als Filter: Die
+Wahrheitsquelle ist immer `supports_components()` deines Adapters. Ein Adapter,
+das die Component-Protocol-Methoden nicht implementiert, bekommt nie Komponenten
+injiziert — auch wenn `RAG_ADAPTER_ACCEPTS` gesetzt ist. Ist beides gesetzt,
+greift der Schnitt (`capability & user_intent`), du kannst damit also nur
+**einschränken**, welche der deklarierten Slots tatsächlich gebaut werden
+(nützlich für Matrix-Sweeps ohne Code-Änderung).
+
 Implementiert dein Adapter nur `set_components()` (ohne `supports_components()`),
-ist `RAG_ADAPTER_ACCEPTS` aus `.env` alleinige Wahrheitsquelle.
+ist die Capability leer und es werden **keine** Slots injiziert — deklariere die
+Slots daher immer über `supports_components()`.
 
 Referenz-Implementierung: `examples/enterprise_rag_plugin/adapter.py`.
 Manifest: `experiments/enterprise_rag_demo.yaml`.
