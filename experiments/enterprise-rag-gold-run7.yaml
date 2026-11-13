@@ -1,0 +1,51 @@
+# run7: run6 replica (Blueprint plain RAG on TechQA) + gold document IDs.
+# Issue 16 verification: same matrix as results/Enterprise-RAG/run6, with
+# custom_retrieval_metrics_mode: gold_doc instead of the heuristic, and
+# RAGAS off. Compare gold hit@k against the manual reconstruction in
+# doc/enterprise-rag-techqa-refusal-analysis.md section 2.4 (91-97% top-10).
+# Run with:
+#   source .venv/bin/activate
+#   export RAG_ADAPTER_MODULES=examples.enterprise_rag_plugin.mcp_adapter
+#   export ENTERPRISE_RAG_BLUEPRINT_PATH=/home/niclas/source/Enterprise_RAG_Blueprint
+#   python -m benchmark.worker run experiments/enterprise-rag-gold-run7.yaml \
+#     --run-dir results/Enterprise-RAG/run7 --no-resume
+experiment_name: enterprise-rag-blueprint-rag-gold-run7
+
+dataset:
+  name: ragbench
+  subset: techqa
+  split: train
+  sample_size: 500
+
+settings:
+  rag_system_adapter: enterprise_rag_mcp
+  rag_adapter_accepts: "chunker,embedder"
+  benchmark_stage: all
+  retrieval_mode: retrieval
+  retrieval_strategy: hybrid
+  retrieval_hybrid_alpha: 0.5
+  retrieval_fetch_k: 50
+  retrieval_multihop: false
+  retrieval_use_hyde: false
+  generation_temperature: 0
+  enterprise_rag_mcp_transport: inprocess
+  enterprise_rag_mcp_enabled: false
+  enterprise_rag_mcp_apply_settings: true
+  enterprise_rag_mcp_query_refinement: true
+  enterprise_rag_mcp_guardrails: true
+  enterprise_rag_mcp_index_corpus: true
+  eval_critic_llm: openai:deepseek-v4-flash
+  eval_critic_embedding: ollama:nomic-embed-text:latest
+  ragas_enabled: false           # smoke run: no paid RAGAS/critic calls
+  custom_metrics_enabled: true   # needed for gold_doc retrieval metrics
+  custom_retrieval_metrics_mode: gold_doc
+
+matrix:
+  llm_models: [openai:qwen3.8-27b]
+  embedding_models: [nomic-embed-text:latest]
+  retrieval_top_k: [10, 12]
+  chunking_strategies: [recursive, semantic]
+  chunk_sizes: [512, 1024, 2048]
+  chunk_overlaps: [64, 128]
+  prompt_templates: [concise]
+  reranker_models: [null]
