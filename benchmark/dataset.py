@@ -11,6 +11,7 @@ from datasets import load_dataset
 from rich.console import Console
 
 from benchmark.dataset_adapters import OCR_GT_DATASET_NAMES, resolve_adapter
+from benchmark.doc_ids import resolve_dataset_doc_id
 
 console = Console()
 
@@ -92,6 +93,38 @@ def normalize_samples(
     ]
 
 
+def assign_gold_doc_ids(samples: list[dict]) -> list[dict]:
+    """Stamp per-sample gold document IDs onto each sample's metadata.
+
+    Datasets without a shared corpus index each sample's own context as one
+    document. Both the internal pipeline and external adapters (e.g. the
+    Enterprise RAG Blueprint) enumerate ``data`` in order and fall back to a
+    ``dataset-doc-{index}`` source ID, unless the sample metadata already
+    carries a ``doc_id`` or ``source``. Recording the same ID as
+    ``gold_doc_id`` makes retrieval scoreable against the real gold document.
+    """
+    for index, sample in enumerate(samples):
+        metadata = sample.setdefault("metadata", {})
+        doc_id = resolve_dataset_doc_id(metadata, index)
+        metadata["doc_id"] = doc_id
+        metadata["gold_doc_id"] = doc_id
+    return samples
+
+
+def _finalize_per_sample_dataset(
+    samples: list[dict], adapter: Any
+) -> list[dict]:
+    """Shared finalisation for all ``load_benchmark_data`` exits.
+
+    Datasets without a shared corpus get their gold document IDs stamped
+    here, so a future loader path cannot forget the guard. Shared-corpus
+    datasets are returned untouched.
+    """
+    if not adapter.has_shared_corpus:
+        assign_gold_doc_ids(samples)
+    return samples
+
+
 def load_benchmark_data(
     dataset_name: str = "t2-ragbench",
     subset: str | None = None,
@@ -110,12 +143,14 @@ def load_benchmark_data(
         # normalize_sample from this module, so a top-level import cycles.
         from benchmark.ocr_datasets import load_ocr_gt_dataset
 
-        return load_ocr_gt_dataset(
+        samples_ocr = load_ocr_gt_dataset(
             dataset_name, dataset_path=dataset_path, sample_size=sample_size
         )
+        _finalize_per_sample_dataset(samples_ocr, adapter)
+        return samples_ocr
 
     if dataset_name in ("jsonl", "jsonl-shared", "csv"):
-        return _load_local_dataset(
+        samples_local = _load_local_dataset(
             dataset_name="jsonl" if dataset_name == "jsonl-shared" else dataset_name,
             dataset_path=dataset_path,
             sample_size=sample_size,
@@ -128,6 +163,8 @@ def load_benchmark_data(
             metadata_field=metadata_field
             or os.getenv("DATASET_METADATA_FIELD", "metadata"),
         )
+        _finalize_per_sample_dataset(samples_local, adapter)
+        return samples_local
 
     label = subset or "default"
     console.print(f"[bold blue]Loading {adapter.hf_id} ({label})...[/bold blue]")
@@ -175,6 +212,8 @@ def load_benchmark_data(
                 source=f"{dataset_name}:{split}[{len(samples)}]",
             )
         )
+
+    _finalize_per_sample_dataset(samples, adapter)
 
     console.print(
         f"[green]Loaded {len(samples)} samples from {adapter.hf_id} "

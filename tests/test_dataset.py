@@ -14,6 +14,7 @@ from benchmark.dataset_adapters import (
     _ragperf_wikipedia_nq_context,
 )
 from benchmark.dataset import (
+    assign_gold_doc_ids,
     normalize_sample,
     normalize_samples,
     load_benchmark_data,
@@ -352,6 +353,137 @@ class TestLoadBenchmarkData:
         assert questions[0]["metadata"]["retrieval_ground_truth"] == "unavailable"
 
 
+class TestPerSampleGoldDocIds:
+    """Per-sample-context datasets (RAGBench et al.) carry a gold document ID
+    that matches the source ID the adapters use when indexing each sample."""
+
+    def _write_jsonl(self, tmp_path, rows):
+        path = tmp_path / "samples.jsonl"
+        path.write_text(
+            "\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8"
+        )
+        return path
+
+    def _load(self, tmp_path, rows, dataset_name="jsonl", **kwargs):
+        path = self._write_jsonl(tmp_path, rows)
+        return load_benchmark_data(
+            dataset_name=dataset_name,
+            dataset_path=str(path),
+            sample_size=10,
+            question_field="q",
+            ground_truth_field="a",
+            context_field="ctx",
+            metadata_field="meta",
+            **kwargs,
+        )
+
+    def test_jsonl_per_sample_dataset_gets_gold_doc_ids(self, tmp_path):
+        samples = self._load(
+            tmp_path,
+            [
+                {"q": "Q1", "a": "A1", "ctx": "doc one", "meta": {}},
+                {"q": "Q2", "a": "A2", "ctx": "doc two", "meta": {}},
+            ],
+        )
+
+        assert samples[0]["metadata"]["gold_doc_id"] == "dataset-doc-0"
+        assert samples[1]["metadata"]["gold_doc_id"] == "dataset-doc-1"
+        # Same ID is recorded as doc_id so the internal pipeline copies it
+        # onto chunks and the Blueprint adapter uses it as indexed source.
+        assert samples[0]["metadata"]["doc_id"] == "dataset-doc-0"
+        assert samples[1]["metadata"]["doc_id"] == "dataset-doc-1"
+
+    def test_existing_doc_id_is_kept_as_gold(self, tmp_path):
+        samples = self._load(
+            tmp_path,
+            [{"q": "Q1", "a": "A1", "ctx": "doc one", "meta": {"doc_id": "CUSTOM-1"}}],
+        )
+
+        assert samples[0]["metadata"]["gold_doc_id"] == "CUSTOM-1"
+        assert samples[0]["metadata"]["doc_id"] == "CUSTOM-1"
+
+    def test_existing_source_is_kept_as_gold(self, tmp_path):
+        samples = self._load(
+            tmp_path,
+            [{"q": "Q1", "a": "A1", "ctx": "doc one", "meta": {"source": "SRC-9"}}],
+        )
+
+        assert samples[0]["metadata"]["gold_doc_id"] == "SRC-9"
+        assert samples[0]["metadata"]["doc_id"] == "SRC-9"
+
+    def test_conflicting_source_and_doc_id_prefers_source(self, tmp_path):
+        """Same precedence as the Blueprint adapter's indexing, which picks
+        ``source`` over ``doc_id``."""
+        samples = self._load(
+            tmp_path,
+            [{
+                "q": "Q1",
+                "a": "A1",
+                "ctx": "doc one",
+                "meta": {"doc_id": "DOC", "source": "SRC"},
+            }],
+        )
+
+        assert samples[0]["metadata"]["gold_doc_id"] == "SRC"
+        assert samples[0]["metadata"]["doc_id"] == "SRC"
+
+    def test_shared_corpus_dataset_is_not_stamped(self, tmp_path):
+        samples = self._load(
+            tmp_path,
+            [{"q": "Q1", "a": "A1", "ctx": "shared doc", "meta": {}}],
+            dataset_name="jsonl-shared",
+        )
+
+        assert "gold_doc_id" not in samples[0]["metadata"]
+        assert "doc_id" not in samples[0]["metadata"]
+
+    def test_stamped_doc_id_reaches_internal_pipeline_chunks(self):
+        """The internal pipeline copies sample metadata onto chunks, so the
+        stamped gold ID must surface as each chunk's ``doc_id``."""
+        from benchmark.chunking import ParagraphChunker, chunk_documents
+
+        samples = assign_gold_doc_ids(
+            [
+                {
+                    "question": "Q1",
+                    "ground_truth": "A1",
+                    "context": "doc one",
+                    "metadata": {},
+                },
+            ]
+        )
+
+        chunks = chunk_documents(ParagraphChunker(), samples)
+
+        assert chunks, "chunking produced no chunks"
+        assert all(c.metadata.get("doc_id") == "dataset-doc-0" for c in chunks)
+
+    def test_ragbench_hf_dataset_gets_gold_doc_ids(self):
+        rows = [
+            {
+                "question": "Q1",
+                "response": "A1",
+                "documents": ["doc one"],
+                "id": "r1",
+                "dataset_name": "techqa",
+            },
+            {
+                "question": "Q2",
+                "response": "A2",
+                "documents": ["doc two"],
+                "id": "r2",
+                "dataset_name": "techqa",
+            },
+        ]
+        with patch("benchmark.dataset.load_dataset", return_value={"test": rows}):
+            samples = load_benchmark_data(
+                dataset_name="ragbench", subset="techqa", sample_size=10
+            )
+
+        assert samples[0]["metadata"]["gold_doc_id"] == "dataset-doc-0"
+        assert samples[1]["metadata"]["gold_doc_id"] == "dataset-doc-1"
+
+
 class TestGoldDocMetadata:
     @patch("benchmark.dataset.load_benchmark_data")
     def test_shared_corpus_adds_doc_and_gold_doc_ids(self, mock_load_benchmark_data):
@@ -520,14 +652,11 @@ class TestLocalDatasets:
             metadata_field="meta",
         )
 
-        assert samples == [
-            {
-                "question": "Question?",
-                "ground_truth": "Answer",
-                "context": ["one", "two"],
-                "metadata": {"id": "1"},
-            }
-        ]
+        assert samples[0]["question"] == "Question?"
+        assert samples[0]["ground_truth"] == "Answer"
+        assert samples[0]["context"] == ["one", "two"]
+        assert samples[0]["metadata"]["id"] == "1"
+        assert samples[0]["metadata"]["gold_doc_id"] == "dataset-doc-0"
 
     def test_csv_dataset_parses_metadata_json_string(self, tmp_path):
         path = tmp_path / "samples.csv"
@@ -545,7 +674,8 @@ class TestLocalDatasets:
         assert samples[0]["question"] == "Q"
         assert samples[0]["ground_truth"] == "A"
         assert samples[0]["context"] == "C"
-        assert samples[0]["metadata"] == {"id": "row-1"}
+        assert samples[0]["metadata"]["id"] == "row-1"
+        assert samples[0]["metadata"]["gold_doc_id"] == "dataset-doc-0"
 
     def test_local_dataset_requires_path(self):
         with pytest.raises(ValueError, match="DATASET_PATH is required"):

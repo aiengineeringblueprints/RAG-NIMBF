@@ -143,8 +143,8 @@ def test_answer_normalizes_tuple_output(fake_blueprint):
         "Paris is the capital of France.",
         "France is in Europe.",
     ]
-    assert {"source": "wiki_france"} in out.metadata
-    assert {"source": "wiki_eu"} in out.metadata
+    assert {"source": "wiki_france", "doc_id": "wiki_france"} in out.metadata
+    assert {"source": "wiki_eu", "doc_id": "wiki_eu"} in out.metadata
     assert out.total_seconds >= 0
 
 
@@ -169,6 +169,235 @@ def test_answer_raises_if_not_prepared(fake_blueprint):
     adapter = EnterpriseRagAdapter(MagicMock())
     with pytest.raises(RuntimeError, match="prepare\\(\\) was not called"):
         adapter.answer({"question": "x"}, MagicMock())
+
+
+def test_documents_from_dataset_uses_stamped_gold_doc_ids_as_source():
+    """Framework gold IDs (issue 16) must match the source IDs the Blueprint
+    adapter writes when indexing per-sample-context datasets."""
+    from examples.enterprise_rag_plugin.adapter import EnterpriseRagAdapter
+
+    data = [
+        {
+            "context": "doc zero",
+            "metadata": {"doc_id": "dataset-doc-0", "gold_doc_id": "dataset-doc-0"},
+        },
+        {
+            "context": "doc one",
+            "metadata": {"doc_id": "dataset-doc-1", "gold_doc_id": "dataset-doc-1"},
+        },
+    ]
+
+    docs = EnterpriseRagAdapter._documents_from_dataset(data)
+
+    assert [d.metadata["source"] for d in docs] == [
+        "dataset-doc-0",
+        "dataset-doc-1",
+    ]
+    assert [d.metadata["doc_id"] for d in docs] == [
+        "dataset-doc-0",
+        "dataset-doc-1",
+    ]
+
+
+# ── End-to-end contract: adapter output → gold retrieval metrics ────
+
+
+class TestGoldDocIdEndToEnd:
+    """Adapter output metadata must resolve to the same document IDs the
+    dataset stamped as gold, across every adapter path (issue #16 review)."""
+
+    @staticmethod
+    def _compute(gold, retrieved_metadata):
+        from benchmark.gold_retrieval_metrics import (
+            compute_gold_doc_retrieval_metrics,
+        )
+
+        return compute_gold_doc_retrieval_metrics(
+            [gold],
+            [retrieved_metadata],
+            k_values=[1, 3, 5, 10],
+        )
+
+    def test_blueprint_string_sources_score_against_gold(self, fake_blueprint):
+        """String "src->content" sources carry a doc_id the gold metric
+        recognizes; a correct hit is no longer scored as a miss."""
+        from examples.enterprise_rag_plugin.adapter import EnterpriseRagAdapter
+
+        fake_blueprint["rag_chain"].return_value = (
+            "Paris is the capital of France.",
+            [
+                "dataset-doc-0->Paris is the capital of France.",
+                "dataset-doc-1->France is in Europe.",
+            ],
+        )
+        adapter = EnterpriseRagAdapter(MagicMock())
+        adapter._replace_blueprint_index = MagicMock()
+        adapter.prepare(MagicMock(), data=[])
+        out = adapter.answer(
+            {"question": "What is the capital of France?"}, MagicMock()
+        )
+
+        result = self._compute("dataset-doc-0", out.metadata)
+
+        assert result.skipped_samples == 0
+        assert result.per_sample[0]["hit@1"] == 1.0
+
+    def test_blueprint_indexing_and_gold_ids_stay_identical(self):
+        """Indexed source IDs equal the IDs assign_gold_doc_ids stamped,
+        including path-like, dotted, empty and None values."""
+        from benchmark.dataset import assign_gold_doc_ids
+        from examples.enterprise_rag_plugin.adapter import EnterpriseRagAdapter
+
+        data = [
+            {"context": "a", "metadata": {"source": "/docs/manual.pdf"}},
+            {"context": "b", "metadata": {}},
+            {"context": "c", "metadata": {"source": ""}},
+            {"context": "d", "metadata": {"source": None, "doc_id": "dotted.id"}},
+            {"context": "e", "metadata": {"source": "release.v1.pdf"}},
+        ]
+        data = assign_gold_doc_ids(data)
+        docs = EnterpriseRagAdapter._documents_from_dataset(data)
+
+        assert [d.metadata["source"] for d in docs] == [
+            d["metadata"]["gold_doc_id"] for d in data
+        ]
+        # Path-like sources keep the full normalised path (collision-free);
+        # empty/None fall back to dataset-doc-{index} on both sides.
+        assert docs[0].metadata["doc_id"] == "/docs/manual.pdf"
+        assert docs[1].metadata["doc_id"] == "dataset-doc-1"
+        assert docs[2].metadata["doc_id"] == "dataset-doc-2"
+        # Explicit dotted doc_ids pass through unchanged.
+        assert docs[3].metadata["doc_id"] == "dotted.id"
+        # Only known document suffixes are stripped; "release.v1" stays.
+        assert docs[4].metadata["doc_id"] == "release.v1"
+
+    def test_shared_corpus_ids_pass_through_unchanged(self, fake_blueprint):
+        """Indexing via the actual corpus path must keep existing
+        shared-corpus IDs verbatim (no canonicalisation)."""
+        from examples.enterprise_rag_plugin.adapter import (
+            EnterpriseRagAdapter,
+            replace_blueprint_index,
+        )
+
+        bundle = MagicMock(name="bundle")
+        bundle.embedder = MagicMock(name="embedder")
+        bundle.chunker = None
+
+        corpus = [
+            {
+                "context": "report one content",
+                "metadata": {
+                    "doc_id": "Report.v1",
+                    "source_id": "Report.v1",
+                    "source_name": "Report.v1.md",
+                },
+            },
+            {"context": "bare content", "metadata": {}},
+        ]
+
+        documents = EnterpriseRagAdapter._documents_from_dataset(
+            corpus, per_sample_context=False
+        )
+        assert [d.metadata["source"] for d in documents] == [
+            "Report.v1",
+            "dataset-doc-1",
+        ]
+        assert [d.metadata["doc_id"] for d in documents] == [
+            "Report.v1",
+            "dataset-doc-1",
+        ]
+
+    def test_stale_doc_id_from_blueprint_is_overwritten(self, fake_blueprint):
+        """A non-canonical doc_id already present in returned Document
+        metadata must not shadow the canonical ID."""
+        from langchain_core.documents import Document
+
+        from examples.enterprise_rag_plugin.adapter import EnterpriseRagAdapter
+
+        fake_blueprint["rag_chain"].return_value = (
+            "answer",
+            [
+                Document(
+                    page_content="content",
+                    metadata={
+                        "source": "/docs/manual.pdf",
+                        "doc_id": "/docs/manual.pdf",
+                    },
+                ),
+            ],
+        )
+        adapter = EnterpriseRagAdapter(MagicMock())
+        adapter._replace_blueprint_index = MagicMock()
+        adapter.prepare(MagicMock(), data=[])
+
+        out = adapter.answer({"question": "q"}, MagicMock())
+
+        assert out.metadata[0]["doc_id"] == "/docs/manual.pdf"
+        result = self._compute("/docs/manual.pdf", out.metadata)
+        assert result.per_sample[0]["hit@1"] == 1.0
+
+    def test_mcp_path_source_and_gold_ids_match(self):
+        """MCP retrieval metadata canonicalizes path-like sources the same way
+        the dataset side does — full path preserved, no stem collapse."""
+        from benchmark.adapters.mcp import _as_metadata
+        from benchmark.dataset import assign_gold_doc_ids
+
+        samples = assign_gold_doc_ids(
+            [
+                {
+                    "question": "q",
+                    "ground_truth": "a",
+                    "context": "doc",
+                    "metadata": {"source": "/docs/manual.pdf"},
+                }
+            ]
+        )
+        gold = samples[0]["metadata"]["gold_doc_id"]
+
+        metadata = _as_metadata(
+            [{"source": "/docs/manual.pdf", "text": "irrelevant"}],
+            1,
+            "query_documents",
+            "stdio",
+        )
+
+        assert metadata[0]["doc_id"] == gold == "/docs/manual.pdf"
+        result = self._compute(gold, metadata)
+        assert result.per_sample[0]["hit@1"] == 1.0
+
+    def test_mcp_stale_doc_id_is_overwritten(self):
+        """A contradictory doc_id in the tool payload is replaced by the
+        canonical ID."""
+        from benchmark.adapters.mcp import _as_metadata
+
+        metadata = _as_metadata(
+            [{"source": "/docs/manual.pdf", "doc_id": "wrong-id", "text": "t"}],
+            1,
+            "query_documents",
+            "stdio",
+        )
+
+        assert metadata[0]["doc_id"] == "/docs/manual.pdf"
+
+    def test_internal_pipeline_chunk_metadata_scores_against_gold(self):
+        """The internal pipeline copies sample metadata (incl. doc_id) onto
+        chunks; gold metrics must score those chunks correctly."""
+        from benchmark.dataset import assign_gold_doc_ids
+
+        samples = assign_gold_doc_ids(
+            [
+                {"question": "q", "ground_truth": "a", "context": "doc", "metadata": {}},
+            ]
+        )
+        gold = samples[0]["metadata"]["gold_doc_id"]
+        # Chunk metadata as produced by the internal pipeline (sample
+        # metadata copied onto the retrieved chunk).
+        chunk_metadata = [{"doc_id": gold, "chunk_index": 0}]
+
+        result = self._compute(gold, chunk_metadata)
+
+        assert result.per_sample[0]["hit@1"] == 1.0
+        assert result.metric_means["hit@10"] == 1.0
 
 
 def test_replace_blueprint_index_batches_above_chroma_max_batch_size(tmp_path, monkeypatch):

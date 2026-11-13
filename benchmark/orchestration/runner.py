@@ -334,11 +334,7 @@ def _run_single_benchmark_impl(
         ground_truths.append(sample["ground_truth"])
         all_contexts.append(context_texts)
         all_retrieved_metadata.append(retrieved_metadata)
-        gold_doc_ids.append(
-            sample.get("metadata", {}).get("gold_doc_id")
-            if config.retrieval_mode == "retrieval"
-            else None
-        )
+        gold_doc_ids.append(sample.get("metadata", {}).get("gold_doc_id"))
         all_sample_metadata.append(sample.get("metadata", {}) or {})
         all_adapter_diagnostics.append(adapter_diagnostics)
         gen_results.append(result)
@@ -416,6 +412,9 @@ def _run_single_benchmark_impl(
             all_retrieved_metadata,
             sample_metadata=all_sample_metadata,
             retrieved_contexts=all_contexts,
+            # Explicit cutoffs so hit@10 is actually reported (the function
+            # default only computes k=1,3,5).
+            k_values=[1, 3, 5, 10],
         )
         custom_result = CustomMetricsResult(
             metric_means=gold_result.metric_means,
@@ -685,6 +684,7 @@ def _with_gold_doc_retrieval_metrics(
         retrieved_metadata,
         sample_metadata=sample_metadata,
         retrieved_contexts=retrieved_contexts,
+        k_values=[1, 3, 5, 10],
     )
     metric_means = dict(custom_result.metric_means)
     metric_means.update(gold_result.metric_means)
