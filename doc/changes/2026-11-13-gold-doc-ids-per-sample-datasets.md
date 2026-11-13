@@ -120,13 +120,26 @@ prefers `metadata["doc_id"]` as indexed `source`.
   `custom_retrieval_metrics_mode: gold_doc`, run
   `results/run-gold-smoke`, re-executed after the canonical-ID fix):
   `ground_truth_doc_ids` populated 20/20; gold hit@1 = 0.85, hit@3 = 0.95,
-  hit@5 = 1.0, **hit@10 = 1.0** — in the range of the manual reconstruction
-  (91–97% top-10, `doc/enterprise-rag-techqa-refusal-analysis.md` §2.4), no
-  longer trivially 1.0 / k/10. A sanitized evidence file with the metric
-  means is checked in as `results/run-gold-smoke/gold_metrics_summary.json`;
-  heavy raw outputs (`configs/`) stay untracked. The run used the local
-  smoke vector store (`VECTORDB_DIR=.chroma-smoke`, machine-local, not
-  checked in).
+  hit@5 = 1.0, **hit@10 = 1.0** — no longer trivially 1.0 / k/10. A sanitized
+  evidence file with the metric means is checked in as
+  `results/run-gold-smoke/gold_metrics_summary.json`; heavy raw outputs
+  (`configs/`) stay untracked. The run used the local smoke vector store
+  (`VECTORDB_DIR=.chroma-smoke`, machine-local, not checked in).
+- Full-pipeline verification cell on the Spark machine
+  (`experiments/enterprise-rag-gold-run7-cell1.yaml` — run7 matrix reduced to
+  one config: recursive/512/128, hybrid α=0.5, top_k 10, 500 TechQA samples,
+  RAGAS off, run `~/source/Benchmarking-Framework/results/Enterprise-RAG/run7-cell1`,
+  2026-11-13): `ground_truth_doc_ids` populated **500/500**, gold hit@1 = 0.49,
+  hit@3 = 0.77, hit@5 = 0.84, **hit@10 = 0.90** (recall/coverage identical,
+  ndcg@10 ≈ 1.68 due to multiple relevant chunks of the same gold doc).
+  Interpretation: the trivially saturated heuristic values of run6
+  (hit@1 = hit@5 = 1.0, recall@k = k/10) are gone; real ranking quality is
+  now visible. hit@10 = 0.90 sits just below the 91–97% band of the manual
+  reconstruction (§2.4) — expected, since that reconstruction differed in
+  chunking (512/128 here) and gold semantics; the 50 misses are evenly
+  spread over the sample set (no systematic ID-mismatch cluster, which
+  would show as a contiguous block or mass skips). Remaining 13 matrix
+  cells of `experiments/enterprise-rag-gold-run7.yaml` are pending.
 
 ## Follow-ups
 
