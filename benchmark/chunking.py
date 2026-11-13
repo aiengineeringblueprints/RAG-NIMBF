@@ -33,6 +33,37 @@ STRATEGY_MAP = {
 }
 
 
+class SizeCappedChunker:
+    """Post-splits oversized chunks from splitters without a size guarantee.
+
+    ``SemanticChunker`` has no ``chunk_size`` parameter: when no breakpoint
+    falls between sentences, an entire document becomes one chunk. Embedding
+    providers reject such oversized inputs (Ollama resets the connection),
+    so every chunk larger than ``chunk_size`` is re-split with a recursive
+    splitter. Metadata (``doc_id``, ``gold_doc_id`` …) is preserved.
+    """
+
+    def __init__(self, inner, chunk_size: int, chunk_overlap: int):
+        self.inner = inner
+        self.chunk_size = int(chunk_size)
+        self.chunk_overlap = int(chunk_overlap)
+        self._fallback = RecursiveCharacterTextSplitter(
+            chunk_size=self.chunk_size, chunk_overlap=self.chunk_overlap
+        )
+
+    def split_documents(self, documents: list[Document]) -> list[Document]:
+        chunks = self.inner.split_documents(documents)
+        if not any(len(c.page_content) > self.chunk_size for c in chunks):
+            return chunks
+        result: list[Document] = []
+        for chunk in chunks:
+            if len(chunk.page_content) > self.chunk_size:
+                result.extend(self._fallback.split_documents([chunk]))
+            else:
+                result.append(chunk)
+        return result
+
+
 def get_chunker(strategy: str, chunk_size: int, chunk_overlap: int, **kwargs):
     if strategy == "paragraph":
         return ParagraphChunker()
@@ -47,10 +78,14 @@ def get_chunker(strategy: str, chunk_size: int, chunk_overlap: int, **kwargs):
             )
         breakpoint_type = kwargs.get("breakpoint_threshold_type", "percentile")
         breakpoint_amount = kwargs.get("breakpoint_threshold_amount", 95)
-        return SemanticChunker(
-            embeddings=embeddings,
-            breakpoint_threshold_type=breakpoint_type,
-            breakpoint_threshold_amount=breakpoint_amount,
+        return SizeCappedChunker(
+            SemanticChunker(
+                embeddings=embeddings,
+                breakpoint_threshold_type=breakpoint_type,
+                breakpoint_threshold_amount=breakpoint_amount,
+            ),
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
         )
 
     splitter_cls = STRATEGY_MAP.get(strategy)

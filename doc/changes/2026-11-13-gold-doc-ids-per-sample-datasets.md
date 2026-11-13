@@ -143,6 +143,14 @@ prefers `metadata["doc_id"]` as indexed `source`.
 
 ## Follow-ups
 
+- `SemanticChunker` has no `chunk_size` parameter and can emit a whole
+  document as one chunk; embedding providers reject such inputs (Ollama
+  reset the connection → the `semantic_bppercentile95` cells of run7
+  aborted). Fixed in `benchmark/chunking.py` with `SizeCappedChunker`:
+  chunks larger than the configured `chunk_size` are re-split with a
+  recursive splitter (metadata preserved). Commit together with the run7
+  resume.
+
 - Gold `ndcg@k` can exceed 1.0 when multiple retrieved chunks of the same gold
   document each count as relevant; consider deduplicating retrieved doc IDs
   before the DCG computation.

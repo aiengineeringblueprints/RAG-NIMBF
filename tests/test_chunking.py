@@ -59,7 +59,7 @@ class TestSemanticChunker:
                 breakpoint_threshold_type="percentile",
                 breakpoint_threshold_amount=95,
             )
-            assert chunker is mock_instance
+            assert chunker.inner is mock_instance
 
     def test_semantic_without_embeddings_raises(self):
         with pytest.raises(ValueError, match="embeddings"):
@@ -84,6 +84,43 @@ class TestSemanticChunker:
                 breakpoint_threshold_type="standard_deviation",
                 breakpoint_threshold_amount=80,
             )
+
+
+class TestSizeCappedChunker:
+    """SemanticChunker has no chunk_size guarantee: an oversized chunk must be
+    re-split (embedding providers reject oversized inputs — issue: Ollama
+    connection reset during the run7 semantic cells)."""
+
+    def _chunker(self, inner):
+        from benchmark.chunking import SizeCappedChunker
+
+        return SizeCappedChunker(inner, chunk_size=100, chunk_overlap=10)
+
+    def test_oversized_chunk_is_resplit(self):
+        inner = MagicMock()
+        inner.split_documents.return_value = [
+            Document(page_content="x" * 250, metadata={"doc_id": "big"}),
+            Document(page_content="small", metadata={"doc_id": "ok"}),
+        ]
+
+        chunks = self._chunker(inner).split_documents([])
+
+        assert all(len(c.page_content) <= 100 for c in chunks)
+        # Metadata survives the re-split.
+        assert {c.metadata["doc_id"] for c in chunks} == {"big", "ok"}
+        assert sum(len(c.page_content) for c in chunks) >= 250
+
+    def test_chunks_within_limit_pass_through(self):
+        inner = MagicMock()
+        inner.split_documents.return_value = [
+            Document(page_content="x" * 50),
+        ]
+
+        chunks = self._chunker(inner).split_documents([])
+
+        assert len(chunks) == 1
+        assert chunks[0].page_content == "x" * 50
+        inner.split_documents.assert_called_once()
 
 
 class TestChunkDocuments:
