@@ -45,8 +45,12 @@ class SizeCappedChunker:
 
     def __init__(self, inner, chunk_size: int, chunk_overlap: int):
         self.inner = inner
-        self.chunk_size = int(chunk_size)
-        self.chunk_overlap = int(chunk_overlap)
+        # Semantic strategies carry chunk_size=None (they are breakpoint
+        # controlled, matrix.py maps them to (None, None)); components.py
+        # passes that through as 0. Use a conservative char cap that stays
+        # within embedding-provider input limits (Ollama rejects much less).
+        self.chunk_size = int(chunk_size) if chunk_size and chunk_size > 0 else 4000
+        self.chunk_overlap = max(int(chunk_overlap) if chunk_overlap else 0, 0)
         self._fallback = RecursiveCharacterTextSplitter(
             chunk_size=self.chunk_size, chunk_overlap=self.chunk_overlap
         )

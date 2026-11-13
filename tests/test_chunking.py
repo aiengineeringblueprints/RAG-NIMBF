@@ -122,6 +122,14 @@ class TestSizeCappedChunker:
         assert chunks[0].page_content == "x" * 50
         inner.split_documents.assert_called_once()
 
+    def test_zero_chunk_size_gets_default_cap(self):
+        """Semantic strategies pass chunk_size=0 (breakpoint-controlled); the
+        cap must fall back to a safe default instead of crashing."""
+        from benchmark.chunking import SizeCappedChunker
+
+        chunker = SizeCappedChunker(MagicMock(), chunk_size=0, chunk_overlap=0)
+        assert chunker.chunk_size == 4000
+
 
 class TestChunkDocuments:
     def test_basic_chunking(self):
