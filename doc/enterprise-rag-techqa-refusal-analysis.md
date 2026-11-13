@@ -177,10 +177,10 @@ Ordered by value per effort.
 1. **Re-run the failed semantic k10 config** (section 4) once run6 has
    finished. ~3.5 h.
 2. **Gold metrics for RAGBench** (framework):
-   - Set `gold_doc_id` for datasets without a shared corpus as well, matching the
-     adapter's source IDs (`dataset-doc-{i}`, or better a stable ID used by both
-     the framework and the adapter). This fills `ground_truth_doc_ids` and enables
-     `custom_retrieval_metrics_mode: gold_doc`.
+   - ~~Set `gold_doc_id` for datasets without a shared corpus as well~~ — done
+     (issue #16, `doc/changes/2026-11-13-gold-doc-ids-per-sample-datasets.md`):
+     per-sample datasets now carry `gold_doc_id`/`doc_id` matching the adapter's
+     indexed source IDs, and gold `hit@k` on TechQA is no longer saturated.
    - New metric `relevant_sentence_recall`: share of RAGBench
      `all_relevant_sentence_keys` sentences contained in the retrieved contexts.
      Replaces the heuristic `hit@k` on TechQA and measures passage-level

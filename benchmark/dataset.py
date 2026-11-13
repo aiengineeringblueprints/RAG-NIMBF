@@ -92,6 +92,27 @@ def normalize_samples(
     ]
 
 
+def assign_gold_doc_ids(samples: list[dict]) -> list[dict]:
+    """Stamp per-sample gold document IDs onto each sample's metadata.
+
+    Datasets without a shared corpus index each sample's own context as one
+    document. Both the internal pipeline and external adapters (e.g. the
+    Enterprise RAG Blueprint) enumerate ``data`` in order and fall back to a
+    ``dataset-doc-{index}`` source ID, unless the sample metadata already
+    carries a ``doc_id`` or ``source``. Recording the same ID as
+    ``gold_doc_id`` makes retrieval scoreable against the real gold document.
+    """
+    for index, sample in enumerate(samples):
+        metadata = sample.setdefault("metadata", {})
+        # Same precedence as the Blueprint adapter's indexing
+        # (metadata["source"] wins over metadata["doc_id"]).
+        existing = metadata.get("source") or metadata.get("doc_id")
+        doc_id = str(existing) if existing else f"dataset-doc-{index}"
+        metadata["doc_id"] = doc_id
+        metadata["gold_doc_id"] = doc_id
+    return samples
+
+
 def load_benchmark_data(
     dataset_name: str = "t2-ragbench",
     subset: str | None = None,
@@ -110,12 +131,15 @@ def load_benchmark_data(
         # normalize_sample from this module, so a top-level import cycles.
         from benchmark.ocr_datasets import load_ocr_gt_dataset
 
-        return load_ocr_gt_dataset(
+        samples_ocr = load_ocr_gt_dataset(
             dataset_name, dataset_path=dataset_path, sample_size=sample_size
         )
+        if not adapter.has_shared_corpus:
+            assign_gold_doc_ids(samples_ocr)
+        return samples_ocr
 
     if dataset_name in ("jsonl", "jsonl-shared", "csv"):
-        return _load_local_dataset(
+        samples_local = _load_local_dataset(
             dataset_name="jsonl" if dataset_name == "jsonl-shared" else dataset_name,
             dataset_path=dataset_path,
             sample_size=sample_size,
@@ -128,6 +152,9 @@ def load_benchmark_data(
             metadata_field=metadata_field
             or os.getenv("DATASET_METADATA_FIELD", "metadata"),
         )
+        if not adapter.has_shared_corpus:
+            assign_gold_doc_ids(samples_local)
+        return samples_local
 
     label = subset or "default"
     console.print(f"[bold blue]Loading {adapter.hf_id} ({label})...[/bold blue]")
@@ -175,6 +202,9 @@ def load_benchmark_data(
                 source=f"{dataset_name}:{split}[{len(samples)}]",
             )
         )
+
+    if not adapter.has_shared_corpus:
+        assign_gold_doc_ids(samples)
 
     console.print(
         f"[green]Loaded {len(samples)} samples from {adapter.hf_id} "

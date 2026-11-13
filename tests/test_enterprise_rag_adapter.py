@@ -171,6 +171,30 @@ def test_answer_raises_if_not_prepared(fake_blueprint):
         adapter.answer({"question": "x"}, MagicMock())
 
 
+def test_documents_from_dataset_uses_stamped_gold_doc_ids_as_source():
+    """Framework gold IDs (issue 16) must match the source IDs the Blueprint
+    adapter writes when indexing per-sample-context datasets."""
+    from examples.enterprise_rag_plugin.adapter import EnterpriseRagAdapter
+
+    data = [
+        {
+            "context": "doc zero",
+            "metadata": {"doc_id": "dataset-doc-0", "gold_doc_id": "dataset-doc-0"},
+        },
+        {
+            "context": "doc one",
+            "metadata": {"doc_id": "dataset-doc-1", "gold_doc_id": "dataset-doc-1"},
+        },
+    ]
+
+    docs = EnterpriseRagAdapter._documents_from_dataset(data)
+
+    assert [d.metadata["source"] for d in docs] == [
+        "dataset-doc-0",
+        "dataset-doc-1",
+    ]
+
+
 def test_replace_blueprint_index_batches_above_chroma_max_batch_size(tmp_path, monkeypatch):
     """A corpus larger than Chroma's max batch size must still index fully."""
     import chromadb

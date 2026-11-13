@@ -334,11 +334,7 @@ def _run_single_benchmark_impl(
         ground_truths.append(sample["ground_truth"])
         all_contexts.append(context_texts)
         all_retrieved_metadata.append(retrieved_metadata)
-        gold_doc_ids.append(
-            sample.get("metadata", {}).get("gold_doc_id")
-            if config.retrieval_mode == "retrieval"
-            else None
-        )
+        gold_doc_ids.append(sample.get("metadata", {}).get("gold_doc_id"))
         all_sample_metadata.append(sample.get("metadata", {}) or {})
         all_adapter_diagnostics.append(adapter_diagnostics)
         gen_results.append(result)

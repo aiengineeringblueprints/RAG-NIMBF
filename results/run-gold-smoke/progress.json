@@ -1,0 +1,10 @@
+{
+  "configs": {
+    "recursive_cs512_co128_nomic-embed-text:latest_qwen3.8-27b_concise_k10_hybrid-a0.5_enterprise_rag_mcp_managed-4bdca7112d": {
+      "status": "completed",
+      "started_at": "2026-11-13T07:48:19.563616+00:00",
+      "completed_at": "2026-11-13T07:51:41.599323+00:00",
+      "result_path": "results/run-gold-smoke/configs/recursive_cs512_co128_nomic-embed-text_latest_qwen3.8-27b_concise_k10_hybrid-a0.5_enterprise_rag_mcp_managed-4bdca7112d.json"
+    }
+  }
+}
