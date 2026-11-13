@@ -143,8 +143,8 @@ def test_answer_normalizes_tuple_output(fake_blueprint):
         "Paris is the capital of France.",
         "France is in Europe.",
     ]
-    assert {"source": "wiki_france"} in out.metadata
-    assert {"source": "wiki_eu"} in out.metadata
+    assert {"source": "wiki_france", "doc_id": "wiki_france"} in out.metadata
+    assert {"source": "wiki_eu", "doc_id": "wiki_eu"} in out.metadata
     assert out.total_seconds >= 0
 
 
@@ -193,6 +193,117 @@ def test_documents_from_dataset_uses_stamped_gold_doc_ids_as_source():
         "dataset-doc-0",
         "dataset-doc-1",
     ]
+    assert [d.metadata["doc_id"] for d in docs] == [
+        "dataset-doc-0",
+        "dataset-doc-1",
+    ]
+
+
+# ── End-to-end contract: adapter output → gold retrieval metrics ────
+
+
+class TestGoldDocIdEndToEnd:
+    """Adapter output metadata must resolve to the same document IDs the
+    dataset stamped as gold, across every adapter path (issue #16 review)."""
+
+    @staticmethod
+    def _compute(gold, retrieved_metadata):
+        from benchmark.gold_retrieval_metrics import (
+            compute_gold_doc_retrieval_metrics,
+        )
+
+        return compute_gold_doc_retrieval_metrics(
+            [gold],
+            [retrieved_metadata],
+            k_values=[1, 3, 5, 10],
+        )
+
+    def test_blueprint_string_sources_score_against_gold(self, fake_blueprint):
+        """String "src->content" sources carry a doc_id the gold metric
+        recognizes; a correct hit is no longer scored as a miss."""
+        from examples.enterprise_rag_plugin.adapter import EnterpriseRagAdapter
+
+        fake_blueprint["rag_chain"].return_value = (
+            "Paris is the capital of France.",
+            [
+                "dataset-doc-0->Paris is the capital of France.",
+                "dataset-doc-1->France is in Europe.",
+            ],
+        )
+        adapter = EnterpriseRagAdapter(MagicMock())
+        adapter._replace_blueprint_index = MagicMock()
+        adapter.prepare(MagicMock(), data=[])
+        out = adapter.answer(
+            {"question": "What is the capital of France?"}, MagicMock()
+        )
+
+        result = self._compute("dataset-doc-0", out.metadata)
+
+        assert result.skipped_samples == 0
+        assert result.per_sample[0]["hit@1"] == 1.0
+
+    def test_blueprint_indexing_and_gold_ids_stay_identical(self):
+        """Indexed source IDs equal the IDs assign_gold_doc_ids stamped,
+        including path-like and dotted values."""
+        from benchmark.dataset import assign_gold_doc_ids
+        from examples.enterprise_rag_plugin.adapter import EnterpriseRagAdapter
+
+        data = [
+            {"context": "a", "metadata": {"source": "/docs/manual.pdf"}},
+            {"context": "b", "metadata": {}},
+            {"context": "c", "metadata": {"source": ""}},
+            {"context": "d", "metadata": {"source": None, "doc_id": "dotted.id"}},
+        ]
+        data = assign_gold_doc_ids(data)
+        docs = EnterpriseRagAdapter._documents_from_dataset(data)
+
+        assert [d.metadata["source"] for d in docs] == [
+            d["metadata"]["gold_doc_id"] for d in data
+        ]
+        # Path-like sources reduce to their stem; empty/None fall back to
+        # dataset-doc-{index} consistently on both sides.
+        assert docs[0].metadata["doc_id"] == "manual"
+        assert docs[1].metadata["doc_id"] == "dataset-doc-1"
+        assert docs[2].metadata["doc_id"] == "dataset-doc-2"
+        assert docs[3].metadata["doc_id"] == "dotted"
+
+    def test_mcp_path_like_source_matches_gold(self):
+        """MCP retrieval metadata canonicalizes path-like sources the same way
+        the dataset side does."""
+        from benchmark.adapters.mcp import _as_metadata
+
+        metadata = _as_metadata(
+            [
+                {"source": "/docs/manual.pdf", "text": "irrelevant"},
+            ],
+            1,
+            "query_documents",
+            "stdio",
+        )
+
+        assert metadata[0]["doc_id"] == "manual"
+        result = self._compute("manual", metadata)
+        assert result.per_sample[0]["hit@1"] == 1.0
+
+    def test_internal_pipeline_chunk_metadata_scores_against_gold(self):
+        """The internal pipeline copies sample metadata (incl. doc_id) onto
+        chunks; gold metrics must score those chunks correctly."""
+        from benchmark.dataset import assign_gold_doc_ids
+
+        samples = assign_gold_doc_ids(
+            [
+                {"question": "q", "ground_truth": "a", "context": "doc", "metadata": {}},
+            ]
+        )
+        gold = samples[0]["metadata"]["gold_doc_id"]
+        # Chunk metadata as produced by the internal pipeline (sample
+        # metadata copied onto the retrieved chunk).
+        chunk_metadata = [{"doc_id": gold, "chunk_index": 0}]
+
+        result = self._compute(gold, chunk_metadata)
+
+        assert result.per_sample[0]["hit@1"] == 1.0
+        assert result.metric_means["hit@10"] == 1.0
 
 
 def test_replace_blueprint_index_batches_above_chroma_max_batch_size(tmp_path, monkeypatch):

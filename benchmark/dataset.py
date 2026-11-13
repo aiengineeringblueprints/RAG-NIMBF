@@ -11,6 +11,7 @@ from datasets import load_dataset
 from rich.console import Console
 
 from benchmark.dataset_adapters import OCR_GT_DATASET_NAMES, resolve_adapter
+from benchmark.doc_ids import resolve_dataset_doc_id
 
 console = Console()
 
@@ -104,12 +105,23 @@ def assign_gold_doc_ids(samples: list[dict]) -> list[dict]:
     """
     for index, sample in enumerate(samples):
         metadata = sample.setdefault("metadata", {})
-        # Same precedence as the Blueprint adapter's indexing
-        # (metadata["source"] wins over metadata["doc_id"]).
-        existing = metadata.get("source") or metadata.get("doc_id")
-        doc_id = str(existing) if existing else f"dataset-doc-{index}"
+        doc_id = resolve_dataset_doc_id(metadata, index)
         metadata["doc_id"] = doc_id
         metadata["gold_doc_id"] = doc_id
+    return samples
+
+
+def _finalize_per_sample_dataset(
+    samples: list[dict], adapter: Any
+) -> list[dict]:
+    """Shared finalisation for all ``load_benchmark_data`` exits.
+
+    Datasets without a shared corpus get their gold document IDs stamped
+    here, so a future loader path cannot forget the guard. Shared-corpus
+    datasets are returned untouched.
+    """
+    if not adapter.has_shared_corpus:
+        assign_gold_doc_ids(samples)
     return samples
 
 
@@ -134,8 +146,7 @@ def load_benchmark_data(
         samples_ocr = load_ocr_gt_dataset(
             dataset_name, dataset_path=dataset_path, sample_size=sample_size
         )
-        if not adapter.has_shared_corpus:
-            assign_gold_doc_ids(samples_ocr)
+        _finalize_per_sample_dataset(samples_ocr, adapter)
         return samples_ocr
 
     if dataset_name in ("jsonl", "jsonl-shared", "csv"):
@@ -152,8 +163,7 @@ def load_benchmark_data(
             metadata_field=metadata_field
             or os.getenv("DATASET_METADATA_FIELD", "metadata"),
         )
-        if not adapter.has_shared_corpus:
-            assign_gold_doc_ids(samples_local)
+        _finalize_per_sample_dataset(samples_local, adapter)
         return samples_local
 
     label = subset or "default"
@@ -203,8 +213,7 @@ def load_benchmark_data(
             )
         )
 
-    if not adapter.has_shared_corpus:
-        assign_gold_doc_ids(samples)
+    _finalize_per_sample_dataset(samples, adapter)
 
     console.print(
         f"[green]Loaded {len(samples)} samples from {adapter.hf_id} "

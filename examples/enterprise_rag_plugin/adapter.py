@@ -37,6 +37,7 @@ from langchain_core.documents import Document
 from benchmark.adapters import register_rag_adapter
 from benchmark.adapters.base import RagSystemOutput
 from benchmark.adapters.components import ComponentBundle
+from benchmark.doc_ids import canonical_doc_id, resolve_dataset_doc_id
 
 log = logging.getLogger(__name__)
 
@@ -61,6 +62,19 @@ def ensure_blueprint_importable(config: Any) -> None:
     for entry in (root / "chain", root):
         if str(entry) not in sys.path:
             sys.path.insert(0, str(entry))
+
+
+def _retrieved_metadata(entry: dict[str, Any]) -> dict[str, Any]:
+    """Normalise a retrieved chunk's metadata for gold-retrieval scoring.
+
+    Adds a canonical ``doc_id`` (resolved from ``source`` / ``doc_id``) so
+    ``compute_gold_doc_retrieval_metrics`` can match the chunk against the
+    sample's ``gold_doc_id`` regardless of how the Blueprint reports sources.
+    """
+    doc_id = canonical_doc_id(entry.get("source") or entry.get("doc_id"))
+    if doc_id:
+        entry.setdefault("doc_id", doc_id)
+    return entry
 
 
 class EnterpriseRagAdapter:
@@ -137,12 +151,14 @@ class EnterpriseRagAdapter:
                 continue
 
             raw_metadata = item.get("metadata") or {}
+            # Canonical ID shared with gold stamping (assign_gold_doc_ids):
+            # source wins over doc_id, path-like values reduce to their stem,
+            # missing/empty values fall back to dataset-doc-{index}.
+            doc_id = resolve_dataset_doc_id(raw_metadata, index)
             metadata = {
                 **raw_metadata,
-                "source": raw_metadata.get(
-                    "source",
-                    raw_metadata.get("doc_id", f"dataset-doc-{index}"),
-                ),
+                "doc_id": doc_id,
+                "source": doc_id,
             }
             documents.append(
                 Document(
@@ -202,14 +218,16 @@ class EnterpriseRagAdapter:
                 if isinstance(entry, str) and "->" in entry:
                     src, _, content = entry.partition("->")
                     contexts.append(content)
-                    metadata.append({"source": src})
+                    metadata.append(_retrieved_metadata({"source": src}))
                 elif isinstance(entry, str):
                     contexts.append(entry)
-                    metadata.append({"source": "unknown"})
+                    metadata.append(_retrieved_metadata({"source": "unknown"}))
                 else:
                     doc = entry
                     contexts.append(getattr(doc, "page_content", str(doc)))
-                    metadata.append(getattr(doc, "metadata", {}) or {})
+                    metadata.append(
+                        _retrieved_metadata(getattr(doc, "metadata", {}) or {})
+                    )
 
         return RagSystemOutput(
             answer=str(answer_str or ""),

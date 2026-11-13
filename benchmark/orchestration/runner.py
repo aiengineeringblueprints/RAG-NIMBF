@@ -412,6 +412,9 @@ def _run_single_benchmark_impl(
             all_retrieved_metadata,
             sample_metadata=all_sample_metadata,
             retrieved_contexts=all_contexts,
+            # Explicit cutoffs so hit@10 is actually reported (the function
+            # default only computes k=1,3,5).
+            k_values=[1, 3, 5, 10],
         )
         custom_result = CustomMetricsResult(
             metric_means=gold_result.metric_means,
@@ -681,6 +684,7 @@ def _with_gold_doc_retrieval_metrics(
         retrieved_metadata,
         sample_metadata=sample_metadata,
         retrieved_contexts=retrieved_contexts,
+        k_values=[1, 3, 5, 10],
     )
     metric_means = dict(custom_result.metric_means)
     metric_means.update(gold_result.metric_means)

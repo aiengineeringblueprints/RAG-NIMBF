@@ -12,11 +12,11 @@ from concurrent.futures import TimeoutError as FutureTimeoutError
 from contextlib import AsyncExitStack
 from dataclasses import dataclass, field
 from datetime import timedelta
-from pathlib import Path
 from typing import Any
 
 from benchmark.adapters.base import AdapterCapabilities, RagSystemOutput
 from benchmark.costing import estimate_cost_usd
+from benchmark.doc_ids import canonical_doc_id
 from benchmark.generation import extract_concise_fallback, generate_answer, get_llm
 from benchmark.mcp_host import percentile as _percentile
 from benchmark.prompt_templates import get_template
@@ -114,7 +114,7 @@ def _as_metadata(
             )
             source = item.get("source") or item.get("source_id") or item.get("doc_id")
             if source:
-                source_id = Path(str(source)).stem
+                source_id = canonical_doc_id(source)
                 entry.setdefault("source_id", source_id)
                 entry.setdefault("doc_id", source_id)
         metadata.append(entry)
