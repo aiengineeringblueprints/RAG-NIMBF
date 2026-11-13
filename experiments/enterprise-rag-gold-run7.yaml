@@ -6,7 +6,8 @@
 # Run with:
 #   source .venv/bin/activate
 #   export RAG_ADAPTER_MODULES=examples.enterprise_rag_plugin.mcp_adapter
-#   export ENTERPRISE_RAG_BLUEPRINT_PATH=/home/niclas/source/Enterprise_RAG_Blueprint
+#   export ENTERPRISE_RAG_BLUEPRINT_PATH=/path/to/Enterprise_RAG_Blueprint
+#   (machine-local paths belong in .env, not in this manifest)
 #   python -m benchmark.worker run experiments/enterprise-rag-gold-run7.yaml \
 #     --run-dir results/Enterprise-RAG/run7 --no-resume
 experiment_name: enterprise-rag-blueprint-rag-gold-run7

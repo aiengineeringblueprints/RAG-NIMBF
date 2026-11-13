@@ -37,7 +37,11 @@ from langchain_core.documents import Document
 from benchmark.adapters import register_rag_adapter
 from benchmark.adapters.base import RagSystemOutput
 from benchmark.adapters.components import ComponentBundle
-from benchmark.doc_ids import canonical_doc_id, resolve_dataset_doc_id
+from benchmark.doc_ids import (
+    canonical_doc_id,
+    resolve_dataset_doc_id,
+    resolve_raw_doc_id,
+)
 
 log = logging.getLogger(__name__)
 
@@ -67,13 +71,13 @@ def ensure_blueprint_importable(config: Any) -> None:
 def _retrieved_metadata(entry: dict[str, Any]) -> dict[str, Any]:
     """Normalise a retrieved chunk's metadata for gold-retrieval scoring.
 
-    Adds a canonical ``doc_id`` (resolved from ``source`` / ``doc_id``) so
-    ``compute_gold_doc_retrieval_metrics`` can match the chunk against the
-    sample's ``gold_doc_id`` regardless of how the Blueprint reports sources.
+    Assigns the canonical ``doc_id`` (resolved from ``source`` /
+    ``doc_id``) unconditionally, so a stale, non-canonical or contradictory
+    ``doc_id`` returned by the Blueprint cannot shadow the canonical one.
     """
     doc_id = canonical_doc_id(entry.get("source") or entry.get("doc_id"))
     if doc_id:
-        entry.setdefault("doc_id", doc_id)
+        entry["doc_id"] = doc_id
     return entry
 
 
@@ -140,7 +144,9 @@ class EnterpriseRagAdapter:
         replace_blueprint_index(self.bundle, config, data=data, corpus=corpus)
 
     @staticmethod
-    def _documents_from_dataset(items: list[dict]) -> list[Document]:
+    def _documents_from_dataset(
+        items: list[dict], *, per_sample_context: bool = True
+    ) -> list[Document]:
         documents: list[Document] = []
         for index, item in enumerate(items):
             context = item.get("context", "")
@@ -151,10 +157,18 @@ class EnterpriseRagAdapter:
                 continue
 
             raw_metadata = item.get("metadata") or {}
-            # Canonical ID shared with gold stamping (assign_gold_doc_ids):
-            # source wins over doc_id, path-like values reduce to their stem,
-            # missing/empty values fall back to dataset-doc-{index}.
-            doc_id = resolve_dataset_doc_id(raw_metadata, index)
+            if per_sample_context:
+                # Canonical ID shared with gold stamping
+                # (assign_gold_doc_ids): source wins over doc_id, raw file
+                # sources are canonicalised, missing/empty values fall back
+                # to dataset-doc-{index}.
+                doc_id = resolve_dataset_doc_id(raw_metadata, index)
+            else:
+                # Shared-corpus IDs come from the dataset loaders or the
+                # user's own manifests — pass them through unchanged
+                # (acceptance criterion: shared-corpus datasets keep their
+                # current IDs).
+                doc_id = resolve_raw_doc_id(raw_metadata, index)
             metadata = {
                 **raw_metadata,
                 "doc_id": doc_id,
@@ -266,7 +280,11 @@ def replace_blueprint_index(
         )
 
     source_docs = corpus if corpus else data
-    documents = EnterpriseRagAdapter._documents_from_dataset(source_docs)
+    # corpus entries carry shared-corpus IDs (loaders/manifest) that must be
+    # preserved verbatim; per-sample data goes through canonicalisation.
+    documents = EnterpriseRagAdapter._documents_from_dataset(
+        source_docs, per_sample_context=not corpus
+    )
     chunks = chunker.split_documents(documents)
     chunks = [chunk for chunk in chunks if chunk.page_content.strip()] or documents
     for index, chunk in enumerate(chunks):

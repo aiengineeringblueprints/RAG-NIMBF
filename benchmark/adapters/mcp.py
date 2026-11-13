@@ -114,9 +114,11 @@ def _as_metadata(
             )
             source = item.get("source") or item.get("source_id") or item.get("doc_id")
             if source:
+                # Assign (not setdefault) so a stale, non-canonical doc_id
+                # from the tool payload cannot shadow the canonical ID.
                 source_id = canonical_doc_id(source)
-                entry.setdefault("source_id", source_id)
-                entry.setdefault("doc_id", source_id)
+                entry["source_id"] = source_id
+                entry["doc_id"] = source_id
         metadata.append(entry)
     return metadata
 
