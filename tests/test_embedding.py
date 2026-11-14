@@ -31,6 +31,77 @@ class TestGetEmbeddingModel:
         assert model.client_kwargs == {"headers": {"Authorization": "Bearer mytoken"}}
 
 
+class TestResilientOllamaEmbeddings:
+    """Guards against Ollama embedding-runner crashes (empty/oversized input)."""
+
+    def _model(self):
+        return get_embedding_model("test-model", "http://localhost:11434")
+
+    def test_sanitize_replaces_empty_string(self):
+        assert self._model()._sanitize("") == " "
+
+    def test_sanitize_replaces_whitespace_only(self):
+        assert self._model()._sanitize("  \n\t ") == " "
+
+    def test_sanitize_truncates_oversized_text(self):
+        from benchmark.embedding import _MAX_TEXT_CHARS
+
+        assert len(self._model()._sanitize("a" * (_MAX_TEXT_CHARS + 100))) == _MAX_TEXT_CHARS
+
+    def test_sanitize_keeps_normal_text(self):
+        assert self._model()._sanitize("hello world") == "hello world"
+
+    @patch.object(OllamaEmbeddings, "embed_documents")
+    def test_embed_documents_sanitizes_batch(self, mock_embed):
+        mock_embed.return_value = [[0.1], [0.2]]
+        result = self._model().embed_documents(["ok text", "", "  "])
+        assert result == [[0.1], [0.2]]
+        assert mock_embed.call_args[0][1] == ["ok text", " ", " "]
+
+    @patch.object(OllamaEmbeddings, "embed_query")
+    def test_embed_query_sanitizes(self, mock_embed):
+        mock_embed.return_value = [0.1]
+        self._model().embed_query("")
+        assert mock_embed.call_args[0][1] == " "
+
+    @patch("time.sleep")
+    @patch.object(OllamaEmbeddings, "embed_documents")
+    def test_embed_documents_retries_on_connection_reset(self, mock_embed, mock_sleep):
+        import ollama
+
+        mock_embed.side_effect = [
+            ollama.ResponseError(
+                'Post "http://127.0.0.1:45887/tokenize": read: connection reset by peer',
+                status_code=400,
+            ),
+            [[0.1]],
+        ]
+        result = self._model().embed_documents(["text"])
+        assert result == [[0.1]]
+        assert mock_embed.call_count == 2
+
+    @patch("time.sleep")
+    @patch.object(OllamaEmbeddings, "embed_documents")
+    def test_embed_documents_raises_after_max_retries(self, mock_embed, mock_sleep):
+        import httpx
+        import ollama
+
+        mock_embed.side_effect = ollama.ResponseError("boom", status_code=400)
+        with pytest.raises(ollama.ResponseError):
+            self._model().embed_documents(["text"])
+        from benchmark.embedding import _EMBED_RETRIES
+
+        assert mock_embed.call_count == _EMBED_RETRIES
+
+    @patch("time.sleep")
+    @patch.object(OllamaEmbeddings, "embed_documents")
+    def test_embed_documents_retries_on_httpx_error(self, mock_embed, mock_sleep):
+        import httpx
+
+        mock_embed.side_effect = [httpx.RemoteProtocolError("peer closed"), [[0.1]]]
+        assert self._model().embed_documents(["text"]) == [[0.1]]
+
+
 class TestGetEmbeddingModelHuggingFace:
     @patch("langchain_huggingface.HuggingFaceEmbeddings")
     def test_returns_hf_embeddings(self, mock_hf_cls):
