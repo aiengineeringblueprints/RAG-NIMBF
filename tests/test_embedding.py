@@ -4,6 +4,7 @@ import asyncio
 import httpx
 import ollama
 import pytest
+from pathlib import Path
 from unittest.mock import patch, MagicMock
 
 from langchain_ollama import OllamaEmbeddings
@@ -45,6 +46,48 @@ class TestGetEmbeddingModel:
         restored = pickle.loads(pickle.dumps(model))
         assert restored.model == model.model
         assert type(restored) is type(model)
+        # The rebuild path re-runs the validators, so the ollama clients
+        # exist after loading.
+        assert hasattr(restored, "_client")
+        assert hasattr(restored, "_async_client")
+
+    @patch.object(OllamaEmbeddings, "embed_query")
+    def test_unpickled_instance_can_embed(self, mock_embed):
+        import pickle
+
+        mock_embed.return_value = [0.1, 0.2]
+        model = get_embedding_model("m", "http://localhost:11434")
+        restored = pickle.loads(pickle.dumps(model))
+        assert restored.embed_query("") == [0.1, 0.2]
+        # Sanitization still applies after the round trip.
+        assert mock_embed.call_args.args[1] == "empty"
+
+    def test_unpickle_works_in_fresh_process(self, tmp_path):
+        import pickle
+        import subprocess
+        import sys
+
+        model = get_embedding_model("m", "http://localhost:11434")
+        path = tmp_path / "model.pkl"
+        with open(path, "wb") as fh:
+            pickle.dump(model, fh)
+
+        repo_root = Path(__file__).resolve().parents[1]
+        code = (
+            "import pickle, sys\n"
+            "m = pickle.load(open(sys.argv[1], 'rb'))\n"
+            "assert hasattr(m, '_client'), 'no _client after load'\n"
+            "assert m.model == 'm'\n"
+            "print('ok')\n"
+        )
+        result = subprocess.run(
+            [sys.executable, "-c", code, str(path)],
+            capture_output=True,
+            text=True,
+            cwd=repo_root,
+        )
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == "ok"
 
 
 class TestResilientOllamaEmbeddings:

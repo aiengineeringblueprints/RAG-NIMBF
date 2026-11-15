@@ -37,6 +37,17 @@ _EMBED_BATCH_SIZE = 64
 T = TypeVar("T")
 
 
+def _rebuild_resilient_ollama(fields: dict) -> Embeddings:
+    """Rebuild a ``ResilientOllamaEmbeddings`` from pickled fields.
+
+    Going through the factory re-runs the pydantic model validators, so the
+    ollama httpx clients are re-created after unpickling — and the class is
+    registered in this module even in a fresh process that never called
+    ``get_embedding_model()``.
+    """
+    return _ollama_embeddings_class()(**fields)
+
+
 def _max_text_chars() -> int:
     """Return the character cap for Ollama embedding inputs."""
     raw = os.getenv("EMBEDDING_MAX_TEXT_CHARS")
@@ -80,18 +91,12 @@ def _ollama_embeddings_class() -> type:
         Subclassing keeps ``isinstance`` checks elsewhere intact.
         """
 
-        def __getstate__(self) -> dict:
-            # Drop the cached ollama httpx clients: they hold thread locks and
-            # are lazily re-created after unpickling.
-            state = super().__getstate__()
-            private = state.get("__pydantic_private__")
-            if private:
-                state["__pydantic_private__"] = {
-                    key: value
-                    for key, value in private.items()
-                    if key not in ("_client", "_async_client")
-                }
-            return state
+        def __reduce__(self):
+            # Rebuild via the module-level factory: re-running the model
+            # validators re-creates the ollama httpx clients (which hold
+            # unpicklable thread locks), and a fresh worker process can
+            # resolve the class because the factory registers it on import.
+            return (_rebuild_resilient_ollama, (self.model_dump(),))
 
         @staticmethod
         def _sanitize(text: str, limit: int | None = None) -> str:
@@ -222,12 +227,6 @@ def _ollama_embeddings_class() -> type:
                 lambda: base_cls.aembed_query(self, self._sanitize(text))
             )
 
-    # Make the class picklable: pickle locates classes via
-    # (module, qualname), which would otherwise resolve to
-    # '_ollama_embeddings_class.<locals>.ResilientOllamaEmbeddings'.
-    ResilientOllamaEmbeddings.__qualname__ = "ResilientOllamaEmbeddings"
-    ResilientOllamaEmbeddings.__module__ = __name__
-    globals()["ResilientOllamaEmbeddings"] = ResilientOllamaEmbeddings
     return ResilientOllamaEmbeddings
 
 

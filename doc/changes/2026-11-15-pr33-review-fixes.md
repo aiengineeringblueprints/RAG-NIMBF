@@ -83,11 +83,16 @@ semantics, so no further change was needed.
 
 ## Round 2 — follow-up review of 67fc90cb
 
-- **Item 8 (picklability)**: the class is now registered as a module
-  attribute with a cleaned-up qualname/module, and `__getstate__` drops the
-  cached ollama httpx clients (`_client`/`_async_client`) that hold thread
-  locks (they are lazily re-created after unpickling). Test
-  `test_instance_is_picklable` round-trips a real instance.
+- **Item 8 (picklability)**: first attempt (qualname + `__getstate__`) was
+  rejected in review — unpickled instances had no `_client` (validators
+  don't run on unpickle) and a fresh worker process couldn't resolve the
+  `globals()`-registered class. Replaced with a `__reduce__` that rebuilds
+  the instance through the module-level factory `_rebuild_resilient_ollama`:
+  rebuilding re-runs the model validators (clients are re-created) and works
+  in processes that never called `get_embedding_model()`. Tests: same-process
+  round trip incl. `_client`/`_async_client` and a working mocked
+  `embed_query` after load, plus a `subprocess` unpickle in a fresh Python
+  process.
 - **Item 9 (missing doc ids shift ranks)**: hit/nDCG/recall are computed on
   `ranked_doc_ids` (with `None` placeholders kept in place) instead of the
   None-filtered list, so chunks without a provider doc id no longer move
@@ -103,5 +108,6 @@ semantics, so no further change was needed.
   DGX Spark (`results/Enterprise-RAG/run1..run7` there), so the gap check
   must run on that host.
 
-Verification: full suite — 858 passed (40 in the two touched test files).
+Verification: full suite — 860 passed (round 3: fresh-process pickle tests
+added).
 
