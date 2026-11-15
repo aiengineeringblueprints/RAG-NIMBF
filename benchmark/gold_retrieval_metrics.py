@@ -120,14 +120,20 @@ def _hit_at_k(gold: set[str], retrieved: list[str], k: int) -> float:
 def _ndcg_at_k(gold: set[str], retrieved: list[str], k: int) -> float:
     """NDCG@k with binary multi-relevance.
 
-    IDCG ranks every gold item in the first positions, capped at k.
+    IDCG ranks every gold item in the first positions, capped at k. Duplicate
+    retrieved ids keep their original positions: a gold document is credited
+    only once (at its first rank) instead of being moved up after renumbering
+    — deduplicating the list first inflated nDCG (run7 regression). This also
+    prevents multiple chunks of the same document from pushing DCG above 1.
     """
     if not gold or k <= 0:
         return 0.0
-    top_k = retrieved[:k]
-    dcg = sum(
-        1.0 / math.log2(rank + 2) for rank, doc_id in enumerate(top_k) if doc_id in gold
-    )
+    credited: set[str] = set()
+    dcg = 0.0
+    for rank, doc_id in enumerate(retrieved[:k]):
+        if doc_id in gold and doc_id not in credited:
+            dcg += 1.0 / math.log2(rank + 2)
+            credited.add(doc_id)
     ideal_hits = min(len(gold), k)
     idcg = sum(1.0 / math.log2(rank + 2) for rank in range(ideal_hits))
     return dcg / idcg if idcg > 0 else 0.0
@@ -245,20 +251,16 @@ def compute_gold_doc_retrieval_metrics(
             per_sample.append(scores)
             continue
 
-        retrieved_doc_ids = [
-            doc_id
-            for doc_id in (_extract_doc_id(metadata) for metadata in metadata_list)
-            if doc_id is not None
-        ]
-
-        # Preserve rank alignment for span metrics, including chunks without a
-        # provider document ID.
+        # Keep ``None`` entries in place: chunks without a provider document
+        # ID must not shift gold documents to better ranks, and the top-k
+        # window must cover exactly k retrieved chunks. ``None`` never
+        # matches a gold id, so hit/nDCG/recall need no special handling.
         ranked_doc_ids = [_extract_doc_id(metadata) for metadata in metadata_list]
 
         for k in ks:
-            hit = _hit_at_k(gold_set, retrieved_doc_ids, k)
-            ndcg = _ndcg_at_k(gold_set, retrieved_doc_ids, k)
-            recall = _recall_at_k(gold_set, retrieved_doc_ids, k)
+            hit = _hit_at_k(gold_set, ranked_doc_ids, k)
+            ndcg = _ndcg_at_k(gold_set, ranked_doc_ids, k)
+            recall = _recall_at_k(gold_set, ranked_doc_ids, k)
             # supporting_fact_coverage@k is the title-level fraction of gold
             # supporting facts found in the top-k. For multi-hop datasets this
             # is exactly multi-relevant recall@k; for single-gold data it

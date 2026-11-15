@@ -1,6 +1,6 @@
 # Enterprise RAG Blueprint — Results Overview
 
-Status: 2026-11-11. Source: `results/Enterprise-RAG/run1..run6` on the DGX Spark
+Status: 2026-11-15. Source: `results/Enterprise-RAG/run1..run7` on the DGX Spark
 (`~/source/Benchmarking-Framework`), manifest `experiments/enterprise-rag-blueprint-rag.yaml`.
 Setup guide: [enterprise-rag-blueprint-setup.md](enterprise-rag-blueprint-setup.md).
 
@@ -14,11 +14,11 @@ Blueprint retrieves and answers itself, with guardrails and query refinement on.
 | Setting | Value |
 |---|---|
 | Generator LLM | `qwen3.8-27b` (OpenAI-compatible), temperature 0, top_p 0.3 |
-| Retrieval | similarity in run1–run5, hybrid (dense + BM25, RRF, alpha 0.5, fetch-k 50) in run6; `retrieval_top_k` 5 in run1–run4, 10 / 12 in run5–run6 (= contexts per question), threshold 0.2, no HyDE / multihop / reranker |
+| Retrieval | similarity in run1–run5, hybrid (dense + BM25, RRF, alpha 0.5, fetch-k 50) since run6; `retrieval_top_k` 5 in run1–run4, 10 / 12 since run5 (= contexts per question), threshold 0.2, no HyDE / multihop / reranker |
 | Vector DB | Chroma (Blueprint) |
 | Blueprint flags | guardrails on, query refinement on, MCP off, role `General` |
 | Prompt template | `concise` (not used by the Blueprint) |
-| Retrieval metrics mode | `heuristic` (no gold doc IDs, see caveats) |
+| Retrieval metrics mode | `heuristic` in run1–run6 (no gold doc IDs, see caveats), `gold_doc` in run7 (RAGAS off, custom metrics on) |
 
 ## Runs and combinations
 
@@ -30,18 +30,19 @@ Blueprint retrieves and answers itself, with guardrails and query refinement on.
 | run4 | 2026-10-31 | RAGBench TechQA (train) | 500 | nomic-embed-text | deepseek-v4-flash / nomic | same 5 | 3/5 done, rec 1024/128 **hung, stopped manually**, semantic not started |
 | run5 | 2026-11-04 → 06 | RAGBench TechQA (train) | 500 | nomic-embed-text | deepseek-v4-flash / nomic | rec 512/1024/2048 × overlap 64/128 + semantic p95, each at top-k 10 and 12 (14) | 14/14 done |
 | run6 | 2026-11-08 → 11 | RAGBench TechQA (train) | 500 | nomic-embed-text | deepseek-v4-flash / nomic | same 14 as run5, **hybrid retrieval** | 14/14 done (semantic k10 failed once, re-run 2026-11-11) |
+| run7 | 2026-11-13 → 15 | RAGBench TechQA (train) | 500 | nomic-embed-text | critic off / nomic (RAGAS off) | same 14 as run5/6, **gold_doc retrieval metrics** | 14/14 done (both semantic configs failed twice on the Ollama runner batch bug, fixed + re-run 2026-11-14/15) |
 
 Combination matrix (✅ done, ❌ failed, ⏹ aborted, — not run):
 
-| Chunking | SQuAD · nomic (run2, k5) | TechQA · Qwen3-Emb-4B (run3, k5) | TechQA · nomic (run4, k5) | TechQA · nomic (run5, k10 + k12) |
-|---|---|---|---|---|
-| recursive 512 / 64 | ✅ (+ run1 smoke) | ✅ | ✅ | ✅ |
-| recursive 512 / 128 | ✅ | ✅ | ✅ | ✅ |
-| recursive 1024 / 64 | ✅ | ✅ | ✅ | ✅ |
-| recursive 1024 / 128 | ✅ | ✅ | ⏹ | ✅ |
-| recursive 2048 / 64 | — | — | — | ✅ |
-| recursive 2048 / 128 | — | — | — | ✅ |
-| semantic (percentile 95) | ✅ | ❌ | — | ✅ |
+| Chunking | SQuAD · nomic (run2, k5) | TechQA · Qwen3-Emb-4B (run3, k5) | TechQA · nomic (run4, k5) | TechQA · nomic (run5, k10 + k12) | TechQA · nomic (run6 + run7, hybrid, k10 + k12) |
+|---|---|---|---|---|---|
+| recursive 512 / 64 | ✅ (+ run1 smoke) | ✅ | ✅ | ✅ | ✅ |
+| recursive 512 / 128 | ✅ | ✅ | ✅ | ✅ | ✅ |
+| recursive 1024 / 64 | ✅ | ✅ | ✅ | ✅ | ✅ |
+| recursive 1024 / 128 | ✅ | ✅ | ⏹ | ✅ | ✅ |
+| recursive 2048 / 64 | — | — | — | ✅ | ✅ |
+| recursive 2048 / 128 | — | — | — | ✅ | ✅ |
+| semantic (percentile 95) | ✅ | ❌ | — | ✅ | ✅ (after Ollama embed-batching fix) |
 
 Failure details:
 
@@ -49,6 +50,12 @@ Failure details:
   — the Ollama runner for Qwen3-Embedding-4B died during semantic chunking.
 - run4 recursive 1024/128: started 2026-10-31 15:37 UTC, no progress afterwards;
   the run was stopped and the summary JSON covers the 3 finished configs.
+- run7 semantic k10 + k12 (first two passes): `Post "http://127.0.0.1:<port>/tokenize":
+  connection reset by peer` — langchain_ollama sent the whole chunk list (3,530
+  texts) as one `/api/embed` POST and Ollama's llama-server runner died during
+  tokenization. Fixed in `04a171f6` (server-side 64-text batching, see
+  `doc/changes/2026-11-14-resilient-ollama-embeddings.md`); single-text requests
+  never failed (0/3,530).
 
 ## Results
 
@@ -187,6 +194,64 @@ run5, larger chunks and semantic chunking raise Blueprint answering time
 (median 1.3 s/question at 512 → 1.6–1.7 s at 2048 → 2.1–2.4 s semantic, p95 up
 to 3.7 s) and critic tokens, because the context grows.
 
+### RAGBench TechQA: gold-doc retrieval metrics (run7), n = 500
+
+run7 repeats the run6 retrieval setup (hybrid, same corpus and generator) with
+`custom_retrieval_metrics_mode: gold_doc` — hit@k / recall@k / nDCG@k are now
+computed against the RAGBench gold document IDs instead of the heuristic.
+RAGAS is off (`ragas_enabled: false`, issue 16 verification: no paid critic
+calls), so answer-quality numbers below are critic-free custom metrics only.
+Summary sources: `results/Enterprise-RAG/run7/configs/*.json` (final report
+`benchmark_20261115_141853.json` covers only the last re-run config).
+
+| Chunking | k | hit@1 | hit@5 | hit@10 | recall@10 | nDCG@10 | Ctx. rel. | BERT F1 | ROUGE-L |
+|---|---|---|---|---|---|---|---|---|---|
+| rec 512/64 | 10 | 0.480 | 0.842 | 0.912 | 0.912 | 1.646 | 0.717 | 0.530 | 0.126 |
+| rec 512/64 | 12 | 0.482 | 0.836 | 0.906 | 0.906 | 1.638 | 0.713 | 0.534 | 0.129 |
+| rec 512/128 | 10 | 0.484 | 0.828 | 0.898 | 0.898 | 1.664 | 0.719 | 0.533 | 0.129 |
+| rec 512/128 | 12 | 0.486 | 0.832 | 0.900 | 0.900 | 1.663 | 0.715 | 0.541 | 0.133 |
+| rec 1024/64 | 10 | 0.486 | 0.858 | **0.932** | **0.932** | 1.609 | 0.712 | 0.564 | 0.140 |
+| rec 1024/64 | 12 | 0.486 | 0.854 | 0.928 | 0.928 | 1.605 | 0.706 | 0.560 | 0.141 |
+| rec 1024/128 | 10 | 0.490 | 0.850 | 0.910 | 0.910 | 1.610 | 0.712 | 0.577 | 0.145 |
+| rec 1024/128 | 12 | 0.488 | 0.856 | 0.912 | 0.912 | 1.611 | 0.707 | 0.571 | 0.144 |
+| rec 2048/64 | 10 | 0.500 | 0.868 | 0.940 | 0.940 | 1.512 | 0.698 | 0.587 | 0.151 |
+| rec 2048/64 | 12 | 0.500 | 0.870 | 0.946 | 0.946 | 1.525 | 0.693 | 0.587 | 0.151 |
+| rec 2048/128 | 10 | **0.508** | 0.886 | 0.948 | 0.948 | 1.526 | 0.699 | 0.581 | 0.150 |
+| rec 2048/128 | 12 | 0.502 | 0.880 | 0.942 | 0.942 | 1.530 | 0.694 | **0.593** | **0.154** |
+| semantic p95 | 10 | 0.484 | 0.886 | 0.948 | 0.948 | 1.416 | 0.693 | 0.583 | 0.148 |
+| semantic p95 | 12 | 0.484 | **0.890** | **0.948** | **0.948** | 1.418 | 0.687 | 0.570 | 0.146 |
+
+Reading of the numbers (compare `doc/enterprise-rag-techqa-refusal-analysis.md`
+§2.4, which reconstructed gold top-10 coverage manually at 91–97 %):
+
+- The built-in `gold_doc` hit@10 values (0.898–0.948) sit right in the band of
+  the manual reconstruction — the run6 hybrid configs' ad-hoc Gold@10 column
+  (0.904–0.966) and run7's framework metric agree within ~1–2 pp for the
+  matched recursive configs, so the gold_doc mode reproduces the manual
+  analysis and issue 16 can be closed.
+- hit@k = recall@k here because TechQA questions have a single gold document.
+- Retrieval ranking across chunkings mirrors run6: 512-token chunks worst
+  (hit@10 0.898–0.912), 2048 and semantic best (0.940–0.948); k10 → k12 moves
+  hit@k by ≤ 0.006 everywhere (at 12 contexts nearly every gold doc is
+  already in the top 10).
+- **nDCG bug found and fixed (was: open caveat).** The report's nDCG@10
+  (1.41–1.66) was inflated: `_ndcg_at_k` counted every retrieved chunk whose
+  doc id is in the gold set, and hybrid retrieval returns several chunks of
+  the same document — with a single gold doc, DCG summed over duplicate
+  positions while IDCG assumed one relevant item (reproducible: ndcg@5 of
+  1.887 for `[doc1, x, doc1, x, doc1]`, gold = doc1). Fixed in
+  `benchmark/gold_retrieval_metrics.py` (dedupe retrieved ids before DCG,
+  regression tests in `tests/test_gold_retrieval_metrics.py`). Corrected
+  nDCG@10, recomputed from the stored run7 samples: 0.711–0.739 (12 of 14
+  configs recomputable; the six recursive k10 configs' samples were not
+  persisted, expect the same ~0.71–0.74 band). hit@k / recall@k were
+  unaffected (set-based).
+- Context relevance (0.687–0.719) and BERT F1 (0.530–0.593) confirm the run6
+  order: answer quality follows context length (2048/semantic > 1024 > 512),
+  not hit@k alone — 512 has the *highest* nDCG@10 but the worst BERT F1.
+- Infra note: both semantic configs needed the Ollama embed-batching fix
+  (`04a171f6`); with it, index builds run clean (see failure details above).
+
 ## Findings
 
 1. **TechQA is much harder than SQuAD for the Blueprint.** Context recall falls
@@ -227,8 +292,7 @@ to 3.7 s) and critic tokens, because the context grows.
 8. **Semantic p95 chunks are long** (~3.6 k chars each, 36–43 k context chars at
    k10/12, about twice rec 2048), yet not better than rec 1024/2048, and the
    slowest. Compare it only at a matched context budget.
-9. **Hybrid retrieval (run6) improves retrieval clearly, answers only a little.**
-   Gold@k rises in every config (+0.05–0.10), relevant-sentence coverage
+9. **Hybrid retrieval (run6) improves retrieval clearly, answers only a little.** Gold@k rises in every config (+0.05–0.10), relevant-sentence coverage
    +0.03–0.15, context recall +0.04–0.14 and refusals drop by 3–7 pp in most
    configs. Answer correctness rises significantly only where dense retrieval
    was weakest (rec 512 k10: +0.05–0.07) and for semantic k12 (+0.030); for
@@ -242,6 +306,14 @@ to 3.7 s) and critic tokens, because the context grows.
    Better retrieval converts into correctness only weakly: answer correctness
    is no longer limited mainly by retrieval but by refusals, judge noise and
    the reference quality (see the refusal analysis).
+10. **The gold_doc metric mode (run7) validates the manual reconstruction.**
+    Built-in gold hit@10 (0.898–0.948) matches run6's ad-hoc Gold@10 column and
+    the manual §2.4 reconstruction (91–97 %) within ~1–2 pp, so issue 16's
+    framework-side verification is done and future runs no longer need the
+    manual reconstruction. Retrieval is saturated at k ≥ 10 (k12 adds ≤ 0.006),
+    so the remaining answer-quality levers are not retrieval-side. run7 also
+    exposed and fixed the nDCG duplicate-document bug (corrected nDCG@10
+    0.711–0.739, see the run7 section).
 
 ## Caveats
 
