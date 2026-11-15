@@ -251,20 +251,16 @@ def compute_gold_doc_retrieval_metrics(
             per_sample.append(scores)
             continue
 
-        retrieved_doc_ids = [
-            doc_id
-            for doc_id in (_extract_doc_id(metadata) for metadata in metadata_list)
-            if doc_id is not None
-        ]
-
-        # Preserve rank alignment for span metrics, including chunks without a
-        # provider document ID.
+        # Keep ``None`` entries in place: chunks without a provider document
+        # ID must not shift gold documents to better ranks, and the top-k
+        # window must cover exactly k retrieved chunks. ``None`` never
+        # matches a gold id, so hit/nDCG/recall need no special handling.
         ranked_doc_ids = [_extract_doc_id(metadata) for metadata in metadata_list]
 
         for k in ks:
-            hit = _hit_at_k(gold_set, retrieved_doc_ids, k)
-            ndcg = _ndcg_at_k(gold_set, retrieved_doc_ids, k)
-            recall = _recall_at_k(gold_set, retrieved_doc_ids, k)
+            hit = _hit_at_k(gold_set, ranked_doc_ids, k)
+            ndcg = _ndcg_at_k(gold_set, ranked_doc_ids, k)
+            recall = _recall_at_k(gold_set, ranked_doc_ids, k)
             # supporting_fact_coverage@k is the title-level fraction of gold
             # supporting facts found in the top-k. For multi-hop datasets this
             # is exactly multi-relevant recall@k; for single-gold data it

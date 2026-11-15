@@ -113,3 +113,32 @@ class TestNdcgDuplicateDocs:
     def test_ndcg_multi_gold_capped_at_one(self):
         retrieved = ["a", "a", "b", "b", "c", "d", "e", "f", "g", "h"]
         assert _ndcg_at_k({"a", "b", "c"}, retrieved, 10) <= 1.0
+
+
+class TestMissingDocIdsKeepRanks:
+    """Regression: chunks without a doc id shifted gold documents up.
+
+    Dropping chunks without a provider doc id from the ranked list moved gold
+    documents to better ranks and widened the top-k window beyond k chunks.
+    The metrics must be computed on the ranked list with ``None`` placeholders
+    kept in place.
+    """
+
+    def test_gold_behind_chunks_without_doc_id_is_not_a_hit(self):
+        result = compute_gold_doc_retrieval_metrics(
+            gold_doc_ids=["doc1"],
+            retrieved_metadata=[[{}, {}, {"doc_id": "doc1"}]],
+            k_values=[1],
+        )
+        assert result.per_sample[0]["hit@1"] == 0.0
+        assert result.per_sample[0]["ndcg@1"] == 0.0
+        assert result.per_sample[0]["recall@1"] == 0.0
+
+    def test_gold_at_true_rank_gets_true_ndcg(self):
+        result = compute_gold_doc_retrieval_metrics(
+            gold_doc_ids=["doc1"],
+            retrieved_metadata=[[{}, {"doc_id": "doc1"}]],
+            k_values=[2],
+        )
+        # doc1 is at rank 2 → 1/log2(3), not rank 1 → 1.0
+        assert result.per_sample[0]["ndcg@2"] == pytest.approx(1.0 / math.log2(3))

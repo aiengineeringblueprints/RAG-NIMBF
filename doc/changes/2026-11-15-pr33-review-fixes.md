@@ -1,6 +1,6 @@
 # PR #33 review fixes: async-safe embeddings, nDCG positions, retry scope
 
-Date: 2026-11-15
+Date: 2026-11-15 (round 2 update below)
 
 ## Summary
 
@@ -77,9 +77,31 @@ semantics, so no further change was needed.
 
 ## Follow-ups
 
-- `EMBEDDING_MAX_TEXT_CHARS` is env-only; promote it to a
-  `BenchmarkConfig` field (with `tests/test_config.py` coverage) if
-  manifests need per-run caps.
 - Recompute and re-publish the run7 gold-doc nDCG numbers in the Blueprint
-  results matrix (values were inflated by the dedup-then-renumber bug).
+  results matrix (values were inflated by the dedup-then-renumber bug; raw
+  run7 data lives on the DGX Spark host, not in this checkout).
+
+## Round 2 — follow-up review of 67fc90cb
+
+- **Item 8 (picklability)**: the class is now registered as a module
+  attribute with a cleaned-up qualname/module, and `__getstate__` drops the
+  cached ollama httpx clients (`_client`/`_async_client`) that hold thread
+  locks (they are lazily re-created after unpickling). Test
+  `test_instance_is_picklable` round-trips a real instance.
+- **Item 9 (missing doc ids shift ranks)**: hit/nDCG/recall are computed on
+  `ranked_doc_ids` (with `None` placeholders kept in place) instead of the
+  None-filtered list, so chunks without a provider doc id no longer move
+  gold documents up or widen the top-k window. Two regression tests added
+  (gold behind id-less chunks at k=1 → 0.0; gold at true rank 2 →
+  1/log2(3)).
+- **Item 7**: env override + warning stay; the required `BenchmarkConfig`
+  field is now tracked in issue #34.
+- **Nits**: removed the redundant inner list comprehension in
+  `embed_documents`; the char cap is read once per `embed_documents` /
+  `aembed_documents` call and passed into `_sanitize(text, limit)`.
+- Note on the reviewer's run7 question: raw run7 metadata is stored on the
+  DGX Spark (`results/Enterprise-RAG/run1..run7` there), so the gap check
+  must run on that host.
+
+Verification: full suite — 858 passed (40 in the two touched test files).
 

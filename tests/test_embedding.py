@@ -38,6 +38,14 @@ class TestGetEmbeddingModel:
         cls_b = type(get_embedding_model("m", "http://localhost:11434"))
         assert cls_a is cls_b
 
+    def test_instance_is_picklable(self):
+        import pickle
+
+        model = get_embedding_model("m", "http://localhost:11434")
+        restored = pickle.loads(pickle.dumps(model))
+        assert restored.model == model.model
+        assert type(restored) is type(model)
+
 
 class TestResilientOllamaEmbeddings:
     """Guards against Ollama embedding-runner crashes (empty/oversized input)."""

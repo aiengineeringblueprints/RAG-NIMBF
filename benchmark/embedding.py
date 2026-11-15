@@ -80,13 +80,27 @@ def _ollama_embeddings_class() -> type:
         Subclassing keeps ``isinstance`` checks elsewhere intact.
         """
 
+        def __getstate__(self) -> dict:
+            # Drop the cached ollama httpx clients: they hold thread locks and
+            # are lazily re-created after unpickling.
+            state = super().__getstate__()
+            private = state.get("__pydantic_private__")
+            if private:
+                state["__pydantic_private__"] = {
+                    key: value
+                    for key, value in private.items()
+                    if key not in ("_client", "_async_client")
+                }
+            return state
+
         @staticmethod
-        def _sanitize(text: str) -> str:
+        def _sanitize(text: str, limit: int | None = None) -> str:
             global _truncation_warned
             cleaned = (
                 text if text and text.strip() else _EMPTY_TEXT_PLACEHOLDER
             )
-            limit = _max_text_chars()
+            if limit is None:
+                limit = _max_text_chars()
             if len(cleaned) > limit:
                 if not _truncation_warned:
                     logger.warning(
@@ -167,24 +181,29 @@ def _ollama_embeddings_class() -> type:
         def embed_documents(self, texts: list[str]) -> list[list[float]]:
             # Retry per batch: re-embedding every already-succeeded batch on
             # one failure makes large corpora effectively never finish.
-            return [
-                vec
-                for start in range(0, len(texts), _EMBED_BATCH_SIZE)
-                for vec in self._call_with_retry(
-                    lambda batch=texts[start : start + _EMBED_BATCH_SIZE]: [
-                        vec
-                        for vec in base_cls.embed_documents(
-                            self, [self._sanitize(t) for t in batch]
-                        )
-                    ]
+            limit = _max_text_chars()
+            vectors: list[list[float]] = []
+            for start in range(0, len(texts), _EMBED_BATCH_SIZE):
+                batch = [
+                    self._sanitize(t, limit)
+                    for t in texts[start : start + _EMBED_BATCH_SIZE]
+                ]
+                vectors.extend(
+                    self._call_with_retry(
+                        lambda batch=batch: base_cls.embed_documents(self, batch)
+                    )
                 )
-            ]
+            return vectors
 
         async def aembed_documents(self, texts: list[str]) -> list[list[float]]:
             """Async path used by RAGAS (LangchainEmbeddingsWrapper)."""
+            limit = _max_text_chars()
             vectors: list[list[float]] = []
             for start in range(0, len(texts), _EMBED_BATCH_SIZE):
-                batch = [self._sanitize(t) for t in texts[start : start + _EMBED_BATCH_SIZE]]
+                batch = [
+                    self._sanitize(t, limit)
+                    for t in texts[start : start + _EMBED_BATCH_SIZE]
+                ]
                 vectors.extend(
                     await self._acall_with_retry(
                         lambda batch=batch: base_cls.aembed_documents(self, batch)
@@ -203,6 +222,12 @@ def _ollama_embeddings_class() -> type:
                 lambda: base_cls.aembed_query(self, self._sanitize(text))
             )
 
+    # Make the class picklable: pickle locates classes via
+    # (module, qualname), which would otherwise resolve to
+    # '_ollama_embeddings_class.<locals>.ResilientOllamaEmbeddings'.
+    ResilientOllamaEmbeddings.__qualname__ = "ResilientOllamaEmbeddings"
+    ResilientOllamaEmbeddings.__module__ = __name__
+    globals()["ResilientOllamaEmbeddings"] = ResilientOllamaEmbeddings
     return ResilientOllamaEmbeddings
 
 
