@@ -1,5 +1,9 @@
 """Tests for gold-document retrieval metrics."""
 
+import math
+
+import pytest
+
 from benchmark.gold_retrieval_metrics import (
     _ndcg_at_k,
     compute_gold_doc_retrieval_metrics,
@@ -95,6 +99,16 @@ class TestNdcgDuplicateDocs:
         perfect = _ndcg_at_k({"doc1"}, ["doc1", "x", "doc1", "x", "doc1"], 5)
         later = _ndcg_at_k({"doc1"}, ["x", "x", "x", "x", "doc1"], 5)
         assert perfect > later > 0.0
+
+    def test_ndcg_keeps_original_positions_and_credits_gold_once(self):
+        # Deduplicating before ranking would renumber doc1 to rank 1 and
+        # inflate nDCG to ~0.63; doc1 actually sits at position 5.
+        assert _ndcg_at_k({"doc1"}, ["x", "x", "x", "x", "doc1"], 5) == pytest.approx(
+            1.0 / math.log2(6)
+        )
+        # A gold document appearing several times is credited once, at its
+        # first (real) rank.
+        assert _ndcg_at_k({"doc1"}, ["doc1", "x", "doc1", "x", "doc1"], 5) == 1.0
 
     def test_ndcg_multi_gold_capped_at_one(self):
         retrieved = ["a", "a", "b", "b", "c", "d", "e", "f", "g", "h"]

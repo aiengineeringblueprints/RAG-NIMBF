@@ -120,17 +120,20 @@ def _hit_at_k(gold: set[str], retrieved: list[str], k: int) -> float:
 def _ndcg_at_k(gold: set[str], retrieved: list[str], k: int) -> float:
     """NDCG@k with binary multi-relevance.
 
-    IDCG ranks every gold item in the first positions, capped at k. Retrieved
-    ids are deduplicated first: providers may return several chunks of the
-    same document, and counting each of them as a separate relevant hit would
-    push DCG (and therefore nDCG) above 1 (run7 regression).
+    IDCG ranks every gold item in the first positions, capped at k. Duplicate
+    retrieved ids keep their original positions: a gold document is credited
+    only once (at its first rank) instead of being moved up after renumbering
+    — deduplicating the list first inflated nDCG (run7 regression). This also
+    prevents multiple chunks of the same document from pushing DCG above 1.
     """
     if not gold or k <= 0:
         return 0.0
-    top_k = list(dict.fromkeys(retrieved[:k]))
-    dcg = sum(
-        1.0 / math.log2(rank + 2) for rank, doc_id in enumerate(top_k) if doc_id in gold
-    )
+    credited: set[str] = set()
+    dcg = 0.0
+    for rank, doc_id in enumerate(retrieved[:k]):
+        if doc_id in gold and doc_id not in credited:
+            dcg += 1.0 / math.log2(rank + 2)
+            credited.add(doc_id)
     ideal_hits = min(len(gold), k)
     idcg = sum(1.0 / math.log2(rank + 2) for rank in range(ideal_hits))
     return dcg / idcg if idcg > 0 else 0.0
