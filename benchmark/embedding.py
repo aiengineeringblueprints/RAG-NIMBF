@@ -19,6 +19,11 @@ _EMPTY_TEXT_PLACEHOLDER = " "
 _MAX_TEXT_CHARS = 6000
 _EMBED_RETRIES = 5
 _RETRY_BASE_DELAY = 2.0
+# langchain_ollama sends the whole input list as ONE /api/embed POST; large
+# batches (thousands of chunks) crash Ollama's llama-server runner during
+# tokenization ("connection reset by peer" on its internal /tokenize port).
+# Single-text requests never crash, so keep batches small.
+_EMBED_BATCH_SIZE = 64
 
 T = TypeVar("T")
 
@@ -68,7 +73,13 @@ def _ollama_embeddings_class() -> type:
         def embed_documents(self, texts: list[str]) -> list[list[float]]:
             cleaned = [self._sanitize(t) for t in texts]
             return self._embed_with_retry(
-                lambda: base_cls.embed_documents(self, cleaned)
+                lambda: [
+                    vec
+                    for start in range(0, len(cleaned), _EMBED_BATCH_SIZE)
+                    for vec in base_cls.embed_documents(
+                        self, cleaned[start : start + _EMBED_BATCH_SIZE]
+                    )
+                ]
             )
 
         def embed_query(self, text: str) -> list[float]:

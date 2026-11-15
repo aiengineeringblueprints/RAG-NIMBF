@@ -101,6 +101,25 @@ class TestResilientOllamaEmbeddings:
         mock_embed.side_effect = [httpx.RemoteProtocolError("peer closed"), [[0.1]]]
         assert self._model().embed_documents(["text"]) == [[0.1]]
 
+    @patch.object(OllamaEmbeddings, "embed_documents")
+    def test_embed_documents_batches_large_inputs(self, mock_embed):
+        from benchmark.embedding import _EMBED_BATCH_SIZE
+
+        texts = [f"text {i}" for i in range(_EMBED_BATCH_SIZE * 3 + 1)]
+        mock_embed.side_effect = lambda self, batch: [[0.0] for _ in batch]
+        result = self._model().embed_documents(texts)
+        assert len(result) == len(texts)
+        # 3 full batches + 1 remainder = 4 requests
+        assert mock_embed.call_count == 4
+        batch_sizes = [len(call.args[1]) for call in mock_embed.call_args_list]
+        assert batch_sizes == [_EMBED_BATCH_SIZE, _EMBED_BATCH_SIZE, _EMBED_BATCH_SIZE, 1]
+
+    @patch.object(OllamaEmbeddings, "embed_documents")
+    def test_embed_documents_preserves_order_across_batches(self, mock_embed):
+        mock_embed.side_effect = lambda self, batch: [[float(len(t))] for t in batch]
+        result = self._model().embed_documents(["a", "longer", "x"])
+        assert result == [[1.0], [6.0], [1.0]]
+
 
 class TestGetEmbeddingModelHuggingFace:
     @patch("langchain_huggingface.HuggingFaceEmbeddings")
