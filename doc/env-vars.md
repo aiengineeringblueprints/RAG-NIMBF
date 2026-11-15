@@ -124,6 +124,21 @@ Details and full metric reference: [mcp-benchmarking.md](mcp-benchmarking.md).
 Details: [mcp-host-benchmarking.md](mcp-host-benchmarking.md),
 [enterprise-rag-blueprint-setup.md](enterprise-rag-blueprint-setup.md).
 
+## Embeddings
+
+| Variable | Description |
+| --- | --- |
+| `EMBEDDING_MODELS` | Comma-separated embedding models for the internal pipeline; defaults to `nomic-embed-text:latest`. |
+| `EMBEDDING_OLLAMA_BASE_URL` | Ollama host for embeddings; falls back to `OLLAMA_BASE_URL`. |
+| `EMBEDDING_OLLAMA_API_KEY` | API key for the embedding Ollama host; falls back to `OLLAMA_API_KEY`. |
+| `EMBEDDING_MAX_TEXT_CHARS` | Character cap applied to every Ollama embedding input; defaults to `6000` (tuned for `nomic-embed-text`'s 2048-token context). Raise it for long-context models such as `bge-m3`. Longer inputs are truncated and a warning is logged once per process. Env-only for now; a `BenchmarkConfig` field is tracked in issue #34. |
+
+Ollama embeddings are hardened against runner crashes: empty inputs are
+replaced with a non-whitespace placeholder, requests are sent in batches of 64,
+and transient errors (5xx, connection failures) are retried per batch with
+exponential backoff. Background: `doc/changes/2026-11-14-resilient-ollama-embeddings.md`
+and `doc/changes/2026-11-15-pr33-review-fixes.md`.
+
 ## Generation and vector store
 
 | Variable | Description |
