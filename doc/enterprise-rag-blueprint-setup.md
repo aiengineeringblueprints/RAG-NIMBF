@@ -269,6 +269,8 @@ the service's secret.
 | `The Blueprint needs an Ollama embedding model` | use an Ollama embedding model or set `enterprise_rag_mcp_apply_settings: false` |
 | failed samples with `failure_kind: model_or_tool_protocol` | model or endpoint without tool calling; pick another model |
 | `ResponseError Unauthorized (401)` while embedding | embedding host needs a key: `EMBEDDING_OLLAMA_API_KEY` or `OLLAMA_API_KEY` |
+| indexing or RAGAS aborts with `connection reset by peer` / Ollama 500 while embedding | Ollama's embedding runner crashed (empty inputs or one oversized `/api/embed` request). Fixed: embeddings are now sanitized, batched at 64 and retried; update the framework checkout |
+| warning `Truncating embedding input longer than N chars` | inputs exceed `EMBEDDING_MAX_TEXT_CHARS` (default 6000); raise it for long-context embedding models |
 | `Temporary failure in name resolution` for `dgx-spark` | host only reachable in its network; connect VPN or add it to `/etc/hosts` |
 | answers ignore documents of non-`General` roles | the index is tagged `General`; keep `enterprise_rag_mcp_roles: General` |
 | `Batch size of N is greater than max batch size of M` while indexing | fixed: the Blueprint index is now written in Chroma-sized batches; update the framework checkout |

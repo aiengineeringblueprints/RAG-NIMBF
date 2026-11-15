@@ -204,7 +204,7 @@ calls), so answer-quality numbers below are critic-free custom metrics only.
 Summary sources: `results/Enterprise-RAG/run7/configs/*.json` (final report
 `benchmark_20261115_141853.json` covers only the last re-run config).
 
-| Chunking | k | hit@1 | hit@5 | hit@10 | recall@10 | nDCG@10 | Ctx. rel. | BERT F1 | ROUGE-L |
+| Chunking | k | hit@1 | hit@5 | hit@10 | recall@10 | nDCG@10 (raw, invalid — see below) | Ctx. rel. | BERT F1 | ROUGE-L |
 |---|---|---|---|---|---|---|---|---|---|
 | rec 512/64 | 10 | 0.480 | 0.842 | 0.912 | 0.912 | 1.646 | 0.717 | 0.530 | 0.126 |
 | rec 512/64 | 12 | 0.482 | 0.836 | 0.906 | 0.906 | 1.638 | 0.713 | 0.534 | 0.129 |
@@ -234,18 +234,25 @@ Reading of the numbers (compare `doc/enterprise-rag-techqa-refusal-analysis.md`
   (hit@10 0.898–0.912), 2048 and semantic best (0.940–0.948); k10 → k12 moves
   hit@k by ≤ 0.006 everywhere (at 12 contexts nearly every gold doc is
   already in the top 10).
-- **nDCG bug found and fixed (was: open caveat).** The report's nDCG@10
-  (1.41–1.66) was inflated: `_ndcg_at_k` counted every retrieved chunk whose
-  doc id is in the gold set, and hybrid retrieval returns several chunks of
-  the same document — with a single gold doc, DCG summed over duplicate
-  positions while IDCG assumed one relevant item (reproducible: ndcg@5 of
-  1.887 for `[doc1, x, doc1, x, doc1]`, gold = doc1). Fixed in
-  `benchmark/gold_retrieval_metrics.py` (dedupe retrieved ids before DCG,
-  regression tests in `tests/test_gold_retrieval_metrics.py`). Corrected
-  nDCG@10, recomputed from the stored run7 samples: 0.711–0.739 (12 of 14
-  configs recomputable; the six recursive k10 configs' samples were not
-  persisted, expect the same ~0.71–0.74 band). hit@k / recall@k were
-  unaffected (set-based).
+- **nDCG bug found and fixed (was: open caveat).** The nDCG@10 column above
+  (1.41–1.66) is the raw report value and is invalid: `_ndcg_at_k` counted
+  every retrieved chunk whose doc id is in the gold set, and hybrid retrieval
+  returns several chunks of the same document — with a single gold doc, DCG
+  summed over duplicate positions while IDCG assumed one relevant item
+  (reproducible: ndcg@5 of 1.887 for `[doc1, x, doc1, x, doc1]`, gold = doc1).
+  Fixed in `benchmark/gold_retrieval_metrics.py` (PR #33): ranks keep their
+  original positions, a gold document is credited once at its first rank,
+  and chunks without a provider doc id stay in place as non-relevant
+  positions. Regression tests in `tests/test_gold_retrieval_metrics.py`.
+- **Corrected nDCG@10 pending.** A first recomputation (0.711–0.739) used an
+  interim fix that deduplicated and then renumbered ranks; that moved gold
+  documents to better ranks than they had, so those values are too high and
+  are withdrawn. The run7 samples must be re-scored with the final fix on the
+  DGX Spark (raw data lives there; the six recursive k10 configs' samples were
+  not persisted). hit@k / recall@k are set-based and unaffected by
+  duplicates; they only change if some retrieved chunks lacked a doc id
+  (those chunks previously shifted later chunks into the top-k window) —
+  check the run7 metadata for gaps during the re-score.
 - Context relevance (0.687–0.719) and BERT F1 (0.530–0.593) confirm the run6
   order: answer quality follows context length (2048/semantic > 1024 > 512),
   not hit@k alone — 512 has the *highest* nDCG@10 but the worst BERT F1.
