@@ -1,6 +1,9 @@
 """Tests for gold-document retrieval metrics."""
 
-from benchmark.gold_retrieval_metrics import compute_gold_doc_retrieval_metrics
+from benchmark.gold_retrieval_metrics import (
+    _ndcg_at_k,
+    compute_gold_doc_retrieval_metrics,
+)
 
 
 def test_gold_doc_metrics_hit_positions():
@@ -72,3 +75,27 @@ def test_span_metrics_distinguish_wrong_section_in_right_document():
     assert result.per_sample[0]["span_mrr@3"] == 0.5
     assert result.per_sample[0]["span_recall@3"] == 1.0
     assert result.per_sample[0]["span_ndcg@3"] > 0.0
+
+
+class TestNdcgDuplicateDocs:
+    """Regression: nDCG counted duplicate chunks from the same gold document.
+
+    run7 reported ndcg@10 means of 1.41–1.66 although per-question nDCG is
+    bounded by 1: with a single gold document and hybrid retrieval returning
+    several chunks of it (e.g. [doc1, x, doc1, x, doc1]), every duplicate
+    position added gain to the DCG while IDCG assumed a single relevant item.
+    nDCG must rank *unique* documents.
+    """
+
+    def test_ndcg_never_exceeds_one_with_duplicate_gold_chunks(self):
+        # 3 of the top-5 retrieved chunks come from the single gold document.
+        assert _ndcg_at_k({"doc1"}, ["doc1", "x", "doc1", "x", "doc1"], 5) == 1.0
+
+    def test_ndcg_with_duplicates_still_ranks_earlier_hits_higher(self):
+        perfect = _ndcg_at_k({"doc1"}, ["doc1", "x", "doc1", "x", "doc1"], 5)
+        later = _ndcg_at_k({"doc1"}, ["x", "x", "x", "x", "doc1"], 5)
+        assert perfect > later > 0.0
+
+    def test_ndcg_multi_gold_capped_at_one(self):
+        retrieved = ["a", "a", "b", "b", "c", "d", "e", "f", "g", "h"]
+        assert _ndcg_at_k({"a", "b", "c"}, retrieved, 10) <= 1.0

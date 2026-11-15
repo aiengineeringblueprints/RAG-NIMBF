@@ -234,12 +234,18 @@ Reading of the numbers (compare `doc/enterprise-rag-techqa-refusal-analysis.md`
   (hit@10 0.898–0.912), 2048 and semantic best (0.940–0.948); k10 → k12 moves
   hit@k by ≤ 0.006 everywhere (at 12 contexts nearly every gold doc is
   already in the top 10).
-- **Open caveat:** the reported `ndcg@10` (1.41–1.66) exceeds the usual [0, 1]
-  band, although both nDCG implementations in the codebase
-  (`benchmark/gold_retrieval_metrics.py::_ndcg_at_k`,
-  `benchmark/custom_metrics.py::ndcg_at_k`) are capped at 1 per question.
-  The aggregation that produced these report values needs a look before
-  nDCG is used for cross-run conclusions; hit@k / recall@k are unaffected.
+- **nDCG bug found and fixed (was: open caveat).** The report's nDCG@10
+  (1.41–1.66) was inflated: `_ndcg_at_k` counted every retrieved chunk whose
+  doc id is in the gold set, and hybrid retrieval returns several chunks of
+  the same document — with a single gold doc, DCG summed over duplicate
+  positions while IDCG assumed one relevant item (reproducible: ndcg@5 of
+  1.887 for `[doc1, x, doc1, x, doc1]`, gold = doc1). Fixed in
+  `benchmark/gold_retrieval_metrics.py` (dedupe retrieved ids before DCG,
+  regression tests in `tests/test_gold_retrieval_metrics.py`). Corrected
+  nDCG@10, recomputed from the stored run7 samples: 0.711–0.739 (12 of 14
+  configs recomputable; the six recursive k10 configs' samples were not
+  persisted, expect the same ~0.71–0.74 band). hit@k / recall@k were
+  unaffected (set-based).
 - Context relevance (0.687–0.719) and BERT F1 (0.530–0.593) confirm the run6
   order: answer quality follows context length (2048/semantic > 1024 > 512),
   not hit@k alone — 512 has the *highest* nDCG@10 but the worst BERT F1.
@@ -305,8 +311,9 @@ Reading of the numbers (compare `doc/enterprise-rag-techqa-refusal-analysis.md`
     the manual §2.4 reconstruction (91–97 %) within ~1–2 pp, so issue 16's
     framework-side verification is done and future runs no longer need the
     manual reconstruction. Retrieval is saturated at k ≥ 10 (k12 adds ≤ 0.006),
-    so the remaining answer-quality levers are not retrieval-side. Caveat: the
-    report's nDCG@10 exceeds 1.0 and needs investigation (see run7 section).
+    so the remaining answer-quality levers are not retrieval-side. run7 also
+    exposed and fixed the nDCG duplicate-document bug (corrected nDCG@10
+    0.711–0.739, see the run7 section).
 
 ## Caveats
 

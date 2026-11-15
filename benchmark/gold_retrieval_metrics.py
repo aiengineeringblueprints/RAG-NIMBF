@@ -120,11 +120,14 @@ def _hit_at_k(gold: set[str], retrieved: list[str], k: int) -> float:
 def _ndcg_at_k(gold: set[str], retrieved: list[str], k: int) -> float:
     """NDCG@k with binary multi-relevance.
 
-    IDCG ranks every gold item in the first positions, capped at k.
+    IDCG ranks every gold item in the first positions, capped at k. Retrieved
+    ids are deduplicated first: providers may return several chunks of the
+    same document, and counting each of them as a separate relevant hit would
+    push DCG (and therefore nDCG) above 1 (run7 regression).
     """
     if not gold or k <= 0:
         return 0.0
-    top_k = retrieved[:k]
+    top_k = list(dict.fromkeys(retrieved[:k]))
     dcg = sum(
         1.0 / math.log2(rank + 2) for rank, doc_id in enumerate(top_k) if doc_id in gold
     )
