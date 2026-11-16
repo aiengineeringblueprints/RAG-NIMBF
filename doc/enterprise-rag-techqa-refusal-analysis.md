@@ -215,10 +215,12 @@ Ordered by value per effort.
    `retrieval_hybrid_alpha` (more BM25 weight for error codes), deduplicate the
    TechQA corpus (duplicate documents under different IDs, see the results
    overview).
-6. **Shorten eval runtime**:
-   - Raise `EVAL_CRITIC_MAX_WORKERS` from 8 to 16–24 if the coassist.de endpoint
-     allows it (roughly linear speedup).
+6. **Shorten eval runtime** (done in issue #19, see
+   [ragas-runtime.md](ragas-runtime.md)):
+   - `EVAL_CRITIC_MAX_WORKERS` 8 → 16 measured: 18 % faster on a 10-sample
+     TechQA replay, not linear. Recommendation: 16 for the coassist.de critic.
    - Use `sample_size` 150–200 for chunking sweeps and re-run only the best
      configs with 500.
-   - Add a knob to select RAGAS metrics (none exists in `config.py`); context
-     precision is the largest cost at top-k 10–12.
+   - New knob `ragas_metrics` / `RAGAS_METRICS` selects RAGAS metrics.
+     Dropping `context_precision` cuts critic input tokens by 44 % and, with
+     16 workers, halves `ragas_eval` time.

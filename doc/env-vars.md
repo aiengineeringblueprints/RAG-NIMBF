@@ -162,7 +162,7 @@ and `doc/changes/2026-11-15-pr33-review-fixes.md`.
 | `EVAL_CRITIC_EMBEDDING` | Embedding model used by evaluator metrics. |
 | `EVAL_CRITIC_THINKING_CONTROL` | How reasoning is disabled on an OpenAI-compatible critic: `chat_template_kwargs` (default, vLLM/SGLang), `reasoning_effort_low` (e.g. GLM behind LiteLLM, which leaks reasoning into the answer otherwise), or `none`. |
 | `EVAL_CRITIC_TEMPERATURE` | Critic sampling temperature; defaults to `0.0`. Set to `none` to omit it from requests for models that reject it (e.g. Claude Opus 5.5). |
-| `EVAL_CRITIC_MAX_WORKERS` | Parallel RAGAS critic jobs; defaults to `1` (local models). Raise for hosted endpoints. |
+| `EVAL_CRITIC_MAX_WORKERS` | Parallel RAGAS critic jobs; defaults to `1` (local models). Raise for hosted endpoints; `16` recommended for the hosted `deepseek-v4-flash` critic (measured in [ragas-runtime.md](ragas-runtime.md)). |
 | `EVAL_CRITIC_MAX_RETRIES` | RAGAS retries per failed critic call (e.g. proxy 500s); defaults to `2`. |
 
 ## Cost and resource monitoring
