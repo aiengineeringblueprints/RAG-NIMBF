@@ -7,6 +7,7 @@ format consumed by the rest of the framework.
 
 from __future__ import annotations
 
+import json
 import os
 from dataclasses import dataclass, replace
 from typing import Any, Callable
@@ -194,6 +195,54 @@ def _ragbench_context(row: dict) -> str:
     return "\n\n".join(parts)
 
 
+def derive_answerable_flag(metadata: dict[str, Any]) -> None:
+    """Set ``metadata["answerable"]`` from RAGBench sentence labels in place.
+
+    A RAGBench sample is answerable when it has at least one relevant
+    sentence (``all_relevant_sentence_keys`` non-empty). Samples without the
+    label fields are left untouched. Values arriving as JSON strings (local
+    CSV/JSONL rows) are parsed first, so an unanswerable ``"[]"`` is not
+    truthy.
+    """
+    keys = metadata.get("all_relevant_sentence_keys")
+    if keys is None:
+        return
+    if isinstance(keys, str):
+        if not keys.strip():
+            # Empty CSV cell — same as no relevant sentences.
+            keys = []
+        else:
+            try:
+                keys = json.loads(keys)
+            except (ValueError, TypeError):
+                keys = [keys]
+    metadata["answerable"] = bool(keys)
+
+
+# RAGBench sentence-label fields. They are needed on the *sample* metadata
+# (metrics + checkpoints) but must not be spread onto corpus documents or
+# chunks: ``documents_sentences`` alone is the full document text, and the
+# shared-corpus loader copies the first sample's metadata onto every corpus
+# document, then every chunk — inflating the vector store and result JSON.
+SENTENCE_LABEL_METADATA_KEYS = (
+    "all_relevant_sentence_keys",
+    "documents_sentences",
+    "adherence_score",
+    "answerable",
+)
+
+
+def strip_sentence_label_metadata(
+    metadata: dict[str, Any],
+) -> dict[str, Any]:
+    """Return ``metadata`` without the RAGBench sentence-label fields."""
+    return {
+        key: value
+        for key, value in metadata.items()
+        if key not in SENTENCE_LABEL_METADATA_KEYS
+    }
+
+
 register(
     DatasetAdapter(
         name="ragbench",
@@ -202,7 +251,18 @@ register(
         ground_truth_key="response",
         build_context=_ragbench_context,
         preferred_split="test",
-        metadata_keys=("id", "dataset_name"),
+        metadata_keys=(
+            "id",
+            "dataset_name",
+            # RAGBench sentence labels (relevant-sentence recall):
+            # "all_relevant_sentence_keys" holds "doc.sent" keys into
+            # "documents_sentences"; "adherence_score" says whether the
+            # reference answer is supported by the documents. Samples whose
+            # key list is empty are unanswerable (no relevant sentence).
+            "all_relevant_sentence_keys",
+            "documents_sentences",
+            "adherence_score",
+        ),
         requires_subset=True,
     )
 )

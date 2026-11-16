@@ -10,7 +10,12 @@ from typing import Any, Mapping
 from datasets import load_dataset
 from rich.console import Console
 
-from benchmark.dataset_adapters import OCR_GT_DATASET_NAMES, resolve_adapter
+from benchmark.dataset_adapters import (
+    OCR_GT_DATASET_NAMES,
+    derive_answerable_flag,
+    resolve_adapter,
+    strip_sentence_label_metadata,
+)
 from benchmark.doc_ids import resolve_dataset_doc_id
 
 console = Console()
@@ -76,6 +81,10 @@ def normalize_sample(
         context=normalized_context,
         metadata=dict(metadata),
     ).to_dict()
+    # Shared derivation so every load path (HuggingFace, local JSONL/CSV)
+    # carries the RAGBench answerable flag when sentence labels are present.
+    # Applied to the copy — the caller's metadata dict is not mutated.
+    derive_answerable_flag(normalized["metadata"])
 
     for key, value in sample.items():
         if key not in normalized:
@@ -199,15 +208,15 @@ def load_benchmark_data(
         else:
             gt = str(gt_raw)
 
+        metadata = {k: row.get(k) for k in adapter.metadata_keys if k in row}
+
         samples.append(
             normalize_sample(
                 {
                     "question": row[adapter.question_key],
                     "ground_truth": gt,
                     "context": adapter.build_context(row),
-                    "metadata": {
-                        k: row.get(k) for k in adapter.metadata_keys if k in row
-                    },
+                    "metadata": metadata,
                 },
                 source=f"{dataset_name}:{split}[{len(samples)}]",
             )
@@ -305,7 +314,9 @@ def load_corpus_and_questions(
                     "context": ctx,
                     "metadata": _chroma_safe_metadata(
                         {
-                            **sample.get("metadata", {}),
+                            **strip_sentence_label_metadata(
+                                sample.get("metadata", {})
+                            ),
                             "doc_id": doc_id,
                         }
                     ),
@@ -676,22 +687,45 @@ _CHROMA_PRIMITIVES = (str, int, float, bool)
 def _chroma_safe_metadata(metadata: Mapping[str, Any]) -> dict[str, Any]:
     """Coerce metadata values into Chroma's accepted types.
 
-    Chroma only stores str/int/float/bool/None and lists of those. Multi-hop
-    datasets stash rich structures (raw ``context`` dicts, ``supporting_facts``
-    nested lists) in sample metadata for downstream gold-scoring. Serialise
-    anything richer to a JSON string so Chroma's upsert accepts it. Downstream
-    readers recover the original via ``json.loads``.
+    Chroma only stores str/int/float/bool/None and non-empty lists of a
+    single primitive type. Multi-hop datasets stash rich structures (raw
+    ``context`` dicts, ``supporting_facts`` nested lists) in sample metadata
+    for downstream gold-scoring: anything richer — or a list containing
+    ``None``/mixed types, which Chroma rejects — is serialised to a JSON
+    string so Chroma's upsert accepts it; readers can ``json.loads`` those
+    strings. The coercion is lossy for lists: ``None`` entries are dropped
+    (``[1, None, 3]`` is stored as ``[1, 3]``, so positions shift) so that
+    ``[1, None]`` and ``[1, 2]`` keep the same type under one key, and empty
+    or all-``None`` lists are dropped entirely (``meta.get(key)`` returns
+    ``None`` for them). Callers needing exact values must not rely on the
+    vector-store copy of metadata.
     """
     safe: dict[str, Any] = {}
     for key, value in metadata.items():
         if value is None or isinstance(value, _CHROMA_PRIMITIVES):
             safe[key] = value
             continue
-        if isinstance(value, list) and all(
-            item is None or isinstance(item, _CHROMA_PRIMITIVES) for item in value
-        ):
-            safe[key] = value
-            continue
+        if isinstance(value, list):
+            if not value:
+                # Chroma rejects empty lists ("Expected metadata list value
+                # ... to be non-empty"). Drop the key entirely: keeping it
+                # as the JSON string "[]" would give the key different types
+                # across documents in the same collection, and Chroma where
+                # filters silently skip type-mismatched documents. Downstream
+                # readers therefore see ``meta.get(key) is None`` for these.
+                continue
+            # Chroma also rejects lists containing None or mixed item types.
+            # Drop None entries first, then JSON-encode only lists that are
+            # still genuinely mixed — so [1, None] and [1, 2] keep the same
+            # type under one key.
+            compacted = [item for item in value if item is not None]
+            if not compacted:
+                # Only None entries — drop like an empty list.
+                continue
+            types = {type(item) for item in compacted}
+            if len(types) == 1 and next(iter(types)) in _CHROMA_PRIMITIVES:
+                safe[key] = compacted
+                continue
         safe[key] = json.dumps(value, ensure_ascii=False)
     return safe
 

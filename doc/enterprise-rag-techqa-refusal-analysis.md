@@ -108,6 +108,11 @@ refusal text: *"The provided context does not contain information regarding X.
 The documents primarily discuss Y …"*. Refusal rate is 34.5 % when the gold set
 is retrieved and 69 % when it is not.
 
+> This manual measurement is now automated as the `relevant_sentence_recall`
+> metric (issue #17, `changes/2026-11-16-relevant-sentence-recall.md`).
+> Recomputing on the run6 samples reproduces the numbers below within a few
+> points (answered 44 %, refused 18 %).
+
 ### 2.3 Blueprint (not yet measured)
 
 - The prompt is strict "answer only from context". With the passage missing, the

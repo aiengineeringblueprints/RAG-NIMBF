@@ -207,6 +207,250 @@ def _append_span_metrics(
             accum.setdefault(name, []).append(value)
 
 
+# ── RAGBench sentence-level recall ───────────────────────────────────
+
+
+@dataclass(frozen=True)
+class RelevantSentenceRecallResult:
+    metric_means: dict[str, float]
+    per_sample: list[float | None]
+    samples_with_valid_scores: int
+
+
+def resolve_relevant_sentences(sample_metadata: dict[str, Any] | None) -> list[str]:
+    """Resolve RAGBench sentence labels into the actual relevant sentence texts.
+
+    RAGBench stores ``documents_sentences`` as a list of documents, each a
+    list of ``[sentence_key, sentence_text]`` pairs, and
+    ``all_relevant_sentence_keys`` lists the keys of the relevant sentences
+    (e.g. ``"3a"`` = document 3, sentence ``a``; sometimes with a trailing
+    period). A ``"doc.sent"`` numeric fallback is supported for datasets with
+    a different layout. Returns the sentence texts; empty when either field
+    is missing.
+    """
+    if not isinstance(sample_metadata, dict):
+        return []
+    docs = sample_metadata.get("documents_sentences")
+    keys = sample_metadata.get("all_relevant_sentence_keys")
+    if not isinstance(docs, list) or not isinstance(keys, list):
+        return []
+
+    by_key: dict[str, str] = {}
+    for doc in docs:
+        if not isinstance(doc, list):
+            continue
+        if doc and isinstance(doc[0], list):
+            entries = doc  # document already a flat list of pairs
+        else:
+            entries = [doc]
+        for entry in entries:
+            if (
+                isinstance(entry, list)
+                and len(entry) == 2
+                and isinstance(entry[0], str)
+                and isinstance(entry[1], str)
+                and entry[1].strip()
+            ):
+                by_key[entry[0]] = entry[1]
+
+    sentences: list[str] = []
+    for key in keys:
+        if not isinstance(key, str):
+            continue
+        # Exact key match, then without/with trailing period.
+        sentence = by_key.get(key)
+        if sentence is None:
+            stripped = key.rstrip(".")
+            sentence = by_key.get(stripped)
+        if sentence is None and "." in key:
+            doc_part, _, sent_part = key.partition(".")
+            try:
+                doc_idx, sent_idx = int(doc_part), int(sent_part)
+            except ValueError:
+                sent_idx = None
+            if sent_idx is not None and 0 <= doc_idx < len(docs):
+                doc = docs[doc_idx]
+                if isinstance(doc, str):
+                    sentence = doc
+                elif isinstance(doc, list) and 0 <= sent_idx < len(doc):
+                    if isinstance(doc[sent_idx], str):
+                        sentence = doc[sent_idx]
+        if sentence is not None and sentence.strip():
+            sentences.append(sentence)
+    return sentences
+
+
+def _normalised_tokens(text: str) -> list[str]:
+    """Lowercase Unicode word tokens; whitespace, punctuation and underscores
+    dropped."""
+    return re.findall(r"[^\W_]+", text.lower(), re.UNICODE)
+
+
+def _normalised_words(text: str) -> str:
+    """Lowercased text with whitespace collapsed to single spaces.
+
+    Word boundaries are preserved so materially different sentences ("the
+    rapist …" vs "therapist …") never match; only case and whitespace are
+    normalised away.
+    """
+    return " ".join(_normalised_tokens(text))
+
+
+def _compact(text: str) -> str:
+    """Normalised text with all separators removed.
+
+    Used only to repair sentences split across a chunk boundary — even
+    mid-word — by matching across two chunks.
+    """
+    return "".join(_normalised_tokens(text))
+
+
+# A sentence is treated as a label rather than content — and excluded from
+# scoring entirely — when it is label-like: fewer than MIN_SENTENCE_WORDS
+# normalised words AND fewer than MIN_SENTENCE_COMPACT_CHARS characters
+# ("Yes.", "1.", "Results.", "Table 1."). Such sentences would match almost
+# any chunk, while real short content sentences (3+ words, e.g. "Revenue
+# grew 5%.") stay scoreable. Known limitation: a 3-word sentence made of
+# common words ("Yes it is.") is scored and counts whenever a single chunk
+# contains those words verbatim and contiguously.
+MIN_SENTENCE_WORDS = 3
+MIN_SENTENCE_COMPACT_CHARS = 20
+
+# Split repair requires each reconstructed fragment to be at least this long
+# (compact characters). Otherwise tiny fragments ("yes" + "it is") let
+# label-like sentence pieces match arbitrary chunk combinations.
+MIN_SPLIT_FRAGMENT_CHARS = 4
+
+
+def _is_label_like(compact: str, words: str) -> bool:
+    """True for sentences that carry too little content to score reliably."""
+    return (
+        len(words.split()) < MIN_SENTENCE_WORDS
+        and len(compact) < MIN_SENTENCE_COMPACT_CHARS
+    )
+
+
+def _split_repair_match(sentence_compact: str, compacts: list[str]) -> bool:
+    """True if ``sentence_compact`` can be reconstructed across 2+ chunks.
+
+    A reconstruction is a chain of retrieved chunks:
+
+    * a **head** chunk that ends with a proper prefix ``sentence[:p]``;
+    * zero or more **middle** chunks, each lying entirely inside the sentence
+      at ``sentence[s:e]`` with ``s <= p < e`` (it overlaps or directly
+      continues the part covered so far and extends it to ``e``);
+    * a **tail** chunk that starts with a suffix ``sentence[q:]`` with
+      ``q <= p``.
+
+    ``q == p`` / ``s == p`` cover clean splits, smaller values cover
+    overlapping chunks (the repeated fragment is dropped). Middle chunks make
+    sentences longer than ``chunk_size`` matchable. Consecutive links must
+    be *different* chunks, and every head/tail fragment and middle chunk must
+    be at least ``MIN_SPLIT_FRAGMENT_CHARS`` long so tiny fragments cannot
+    combine arbitrary chunks into a spurious match. A gap (missing middle
+    fragment) is never bridged. All chunks are candidates for every role,
+    so the result does not depend on retrieval rank.
+    """
+    n = len(sentence_compact)
+    lo, hi = MIN_SPLIT_FRAGMENT_CHARS, n - MIN_SPLIT_FRAGMENT_CHARS
+    if hi < lo:
+        return False
+    # Frontier states: (covered prefix length p, idx of last chunk used).
+    frontier: list[tuple[int, int]] = []
+    starters: list[tuple[int, int]] = []  # (q, idx): chunk starts with sentence[q:]
+    middles: list[tuple[int, int, int]] = []  # (s, e, idx): chunk == sentence[s:e]
+    for idx, chunk in enumerate(compacts):
+        for cut in range(lo, hi + 1):
+            if chunk.endswith(sentence_compact[:cut]):
+                frontier.append((cut, idx))
+            if chunk.startswith(sentence_compact[cut:]):
+                starters.append((cut, idx))
+        if len(chunk) >= lo:
+            start = sentence_compact.find(chunk, 1)
+            while start != -1 and start + len(chunk) <= hi:
+                middles.append((start, start + len(chunk), idx))
+                start = sentence_compact.find(chunk, start + 1)
+    seen = set(frontier)
+    while frontier:
+        p, last = frontier.pop()
+        if any(q <= p and idx != last for q, idx in starters):
+            return True
+        for s, e, idx in middles:
+            if idx != last and s <= p < e and (e, idx) not in seen:
+                seen.add((e, idx))
+                frontier.append((e, idx))
+    return False
+
+
+def compute_relevant_sentence_recall(
+    retrieved_contexts: list[list[str]],
+    sample_metadata: list[dict[str, Any]],
+) -> RelevantSentenceRecallResult:
+    """Compute per-sample ``relevant_sentence_recall`` from RAGBench labels.
+
+    A sample's score is the share of its relevant sentences (per
+    ``all_relevant_sentence_keys``) that appear — after case/whitespace
+    normalisation, tolerating chunk-boundary splits — in the retrieved
+    contexts. Samples without any relevant sentence (unanswerable per
+    RAGBench) or without the label fields at all get ``None`` and are
+    excluded from the mean.
+    """
+    per_sample: list[float | None] = []
+    scores: list[float] = []
+
+    for i, meta in enumerate(sample_metadata):
+        # Deduplicate resolved sentences: duplicate keys ("3a", "3a.") or the
+        # same key listed twice must not inflate the denominator. Label-like
+        # sentences ("Yes.", "1.", "Results.") are excluded from scoring
+        # entirely — they would match almost any chunk.
+        seen_words: set[str] = set()
+        unique: list[tuple[str, str]] = []  # (sentence, compact)
+        for sentence in resolve_relevant_sentences(meta):
+            compact = _compact(sentence)
+            words = _normalised_words(sentence)
+            if not words or words in seen_words:
+                continue  # empty/label-only sentences never match
+            if _is_label_like(compact, words):
+                continue
+            seen_words.add(words)
+            unique.append((sentence, compact))
+        if not unique:
+            per_sample.append(None)
+            continue
+        contexts = retrieved_contexts[i] if i < len(retrieved_contexts) else []
+        chunks = [str(c) for c in contexts]
+        # Primary match: boundary-padded word match **within each chunk** —
+        # robust to case and whitespace differences without false positives
+        # at word edges ("Yes." never matches "yesterday"). Matching per
+        # chunk (not over the space-joined chunks) keeps cross-chunk
+        # reconstruction exclusively in the split-repair path, which
+        # enforces a minimum fragment length.
+        chunk_words = [f" {_normalised_words(chunk)} " for chunk in chunks]
+        # Split repair: direct check whether the sentence can be rebuilt
+        # from a chain of two or more chunks (clean splits, overlapping
+        # chunks, sentences longer than chunk_size, any rank order). The match must span a chunk boundary, so a sentence that
+        # sits entirely inside one chunk is only credited by the
+        # word-boundary path.
+        compacts = [_compact(chunk) for chunk in chunks]
+        retrieved = 0
+        for sentence, compact in unique:
+            padded_words = f" {_normalised_words(sentence)} "
+            if any(padded_words in words for words in chunk_words) or (
+                _split_repair_match(compact, compacts)
+            ):
+                retrieved += 1
+        value = retrieved / len(unique)
+        per_sample.append(value)
+        scores.append(value)
+
+    mean = sum(scores) / len(scores) if scores else 0.0
+    return RelevantSentenceRecallResult(
+        metric_means={"relevant_sentence_recall": mean} if scores else {},
+        per_sample=per_sample,
+        samples_with_valid_scores=len(scores),
+    )
+
+
 # ── Public entry point ───────────────────────────────────────────────
 
 
