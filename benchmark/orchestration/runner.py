@@ -295,8 +295,8 @@ def _run_single_benchmark_impl(
         # under test must never see them. Strip them from the sample handed
         # to adapters and checkpoints; the full metadata stays on ``sample``
         # for the metric. (The reference ``ground_truth`` answer is a
-        # separate, pre-existing exposure of HTTP adapters — tracked in a
-        # follow-up issue.)
+        # separate, pre-existing exposure of HTTP adapters — tracked in
+        # issue #39.)
         adapter_sample = {
             **sample,
             "metadata": strip_sentence_label_metadata(

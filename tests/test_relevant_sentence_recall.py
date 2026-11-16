@@ -242,13 +242,38 @@ class TestRelevantSentenceRecall:
 
     def test_reviewer_repro_split_tiny_fragments(self):
         # Reviewer repro: 'Yes it is.' matching via tiny fragments
-        # ("yes" + "it is") across two chunks — split repair requires
-        # fragments of >= 4 compact chars, so no match; the sentence is
-        # label-like anyway and excluded from scoring.
+        # ("yes" + "it is") across two chunks. With per-chunk word matching
+        # and the >= 4-char split-fragment rule there is no match — the
+        # sentence scores 0.0 instead of the spurious 1.0.
         contexts = [["he said yes", "it is raining"]]
         meta = _meta(docs_sentences=[["Yes it is."]], relevant_keys=["0.0"])
         result = compute_relevant_sentence_recall(contexts, [meta])
-        assert result.per_sample[0] is None
+        assert result.per_sample[0] == 0.0
+
+    def test_short_content_sentences_still_scored(self):
+        # Reviewer repro: real short content sentences (3+ words) must stay
+        # scoreable even though they are under 20 compact characters.
+        for sentence in (
+            "The CEO resigned.",
+            "Revenue grew 5%.",
+            "Paris is the capital.",
+        ):
+            contexts = [[sentence]]
+            meta = _meta(docs_sentences=[[sentence]], relevant_keys=["0.0"])
+            result = compute_relevant_sentence_recall(contexts, [meta])
+            assert result.per_sample[0] == 1.0, sentence
+
+    def test_sentence_split_across_word_boundary_still_repaired(self):
+        # A sentence split at a word boundary across two chunks no longer
+        # matches via space-joined words — it must be repaired by the
+        # split-repair path instead.
+        contexts = [["An out of memory dump may be", "observed on the system."]]
+        meta = _meta(
+            docs_sentences=[[SENT_A]],
+            relevant_keys=["0.0"],
+        )
+        result = compute_relevant_sentence_recall(contexts, [meta])
+        assert result.per_sample[0] == 1.0
 
     def test_reviewer_repro_overlap_reverse_order(self):
         # Reviewer repro: overlap between the two fragments in reverse rank
@@ -458,14 +483,16 @@ class TestRunnerIntegration:
         safe = _chroma_safe_metadata({"all_relevant_sentence_keys": []})
         assert "all_relevant_sentence_keys" not in safe
 
-    def test_chroma_safe_metadata_json_encodes_none_and_mixed_lists(self):
-        # Reviewer repro: [1, None], [None], [1, 'a'] crash Chroma 1.5.9;
-        # they must be serialised instead of passed through.
+    def test_chroma_safe_metadata_json_encodes_mixed_lists(self):
+        # Reviewer repro: [1, None], [None], [1, 'a'] crash Chroma 1.5.9.
+        # None entries are dropped first, so [1, None] behaves like [1];
+        # genuinely mixed lists are serialised.
+        import json as jsonlib
         from benchmark.dataset import _chroma_safe_metadata
 
-        for bad in ([1, None], [None], [1, "a"]):
-            safe = _chroma_safe_metadata({"tags": bad})
-            assert safe["tags"] == __import__("json").dumps(bad)
+        assert _chroma_safe_metadata({"k": [1, None]})["k"] == [1]
+        assert _chroma_safe_metadata({"k": [None]}) == {}
+        assert _chroma_safe_metadata({"k": [1, "a"]})["k"] == jsonlib.dumps([1, "a"])
 
     def test_chroma_safe_metadata_keeps_uniform_primitive_lists(self):
         from benchmark.dataset import _chroma_safe_metadata

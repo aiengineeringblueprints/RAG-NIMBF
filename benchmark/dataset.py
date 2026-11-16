@@ -693,8 +693,10 @@ def _chroma_safe_metadata(metadata: Mapping[str, Any]) -> dict[str, Any]:
     for downstream gold-scoring: anything richer — or a list containing
     ``None``/mixed types, which Chroma rejects — is serialised to a JSON
     string so Chroma's upsert accepts it. Downstream readers recover the
-    original via ``json.loads``. Empty lists are dropped entirely so a key
-    keeps the same type across all documents in a collection.
+    original via ``json.loads``. ``None`` list entries are dropped so
+    ``[1, None]`` and ``[1, 2]`` keep the same type under one key. Empty
+    lists are dropped entirely so a key keeps the same type across all
+    documents in a collection (``meta.get(key)`` returns ``None`` for them).
     """
     safe: dict[str, Any] = {}
     for key, value in metadata.items():
@@ -707,15 +709,24 @@ def _chroma_safe_metadata(metadata: Mapping[str, Any]) -> dict[str, Any]:
                 # ... to be non-empty"). Drop the key entirely: keeping it
                 # as the JSON string "[]" would give the key different types
                 # across documents in the same collection, and Chroma where
-                # filters silently skip type-mismatched documents.
+                # filters silently skip type-mismatched documents. Downstream
+                # readers therefore see ``meta.get(key) is None`` for these.
                 continue
-            types = {type(item) for item in value}
+            # Chroma also rejects lists containing None or mixed item types.
+            # Drop None entries first, then JSON-encode only lists that are
+            # still genuinely mixed — so [1, None] and [1, 2] keep the same
+            # type under one key.
+            compacted = [item for item in value if item is not None]
+            if not compacted:
+                # Only None entries — drop like an empty list.
+                continue
+            types = {type(item) for item in compacted}
             if (
-                None not in value
+                compacted
                 and len(types) == 1
                 and next(iter(types)) in _CHROMA_PRIMITIVES
             ):
-                safe[key] = value
+                safe[key] = compacted
                 continue
         safe[key] = json.dumps(value, ensure_ascii=False)
     return safe

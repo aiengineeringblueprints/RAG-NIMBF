@@ -308,7 +308,9 @@ def _compact(text: str) -> str:
 # A sentence is treated as a label rather than content — and excluded from
 # scoring entirely — when it is label-like: fewer than MIN_SENTENCE_WORDS
 # normalised words AND fewer than MIN_SENTENCE_COMPACT_CHARS characters
-# ("Yes.", "1.", "Results."). Short sentences would match almost any chunk.
+# ("Yes.", "1.", "Results.", "Yes it is."). Short sentences would match
+# almost any chunk, while real short content sentences (3+ words, e.g.
+# "Revenue grew 5%.") stay scoreable.
 MIN_SENTENCE_WORDS = 3
 MIN_SENTENCE_COMPACT_CHARS = 20
 
@@ -318,11 +320,11 @@ MIN_SENTENCE_COMPACT_CHARS = 20
 MIN_SPLIT_FRAGMENT_CHARS = 4
 
 
-def _is_label_like(sentence: str, compact: str, words: str) -> bool:
+def _is_label_like(compact: str, words: str) -> bool:
     """True for sentences that carry too little content to score reliably."""
     return (
         len(words.split()) < MIN_SENTENCE_WORDS
-        or len(compact) < MIN_SENTENCE_COMPACT_CHARS
+        and len(compact) < MIN_SENTENCE_COMPACT_CHARS
     )
 
 
@@ -377,11 +379,6 @@ def compute_relevant_sentence_recall(
 
     for i, meta in enumerate(sample_metadata):
         # Deduplicate resolved sentences: duplicate keys ("3a", "3a.") or the
-        # same key listed twice must not inflate the denominator. Very short
-        # compact forms ("Yes.", "1.") are label-like and match almost any
-        # chunk, so they are excluded from scoring entirely.
-        seen_words: set[str] = set()
-        # Deduplicate resolved sentences: duplicate keys ("3a", "3a.") or the
         # same key listed twice must not inflate the denominator. Label-like
         # sentences ("Yes.", "1.", "Results.") are excluded from scoring
         # entirely — they would match almost any chunk.
@@ -392,7 +389,7 @@ def compute_relevant_sentence_recall(
             words = _normalised_words(sentence)
             if not words or words in seen_words:
                 continue  # empty/label-only sentences never match
-            if _is_label_like(sentence, compact, words):
+            if _is_label_like(compact, words):
                 continue
             seen_words.add(words)
             unique.append((sentence, compact))
@@ -401,10 +398,13 @@ def compute_relevant_sentence_recall(
             continue
         contexts = retrieved_contexts[i] if i < len(retrieved_contexts) else []
         chunks = [str(c) for c in contexts]
-        # Primary match: boundary-padded word match across the space-joined
-        # chunks — robust to case and whitespace differences without false
-        # positives at word edges ("Yes." never matches "yesterday").
-        joined_words = f" {_normalised_words(' '.join(chunks))} "
+        # Primary match: boundary-padded word match **within each chunk** —
+        # robust to case and whitespace differences without false positives
+        # at word edges ("Yes." never matches "yesterday"). Matching per
+        # chunk (not over the space-joined chunks) keeps cross-chunk
+        # reconstruction exclusively in the split-repair path, which
+        # enforces a minimum fragment length.
+        chunk_words = [f" {_normalised_words(chunk)} " for chunk in chunks]
         # Split repair: direct check whether the sentence can be rebuilt
         # across two chunks (clean split, overlapping chunks, any rank
         # order). The match must span a chunk boundary, so a sentence that
@@ -414,8 +414,8 @@ def compute_relevant_sentence_recall(
         retrieved = 0
         for sentence, compact in unique:
             padded_words = f" {_normalised_words(sentence)} "
-            if padded_words in joined_words or _split_repair_match(
-                compact, compacts
+            if any(padded_words in words for words in chunk_words) or (
+                _split_repair_match(compact, compacts)
             ):
                 retrieved += 1
         value = retrieved / len(unique)
