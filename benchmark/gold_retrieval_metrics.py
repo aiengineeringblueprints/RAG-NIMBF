@@ -308,9 +308,11 @@ def _compact(text: str) -> str:
 # A sentence is treated as a label rather than content — and excluded from
 # scoring entirely — when it is label-like: fewer than MIN_SENTENCE_WORDS
 # normalised words AND fewer than MIN_SENTENCE_COMPACT_CHARS characters
-# ("Yes.", "1.", "Results.", "Yes it is."). Short sentences would match
-# almost any chunk, while real short content sentences (3+ words, e.g.
-# "Revenue grew 5%.") stay scoreable.
+# ("Yes.", "1.", "Results.", "Table 1."). Such sentences would match almost
+# any chunk, while real short content sentences (3+ words, e.g. "Revenue
+# grew 5%.") stay scoreable. Known limitation: a 3-word sentence made of
+# common words ("Yes it is.") is scored and counts whenever a single chunk
+# contains those words verbatim and contiguously.
 MIN_SENTENCE_WORDS = 3
 MIN_SENTENCE_COMPACT_CHARS = 20
 
@@ -329,36 +331,55 @@ def _is_label_like(compact: str, words: str) -> bool:
 
 
 def _split_repair_match(sentence_compact: str, compacts: list[str]) -> bool:
-    """True if ``sentence_compact`` can be reconstructed across two chunks.
+    """True if ``sentence_compact`` can be reconstructed across 2+ chunks.
 
-    A spanning reconstruction exists when one chunk ends with a proper prefix
-    ``sentence[:p]`` and a *different* chunk starts with a suffix
-    ``sentence[q:]`` with ``q <= p``. ``q == p`` covers a clean split;
-    ``q < p`` covers chunks that overlap (the repeated fragment is dropped
-    when reconstructing). Both rank orders are covered because all chunks
-    are checked as head and tail candidates — the metric therefore does not
-    depend on retrieval rank. Both fragments must be at least
-    ``MIN_SPLIT_FRAGMENT_CHARS`` long so tiny fragments cannot combine
-    arbitrary chunks into a spurious match.
+    A reconstruction is a chain of retrieved chunks:
 
-    This is a direct check on the chunk compacts: no per-pair join strings
-    are built, so the cost is independent of ``k**2``.
+    * a **head** chunk that ends with a proper prefix ``sentence[:p]``;
+    * zero or more **middle** chunks, each lying entirely inside the sentence
+      at ``sentence[s:e]`` with ``s <= p < e`` (it overlaps or directly
+      continues the part covered so far and extends it to ``e``);
+    * a **tail** chunk that starts with a suffix ``sentence[q:]`` with
+      ``q <= p``.
+
+    ``q == p`` / ``s == p`` cover clean splits, smaller values cover
+    overlapping chunks (the repeated fragment is dropped). Middle chunks make
+    sentences longer than ``chunk_size`` matchable. Consecutive links must
+    be *different* chunks, and every head/tail fragment and middle chunk must
+    be at least ``MIN_SPLIT_FRAGMENT_CHARS`` long so tiny fragments cannot
+    combine arbitrary chunks into a spurious match. A gap (missing middle
+    fragment) is never bridged. All chunks are candidates for every role,
+    so the result does not depend on retrieval rank.
     """
     n = len(sentence_compact)
-    if n < 2 * MIN_SPLIT_FRAGMENT_CHARS:
+    lo, hi = MIN_SPLIT_FRAGMENT_CHARS, n - MIN_SPLIT_FRAGMENT_CHARS
+    if hi < lo:
         return False
-    enders: list[tuple[int, int]] = []    # (chunk idx, p) ends with sentence[:p]
-    starters: list[tuple[int, int]] = []  # (chunk idx, q) starts with sentence[q:]
+    # Frontier states: (covered prefix length p, idx of last chunk used).
+    frontier: list[tuple[int, int]] = []
+    starters: list[tuple[int, int]] = []  # (q, idx): chunk starts with sentence[q:]
+    middles: list[tuple[int, int, int]] = []  # (s, e, idx): chunk == sentence[s:e]
     for idx, chunk in enumerate(compacts):
-        for cut in range(MIN_SPLIT_FRAGMENT_CHARS, n - MIN_SPLIT_FRAGMENT_CHARS + 1):
+        for cut in range(lo, hi + 1):
             if chunk.endswith(sentence_compact[:cut]):
-                enders.append((idx, cut))
-        for cut in range(MIN_SPLIT_FRAGMENT_CHARS, n):
+                frontier.append((cut, idx))
             if chunk.startswith(sentence_compact[cut:]):
-                starters.append((idx, cut))
-    return any(
-        i != j and q <= p for i, p in enders for j, q in starters
-    )
+                starters.append((cut, idx))
+        if len(chunk) >= lo:
+            start = sentence_compact.find(chunk, 1)
+            while start != -1 and start + len(chunk) <= hi:
+                middles.append((start, start + len(chunk), idx))
+                start = sentence_compact.find(chunk, start + 1)
+    seen = set(frontier)
+    while frontier:
+        p, last = frontier.pop()
+        if any(q <= p and idx != last for q, idx in starters):
+            return True
+        for s, e, idx in middles:
+            if idx != last and s <= p < e and (e, idx) not in seen:
+                seen.add((e, idx))
+                frontier.append((e, idx))
+    return False
 
 
 def compute_relevant_sentence_recall(
@@ -406,8 +427,8 @@ def compute_relevant_sentence_recall(
         # enforces a minimum fragment length.
         chunk_words = [f" {_normalised_words(chunk)} " for chunk in chunks]
         # Split repair: direct check whether the sentence can be rebuilt
-        # across two chunks (clean split, overlapping chunks, any rank
-        # order). The match must span a chunk boundary, so a sentence that
+        # from a chain of two or more chunks (clean splits, overlapping
+        # chunks, sentences longer than chunk_size, any rank order). The match must span a chunk boundary, so a sentence that
         # sits entirely inside one chunk is only credited by the
         # word-boundary path.
         compacts = [_compact(chunk) for chunk in chunks]

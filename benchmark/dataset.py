@@ -692,11 +692,13 @@ def _chroma_safe_metadata(metadata: Mapping[str, Any]) -> dict[str, Any]:
     ``context`` dicts, ``supporting_facts`` nested lists) in sample metadata
     for downstream gold-scoring: anything richer — or a list containing
     ``None``/mixed types, which Chroma rejects — is serialised to a JSON
-    string so Chroma's upsert accepts it. Downstream readers recover the
-    original via ``json.loads``. ``None`` list entries are dropped so
-    ``[1, None]`` and ``[1, 2]`` keep the same type under one key. Empty
-    lists are dropped entirely so a key keeps the same type across all
-    documents in a collection (``meta.get(key)`` returns ``None`` for them).
+    string so Chroma's upsert accepts it; readers can ``json.loads`` those
+    strings. The coercion is lossy for lists: ``None`` entries are dropped
+    (``[1, None, 3]`` is stored as ``[1, 3]``, so positions shift) so that
+    ``[1, None]`` and ``[1, 2]`` keep the same type under one key, and empty
+    or all-``None`` lists are dropped entirely (``meta.get(key)`` returns
+    ``None`` for them). Callers needing exact values must not rely on the
+    vector-store copy of metadata.
     """
     safe: dict[str, Any] = {}
     for key, value in metadata.items():
@@ -721,11 +723,7 @@ def _chroma_safe_metadata(metadata: Mapping[str, Any]) -> dict[str, Any]:
                 # Only None entries — drop like an empty list.
                 continue
             types = {type(item) for item in compacted}
-            if (
-                compacted
-                and len(types) == 1
-                and next(iter(types)) in _CHROMA_PRIMITIVES
-            ):
+            if len(types) == 1 and next(iter(types)) in _CHROMA_PRIMITIVES:
                 safe[key] = compacted
                 continue
         safe[key] = json.dumps(value, ensure_ascii=False)

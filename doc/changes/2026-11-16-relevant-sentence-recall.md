@@ -19,17 +19,21 @@ TechQA (see `doc/enterprise-rag-techqa-refusal-analysis.md`, section 2.2).
   at word edges: "Yes." never matches "yesterday", "The rapist …" never
   matches "Therapist …"). Label-like sentences — fewer than 3 normalised
   words AND fewer than 20 compact characters ("Yes.", "Results.",
-  "Table 1.", "Yes it is.") — are excluded from scoring entirely: they
-  would match almost any chunk, while real short content sentences
-  ("Revenue grew 5%.") stay scoreable.
+  "Table 1.") — are excluded from scoring entirely: they would match
+  almost any chunk, while real short content sentences ("Revenue grew
+  5%.") stay scoreable. Known limitation: 3-word sentences of common words
+  ("Yes it is.") are scored and count when one chunk contains them
+  verbatim.
   Sentences split across a chunk boundary — even mid-word, across
   overlapping chunks, or with the fragments retrieved at non-adjacent ranks
-  in either order — are repaired by a direct two-chunk reconstruction check
-  (`_split_repair_match`): one chunk must end with a proper prefix of the
-  sentence while a different chunk starts with the corresponding suffix
-  (`q <= p` allows overlapping fragments), with both fragments at least 4
-  compact characters so tiny fragments cannot combine arbitrary chunks. No
-  per-pair join strings are built, so the cost is independent of k².
+  in either order, or spanning three or more chunks (sentence longer than
+  `chunk_size`) — are repaired by a chain reconstruction check
+  (`_split_repair_match`): a head chunk ends with a proper prefix of the
+  sentence, optional middle chunks lie entirely inside the sentence and
+  each overlap or continue the covered part, and a tail chunk starts with
+  the remaining suffix. Consecutive links must be different chunks, every
+  fragment is at least 4 compact characters, and gaps (a missing middle
+  fragment) are never bridged. No per-pair join strings are built.
   Duplicate keys and key variants ("3a", "3a.", repeated keys) are
   deduplicated before scoring; empty, label-like and malformed labels
   (`None`, nested lists, JSON strings) never reach the score.
@@ -95,7 +99,7 @@ points:
 (Differences come from the refusal-detection heuristic used for the split
 and from label-like sentences ("Yes.", "Results.", short headings) being
 excluded from scoring entirely.)
-Full test suite: 903 passed.
+Full test suite: 906 passed (incl. multi-chunk split-repair tests).
 
 ## Migration
 

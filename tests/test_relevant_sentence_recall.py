@@ -275,6 +275,31 @@ class TestRelevantSentenceRecall:
         result = compute_relevant_sentence_recall(contexts, [meta])
         assert result.per_sample[0] == 1.0
 
+    def test_sentence_spanning_three_chunks_repaired(self):
+        # Reviewer repro (round 4): a sentence longer than chunk_size spans
+        # three chunks; it must still count, in any rank order.
+        sentence = "alpha beta gamma delta epsilon zeta eta theta iota kappa."
+        chunks = ["x alpha beta gamma", "delta epsilon zeta eta", "theta iota kappa. y"]
+        meta = _meta(docs_sentences=[[sentence]], relevant_keys=["0.0"])
+        for order in (chunks, chunks[::-1], [chunks[1], chunks[2], chunks[0]]):
+            result = compute_relevant_sentence_recall([order], [meta])
+            assert result.per_sample[0] == 1.0, order
+
+    def test_sentence_spanning_four_chunks_mid_word_with_overlap(self):
+        sentence = "alpha beta gamma delta epsilon zeta eta theta iota kappa."
+        chunks = ["intro alpha be", "beta gamma del", "delta epsilon zeta et", "eta theta iota kappa. outro"]
+        meta = _meta(docs_sentences=[[sentence]], relevant_keys=["0.0"])
+        result = compute_relevant_sentence_recall([chunks[::-1]], [meta])
+        assert result.per_sample[0] == 1.0
+
+    def test_multi_chunk_gap_is_not_repaired(self):
+        # A missing middle fragment must not be bridged.
+        sentence = "alpha beta gamma delta epsilon zeta eta theta iota kappa."
+        chunks = ["x alpha beta gamma", "theta iota kappa. y"]
+        meta = _meta(docs_sentences=[[sentence]], relevant_keys=["0.0"])
+        result = compute_relevant_sentence_recall([chunks], [meta])
+        assert result.per_sample[0] == 0.0
+
     def test_reviewer_repro_overlap_reverse_order(self):
         # Reviewer repro: overlap between the two fragments in reverse rank
         # order must be repaired as well.
