@@ -10,7 +10,11 @@ from typing import Any, Mapping
 from datasets import load_dataset
 from rich.console import Console
 
-from benchmark.dataset_adapters import OCR_GT_DATASET_NAMES, resolve_adapter
+from benchmark.dataset_adapters import (
+    OCR_GT_DATASET_NAMES,
+    derive_answerable_flag,
+    resolve_adapter,
+)
 from benchmark.doc_ids import resolve_dataset_doc_id
 
 console = Console()
@@ -199,15 +203,16 @@ def load_benchmark_data(
         else:
             gt = str(gt_raw)
 
+        metadata = {k: row.get(k) for k in adapter.metadata_keys if k in row}
+        derive_answerable_flag(metadata)
+
         samples.append(
             normalize_sample(
                 {
                     "question": row[adapter.question_key],
                     "ground_truth": gt,
                     "context": adapter.build_context(row),
-                    "metadata": {
-                        k: row.get(k) for k in adapter.metadata_keys if k in row
-                    },
+                    "metadata": metadata,
                 },
                 source=f"{dataset_name}:{split}[{len(samples)}]",
             )

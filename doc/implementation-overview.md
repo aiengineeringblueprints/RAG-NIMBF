@@ -261,7 +261,12 @@ Implements benchmarking of *document parsers* (OCR models) as a first-class stag
 - **Gold-doc retrieval metrics** (`gold_retrieval_metrics.py`):
   `compute_gold_doc_retrieval_metrics()` (gold_retrieval_metrics.py:207) — Hit@k /
   NDCG@k / Recall@k against `gold_doc_id` metadata, plus gold-title sets and span
-  relevance for HotpotQA-style supporting facts.
+  relevance for HotpotQA-style supporting facts. Also
+  `compute_relevant_sentence_recall()` — sentence-level recall from RAGBench
+  labels (`all_relevant_sentence_keys` / `documents_sentences`), reported as
+  `relevant_sentence_recall` whenever those labels are present; samples without
+  relevant sentences are excluded from the mean, datasets without labels skip
+  the metric silently.
 - **System metrics** (`metrics.py`): GPU sampling via nvidia-smi/NVML, host RAPL energy,
   energy-cost estimation.
 

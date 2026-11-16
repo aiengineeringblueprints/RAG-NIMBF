@@ -194,6 +194,18 @@ def _ragbench_context(row: dict) -> str:
     return "\n\n".join(parts)
 
 
+def derive_answerable_flag(metadata: dict[str, Any]) -> None:
+    """Set ``metadata["answerable"]`` from RAGBench sentence labels in place.
+
+    A RAGBench sample is answerable when it has at least one relevant
+    sentence (``all_relevant_sentence_keys`` non-empty). Samples without the
+    label fields are left untouched.
+    """
+    keys = metadata.get("all_relevant_sentence_keys")
+    if keys is not None:
+        metadata["answerable"] = bool(keys)
+
+
 register(
     DatasetAdapter(
         name="ragbench",
@@ -202,7 +214,18 @@ register(
         ground_truth_key="response",
         build_context=_ragbench_context,
         preferred_split="test",
-        metadata_keys=("id", "dataset_name"),
+        metadata_keys=(
+            "id",
+            "dataset_name",
+            # RAGBench sentence labels (relevant-sentence recall):
+            # "all_relevant_sentence_keys" holds "doc.sent" keys into
+            # "documents_sentences"; "adherence_score" says whether the
+            # reference answer is supported by the documents. Samples whose
+            # key list is empty are unanswerable (no relevant sentence).
+            "all_relevant_sentence_keys",
+            "documents_sentences",
+            "adherence_score",
+        ),
         requires_subset=True,
     )
 )

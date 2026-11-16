@@ -34,7 +34,10 @@ from benchmark.checkpoint import CheckpointStore, generation_result_from_record
 from benchmark.custom_metrics import CustomMetricsResult, compute_custom_metrics
 from benchmark.evaluation import EvaluationResult, evaluate_results
 from benchmark.generation import GenerationResult
-from benchmark.gold_retrieval_metrics import compute_gold_doc_retrieval_metrics
+from benchmark.gold_retrieval_metrics import (
+    compute_gold_doc_retrieval_metrics,
+    compute_relevant_sentence_recall,
+)
 from benchmark.metrics import estimate_energy_cost_usd, read_host_energy_joules
 from benchmark.reporting.models import (
     BenchmarkResultExtended,
@@ -428,6 +431,9 @@ def _run_single_benchmark_impl(
             ),
         )
         console.print("  [dim]Computed retrieval-only gold metrics[/dim]")
+        custom_result = _with_relevant_sentence_recall(
+            custom_result, all_sample_metadata, all_contexts
+        )
     elif config.custom_metrics_enabled:
         console.print("  [dim]Computing custom metrics (IR + NLG)...[/dim]")
 
@@ -463,6 +469,9 @@ def _run_single_benchmark_impl(
                     sample_metadata=all_sample_metadata,
                     retrieved_contexts=all_contexts,
                 )
+            custom_result = _with_relevant_sentence_recall(
+                custom_result, all_sample_metadata, all_contexts
+            )
         if custom_result.error:
             console.print(f"  [yellow]Custom metrics error: {custom_result.error}[/yellow]")
         else:
@@ -670,6 +679,58 @@ def _run_single_benchmark_impl(
         dataset_license=config.dataset_license,
     )
     return benchmark_result
+
+
+def _with_relevant_sentence_recall(
+    custom_result: CustomMetricsResult,
+    sample_metadata: list[dict],
+    retrieved_contexts: list[list[str]],
+) -> CustomMetricsResult:
+    """Merge ``relevant_sentence_recall`` into custom metrics when RAGBench
+    sentence labels are present.
+
+    Datasets without ``all_relevant_sentence_keys`` / ``documents_sentences``
+    metadata contribute no scores, so the metric simply stays absent instead
+    of erroring or reporting zeros.
+    """
+    recall_result = compute_relevant_sentence_recall(
+        retrieved_contexts, sample_metadata
+    )
+    if not recall_result.metric_means:
+        return custom_result
+
+    metric_means = dict(custom_result.metric_means)
+    metric_means.update(recall_result.metric_means)
+
+    samples_with_valid_scores = dict(custom_result.samples_with_valid_scores)
+    samples_with_valid_scores["relevant_sentence_recall"] = (
+        recall_result.samples_with_valid_scores
+    )
+
+    per_sample: list[dict[str, float | None]] = []
+    max_len = max(
+        len(custom_result.per_sample), len(recall_result.per_sample)
+    )
+    for i in range(max_len):
+        scores: dict[str, float | None] = {}
+        if i < len(custom_result.per_sample):
+            scores.update(custom_result.per_sample[i])
+        if i < len(recall_result.per_sample) and recall_result.per_sample[i] is not None:
+            scores["relevant_sentence_recall"] = recall_result.per_sample[i]
+        per_sample.append(scores)
+
+    console.print(
+        "  [dim]relevant_sentence_recall: "
+        f"{recall_result.metric_means['relevant_sentence_recall']:.3f} "
+        f"(over {recall_result.samples_with_valid_scores} "
+        "sample(s) with relevant sentences)[/dim]"
+    )
+    return CustomMetricsResult(
+        metric_means=metric_means,
+        per_sample=per_sample,
+        samples_with_valid_scores=samples_with_valid_scores,
+        error=custom_result.error,
+    )
 
 
 def _with_gold_doc_retrieval_metrics(

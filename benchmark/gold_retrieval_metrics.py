@@ -207,6 +207,185 @@ def _append_span_metrics(
             accum.setdefault(name, []).append(value)
 
 
+# ── RAGBench sentence-level recall ───────────────────────────────────
+
+
+@dataclass(frozen=True)
+class RelevantSentenceRecallResult:
+    metric_means: dict[str, float]
+    per_sample: list[float | None]
+    samples_with_valid_scores: int
+
+
+def resolve_relevant_sentences(sample_metadata: dict[str, Any] | None) -> list[str]:
+    """Resolve RAGBench sentence labels into the actual relevant sentence texts.
+
+    RAGBench stores ``documents_sentences`` as a list of documents, each a
+    list of ``[sentence_key, sentence_text]`` pairs, and
+    ``all_relevant_sentence_keys`` lists the keys of the relevant sentences
+    (e.g. ``"3a"`` = document 3, sentence ``a``; sometimes with a trailing
+    period). A ``"doc.sent"`` numeric fallback is supported for datasets with
+    a different layout. Returns the sentence texts; empty when either field
+    is missing.
+    """
+    if not isinstance(sample_metadata, dict):
+        return []
+    docs = sample_metadata.get("documents_sentences")
+    keys = sample_metadata.get("all_relevant_sentence_keys")
+    if not isinstance(docs, list) or not isinstance(keys, list):
+        return []
+
+    by_key: dict[str, str] = {}
+    for doc in docs:
+        if not isinstance(doc, list):
+            continue
+        if doc and isinstance(doc[0], list):
+            entries = doc  # document already a flat list of pairs
+        else:
+            entries = [doc]
+        for entry in entries:
+            if (
+                isinstance(entry, list)
+                and len(entry) == 2
+                and isinstance(entry[0], str)
+                and isinstance(entry[1], str)
+                and entry[1].strip()
+            ):
+                by_key[entry[0]] = entry[1]
+
+    sentences: list[str] = []
+    for key in keys:
+        if not isinstance(key, str):
+            continue
+        # Exact key match, then without/with trailing period.
+        sentence = by_key.get(key)
+        if sentence is None:
+            stripped = key.rstrip(".")
+            sentence = by_key.get(stripped)
+        if sentence is None and "." in key:
+            doc_part, _, sent_part = key.partition(".")
+            try:
+                doc_idx, sent_idx = int(doc_part), int(sent_part)
+            except ValueError:
+                sent_idx = None
+            if sent_idx is not None and 0 <= doc_idx < len(docs):
+                doc = docs[doc_idx]
+                if isinstance(doc, str):
+                    sentence = doc
+                elif isinstance(doc, list) and 0 <= sent_idx < len(doc):
+                    if isinstance(doc[sent_idx], str):
+                        sentence = doc[sent_idx]
+        if sentence is not None and sentence.strip():
+            sentences.append(sentence)
+    return sentences
+
+
+def _normalised_tokens(text: str) -> list[str]:
+    """Lowercase Unicode word tokens; whitespace, punctuation and underscores
+    dropped."""
+    return re.findall(r"[^\W_]+", text.lower(), re.UNICODE)
+
+
+def _normalised_words(text: str) -> str:
+    """Lowercased text with whitespace collapsed to single spaces.
+
+    Word boundaries are preserved so materially different sentences ("the
+    rapist …" vs "therapist …") never match; only case and whitespace are
+    normalised away.
+    """
+    return " ".join(_normalised_tokens(text))
+
+
+def _compact(text: str) -> str:
+    """Normalised text with all separators removed.
+
+    Used only to repair sentences split across a chunk boundary — even
+    mid-word — by matching against the concatenation of adjacent chunks.
+    """
+    return "".join(_normalised_tokens(text))
+
+
+def _overlap_trimmed_compact_joins(chunks: list[str]) -> list[str]:
+    """Compact concatenations of each adjacent chunk pair, with the longest
+    overlap between the two chunks removed before joining.
+
+    Retrieval chunks frequently overlap (chunking overlap windows) or repeat
+    a fragment; trimming the longest suffix/prefix overlap keeps a sentence
+    split across such chunks matchable without double-counting the shared
+    text. A plain (untrimmed) concatenation is included as well so a split
+    that cuts mid-word still matches.
+    """
+    joins: list[str] = []
+    for i in range(len(chunks) - 1):
+        left, right = _compact(chunks[i]), _compact(chunks[i + 1])
+        if not left or not right:
+            continue
+        max_overlap = min(len(left), len(right))
+        trimmed = right
+        for size in range(max_overlap, 0, -1):
+            if left.endswith(right[:size]):
+                trimmed = right[size:]
+                break
+        joins.append(left + right)
+        joins.append(left + trimmed)
+    return joins
+
+
+def compute_relevant_sentence_recall(
+    retrieved_contexts: list[list[str]],
+    sample_metadata: list[dict[str, Any]],
+) -> RelevantSentenceRecallResult:
+    """Compute per-sample ``relevant_sentence_recall`` from RAGBench labels.
+
+    A sample's score is the share of its relevant sentences (per
+    ``all_relevant_sentence_keys``) that appear — after case/whitespace
+    normalisation, tolerating chunk-boundary splits — in the retrieved
+    contexts. Samples without any relevant sentence (unanswerable per
+    RAGBench) or without the label fields at all get ``None`` and are
+    excluded from the mean.
+    """
+    per_sample: list[float | None] = []
+    scores: list[float] = []
+
+    for i, meta in enumerate(sample_metadata):
+        relevant = resolve_relevant_sentences(meta)
+        if not relevant:
+            per_sample.append(None)
+            continue
+        contexts = retrieved_contexts[i] if i < len(retrieved_contexts) else []
+        chunks = [str(c) for c in contexts]
+        # Primary match: word-boundary preserving, per chunk and across the
+        # space-joined chunks — robust to case and whitespace differences
+        # without creating false positives at word edges.
+        joined_words = _normalised_words(" ".join(chunks))
+        # Split repair: compact (boundary-free) concatenations of adjacent
+        # chunk pairs, with and without overlap trimming, so a sentence cut
+        # by a chunk boundary — even mid-word — still matches. Compact
+        # matching is never applied within a single chunk, which keeps
+        # word-boundary semantics for intact text.
+        split_joins = _overlap_trimmed_compact_joins(chunks)
+        retrieved = 0
+        for sentence in relevant:
+            words = _normalised_words(sentence)
+            if not words:
+                continue  # empty/label-only sentences never match
+            compact = _compact(sentence)
+            if words in joined_words or (
+                compact and any(compact in join for join in split_joins)
+            ):
+                retrieved += 1
+        value = retrieved / len(relevant)
+        per_sample.append(value)
+        scores.append(value)
+
+    mean = sum(scores) / len(scores) if scores else 0.0
+    return RelevantSentenceRecallResult(
+        metric_means={"relevant_sentence_recall": mean} if scores else {},
+        per_sample=per_sample,
+        samples_with_valid_scores=len(scores),
+    )
+
+
 # ── Public entry point ───────────────────────────────────────────────
 
 
