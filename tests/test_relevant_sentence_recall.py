@@ -8,6 +8,10 @@ from benchmark.gold_retrieval_metrics import (
     resolve_relevant_sentences,
 )
 
+# Sentences long enough to be scored (>= 3 words / >= 20 compact chars).
+SENT_A = "An out of memory dump may be observed on the system."
+SENT_B = "Further investigation reveals a failed thread creation message."
+
 
 def _meta(
     docs_sentences=None,
@@ -25,17 +29,17 @@ def _meta(
 class TestResolveRelevantSentences:
     def test_resolves_doc_sent_keys(self):
         meta = _meta(
-            docs_sentences=[["First sentence.", "Second sentence."]],
+            docs_sentences=[["First sentence.", SENT_A]],
             relevant_keys=["0.1"],
         )
-        assert resolve_relevant_sentences(meta) == ["Second sentence."]
+        assert resolve_relevant_sentences(meta) == [SENT_A]
 
     def test_handles_list_of_sentence_lists_per_document(self):
         meta = _meta(
-            docs_sentences=[["A.", "B."], ["C.", "D."]],
+            docs_sentences=[["A.", SENT_A], ["C.", SENT_B]],
             relevant_keys=["1.0", "0.1"],
         )
-        assert set(resolve_relevant_sentences(meta)) == {"C.", "B."}
+        assert set(resolve_relevant_sentences(meta)) == {"C.", SENT_A}
 
     def test_no_labels_returns_empty(self):
         assert resolve_relevant_sentences(None) == []
@@ -49,23 +53,30 @@ class TestResolveRelevantSentences:
             docs_sentences=[
                 [
                     ["0a", "First sentence."],
-                    ["0b", "Second sentence."],
+                    ["0b", SENT_A],
                 ],
-                [["3a", "Third sentence."]],
+                [["3a", SENT_B]],
             ],
             relevant_keys=["3a", "0b", "3a."],
         )
         assert set(resolve_relevant_sentences(meta)) == {
-            "Third sentence.",
-            "Second sentence.",
+            SENT_B,
+            SENT_A,
         }
+
+    def test_malformed_pair_values_are_ignored(self):
+        meta = _meta(
+            docs_sentences=[[["0a", None], ["0b", ["nested"]], ["0c", SENT_A]]],
+            relevant_keys=["0a", "0b", "0c"],
+        )
+        assert resolve_relevant_sentences(meta) == [SENT_A]
 
 
 class TestRelevantSentenceRecall:
     def test_perfect_retrieval(self):
-        contexts = [["First sentence.", "Second sentence."]]
+        contexts = [[SENT_A, SENT_B]]
         meta = _meta(
-            docs_sentences=[["First sentence.", "Second sentence."]],
+            docs_sentences=[[SENT_A, SENT_B]],
             relevant_keys=["0.0", "0.1"],
         )
         result = compute_relevant_sentence_recall(contexts, [meta])
@@ -74,9 +85,9 @@ class TestRelevantSentenceRecall:
         assert result.samples_with_valid_scores == 1
 
     def test_partial_retrieval(self):
-        contexts = [["First sentence."]]
+        contexts = [[SENT_A]]
         meta = _meta(
-            docs_sentences=[["First sentence.", "Second sentence."]],
+            docs_sentences=[[SENT_A, SENT_B]],
             relevant_keys=["0.0", "0.1"],
         )
         result = compute_relevant_sentence_recall(contexts, [meta])
@@ -84,9 +95,9 @@ class TestRelevantSentenceRecall:
         assert result.metric_means["relevant_sentence_recall"] == pytest.approx(0.5)
 
     def test_robust_to_case_and_whitespace(self):
-        contexts = [["First   SENTENCE.\n"]]
+        contexts = [["An   OUT   of\nmemory DUMP may be observed on the system."]]
         meta = _meta(
-            docs_sentences=[["First sentence."]],
+            docs_sentences=[[SENT_A]],
             relevant_keys=["0.0"],
         )
         result = compute_relevant_sentence_recall(contexts, [meta])
@@ -94,9 +105,9 @@ class TestRelevantSentenceRecall:
 
     def test_sentence_split_across_chunk_boundary(self):
         # The relevant sentence is split across two retrieved chunks.
-        contexts = [["First sen", "tence."]]
+        contexts = [["An out of memory dump may be", " observed on the system."]]
         meta = _meta(
-            docs_sentences=[["First sentence."]],
+            docs_sentences=[[SENT_A]],
             relevant_keys=["0.0"],
         )
         result = compute_relevant_sentence_recall(contexts, [meta])
@@ -104,9 +115,9 @@ class TestRelevantSentenceRecall:
 
     def test_sentence_split_with_overlapping_chunks(self):
         # Chunks overlap: "brown" appears in both fragments.
-        contexts = [["The quick brown", "brown fox jumps."]]
+        contexts = [["The quick brown", "brown fox jumps over the lazy dog."]]
         meta = _meta(
-            docs_sentences=[["The quick brown fox jumps."]],
+            docs_sentences=[["The quick brown fox jumps over the lazy dog."]],
             relevant_keys=["0.0"],
         )
         result = compute_relevant_sentence_recall(contexts, [meta])
@@ -115,27 +126,89 @@ class TestRelevantSentenceRecall:
     def test_intact_sentence_matches_in_any_chunk(self):
         # A complete sentence inside any single chunk counts regardless of
         # which chunk holds it (order independence for intact sentences).
-        contexts = [["Unrelated text.", "First sentence."]]
+        contexts = [["Unrelated text.", SENT_A]]
         meta = _meta(
-            docs_sentences=[["First sentence."]],
+            docs_sentences=[[SENT_A]],
             relevant_keys=["0.0"],
         )
         result = compute_relevant_sentence_recall(contexts, [meta])
         assert result.per_sample[0] == 1.0
 
-    def test_word_boundary_preserved_no_false_positive(self):
-        # "The rapist escaped." must not match a chunk saying
-        # "Therapist escaped." — separators are meaningful.
-        contexts = [["Therapist escaped."]]
+    def test_split_sentence_matches_across_non_adjacent_ranks(self):
+        # The two fragments retrieved at ranks 1 and 3 (not adjacent) must
+        # still match; recall must not depend on reranker order.
+        contexts = [[
+            " observed on the system.",
+            "Unrelated chunk with filler text.",
+            "An out of memory dump may be",
+        ]]
         meta = _meta(
-            docs_sentences=[["The rapist escaped."]],
+            docs_sentences=[[SENT_A]],
+            relevant_keys=["0.0"],
+        )
+        result = compute_relevant_sentence_recall(contexts, [meta])
+        assert result.per_sample[0] == 1.0
+
+    def test_duplicate_keys_counted_once(self):
+        # Duplicate keys ("0a" twice, "0a."/"0a" variants) must not inflate
+        # the denominator: 1 of 2 unique sentences retrieved → 0.5, not 0.25.
+        contexts = [[SENT_B]]
+        meta = _meta(
+            docs_sentences=[
+                [["0a", SENT_A], ["0b", SENT_B]]
+            ],
+            relevant_keys=["0a", "0a", "0a.", "0b"],
+        )
+        result = compute_relevant_sentence_recall(contexts, [meta])
+        assert result.per_sample[0] == pytest.approx(0.5)
+
+    def test_no_relevant_sentences_gets_no_score_not_zero(self):
+        contexts = [["Irrelevant chunk."]]
+        meta = _meta(docs_sentences=[[SENT_A]], relevant_keys=[])
+        result = compute_relevant_sentence_recall(contexts, [meta])
+        assert result.per_sample[0] is None
+        assert result.metric_means == {}
+        assert result.samples_with_valid_scores == 0
+
+    def test_mean_excludes_unanswerable_samples(self):
+        contexts = [[SENT_A]]
+        meta_answerable = _meta(
+            docs_sentences=[[SENT_A]],
+            relevant_keys=["0.0"],
+        )
+        meta_unanswerable = _meta(
+            docs_sentences=[[SENT_A]],
+            relevant_keys=[],
+        )
+        result = compute_relevant_sentence_recall(
+            contexts, [meta_answerable, meta_unanswerable]
+        )
+        assert result.metric_means["relevant_sentence_recall"] == 1.0
+        assert result.samples_with_valid_scores == 1
+        assert result.per_sample == [1.0, None]
+
+    def test_dataset_without_labels_skips_silently(self):
+        contexts = [["Some chunk."]]
+        metadata = [{"gold_doc_id": "doc1"}, {}]
+        result = compute_relevant_sentence_recall(contexts, metadata)
+        assert result.metric_means == {}
+        assert result.per_sample == [None, None]
+        assert result.samples_with_valid_scores == 0
+
+    def test_word_boundary_preserved_no_false_positive(self):
+        # "The rapist escaped quickly from custody." must not match a chunk
+        # saying "Therapist escaped quickly from custody." — separators are
+        # meaningful.
+        contexts = [["Therapist escaped quickly from custody."]]
+        meta = _meta(
+            docs_sentences=[["The rapist escaped quickly from custody."]],
             relevant_keys=["0.0"],
         )
         result = compute_relevant_sentence_recall(contexts, [meta])
         assert result.per_sample[0] == 0.0
 
     def test_short_sentence_not_matched_inside_longer_word(self):
-        # "Yes." is label-like (compact form < MIN_SENTENCE_COMPACT_CHARS):
+        # "Yes." is label-like (fewer than 3 words and < 20 compact chars):
         # it is excluded from scoring entirely instead of matching anything.
         contexts = [["yesterday"]]
         meta = _meta(docs_sentences=[["Yes."]], relevant_keys=["0.0"])
@@ -143,14 +216,39 @@ class TestRelevantSentenceRecall:
         assert result.per_sample[0] is None
 
     def test_label_like_sentence_excluded_from_denominator(self):
-        # Only the real sentence is scored; "Yes." does not drag the score.
-        contexts = [["Real content here."]]
+        # Only the real sentence is scored; label-like ones don't drag it.
+        contexts = [[SENT_A]]
         meta = _meta(
-            docs_sentences=[["Yes.", "Real content here."]],
+            docs_sentences=[["Yes.", SENT_A]],
             relevant_keys=["0.0", "0.1"],
         )
         result = compute_relevant_sentence_recall(contexts, [meta])
         assert result.per_sample[0] == 1.0
+
+    def test_reviewer_repro_results_heading(self):
+        # Reviewer repro: 'Results.' vs 'The results were bad.' — the
+        # label-like sentence is excluded, the sample gets no score.
+        contexts = [["The results were bad."]]
+        meta = _meta(docs_sentences=[["Results."]], relevant_keys=["0.0"])
+        result = compute_relevant_sentence_recall(contexts, [meta])
+        assert result.per_sample[0] is None
+
+    def test_reviewer_repro_table_reference(self):
+        # Reviewer repro: 'Table 1.' vs 'see table 1 for x' — excluded.
+        contexts = [["see table 1 for x"]]
+        meta = _meta(docs_sentences=[["Table 1."]], relevant_keys=["0.0"])
+        result = compute_relevant_sentence_recall(contexts, [meta])
+        assert result.per_sample[0] is None
+
+    def test_reviewer_repro_split_tiny_fragments(self):
+        # Reviewer repro: 'Yes it is.' matching via tiny fragments
+        # ("yes" + "it is") across two chunks — split repair requires
+        # fragments of >= 4 compact chars, so no match; the sentence is
+        # label-like anyway and excluded from scoring.
+        contexts = [["he said yes", "it is raining"]]
+        meta = _meta(docs_sentences=[["Yes it is."]], relevant_keys=["0.0"])
+        result = compute_relevant_sentence_recall(contexts, [meta])
+        assert result.per_sample[0] is None
 
     def test_reviewer_repro_overlap_reverse_order(self):
         # Reviewer repro: overlap between the two fragments in reverse rank
@@ -175,90 +273,25 @@ class TestRelevantSentenceRecall:
     def test_compact_repair_never_matches_inside_single_chunk(self):
         # With >= 2 chunks the compact joins contain each chunk whole; a
         # sentence that sits entirely inside one chunk must still be scored
-        # only by the word-boundary path ("The rapist ..." vs
-        # "Therapist ...").
-        contexts = [["Therapist escaped.", "Other text."]]
+        # only by the word-boundary path.
+        contexts = [["Therapist escaped quickly from custody.", "Other text."]]
         meta = _meta(
-            docs_sentences=[["The rapist escaped."]],
+            docs_sentences=[["The rapist escaped quickly from custody."]],
             relevant_keys=["0.0"],
         )
         result = compute_relevant_sentence_recall(contexts, [meta])
         assert result.per_sample[0] == 0.0
-
-    def test_split_sentence_matches_across_non_adjacent_ranks(self):
-        # The two fragments retrieved at ranks 1 and 3 (not adjacent) must
-        # still match; recall must not depend on reranker order.
-        contexts = [["tence.", "Unrelated chunk.", "First sen"]]
-        meta = _meta(
-            docs_sentences=[["First sentence."]],
-            relevant_keys=["0.0"],
-        )
-        result = compute_relevant_sentence_recall(contexts, [meta])
-        assert result.per_sample[0] == 1.0
-
-    def test_duplicate_keys_counted_once(self):
-        # Duplicate keys ("0a" twice, "0a."/"0a" variants) must not inflate
-        # the denominator: 1 of 2 unique sentences retrieved → 0.5, not 0.25.
-        contexts = [["Second sentence."]]
-        meta = _meta(
-            docs_sentences=[
-                [["0a", "First sentence."], ["0b", "Second sentence."]]
-            ],
-            relevant_keys=["0a", "0a", "0a.", "0b"],
-        )
-        result = compute_relevant_sentence_recall(contexts, [meta])
-        assert result.per_sample[0] == pytest.approx(0.5)
 
     def test_empty_and_non_latin_sentences_never_score(self):
         # ASCII-only normalisation would make these empty strings, which
         # trivially "match" anything; they must be excluded instead.
         contexts = [[]]
         meta = _meta(
-            docs_sentences=[["", "你好世界。", "Real sentence."]],
+            docs_sentences=[["", "你好世界。", SENT_A]],
             relevant_keys=["0.0", "0.1", "0.2"],
         )
         result = compute_relevant_sentence_recall(contexts, [meta])
         assert result.per_sample[0] == 0.0  # only the real sentence is scored
-
-    def test_malformed_pair_values_are_ignored(self):
-        meta = _meta(
-            docs_sentences=[[["0a", None], ["0b", ["nested"]], ["0c", "Real."]]],
-            relevant_keys=["0a", "0b", "0c"],
-        )
-        assert resolve_relevant_sentences(meta) == ["Real."]
-
-    def test_no_relevant_sentences_gets_no_score_not_zero(self):
-        contexts = [["Irrelevant chunk."]]
-        meta = _meta(docs_sentences=[["Some sentence."]], relevant_keys=[])
-        result = compute_relevant_sentence_recall(contexts, [meta])
-        assert result.per_sample[0] is None
-        assert result.metric_means == {}
-        assert result.samples_with_valid_scores == 0
-
-    def test_mean_excludes_unanswerable_samples(self):
-        contexts = [["First sentence."]]
-        meta_answerable = _meta(
-            docs_sentences=[["First sentence."]],
-            relevant_keys=["0.0"],
-        )
-        meta_unanswerable = _meta(
-            docs_sentences=[["First sentence."]],
-            relevant_keys=[],
-        )
-        result = compute_relevant_sentence_recall(
-            contexts, [meta_answerable, meta_unanswerable]
-        )
-        assert result.metric_means["relevant_sentence_recall"] == 1.0
-        assert result.samples_with_valid_scores == 1
-        assert result.per_sample == [1.0, None]
-
-    def test_dataset_without_labels_skips_silently(self):
-        contexts = [["Some chunk."]]
-        metadata = [{"gold_doc_id": "doc1"}, {}]
-        result = compute_relevant_sentence_recall(contexts, metadata)
-        assert result.metric_means == {}
-        assert result.per_sample == [None, None]
-        assert result.samples_with_valid_scores == 0
 
 
 class TestRagbenchMetadataKeys:
@@ -305,13 +338,13 @@ class TestRunnerIntegration:
         )
         metadata = [
             {
-                "documents_sentences": [["Found it.", "Other."]],
+                "documents_sentences": [[SENT_A, SENT_B]],
                 "all_relevant_sentence_keys": ["0.0"],
                 "adherence_score": 1.0,
             }
         ]
         merged = _with_relevant_sentence_recall(
-            custom_result, metadata, [["Found it."]]
+            custom_result, metadata, [[SENT_A]]
         )
         assert merged.metric_means["relevant_sentence_recall"] == 1.0
         assert merged.per_sample[0]["relevant_sentence_recall"] == 1.0
@@ -407,11 +440,39 @@ class TestRunnerIntegration:
         derive_answerable_flag(metadata)
         assert metadata["answerable"] is True
 
-    def test_chroma_safe_metadata_serialises_empty_lists(self):
+    def test_answerable_flag_blank_csv_cell_is_not_answerable(self):
+        # Reviewer repro: an empty CSV cell ("" / whitespace) must behave
+        # like an empty key list, not become answerable via bool(['']).
+        from benchmark.dataset_adapters import derive_answerable_flag
+
+        for blank in ("", "   "):
+            metadata = {"all_relevant_sentence_keys": blank}
+            derive_answerable_flag(metadata)
+            assert metadata["answerable"] is False, repr(blank)
+
+    def test_chroma_safe_metadata_drops_empty_lists(self):
+        # Reviewer follow-up: empty lists are dropped entirely so a key
+        # keeps one type across all documents (no "[]" vs list mismatch).
         from benchmark.dataset import _chroma_safe_metadata
 
         safe = _chroma_safe_metadata({"all_relevant_sentence_keys": []})
-        assert safe["all_relevant_sentence_keys"] == "[]"
+        assert "all_relevant_sentence_keys" not in safe
+
+    def test_chroma_safe_metadata_json_encodes_none_and_mixed_lists(self):
+        # Reviewer repro: [1, None], [None], [1, 'a'] crash Chroma 1.5.9;
+        # they must be serialised instead of passed through.
+        from benchmark.dataset import _chroma_safe_metadata
+
+        for bad in ([1, None], [None], [1, "a"]):
+            safe = _chroma_safe_metadata({"tags": bad})
+            assert safe["tags"] == __import__("json").dumps(bad)
+
+    def test_chroma_safe_metadata_keeps_uniform_primitive_lists(self):
+        from benchmark.dataset import _chroma_safe_metadata
+
+        safe = _chroma_safe_metadata({"tags": ["a", "b"], "pages": [1, 2]})
+        assert safe["tags"] == ["a", "b"]
+        assert safe["pages"] == [1, 2]
 
     def test_chunk_documents_strips_sentence_labels(self):
         from benchmark.chunking import chunk_documents

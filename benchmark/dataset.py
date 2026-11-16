@@ -687,11 +687,14 @@ _CHROMA_PRIMITIVES = (str, int, float, bool)
 def _chroma_safe_metadata(metadata: Mapping[str, Any]) -> dict[str, Any]:
     """Coerce metadata values into Chroma's accepted types.
 
-    Chroma only stores str/int/float/bool/None and lists of those. Multi-hop
-    datasets stash rich structures (raw ``context`` dicts, ``supporting_facts``
-    nested lists) in sample metadata for downstream gold-scoring. Serialise
-    anything richer to a JSON string so Chroma's upsert accepts it. Downstream
-    readers recover the original via ``json.loads``.
+    Chroma only stores str/int/float/bool/None and non-empty lists of a
+    single primitive type. Multi-hop datasets stash rich structures (raw
+    ``context`` dicts, ``supporting_facts`` nested lists) in sample metadata
+    for downstream gold-scoring: anything richer — or a list containing
+    ``None``/mixed types, which Chroma rejects — is serialised to a JSON
+    string so Chroma's upsert accepts it. Downstream readers recover the
+    original via ``json.loads``. Empty lists are dropped entirely so a key
+    keeps the same type across all documents in a collection.
     """
     safe: dict[str, Any] = {}
     for key, value in metadata.items():
@@ -701,12 +704,16 @@ def _chroma_safe_metadata(metadata: Mapping[str, Any]) -> dict[str, Any]:
         if isinstance(value, list):
             if not value:
                 # Chroma rejects empty lists ("Expected metadata list value
-                # ... to be non-empty"); store the JSON text instead.
-                safe[key] = json.dumps(value)
+                # ... to be non-empty"). Drop the key entirely: keeping it
+                # as the JSON string "[]" would give the key different types
+                # across documents in the same collection, and Chroma where
+                # filters silently skip type-mismatched documents.
                 continue
-            if all(
-                item is None or isinstance(item, _CHROMA_PRIMITIVES)
-                for item in value
+            types = {type(item) for item in value}
+            if (
+                None not in value
+                and len(types) == 1
+                and next(iter(types)) in _CHROMA_PRIMITIVES
             ):
                 safe[key] = value
                 continue

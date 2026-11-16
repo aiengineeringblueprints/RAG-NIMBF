@@ -305,10 +305,25 @@ def _compact(text: str) -> str:
     return "".join(_normalised_tokens(text))
 
 
-# Sentences whose compact form is shorter than this are treated as labels
-# ("Yes.", "1.", short headings) rather than content: they would match
-# almost any chunk, so they are excluded from scoring entirely.
-MIN_SENTENCE_COMPACT_CHARS = 4
+# A sentence is treated as a label rather than content — and excluded from
+# scoring entirely — when it is label-like: fewer than MIN_SENTENCE_WORDS
+# normalised words AND fewer than MIN_SENTENCE_COMPACT_CHARS characters
+# ("Yes.", "1.", "Results."). Short sentences would match almost any chunk.
+MIN_SENTENCE_WORDS = 3
+MIN_SENTENCE_COMPACT_CHARS = 20
+
+# Split repair requires each reconstructed fragment to be at least this long
+# (compact characters). Otherwise tiny fragments ("yes" + "it is") let
+# label-like sentence pieces match arbitrary chunk combinations.
+MIN_SPLIT_FRAGMENT_CHARS = 4
+
+
+def _is_label_like(sentence: str, compact: str, words: str) -> bool:
+    """True for sentences that carry too little content to score reliably."""
+    return (
+        len(words.split()) < MIN_SENTENCE_WORDS
+        or len(compact) < MIN_SENTENCE_COMPACT_CHARS
+    )
 
 
 def _split_repair_match(sentence_compact: str, compacts: list[str]) -> bool:
@@ -320,20 +335,23 @@ def _split_repair_match(sentence_compact: str, compacts: list[str]) -> bool:
     ``q < p`` covers chunks that overlap (the repeated fragment is dropped
     when reconstructing). Both rank orders are covered because all chunks
     are checked as head and tail candidates — the metric therefore does not
-    depend on retrieval rank.
+    depend on retrieval rank. Both fragments must be at least
+    ``MIN_SPLIT_FRAGMENT_CHARS`` long so tiny fragments cannot combine
+    arbitrary chunks into a spurious match.
 
     This is a direct check on the chunk compacts: no per-pair join strings
     are built, so the cost is independent of ``k**2``.
     """
     n = len(sentence_compact)
-    if n < MIN_SENTENCE_COMPACT_CHARS:
+    if n < 2 * MIN_SPLIT_FRAGMENT_CHARS:
         return False
     enders: list[tuple[int, int]] = []    # (chunk idx, p) ends with sentence[:p]
     starters: list[tuple[int, int]] = []  # (chunk idx, q) starts with sentence[q:]
     for idx, chunk in enumerate(compacts):
-        for cut in range(1, n):
+        for cut in range(MIN_SPLIT_FRAGMENT_CHARS, n - MIN_SPLIT_FRAGMENT_CHARS + 1):
             if chunk.endswith(sentence_compact[:cut]):
                 enders.append((idx, cut))
+        for cut in range(MIN_SPLIT_FRAGMENT_CHARS, n):
             if chunk.startswith(sentence_compact[cut:]):
                 starters.append((idx, cut))
     return any(
@@ -363,16 +381,21 @@ def compute_relevant_sentence_recall(
         # compact forms ("Yes.", "1.") are label-like and match almost any
         # chunk, so they are excluded from scoring entirely.
         seen_words: set[str] = set()
-        unique: list[str] = []
+        # Deduplicate resolved sentences: duplicate keys ("3a", "3a.") or the
+        # same key listed twice must not inflate the denominator. Label-like
+        # sentences ("Yes.", "1.", "Results.") are excluded from scoring
+        # entirely — they would match almost any chunk.
+        seen_words: set[str] = set()
+        unique: list[tuple[str, str]] = []  # (sentence, compact)
         for sentence in resolve_relevant_sentences(meta):
             compact = _compact(sentence)
             words = _normalised_words(sentence)
             if not words or words in seen_words:
                 continue  # empty/label-only sentences never match
-            if len(compact) < MIN_SENTENCE_COMPACT_CHARS:
+            if _is_label_like(sentence, compact, words):
                 continue
             seen_words.add(words)
-            unique.append(sentence)
+            unique.append((sentence, compact))
         if not unique:
             per_sample.append(None)
             continue
@@ -389,10 +412,10 @@ def compute_relevant_sentence_recall(
         # word-boundary path.
         compacts = [_compact(chunk) for chunk in chunks]
         retrieved = 0
-        for sentence in unique:
+        for sentence, compact in unique:
             padded_words = f" {_normalised_words(sentence)} "
             if padded_words in joined_words or _split_repair_match(
-                _compact(sentence), compacts
+                compact, compacts
             ):
                 retrieved += 1
         value = retrieved / len(unique)

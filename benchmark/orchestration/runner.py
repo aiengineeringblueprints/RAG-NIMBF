@@ -294,7 +294,9 @@ def _run_single_benchmark_impl(
         # RAGBench sentence labels are evaluation ground truth: the system
         # under test must never see them. Strip them from the sample handed
         # to adapters and checkpoints; the full metadata stays on ``sample``
-        # for the metric.
+        # for the metric. (The reference ``ground_truth`` answer is a
+        # separate, pre-existing exposure of HTTP adapters — tracked in a
+        # follow-up issue.)
         adapter_sample = {
             **sample,
             "metadata": strip_sentence_label_metadata(

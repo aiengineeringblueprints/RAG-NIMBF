@@ -208,10 +208,14 @@ def derive_answerable_flag(metadata: dict[str, Any]) -> None:
     if keys is None:
         return
     if isinstance(keys, str):
-        try:
-            keys = json.loads(keys)
-        except (ValueError, TypeError):
-            keys = [keys]
+        if not keys.strip():
+            # Empty CSV cell — same as no relevant sentences.
+            keys = []
+        else:
+            try:
+                keys = json.loads(keys)
+            except (ValueError, TypeError):
+                keys = [keys]
     metadata["answerable"] = bool(keys)
 
 
