@@ -387,6 +387,20 @@ def _plot_metrics_over_time_html(results: list, output_dir: Path) -> str | None:
 
 def _plot_llm_comparison_radar_html(results: list, output_dir: Path) -> str | None:
     """Interactive radar chart comparing LLMs across metrics."""
+    fig = llm_comparison_radar_figure(results)
+    if fig is None:
+        return None
+    path = output_dir / "llm_comparison_radar.html"
+    fig.write_html(str(path))
+    return str(path)
+
+
+def llm_comparison_radar_figure(results: list) -> go.Figure | None:
+    """Radar of per-LLM metric means over the configs that measured each metric.
+
+    A config without a metric (e.g. RAGAS deselected) does not pull the mean
+    toward 0, and a metric an LLM never measured is a gap (None), not 0.
+    """
     llm_data: dict[str, list] = {}
 
     for r in results:
@@ -410,7 +424,10 @@ def _plot_llm_comparison_radar_html(results: list, output_dir: Path) -> str | No
         all_keys = set()
         for m in metrics_list:
             all_keys.update(m.keys())
-        avg_data[llm] = {k: sum(m.get(k, 0) for m in metrics_list) / len(metrics_list) for k in all_keys}
+        avg_data[llm] = {}
+        for k in all_keys:
+            measured = [m[k] for m in metrics_list if k in m]
+            avg_data[llm][k] = sum(measured) / len(measured)
 
     categories = sorted(set(k for v in avg_data.values() for k in v))
     if not categories:
@@ -418,7 +435,7 @@ def _plot_llm_comparison_radar_html(results: list, output_dir: Path) -> str | No
 
     fig = go.Figure()
     for llm, metrics in avg_data.items():
-        values = [metrics.get(c, 0) for c in categories]
+        values = [metrics.get(c) for c in categories]
         fig.add_trace(go.Scatterpolar(
             r=values + [values[0]],
             theta=categories + [categories[0]],
@@ -427,9 +444,7 @@ def _plot_llm_comparison_radar_html(results: list, output_dir: Path) -> str | No
         ))
 
     fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), showlegend=True, title="LLM Comparison")
-    path = output_dir / "llm_comparison_radar.html"
-    fig.write_html(str(path))
-    return str(path)
+    return fig
 
 
 def _plot_parameter_heatmap_html(results: list, output_dir: Path) -> str | None:

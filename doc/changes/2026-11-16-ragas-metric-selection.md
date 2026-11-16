@@ -42,6 +42,12 @@ documented with a recommendation in the new guide `doc/ragas-runtime.md`.
   `ragas_plot_matrix` drives the RAGAS comparison bars, radar and heatmap.
   Metrics no config ran are left out; a metric missing for one config is NaN:
   no bar, a gap in the radar, a grey `N/A` heatmap cell (was 0 / red).
+- PR #38 re-review: the interactive LLM radar
+  (`llm_comparison_radar_figure`, written by
+  `_plot_llm_comparison_radar_html`) averages each metric only over configs
+  that measured it and leaves a gap for metrics an LLM never measured (both
+  were 0). `metric_mean_and_error` no longer drops genuine 0.0 scores; missing
+  values are recognised by null only.
 
 ### Docs
 - New `doc/ragas-runtime.md`: knob usage, per-metric cost, worker measurement
@@ -61,6 +67,9 @@ documented with a recommendation in the new guide `doc/ragas-runtime.md`.
   the metric selection; use a new run directory after changing it.
 - Composite rankings across runs with different metric sets change: missing
   metrics no longer count as 0.
+- NGEN paper charts now include genuine 0.0 RAGAS scores in bar means (they
+  were filtered out as presumed placeholders). Old result files that stored
+  a missing RAGAS score as 0 will now pull those means down.
 - `evaluate_results` raises `ValueError` for unknown metric names, also when
   called with no questions.
 
@@ -70,9 +79,9 @@ documented with a recommendation in the new guide `doc/ragas-runtime.md`.
   `tests/test_evaluation.py::TestEvaluateResultsMetricSelection`,
   `tests/test_run_path_uniformity.py::test_skipped_ragas_metrics_stay_absent_not_zero`,
   `tests/test_report_exports.py::test_markdown_report_omits_ragas_metrics_that_were_not_run`,
-  new `tests/test_ragas_composite.py`, `tests/test_ragas_plot_data.py`.
-  Full suite: 880 passed. The three `visualization.py` plots rendered from a
-  mixed result set (one config without `context_precision`) without errors.
+  new `tests/test_ragas_composite.py`, `tests/test_ragas_plot_data.py`
+  (data helpers plus rendered output: bar heights, heatmap mask, interactive
+  radar traces). Full suite: 884 passed.
 - Critic replay, first 10 TechQA samples of run6, `deepseek-v4-flash`
   (details in `doc/ragas-runtime.md`):
 
@@ -87,5 +96,6 @@ documented with a recommendation in the new guide `doc/ragas-runtime.md`.
   full 150-question sweep and watch for 429/5xx retries.
 - Run identity for resume does not include `ragas_metrics` (or other
   non-name settings).
-- CSV/JSON keep columns/keys for skipped metrics as empty/`null` (stable
-  schema for downstream tools; no false zeros).
+- Decision: CSV/JSON keep columns/keys for skipped metrics as empty/`null`
+  (stable schema for `run_tracker` scans and downstream tools; no false
+  zeros). "Absent" in issue #19 is read as "no value", not "no key".

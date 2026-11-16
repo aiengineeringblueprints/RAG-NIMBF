@@ -105,15 +105,12 @@ def scan_data(results_dir: Path) -> pd.DataFrame:
 def metric_mean_and_error(df: pd.DataFrame, col: str) -> tuple[float, float]:
     """Bar height and error for ``col``; NaN (no bar) when there is no value.
 
-    A metric a run skipped (``ragas_metrics``) or never scored must not show up
-    as a 0 bar. Legacy reports stored missing RAGAS scores as 0, so zeros are
-    dropped for ``ragas_`` columns.
+    A metric a run skipped (``ragas_metrics``) or never scored is null and must
+    not show up as a 0 bar; a genuine 0.0 score counts like any other value.
     """
     if col not in df.columns:
         return float("nan"), 0.0
     clean = df[col].dropna()
-    if col.startswith("ragas_"):
-        clean = clean[clean > 0]
     mean = float(clean.mean()) if len(clean) > 0 else float("nan")
     err = float(clean.std()) if len(clean) > 1 else 0.0
     return mean, err
