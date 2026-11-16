@@ -24,8 +24,37 @@ from ragas.prompt.pydantic_prompt import FixOutputFormat
 
 from benchmark.providers import parse_model_id, get_chat_model, wrap_for_ragas, _TokenCountingChatModel
 from benchmark.embedding import get_embedding_model
+from config import RAGAS_METRIC_NAMES
 
 logger = logging.getLogger(__name__)
+
+# Fresh instances per call: RAGAS only binds the critic to metrics whose
+# llm is None, so module-level singletons would keep the first config's
+# critic (and its token counter) for every later config.
+# Cost notes for critic-LLM budgeting:
+# - answer_relevancy: generates multiple questions per answer (strictness)
+# - answer_correctness: combines LLM factuality judging with similarity
+# - context_precision: one critic call per retrieved context (largest cost)
+_RAGAS_METRIC_FACTORIES = {
+    "faithfulness": Faithfulness,
+    "answer_relevancy": AnswerRelevancy,
+    "answer_correctness": AnswerCorrectness,
+    "context_precision": ContextPrecision,
+    "context_recall": ContextRecall,
+    "semantic_similarity": SemanticSimilarity,
+}
+assert tuple(_RAGAS_METRIC_FACTORIES) == RAGAS_METRIC_NAMES
+
+
+def build_ragas_metrics(metric_names=RAGAS_METRIC_NAMES) -> list:
+    """Return fresh RAGAS metric instances for ``metric_names`` in order."""
+    unknown = [n for n in metric_names if n not in _RAGAS_METRIC_FACTORIES]
+    if unknown:
+        raise ValueError(
+            f"Unknown RAGAS metric(s): {', '.join(unknown)}. "
+            f"Available: {', '.join(RAGAS_METRIC_NAMES)}"
+        )
+    return [_RAGAS_METRIC_FACTORIES[n]() for n in metric_names]
 
 
 class _LenientStringIO(StringIO):
@@ -116,7 +145,9 @@ def evaluate_results(
     critic_temperature: float | None = 0.0,
     critic_max_workers: int = 1,
     critic_max_retries: int = 2,
+    metric_names: tuple[str, ...] = RAGAS_METRIC_NAMES,
 ) -> EvaluationResult:
+    metrics = build_ragas_metrics(metric_names)
     if not questions:
         return EvaluationResult(
             metric_means={},
@@ -206,22 +237,6 @@ def evaluate_results(
             error=error_msg,
             samples_with_valid_scores={},
         )
-
-    # Full RAGAS set. Cost notes for critic-LLM budgeting:
-    # - answer_relevancy: generates multiple questions per answer (strictness)
-    # - answer_correctness: combines LLM factuality judging with similarity
-    # - context_precision: scales LLM judging with the number of retrieved contexts
-    # Fresh instances per call: RAGAS only binds the critic to metrics whose
-    # llm is None, so the module-level singletons would keep the first
-    # config's critic (and its token counter) for every later config.
-    metrics = [
-        Faithfulness(),
-        AnswerRelevancy(),
-        AnswerCorrectness(),
-        ContextPrecision(),
-        ContextRecall(),
-        SemanticSimilarity(),
-    ]
 
     # Default max_workers=1: local models process requests serially anyway and
     # more workers just cause queuing and timeouts. Hosted critics can go wider.

@@ -1153,6 +1153,68 @@ class TestCriticRuntimeConfig:
         assert cfg.eval_critic_max_retries == 5
 
 
+_MINIMAL_MATRIX_ENV = {
+    "LLM_MODELS": "gemma3:4b",
+    "EMBEDDING_MODELS": "nomic-embed-text:latest",
+    "CHUNK_SIZES": "1000",
+    "CHUNK_OVERLAPS": "200",
+    "CHUNKING_STRATEGIES": "recursive",
+}
+
+
+class TestRagasMetricSelection:
+
+    def test_default_runs_full_set(self):
+        assert _make_config().ragas_metrics == (
+            "faithfulness",
+            "answer_relevancy",
+            "answer_correctness",
+            "context_precision",
+            "context_recall",
+            "semantic_similarity",
+        )
+
+    def test_unknown_metric_rejected(self):
+        cfg = _make_config(ragas_metrics=("faithfulness", "bogus"))
+        with pytest.raises(ValueError, match="bogus"):
+            validate_benchmark_config(cfg)
+
+    def test_empty_selection_rejected_while_ragas_enabled(self):
+        cfg = _make_config(ragas_metrics=())
+        with pytest.raises(ValueError, match="ragas_metrics"):
+            validate_benchmark_config(cfg)
+
+    def test_env_fallback(self):
+        env = {**_MINIMAL_MATRIX_ENV, "RAGAS_METRICS": "faithfulness, context_recall"}
+        with patch.dict(os.environ, env, clear=False):
+            cfg = get_all_combinations()[0]
+        assert cfg.ragas_metrics == ("faithfulness", "context_recall")
+
+    def test_blank_env_keeps_full_set(self):
+        env = {**_MINIMAL_MATRIX_ENV, "RAGAS_METRICS": ""}
+        with patch.dict(os.environ, env, clear=False):
+            cfg = get_all_combinations()[0]
+        assert len(cfg.ragas_metrics) == 6
+
+    @pytest.mark.parametrize(
+        "raw",
+        [["faithfulness", "semantic_similarity"], "faithfulness,semantic_similarity"],
+    )
+    def test_manifest_setting(self, raw):
+        from benchmark.orchestration.matrix import (
+            ExperimentSpec,
+            build_configs_from_spec,
+        )
+
+        spec = ExperimentSpec(
+            name="cheap-ragas", dataset={}, matrix={}, settings={"ragas_metrics": raw}
+        )
+
+        cfg = build_configs_from_spec(spec, base_configs=[_make_config()])[0]
+
+        assert cfg.ragas_metrics == ("faithfulness", "semantic_similarity")
+
+
 class TestEnterpriseRagMcpConfig:
     def test_defaults(self):
         cfg = _make_config()

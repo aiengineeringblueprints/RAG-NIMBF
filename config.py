@@ -12,9 +12,32 @@ from dotenv import load_dotenv
 from benchmark.generation import AnswerStripMode
 from benchmark.providers import THINKING_CONTROLS, parse_model_id
 
+# RAGAS metrics the evaluator can run (benchmark.evaluation builds them).
+# Default is the full set; RAGAS_METRICS / ragas_metrics selects a subset.
+RAGAS_METRIC_NAMES: tuple[str, ...] = (
+    "faithfulness",
+    "answer_relevancy",
+    "answer_correctness",
+    "context_precision",
+    "context_recall",
+    "semantic_similarity",
+)
+
 
 def _parse_list(value: str) -> list[str]:
     return [v.strip() for v in value.split(",") if v.strip()]
+
+
+def parse_ragas_metrics(value: object) -> tuple[str, ...]:
+    """Parse a RAGAS metric selection; blank/``None`` means the full set."""
+    if value is None:
+        return RAGAS_METRIC_NAMES
+    items = (
+        [str(v).strip() for v in value if str(v).strip()]
+        if isinstance(value, (list, tuple))
+        else _parse_list(str(value))
+    )
+    return tuple(items) if items else RAGAS_METRIC_NAMES
 
 
 def parse_optional_float(value: object) -> float | None:
@@ -98,6 +121,8 @@ class BenchmarkConfig:
     dataset_license: str | None = None
     dataset_research_only: bool = False
     ragas_enabled: bool = True
+    # RAGAS metrics to run when ragas_enabled; skipped ones stay None in results.
+    ragas_metrics: tuple[str, ...] = RAGAS_METRIC_NAMES
     custom_metrics_enabled: bool = True
     # Prompt template
     prompt_template: str = "concise"
@@ -415,6 +440,17 @@ def validate_benchmark_config(config: BenchmarkConfig) -> BenchmarkConfig:
         raise ValueError("eval_critic_max_workers must be positive")
     if config.eval_critic_max_retries < 0:
         raise ValueError("eval_critic_max_retries must be non-negative")
+    unknown_ragas = [m for m in config.ragas_metrics if m not in RAGAS_METRIC_NAMES]
+    if unknown_ragas:
+        raise ValueError(
+            f"Unknown ragas_metrics: {', '.join(unknown_ragas)}. "
+            f"Available: {', '.join(RAGAS_METRIC_NAMES)}"
+        )
+    if config.ragas_enabled and not config.ragas_metrics:
+        raise ValueError(
+            "ragas_metrics must not be empty while ragas_enabled; "
+            "set ragas_enabled=false to skip RAGAS"
+        )
     if config.benchmark_stage not in {"all", "index", "query", "retrieve", "parsing"}:
         raise ValueError("benchmark_stage must be one of: all, index, query, retrieve, parsing")
     if config.benchmark_stage == "parsing" and not config.parser_adapter and not config.parser_plugin_module:
@@ -747,6 +783,7 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
     if _bert_enabled in ("0", "false", "no", "off"):
         custom_metrics_bert_model = None
     ragas_enabled = _env_bool("RAGAS_ENABLED", True)
+    ragas_metrics = parse_ragas_metrics(os.getenv("RAGAS_METRICS", ""))
     custom_metrics_enabled = _env_bool("CUSTOM_METRICS_ENABLED", True)
 
     # Per-role URLs (fall back to shared defaults when not set)
@@ -1252,6 +1289,7 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
                     eval_critic_embedding=eval_critic_embedding,
                     custom_metrics_bert_model=custom_metrics_bert_model,
                     ragas_enabled=ragas_enabled,
+                    ragas_metrics=ragas_metrics,
                     custom_metrics_enabled=custom_metrics_enabled,
                     reranker_model=reranker,
                     reranker_top_k=reranker_top_k,

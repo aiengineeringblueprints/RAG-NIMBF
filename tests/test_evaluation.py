@@ -51,6 +51,41 @@ class TestEvaluateResultsMetricSet:
         }
 
 
+class TestEvaluateResultsMetricSelection:
+    @patch("benchmark.evaluation.LangchainEmbeddingsWrapper")
+    @patch("benchmark.evaluation.get_embedding_model")
+    @patch("benchmark.evaluation.LangchainLLMWrapper")
+    @patch("benchmark.evaluation.get_chat_model")
+    @patch("benchmark.evaluation.evaluate")
+    def test_only_selected_metrics_are_evaluated(self, mock_evaluate, *_mocks):
+        mock_evaluate.return_value = MagicMock(
+            scores=[{"faithfulness": 0.9, "context_recall": 0.5}]
+        )
+
+        result = evaluate_results(
+            questions=["q1"],
+            ground_truths=["gt1"],
+            answers=["a1"],
+            contexts=[["ctx1"]],
+            metric_names=("faithfulness", "context_recall"),
+        )
+
+        metric_names = [m.name for m in mock_evaluate.call_args[1]["metrics"]]
+        assert metric_names == ["faithfulness", "context_recall"]
+        assert set(result.metric_means) == {"faithfulness", "context_recall"}
+        assert "context_precision" not in result.per_sample_scores[0]
+
+    def test_unknown_metric_name_rejected(self):
+        with pytest.raises(ValueError, match="bogus"):
+            evaluate_results(
+                questions=["q1"],
+                ground_truths=["gt1"],
+                answers=["a1"],
+                contexts=[["ctx1"]],
+                metric_names=("bogus",),
+            )
+
+
 class TestEvaluateResultsMetricIsolation:
     @patch("benchmark.evaluation.LangchainEmbeddingsWrapper")
     @patch("benchmark.evaluation.get_embedding_model")

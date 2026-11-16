@@ -156,6 +156,7 @@ and `doc/changes/2026-11-15-pr33-review-fixes.md`.
 | Variable | Description |
 | --- | --- |
 | `RAGAS_ENABLED` | Set to `false` to skip RAGAS critic metrics. |
+| `RAGAS_METRICS` | Comma-separated RAGAS metrics to run (manifest: `ragas_metrics`, list or string). Blank = full set: `faithfulness,answer_relevancy,answer_correctness,context_precision,context_recall,semantic_similarity`. Skipped metrics are absent from results, not 0. See [ragas-runtime.md](ragas-runtime.md). |
 | `CUSTOM_METRICS_ENABLED` | Set to `false` to skip custom embedding/BERTScore metrics. |
 | `EVAL_CRITIC_LLM` | Critic model used for RAGAS evaluation. |
 | `EVAL_CRITIC_EMBEDDING` | Embedding model used by evaluator metrics. |
