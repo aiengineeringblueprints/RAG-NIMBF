@@ -389,20 +389,29 @@ def save_markdown_report(
         lines.append(f"| {_short(r.config_name)} | {ttft} | {tps} | {gpu} | {total} |")
     lines.append("")
 
-    # RAGAS table
-    lines.append("## RAGAS Scores")
-    lines.append("")
-    lines.append("| Config | Faithfulness | Semantic Sim. | Ctx Recall | Answer Rel. | Answer Corr. | Ctx Precision |")
-    lines.append("|--------|-------------|---------------|------------|-------------|--------------|---------------|")
-    for r in results:
-        f = _fmt_md(r.ragas_faithfulness)
-        ss = _fmt_md(r.ragas_semantic_similarity)
-        cr = _fmt_md(r.ragas_context_recall)
-        ar = _fmt_md(r.ragas_answer_relevancy)
-        ac = _fmt_md(r.ragas_answer_correctness)
-        cp = _fmt_md(r.ragas_context_precision)
-        lines.append(f"| {_short(r.config_name)} | {f} | {ss} | {cr} | {ar} | {ac} | {cp} |")
-    lines.append("")
+    # RAGAS table: only metrics at least one config computed (a metric
+    # deselected via ragas_metrics is absent, not reported as N/A or 0).
+    ragas_columns = [
+        (label, attr)
+        for label, attr in (
+            ("Faithfulness", "ragas_faithfulness"),
+            ("Semantic Sim.", "ragas_semantic_similarity"),
+            ("Ctx Recall", "ragas_context_recall"),
+            ("Answer Rel.", "ragas_answer_relevancy"),
+            ("Answer Corr.", "ragas_answer_correctness"),
+            ("Ctx Precision", "ragas_context_precision"),
+        )
+        if any(getattr(r, attr) is not None for r in results)
+    ]
+    if ragas_columns:
+        lines.append("## RAGAS Scores")
+        lines.append("")
+        lines.append("| Config | " + " | ".join(label for label, _ in ragas_columns) + " |")
+        lines.append("|--------" + "|------" * len(ragas_columns) + "|")
+        for r in results:
+            vals = [_fmt_md(getattr(r, attr)) for _, attr in ragas_columns]
+            lines.append(f"| {_short(r.config_name)} | " + " | ".join(vals) + " |")
+        lines.append("")
 
     # Custom metrics table
     if results and any(r.custom_metric_means for r in results):

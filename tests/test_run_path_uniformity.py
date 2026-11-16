@@ -291,3 +291,44 @@ def test_injected_stub_embedder_drives_internal_index(stubbed_seam, monkeypatch)
     assert built["called"]
     assert result.per_sample[0].contexts
     assert result.per_sample[0].contexts[0] == DOC_A
+
+
+def test_skipped_ragas_metrics_stay_absent_not_zero(stubbed_seam, monkeypatch):
+    """Only the selected RAGAS metrics run; skipped ones are None, never 0."""
+    import benchmark.orchestration.runner as runner_module
+    from benchmark.evaluation import EvaluationResult
+
+    seen: dict[str, Any] = {}
+
+    def fake_evaluate_results(*args, metric_names, **kwargs):
+        seen["metric_names"] = metric_names
+        return EvaluationResult(
+            metric_means={"faithfulness": 0.8},
+            per_sample_scores=[{"faithfulness": 0.8}],
+        )
+
+    monkeypatch.setattr(runner_module, "evaluate_results", fake_evaluate_results)
+    critic_settings = {
+        key: None
+        for key in (
+            "eval_critic_llm", "eval_critic_embedding", "ollama_base_url",
+            "ollama_api_key", "openai_compat_base_url", "openai_compat_api_key",
+            "eval_critic_ollama_base_url", "eval_critic_ollama_api_key",
+            "eval_critic_openai_compat_base_url",
+            "eval_critic_openai_compat_api_key", "eval_critic_max_tokens",
+            "eval_critic_thinking_control", "eval_critic_temperature",
+            "eval_critic_max_workers", "eval_critic_max_retries",
+        )
+    }
+    config = UniformityConfig(
+        ragas_enabled=True,
+        extra={**critic_settings, "ragas_metrics": ("faithfulness",)},
+    )
+
+    result = main.run_single_benchmark(config, SAMPLES, corpus=CORPUS)
+
+    assert seen["metric_names"] == ("faithfulness",)
+    assert result.ragas_faithfulness == pytest.approx(0.8)
+    assert result.ragas_context_precision is None
+    assert result.ragas_context_precision_stats is None
+    assert "context_precision" not in result.per_sample[0].ragas_scores

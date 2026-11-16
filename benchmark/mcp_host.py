@@ -217,16 +217,21 @@ def _labels(diagnostics: list[dict[str, Any]], key: str) -> list[bool]:
 def _label_rates(diagnostics: list[dict[str, Any]]) -> dict[str, float | None]:
     declined = _labels(diagnostics, "declined")
     forbidden = _labels(diagnostics, "forbidden_match")
-    judged = [d for d in diagnostics
-              if d and isinstance(d.get("declined_judge"), bool) and isinstance(d.get("declined"), bool)]
-    rates: dict[str, float | None] = {
-        "declined_rate": _rate(sum(declined), len(declined)),
-        "forbidden_match_rate": _rate(sum(forbidden), len(forbidden)),
-    }
+    judged = _labels(diagnostics, "declined_judge")
+    phrase_and_judge = [d for d in diagnostics
+                        if d and isinstance(d.get("declined_judge"), bool)
+                        and isinstance(d.get("declined"), bool)]
+    rates: dict[str, float | None] = {}
+    # Only labelled samples carry the phrase-list ``declined`` label; unlabelled
+    # datasets report the judge rate alone (issue #18).
+    if declined:
+        rates["declined_rate"] = _rate(sum(declined), len(declined))
+    rates["forbidden_match_rate"] = _rate(sum(forbidden), len(forbidden))
     if judged:
-        rates["declined_judge_rate"] = _rate(sum(d["declined_judge"] for d in judged), len(judged))
+        rates["declined_judge_rate"] = _rate(sum(judged), len(judged))
+    if phrase_and_judge:
         rates["decline_judge_agreement_rate"] = _rate(
-            sum(d["declined_judge"] == d["declined"] for d in judged), len(judged))
+            sum(d["declined_judge"] == d["declined"] for d in phrase_and_judge), len(phrase_and_judge))
     return rates
 
 

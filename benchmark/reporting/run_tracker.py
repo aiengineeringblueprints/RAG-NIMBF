@@ -447,6 +447,21 @@ def plot_overview_grid(df: pd.DataFrame, output_dir: Path) -> Path | None:
         return path
 
 
+def composite_ragas_score(df: pd.DataFrame, weights: dict[str, float]) -> pd.Series:
+    """Weighted mean of the RAGAS columns each row actually has.
+
+    Weights are renormalised per row, so a metric a run skipped (ragas_metrics)
+    or failed to score is left out instead of counting as 0. Rows without any
+    of the metrics get NaN.
+    """
+    cols = list(weights)
+    w = pd.Series(weights, dtype=float)
+    values = df[cols].astype(float)
+    weighted_sum = (values.fillna(0.0) * w).sum(axis=1)
+    weight_present = (values.notna() * w).sum(axis=1)
+    return weighted_sum / weight_present.where(weight_present > 0)
+
+
 def plot_ranking(df: pd.DataFrame, output_dir: Path, top_k: int = 10) -> Path | None:
     """Generate a paper-ready composite ranking bar chart."""
     ragas_cols = {
@@ -463,16 +478,8 @@ def plot_ranking(df: pd.DataFrame, output_dir: Path, top_k: int = 10) -> Path | 
         logger.warning("No RAGAS metrics available for ranking")
         return None
 
-    total = sum(available_weights.values())
-    available_weights = {k: v / total for k, v in available_weights.items()}
-
     score_df = df.copy()
-    for col in available_weights:
-        score_df[col] = score_df[col].fillna(0)
-
-    score_df["composite"] = sum(
-        score_df[col] * weight for col, weight in available_weights.items()
-    )
+    score_df["composite"] = composite_ragas_score(score_df, available_weights)
 
     score_df = score_df[score_df["composite"] > 0]
     if score_df.empty:

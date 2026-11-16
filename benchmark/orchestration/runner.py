@@ -382,7 +382,10 @@ def _run_single_benchmark_impl(
 
     # 4. Evaluate with RAGAS using a separate critic model
     if config.ragas_enabled and config.benchmark_stage != "retrieve":
-        console.print(f"  [dim]Running RAGAS evaluation (critic: {config.eval_critic_llm})...[/dim]")
+        console.print(
+            f"  [dim]Running RAGAS evaluation (critic: {config.eval_critic_llm}; "
+            f"metrics: {', '.join(config.ragas_metrics)})...[/dim]"
+        )
         with _stage_timer(stage_timings, "ragas_eval", resource_monitor):
             eval_result = evaluate_results(
                 questions, ground_truths,
@@ -405,6 +408,7 @@ def _run_single_benchmark_impl(
                 critic_temperature=config.eval_critic_temperature,
                 critic_max_workers=config.eval_critic_max_workers,
                 critic_max_retries=config.eval_critic_max_retries,
+                metric_names=config.ragas_metrics,
             )
 
         if eval_result.error:

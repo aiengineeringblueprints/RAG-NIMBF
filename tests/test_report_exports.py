@@ -144,3 +144,20 @@ def test_compact_keeps_results_without_samples_unchanged(tmp_path):
     compact_json_report(path)
 
     assert load_json_report(path) == legacy
+
+
+def test_markdown_report_omits_ragas_metrics_that_were_not_run(tmp_path):
+    from benchmark.reporting.analysis import RankTable
+    from benchmark.reporting.exports import save_markdown_report
+
+    result = _result("a", (_sample(0, ("ctx",)),))
+
+    path = save_markdown_report(
+        [result], RankTable(ranks=(), insights=()), tmp_path
+    )
+
+    ragas_section = path.read_text().split("## RAGAS Scores")[1].split("##")[0]
+    assert "| Config | Faithfulness |" in ragas_section
+    assert "| a | 0.500 |" in ragas_section
+    assert "Ctx Precision" not in ragas_section
+    assert "N/A" not in ragas_section

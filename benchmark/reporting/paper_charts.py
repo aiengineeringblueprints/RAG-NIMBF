@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from benchmark.reporting.run_tracker import scan_all_results
+from benchmark.reporting.run_tracker import composite_ragas_score, scan_all_results
 
 logger = logging.getLogger(__name__)
 
@@ -348,14 +348,8 @@ def plot_composite_ranking(df: pd.DataFrame, out: Path, top_k: int = 15) -> Path
     if not avail:
         return None
 
-    total_w = sum(avail.values())
-    avail = {k: v / total_w for k, v in avail.items()}
-
     score_df = df.copy()
-    for col in avail:
-        score_df[col] = score_df[col].fillna(0)
-
-    score_df["composite"] = sum(score_df[c] * w for c, w in avail.items())
+    score_df["composite"] = composite_ragas_score(score_df, avail)
     score_df = score_df[score_df["composite"] > 0]
 
     top = score_df.nlargest(top_k, "composite").copy()

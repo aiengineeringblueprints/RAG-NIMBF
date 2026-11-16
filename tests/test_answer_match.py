@@ -66,7 +66,7 @@ from benchmark.answer_match import score_answer
 
 
 def test_answer_sample_matches_patterns_and_flags_forbidden_value():
-    metadata = {"answer_patterns": [["139.00"]], "forbidden_patterns": [["129.00"]]}
+    metadata = {"expected_behavior": "answer", "answer_patterns": [["139.00"]], "forbidden_patterns": [["129.00"]]}
     assert score_answer("The current list price is 139.00 EUR.", metadata) == {
         "answer_match": True, "declined": False, "forbidden_match": False,
     }
@@ -103,7 +103,33 @@ def test_decline_sample_fails_when_it_answers_or_leaks():
 
 def test_ground_truth_is_the_fallback_pattern_and_unlabelled_answers_are_unscored():
     assert score_answer("It is Bergen.", {}, ground_truth="Bergen")["answer_match"] is True
-    assert score_answer("It is Bergen.", {}) == {"declined": False}
+    assert score_answer("It is Bergen.", {}) == {}
+
+
+def test_unlabelled_samples_get_no_phrase_list_decline_label():
+    # Datasets without expected_behavior / answer_patterns (e.g. RAGBench TechQA)
+    # are free text: the phrase list is not reported for them (issue #18).
+    labels = score_answer("The error occurs because the ulimit is too low.", {}, ground_truth="ulimit")
+    assert labels == {"answer_match": True}
+    # The decline judge still scores them when it is enabled.
+    labels = score_answer("The context does not contain it.", {}, judge=lambda q, a: True, question="q")
+    assert labels == {"declined_judge": True}
+
+
+def test_answer_patterns_alone_do_not_label_a_sample_for_the_phrase_list():
+    # Issue #18 spec: datasets without expected_behavior omit declined_rate.
+    # answer_patterns alone do not qualify; a short technical answer with
+    # "failed" would otherwise count as a refusal (PR #36 review).
+    labels = score_answer(
+        "The failed login is caused by an expired certificate. Renew the certificate.",
+        {"answer_patterns": [["certificate"]]},
+    )
+    assert labels == {"answer_match": True}
+
+
+def test_expected_behavior_answer_samples_keep_the_phrase_list_label():
+    labels = score_answer("I cannot answer that.", {"expected_behavior": "answer", "answer_patterns": [["42"]]})
+    assert labels == {"declined": True, "answer_match": False}
 
 
 def test_unknown_expected_behavior_is_rejected():
@@ -131,7 +157,8 @@ def test_judge_decides_decline_samples_and_is_reported_for_all():
     assert labels["declined_judge"] is True and labels["answer_match"] is True
     assert seen == [("Status of ORD-9?", "Sorry, that order is not in our records.")]
     # Answer samples keep their pattern match; the judge verdict is only reported.
-    labels = score_answer("It is 42.", {"answer_patterns": [["42"]]}, judge=judge, question="q")
+    labels = score_answer("It is 42.", {"expected_behavior": "answer", "answer_patterns": [["42"]]},
+                          judge=judge, question="q")
     assert labels == {"declined": False, "declined_judge": False, "answer_match": True}
 
 
@@ -191,3 +218,69 @@ def test_answer_judge_failure_returns_none():
         raise RuntimeError("endpoint down")
 
     assert make_answer_judge(SimpleNamespace(invoke=invoke))("q", "ref", "a") is None
+
+
+# --- declines: phrase heuristic on free-text technical answers (issue #18) ----
+
+from benchmark.answer_match import declines
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        # Normal TechQA answers (run6) that mention error/failed/permission words.
+        'The error "Failed to create a thread: retVal -1073741830, errno 11" is typically '
+        "caused by insufficient `ulimit` settings, specifically the `nproc` limit on Linux "
+        "systems. Increase the limit and restart the server to resolve the problem.",
+        "The error occurs because Oracle JRE 7 update 51 and later require the "
+        '"Permissions" attribute in the JAR manifest, which is missing in older versions of '
+        "the application. Update the manifest and re-sign the JAR files.",
+        "To resolve the \"Could not find the main class\" error when uninstalling Data Studio "
+        "3.1.1, you should uninstall all products including the Installation Manager, manually "
+        "clean up remaining directories and registry entries, and then reinstall.",
+        "There is no hard limit to the number of items in an SQL IN clause; the only "
+        "constraint is the memory required to compile the query, so very long lists can fail.",
+    ],
+)
+def test_technical_answers_mentioning_errors_are_not_declines(answer):
+    assert declines(answer) is False
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        "The provided context does not contain information regarding known issues with Wily "
+        "software; it only details issues for IBM WebSphere Industry Content Packs and IBM "
+        "Business Process Manager (BPM), which are unrelated to the question asked here.",
+        "Based on the provided context, there is no specific procedure described for changing "
+        "the maximum string length for properties in ACCE. The documents detail how to create "
+        "property templates, but they do not cover length limits for existing properties.",
+        "I cannot answer this question from the retrieved documents.",
+        "The context does not explicitly mention CVE-2017-15277, so the affected versions "
+        "remain unclear from the available material and should be checked in the bulletin.",
+        "",
+    ],
+)
+def test_real_refusals_are_declines(answer):
+    assert declines(answer) is True
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        # Short trust-set style declines keep matching the broad phrase list.
+        "The warranty service failed with an error.",
+        "Permission denied for the finance system.",
+        "Customer C-404 is unknown.",
+    ],
+)
+def test_short_answers_still_match_the_broad_phrase_list(answer):
+    assert declines(answer) is True
+
+
+def test_a_caveat_about_the_context_inside_a_long_answer_counts_as_a_decline():
+    # Partial answers count, matching the strict refusal regex of the run6 analysis.
+    answer = ("The provided context does not specify a direct download link for the driver. "
+              "However, the document lists DB2 Enterprise Server Edition 10.1 as required "
+              "software, and the context does not contain the exact fix pack level to install.")
+    assert declines(answer) is True
