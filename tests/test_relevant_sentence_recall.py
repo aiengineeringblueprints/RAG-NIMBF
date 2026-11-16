@@ -134,6 +134,50 @@ class TestRelevantSentenceRecall:
         result = compute_relevant_sentence_recall(contexts, [meta])
         assert result.per_sample[0] == 0.0
 
+    def test_short_sentence_not_matched_inside_longer_word(self):
+        # "Yes." must not match "yesterday" — boundary-padded comparison.
+        contexts = [["yesterday"]]
+        meta = _meta(docs_sentences=[["Yes."]], relevant_keys=["0.0"])
+        result = compute_relevant_sentence_recall(contexts, [meta])
+        assert result.per_sample[0] == 0.0
+
+    def test_compact_repair_never_matches_inside_single_chunk(self):
+        # With >= 2 chunks the compact joins contain each chunk whole; a
+        # sentence that sits entirely inside one chunk must still be scored
+        # only by the word-boundary path ("The rapist ..." vs
+        # "Therapist ...").
+        contexts = [["Therapist escaped.", "Other text."]]
+        meta = _meta(
+            docs_sentences=[["The rapist escaped."]],
+            relevant_keys=["0.0"],
+        )
+        result = compute_relevant_sentence_recall(contexts, [meta])
+        assert result.per_sample[0] == 0.0
+
+    def test_split_sentence_matches_across_non_adjacent_ranks(self):
+        # The two fragments retrieved at ranks 1 and 3 (not adjacent) must
+        # still match; recall must not depend on reranker order.
+        contexts = [["tence.", "Unrelated chunk.", "First sen"]]
+        meta = _meta(
+            docs_sentences=[["First sentence."]],
+            relevant_keys=["0.0"],
+        )
+        result = compute_relevant_sentence_recall(contexts, [meta])
+        assert result.per_sample[0] == 1.0
+
+    def test_duplicate_keys_counted_once(self):
+        # Duplicate keys ("0a" twice, "0a."/"0a" variants) must not inflate
+        # the denominator: 1 of 2 unique sentences retrieved → 0.5, not 0.25.
+        contexts = [["Second sentence."]]
+        meta = _meta(
+            docs_sentences=[
+                [["0a", "First sentence."], ["0b", "Second sentence."]]
+            ],
+            relevant_keys=["0a", "0a", "0a.", "0b"],
+        )
+        result = compute_relevant_sentence_recall(contexts, [meta])
+        assert result.per_sample[0] == pytest.approx(0.5)
+
     def test_empty_and_non_latin_sentences_never_score(self):
         # ASCII-only normalisation would make these empty strings, which
         # trivially "match" anything; they must be excluded instead.
@@ -255,3 +299,53 @@ class TestRunnerIntegration:
         )
         assert merged.metric_means == {"context_relevance": 0.7}
         assert merged.per_sample == [{"context_relevance": 0.7}]
+
+    def test_corpus_metadata_excludes_sentence_labels(self):
+        from unittest.mock import patch
+
+        from benchmark.dataset import load_corpus_and_questions
+        from benchmark.dataset_adapters import strip_sentence_label_metadata
+
+        metadata = {
+            "documents_sentences": [["Document text"]],
+            "all_relevant_sentence_keys": ["0a"],
+            "adherence_score": 1.0,
+            "answerable": True,
+            "gold_doc_id": "doc1",
+        }
+        assert strip_sentence_label_metadata(metadata) == {
+            "gold_doc_id": "doc1"
+        }
+
+        samples = [
+            {
+                "question": f"q{i}",
+                "ground_truth": "gt",
+                "context": f"Document text {i} with content.",
+                "metadata": dict(metadata),
+            }
+            for i in range(2)
+        ]
+        with patch(
+            "benchmark.dataset.load_benchmark_data", return_value=samples
+        ):
+            corpus, questions = load_corpus_and_questions(dataset_name="squad")
+        for doc in corpus:
+            assert "documents_sentences" not in doc["metadata"]
+            assert "all_relevant_sentence_keys" not in doc["metadata"]
+            assert "adherence_score" not in doc["metadata"]
+        # Sample metadata keeps the labels for the metric.
+        assert questions[0]["metadata"]["all_relevant_sentence_keys"] == ["0a"]
+
+    def test_normalize_sample_derives_answerable_flag(self):
+        from benchmark.dataset import normalize_sample
+
+        sample = normalize_sample(
+            {
+                "question": "q",
+                "ground_truth": "gt",
+                "context": "ctx",
+                "metadata": {"all_relevant_sentence_keys": []},
+            }
+        )
+        assert sample["metadata"]["answerable"] is False

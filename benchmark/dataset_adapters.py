@@ -206,6 +206,30 @@ def derive_answerable_flag(metadata: dict[str, Any]) -> None:
         metadata["answerable"] = bool(keys)
 
 
+# RAGBench sentence-label fields. They are needed on the *sample* metadata
+# (metrics + checkpoints) but must not be spread onto corpus documents or
+# chunks: ``documents_sentences`` alone is the full document text, and the
+# shared-corpus loader copies the first sample's metadata onto every corpus
+# document, then every chunk — inflating the vector store and result JSON.
+SENTENCE_LABEL_METADATA_KEYS = (
+    "all_relevant_sentence_keys",
+    "documents_sentences",
+    "adherence_score",
+    "answerable",
+)
+
+
+def strip_sentence_label_metadata(
+    metadata: dict[str, Any],
+) -> dict[str, Any]:
+    """Return ``metadata`` without the RAGBench sentence-label fields."""
+    return {
+        key: value
+        for key, value in metadata.items()
+        if key not in SENTENCE_LABEL_METADATA_KEYS
+    }
+
+
 register(
     DatasetAdapter(
         name="ragbench",

@@ -14,6 +14,7 @@ from benchmark.dataset_adapters import (
     OCR_GT_DATASET_NAMES,
     derive_answerable_flag,
     resolve_adapter,
+    strip_sentence_label_metadata,
 )
 from benchmark.doc_ids import resolve_dataset_doc_id
 
@@ -67,6 +68,9 @@ def normalize_sample(
         raise ValueError(
             f"{source}.metadata must be a dict, got {type(metadata).__name__}"
         )
+    # Shared derivation so every load path (HuggingFace, local JSONL/CSV)
+    # carries the RAGBench answerable flag when sentence labels are present.
+    derive_answerable_flag(metadata)
 
     context = sample["context"]
     if isinstance(context, list):
@@ -204,7 +208,6 @@ def load_benchmark_data(
             gt = str(gt_raw)
 
         metadata = {k: row.get(k) for k in adapter.metadata_keys if k in row}
-        derive_answerable_flag(metadata)
 
         samples.append(
             normalize_sample(
@@ -310,7 +313,9 @@ def load_corpus_and_questions(
                     "context": ctx,
                     "metadata": _chroma_safe_metadata(
                         {
-                            **sample.get("metadata", {}),
+                            **strip_sentence_label_metadata(
+                                sample.get("metadata", {})
+                            ),
                             "doc_id": doc_id,
                         }
                     ),

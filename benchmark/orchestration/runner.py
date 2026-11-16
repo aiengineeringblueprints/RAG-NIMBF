@@ -483,6 +483,12 @@ def _run_single_benchmark_impl(
             per_sample=[{} for _ in questions],
             samples_with_valid_scores={},
         )
+        # relevant_sentence_recall is a cheap label lookup — it is computed
+        # even with custom metrics disabled, so RAGBench runs with
+        # CUSTOM_METRICS_ENABLED=false (e.g. smoke tests) still report it.
+        custom_result = _with_relevant_sentence_recall(
+            custom_result, all_sample_metadata, all_contexts
+        )
 
     total_time = time.perf_counter() - run_start
     stage_timings["total"] = total_time
@@ -681,6 +687,52 @@ def _run_single_benchmark_impl(
     return benchmark_result
 
 
+def _merge_custom_metric_results(
+    custom_result: CustomMetricsResult,
+    metric_means: dict[str, float],
+    per_sample: list[dict[str, float | None]],
+    samples_with_valid_scores: dict[str, int],
+    error_note: str | None = None,
+    skip_none: bool = False,
+) -> CustomMetricsResult:
+    """Merge extra metric scores into a ``CustomMetricsResult``.
+
+    Shared by the gold-doc retrieval metrics and ``relevant_sentence_recall``
+    merges so both stay in sync. ``skip_none`` drops ``None`` entries (metrics
+    that are invalid for a sample) instead of carrying them into the per-sample
+    scores; ``error_note`` is appended to the result's error message.
+    """
+    merged_means = dict(custom_result.metric_means)
+    merged_means.update(metric_means)
+
+    merged_valid = dict(custom_result.samples_with_valid_scores)
+    merged_valid.update(samples_with_valid_scores)
+
+    merged_per_sample: list[dict[str, float | None]] = []
+    max_len = max(len(custom_result.per_sample), len(per_sample))
+    for i in range(max_len):
+        scores: dict[str, float | None] = {}
+        if i < len(custom_result.per_sample):
+            scores.update(custom_result.per_sample[i])
+        if i < len(per_sample):
+            for key, value in per_sample[i].items():
+                if skip_none and value is None:
+                    continue
+                scores[key] = value
+        merged_per_sample.append(scores)
+
+    error = custom_result.error
+    if error_note:
+        error = f"{error}; {error_note}" if error else error_note
+
+    return CustomMetricsResult(
+        metric_means=merged_means,
+        per_sample=merged_per_sample,
+        samples_with_valid_scores=merged_valid,
+        error=error,
+    )
+
+
 def _with_relevant_sentence_recall(
     custom_result: CustomMetricsResult,
     sample_metadata: list[dict],
@@ -699,37 +751,25 @@ def _with_relevant_sentence_recall(
     if not recall_result.metric_means:
         return custom_result
 
-    metric_means = dict(custom_result.metric_means)
-    metric_means.update(recall_result.metric_means)
-
-    samples_with_valid_scores = dict(custom_result.samples_with_valid_scores)
-    samples_with_valid_scores["relevant_sentence_recall"] = (
-        recall_result.samples_with_valid_scores
-    )
-
-    per_sample: list[dict[str, float | None]] = []
-    max_len = max(
-        len(custom_result.per_sample), len(recall_result.per_sample)
-    )
-    for i in range(max_len):
-        scores: dict[str, float | None] = {}
-        if i < len(custom_result.per_sample):
-            scores.update(custom_result.per_sample[i])
-        if i < len(recall_result.per_sample) and recall_result.per_sample[i] is not None:
-            scores["relevant_sentence_recall"] = recall_result.per_sample[i]
-        per_sample.append(scores)
-
     console.print(
         "  [dim]relevant_sentence_recall: "
         f"{recall_result.metric_means['relevant_sentence_recall']:.3f} "
         f"(over {recall_result.samples_with_valid_scores} "
         "sample(s) with relevant sentences)[/dim]"
     )
-    return CustomMetricsResult(
-        metric_means=metric_means,
+    per_sample: list[dict[str, float | None]] = []
+    for value in recall_result.per_sample:
+        per_sample.append(
+            {} if value is None else {"relevant_sentence_recall": value}
+        )
+    return _merge_custom_metric_results(
+        custom_result,
+        metric_means=recall_result.metric_means,
         per_sample=per_sample,
-        samples_with_valid_scores=samples_with_valid_scores,
-        error=custom_result.error,
+        samples_with_valid_scores={
+            "relevant_sentence_recall": recall_result.samples_with_valid_scores
+        },
+        skip_none=True,
     )
 
 
@@ -747,34 +787,17 @@ def _with_gold_doc_retrieval_metrics(
         retrieved_contexts=retrieved_contexts,
         k_values=[1, 3, 5, 10],
     )
-    metric_means = dict(custom_result.metric_means)
-    metric_means.update(gold_result.metric_means)
-
-    samples_with_valid_scores = dict(custom_result.samples_with_valid_scores)
-    samples_with_valid_scores.update(gold_result.samples_with_valid_scores)
-
-    per_sample: list[dict[str, float | None]] = []
-    max_len = max(len(custom_result.per_sample), len(gold_result.per_sample))
-    for i in range(max_len):
-        scores: dict[str, float | None] = {}
-        if i < len(custom_result.per_sample):
-            scores.update(custom_result.per_sample[i])
-        if i < len(gold_result.per_sample):
-            scores.update(gold_result.per_sample[i])
-        per_sample.append(scores)
-
-    error = custom_result.error
-    if gold_result.skipped_samples:
-        msg = (
-            f"Gold-doc retrieval metrics skipped {gold_result.skipped_samples} "
-            "sample(s) without gold_doc_id."
-        )
-        error = f"{error}; {msg}" if error else msg
-
-    return CustomMetricsResult(
-        metric_means=metric_means,
-        per_sample=per_sample,
-        samples_with_valid_scores=samples_with_valid_scores,
-        error=error,
+    error_note = (
+        f"Gold-doc retrieval metrics skipped {gold_result.skipped_samples} "
+        "sample(s) without gold_doc_id."
+        if gold_result.skipped_samples
+        else None
+    )
+    return _merge_custom_metric_results(
+        custom_result,
+        metric_means=gold_result.metric_means,
+        per_sample=gold_result.per_sample,
+        samples_with_valid_scores=gold_result.samples_with_valid_scores,
+        error_note=error_note,
     )
 

@@ -305,30 +305,72 @@ def _compact(text: str) -> str:
     return "".join(_normalised_tokens(text))
 
 
-def _overlap_trimmed_compact_joins(chunks: list[str]) -> list[str]:
-    """Compact concatenations of each adjacent chunk pair, with the longest
-    overlap between the two chunks removed before joining.
+def _longest_suffix_prefix_overlap(left: str, right: str) -> int:
+    """Length of the longest suffix of ``left`` that is a prefix of ``right``.
 
-    Retrieval chunks frequently overlap (chunking overlap windows) or repeat
-    a fragment; trimming the longest suffix/prefix overlap keeps a sentence
-    split across such chunks matchable without double-counting the shared
-    text. A plain (untrimmed) concatenation is included as well so a split
-    that cuts mid-word still matches.
+    KMP prefix function, O(len(left) + len(right)) — no quadratic slicing.
     """
-    joins: list[str] = []
-    for i in range(len(chunks) - 1):
-        left, right = _compact(chunks[i]), _compact(chunks[i + 1])
-        if not left or not right:
+    if not left or not right:
+        return 0
+    s = right + "\x00" + left
+    pi = [0] * len(s)
+    for i in range(1, len(s)):
+        j = pi[i - 1]
+        while j and s[i] != s[j]:
+            j = pi[j - 1]
+        if s[i] == s[j]:
+            j += 1
+        pi[i] = j
+    return pi[-1]
+
+
+def _split_repair_joins(chunks: list[str]) -> list[tuple[str, int]]:
+    """Compact concatenations of each chunk pair for split repair.
+
+    All pairs are considered — not just rank-adjacent chunks — so a sentence
+    split across chunks retrieved at arbitrary ranks still matches and the
+    metric does not shift with small embedding or reranker changes. Returns
+    ``(joined, boundary)`` tuples where ``boundary`` is the character
+    position of the chunk join inside ``joined``. For overlapping chunks the
+    longest overlap is trimmed before joining (linear time), so a repeated
+    fragment does not break the match. A plain concatenation is included as
+    well so a split that cuts mid-word still matches.
+    """
+    compacts = [_compact(chunk) for chunk in chunks]
+    joins: list[tuple[str, int]] = []
+    for i in range(len(compacts) - 1):
+        left = compacts[i]
+        if not left:
             continue
-        max_overlap = min(len(left), len(right))
-        trimmed = right
-        for size in range(max_overlap, 0, -1):
-            if left.endswith(right[:size]):
-                trimmed = right[size:]
-                break
-        joins.append(left + right)
-        joins.append(left + trimmed)
+        for j in range(i + 1, len(compacts)):
+            right = compacts[j]
+            if not right:
+                continue
+            # Both rank orders: fragments may be retrieved in reverse.
+            joins.append((left + right, len(left)))
+            joins.append((right + left, len(right)))
+            overlap = _longest_suffix_prefix_overlap(left, right)
+            if overlap:
+                joins.append((left[:-overlap] + right, len(left) - overlap))
+                joins.append((right[:-overlap] + left, len(right) - overlap))
     return joins
+
+
+def _spans_join(compact: str, join: str, boundary: int) -> bool:
+    """True if ``compact`` occurs in ``join`` crossing the chunk ``boundary``.
+
+    Requiring the match to span the join point keeps word-boundary semantics:
+    a sentence contained entirely within one chunk is only credited by the
+    word-boundary path, never by the compact repair path.
+    """
+    if not compact:
+        return False
+    pos = join.find(compact)
+    while pos != -1:
+        if pos < boundary < pos + len(compact):
+            return True
+        pos = join.find(compact, pos + 1)
+    return False
 
 
 def compute_relevant_sentence_recall(
@@ -348,33 +390,41 @@ def compute_relevant_sentence_recall(
     scores: list[float] = []
 
     for i, meta in enumerate(sample_metadata):
-        relevant = resolve_relevant_sentences(meta)
-        if not relevant:
+        # Deduplicate resolved sentences: duplicate keys ("3a", "3a.") or the
+        # same key listed twice must not inflate the denominator.
+        seen_words: set[str] = set()
+        unique: list[str] = []
+        for sentence in resolve_relevant_sentences(meta):
+            words = _normalised_words(sentence)
+            if not words or words in seen_words:
+                continue  # empty/label-only sentences never match
+            seen_words.add(words)
+            unique.append(sentence)
+        if not unique:
             per_sample.append(None)
             continue
         contexts = retrieved_contexts[i] if i < len(retrieved_contexts) else []
         chunks = [str(c) for c in contexts]
-        # Primary match: word-boundary preserving, per chunk and across the
-        # space-joined chunks — robust to case and whitespace differences
-        # without creating false positives at word edges.
-        joined_words = _normalised_words(" ".join(chunks))
+        # Primary match: boundary-padded word match across the space-joined
+        # chunks — robust to case and whitespace differences without false
+        # positives at word edges ("Yes." never matches "yesterday").
+        joined_words = f" {_normalised_words(' '.join(chunks))} "
         # Split repair: compact (boundary-free) concatenations of adjacent
-        # chunk pairs, with and without overlap trimming, so a sentence cut
-        # by a chunk boundary — even mid-word — still matches. Compact
-        # matching is never applied within a single chunk, which keeps
-        # word-boundary semantics for intact text.
-        split_joins = _overlap_trimmed_compact_joins(chunks)
+        # chunk pairs, so a sentence cut by a chunk boundary — even mid-word
+        # or across overlapping chunks — still matches. The match must span
+        # the join point, so compact matching never credits a sentence that
+        # sits entirely inside one chunk.
+        split_joins = _split_repair_joins(chunks)
         retrieved = 0
-        for sentence in relevant:
-            words = _normalised_words(sentence)
-            if not words:
-                continue  # empty/label-only sentences never match
+        for sentence in unique:
+            padded_words = f" {_normalised_words(sentence)} "
             compact = _compact(sentence)
-            if words in joined_words or (
-                compact and any(compact in join for join in split_joins)
+            if padded_words in joined_words or any(
+                _spans_join(compact, join, boundary)
+                for join, boundary in split_joins
             ):
                 retrieved += 1
-        value = retrieved / len(relevant)
+        value = retrieved / len(unique)
         per_sample.append(value)
         scores.append(value)
 
