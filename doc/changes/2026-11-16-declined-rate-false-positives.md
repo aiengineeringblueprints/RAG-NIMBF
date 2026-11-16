@@ -28,7 +28,12 @@ datasets without decline labels no longer report the phrase-list rate.
   and per-category entries.
 - The decline judge (`enterprise_rag_mcp_decline_judge: true`) still scores
   every sample; `declined_judge_rate` is the refusal measure for unlabelled
-  datasets. `decline_judge_agreement_rate` uses samples that carry both labels.
+  datasets and now counts every judged sample (before: only samples that also
+  had `declined`; identical on fully labelled sets such as the trust set).
+  `decline_judge_agreement_rate` uses samples that carry both labels.
+- "Labelled" means `expected_behavior` **or** `answer_patterns`: MultiHop-RAG
+  labels only its null queries with `expected_behavior` and its answer queries
+  with `answer_patterns`, and must keep one rate over all samples.
 
 Why omit instead of reporting the corrected heuristic: the phrase list is a
 heuristic tuned on labelled question sets and cannot be validated on arbitrary
@@ -43,8 +48,11 @@ per sample.
   `declined_rate` is still reported. Declines are short and keep matching;
   long answers (> 30 words) that only mention an ambiguous word are no longer
   declines, which can lower `declined_rate` and the `answer_match` of decline
-  samples that relied on such a word. No trust-run samples were available
-  locally to quantify this.
+  samples that relied on such a word. The new refusal patterns ("the context
+  does not contain …", "insufficient information") match at any length and
+  can raise `declined_rate` on `answer` samples. All 210 trust ground truths
+  score the same under the old and new heuristic; no trust-run answers were
+  available locally to quantify the effect on model answers.
 - MultiHop-RAG (labelled): on `results/Enterprise-RAG/multihop/run2` the rate
   drops from 270 to 249 of 1000; declines on null queries (expected decline)
   rise from 101 to 102 of 117, so `answer_match` of decline samples is
@@ -62,5 +70,9 @@ per sample.
   flagged 26 (old 225); long answers flagged only because of "error": 0.
 
 ## Follow-ups
+- Refusal patterns also match a caveat inside a substantive answer
+  ("… ; the context does not mention X"). Such partial answers count as
+  declines, as in the strict regex of the run6 refusal analysis. The judge
+  separates them if needed.
 - Run the MCP trust question set once with the judge on and compare
   `declined_rate` with `declined_judge_rate` to confirm the 30-word threshold.

@@ -97,8 +97,9 @@ def declines(answer: str) -> bool:
     """Return whether ``answer`` declines, i.e. reports that it cannot answer.
 
     Empty answers, refusal phrases and "the context does not contain …"
-    statements always count. Ambiguous words such as "error", "failed" or
-    "permission" count only in short answers (at most 30 words).
+    statements always count, also as a caveat inside a longer answer. Ambiguous
+    words such as "error", "failed" or "permission" count only in short answers
+    (at most ``_SHORT_ANSWER_WORDS`` words).
     """
     normalized = normalize_answer(answer or "")
     if not normalized.strip():
@@ -172,6 +173,11 @@ def make_answer_judge(chat_model: Any) -> AnswerJudge:
     return judge
 
 
+def _is_labelled(metadata: Mapping[str, Any]) -> bool:
+    """Whether a sample carries decline/answer labels the phrase list is meant for."""
+    return bool(metadata.get("expected_behavior") or metadata.get("answer_patterns"))
+
+
 def score_answer(
     answer: str,
     metadata: Mapping[str, Any],
@@ -198,8 +204,7 @@ def score_answer(
     if behavior not in EXPECTED_BEHAVIORS:
         raise ValueError(f"expected_behavior must be one of {EXPECTED_BEHAVIORS}, got {behavior!r}")
     normalized = normalize_answer(answer or "")
-    labelled = metadata.get("expected_behavior") is not None or bool(metadata.get("answer_patterns"))
-    labels: dict[str, bool] = {"declined": declines(answer)} if labelled else {}
+    labels: dict[str, bool] = {"declined": declines(answer)} if _is_labelled(metadata) else {}
     verdict = judge(question, answer or "") if judge is not None else None
     if verdict is not None:
         labels["declined_judge"] = verdict

@@ -259,3 +259,11 @@ def test_real_refusals_are_declines(answer):
 )
 def test_short_answers_still_match_the_broad_phrase_list(answer):
     assert declines(answer) is True
+
+
+def test_a_caveat_about_the_context_inside_a_long_answer_counts_as_a_decline():
+    # Partial answers count, matching the strict refusal regex of the run6 analysis.
+    answer = ("The provided context does not specify a direct download link for the driver. "
+              "However, the document lists DB2 Enterprise Server Edition 10.1 as required "
+              "software, and the context does not contain the exact fix pack level to install.")
+    assert declines(answer) is True
