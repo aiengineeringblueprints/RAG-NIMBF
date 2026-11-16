@@ -103,7 +103,17 @@ def test_decline_sample_fails_when_it_answers_or_leaks():
 
 def test_ground_truth_is_the_fallback_pattern_and_unlabelled_answers_are_unscored():
     assert score_answer("It is Bergen.", {}, ground_truth="Bergen")["answer_match"] is True
-    assert score_answer("It is Bergen.", {}) == {"declined": False}
+    assert score_answer("It is Bergen.", {}) == {}
+
+
+def test_unlabelled_samples_get_no_phrase_list_decline_label():
+    # Datasets without expected_behavior / answer_patterns (e.g. RAGBench TechQA)
+    # are free text: the phrase list is not reported for them (issue #18).
+    labels = score_answer("The error occurs because the ulimit is too low.", {}, ground_truth="ulimit")
+    assert labels == {"answer_match": True}
+    # The decline judge still scores them when it is enabled.
+    labels = score_answer("The context does not contain it.", {}, judge=lambda q, a: True, question="q")
+    assert labels == {"declined_judge": True}
 
 
 def test_unknown_expected_behavior_is_rejected():
@@ -191,3 +201,61 @@ def test_answer_judge_failure_returns_none():
         raise RuntimeError("endpoint down")
 
     assert make_answer_judge(SimpleNamespace(invoke=invoke))("q", "ref", "a") is None
+
+
+# --- declines: phrase heuristic on free-text technical answers (issue #18) ----
+
+from benchmark.answer_match import declines
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        # Normal TechQA answers (run6) that mention error/failed/permission words.
+        'The error "Failed to create a thread: retVal -1073741830, errno 11" is typically '
+        "caused by insufficient `ulimit` settings, specifically the `nproc` limit on Linux "
+        "systems. Increase the limit and restart the server to resolve the problem.",
+        "The error occurs because Oracle JRE 7 update 51 and later require the "
+        '"Permissions" attribute in the JAR manifest, which is missing in older versions of '
+        "the application. Update the manifest and re-sign the JAR files.",
+        "To resolve the \"Could not find the main class\" error when uninstalling Data Studio "
+        "3.1.1, you should uninstall all products including the Installation Manager, manually "
+        "clean up remaining directories and registry entries, and then reinstall.",
+        "There is no hard limit to the number of items in an SQL IN clause; the only "
+        "constraint is the memory required to compile the query, so very long lists can fail.",
+    ],
+)
+def test_technical_answers_mentioning_errors_are_not_declines(answer):
+    assert declines(answer) is False
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        "The provided context does not contain information regarding known issues with Wily "
+        "software; it only details issues for IBM WebSphere Industry Content Packs and IBM "
+        "Business Process Manager (BPM), which are unrelated to the question asked here.",
+        "Based on the provided context, there is no specific procedure described for changing "
+        "the maximum string length for properties in ACCE. The documents detail how to create "
+        "property templates, but they do not cover length limits for existing properties.",
+        "I cannot answer this question from the retrieved documents.",
+        "The context does not explicitly mention CVE-2017-15277, so the affected versions "
+        "remain unclear from the available material and should be checked in the bulletin.",
+        "",
+    ],
+)
+def test_real_refusals_are_declines(answer):
+    assert declines(answer) is True
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        # Short trust-set style declines keep matching the broad phrase list.
+        "The warranty service failed with an error.",
+        "Permission denied for the finance system.",
+        "Customer C-404 is unknown.",
+    ],
+)
+def test_short_answers_still_match_the_broad_phrase_list(answer):
+    assert declines(answer) is True

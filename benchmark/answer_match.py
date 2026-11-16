@@ -54,25 +54,61 @@ def answer_matches_normalized(normalized: str, patterns: Sequence[Sequence[str]]
     )
 
 
-# Phrases of a non-answer: a refusal, missing data, missing access or a failed
-# lookup. Matched as substrings of the normalized answer.
-_DECLINE_PHRASES = (
-    "cannot answer", "can't answer", "cannot provide", "can't provide",
-    "cannot determine", "can't determine", "unable to", "not able to",
-    "could not", "couldn't", "cannot be answered", "no information",
-    "don't have", "do not have", "does not contain", "does not provide",
-    "not provided", "not available", "unavailable", "no access",
-    "not authorized", "not authorised", "not permitted", "permission",
-    "does not exist", "doesn't exist", "no record", "not found", "unknown",
-    "there is no", "there are no", "no such", "failed", "error",
+# Unambiguous refusal phrases: matched as substrings anywhere in the answer.
+_REFUSAL_PHRASES = (
+    "cannot answer", "can't answer", "cannot be answered", "cannot provide",
+    "can't provide", "cannot determine", "can't determine", "no information",
+    "insufficient information",
 )
+# "The source does not cover it" statements, e.g. "the provided context does not
+# contain …" or "… is not mentioned in the documents". The subject must be the
+# retrieved material, so "the file does not contain …" is not a refusal.
+_SOURCE = r"(?:context|documents|sources|information|knowledge base|excerpts|passages)"
+_ADVERB = r"(?:explicitly |specifically |directly |clearly )?"
+_VERB = r"(?:contain|provide|include|mention|cover|address|offer|identify|discuss|describe)"
+_PARTICIPLE = (r"(?:provided|mentioned|included|covered|addressed|identified|discussed"
+               r"|described|found|available)")
+_REFUSAL_PATTERNS = tuple(re.compile(p) for p in (
+    rf"\b{_SOURCE}\b[^.;]{{0,80}}?\b(?:does not|do not|doesn't|don't|did not|didn't) {_ADVERB}{_VERB}",
+    rf"\b{_SOURCE}\b[^.;]{{0,80}}?\b(?:is|are) not {_ADVERB}{_PARTICIPLE}\b",
+    rf"\b(?:is|are) not {_ADVERB}{_PARTICIPLE} (?:in|within|by) (?:the |any of the )?"
+    rf"(?:provided |given |retrieved )?{_SOURCE}",
+    rf"\b(?:based on|according to|in) the (?:provided |given |retrieved )?{_SOURCE}, there (?:is|are) no\b",
+    r"\bi (?:do not|don't|did not|didn't|cannot|can't) (?:have|find) (?:any |enough |the |access)",
+    r"\bthere (?:is|are) no (?:information|mention|details?|data|records?)\b",
+))
+# Phrases of a non-answer that also occur in normal answers on technical
+# datasets ("the error occurs because …"). Built for the MCP trust question set,
+# whose declines are short; they only count in answers of at most
+# _SHORT_ANSWER_WORDS words.
+_AMBIGUOUS_DECLINE_PHRASES = (
+    "unable to", "not able to", "could not", "couldn't", "don't have",
+    "do not have", "does not contain", "does not provide", "not provided",
+    "not available", "unavailable", "no access", "not authorized",
+    "not authorised", "not permitted", "permission", "does not exist",
+    "doesn't exist", "no record", "not found", "unknown", "there is no",
+    "there are no", "no such", "failed", "error",
+)
+_SHORT_ANSWER_WORDS = 30
 EXPECTED_BEHAVIORS = ("answer", "decline")
 
 
 def declines(answer: str) -> bool:
-    """Return whether ``answer`` declines, i.e. reports that it cannot answer."""
+    """Return whether ``answer`` declines, i.e. reports that it cannot answer.
+
+    Empty answers, refusal phrases and "the context does not contain …"
+    statements always count. Ambiguous words such as "error", "failed" or
+    "permission" count only in short answers (at most 30 words).
+    """
     normalized = normalize_answer(answer or "")
-    return not normalized.strip() or any(p in normalized for p in _DECLINE_PHRASES)
+    if not normalized.strip():
+        return True
+    if any(p in normalized for p in _REFUSAL_PHRASES):
+        return True
+    if any(p.search(normalized) for p in _REFUSAL_PATTERNS):
+        return True
+    return (len(normalized.split()) <= _SHORT_ANSWER_WORDS
+            and any(p in normalized for p in _AMBIGUOUS_DECLINE_PHRASES))
 
 
 DeclineJudge = Callable[[str, str], "bool | None"]
@@ -146,18 +182,24 @@ def score_answer(
 ) -> dict[str, bool]:
     """Score one answer against its sample labels.
 
-    Returns ``declined`` (phrase list) always, ``declined_judge`` when a judge
+    Returns ``declined`` (phrase list) for labelled samples (with
+    ``expected_behavior`` or ``answer_patterns``), ``declined_judge`` when a judge
     gave a verdict, ``forbidden_match`` when the sample has
     ``forbidden_patterns``, and ``answer_match`` when the sample is scoreable:
     an ``answer`` sample matches its ``answer_patterns`` (fallback: the ground
     truth); a ``decline`` sample matches when it declines (judge verdict, else
     phrase list) without stating a forbidden value.
+
+    Unlabelled samples (free-text datasets such as RAGBench TechQA) get no
+    ``declined`` label: the phrase list was built for labelled question sets and
+    is not a refusal measure on arbitrary domains. Use the decline judge there.
     """
     behavior = metadata.get("expected_behavior") or "answer"
     if behavior not in EXPECTED_BEHAVIORS:
         raise ValueError(f"expected_behavior must be one of {EXPECTED_BEHAVIORS}, got {behavior!r}")
     normalized = normalize_answer(answer or "")
-    labels: dict[str, bool] = {"declined": declines(answer)}
+    labelled = metadata.get("expected_behavior") is not None or bool(metadata.get("answer_patterns"))
+    labels: dict[str, bool] = {"declined": declines(answer)} if labelled else {}
     verdict = judge(question, answer or "") if judge is not None else None
     if verdict is not None:
         labels["declined_judge"] = verdict
