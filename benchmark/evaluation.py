@@ -43,7 +43,6 @@ _RAGAS_METRIC_FACTORIES = {
     "context_recall": ContextRecall,
     "semantic_similarity": SemanticSimilarity,
 }
-assert tuple(_RAGAS_METRIC_FACTORIES) == RAGAS_METRIC_NAMES
 
 
 def build_ragas_metrics(metric_names=RAGAS_METRIC_NAMES) -> list:

@@ -75,6 +75,14 @@ class TestEvaluateResultsMetricSelection:
         assert set(result.metric_means) == {"faithfulness", "context_recall"}
         assert "context_precision" not in result.per_sample_scores[0]
 
+    def test_every_configurable_metric_can_be_built(self):
+        from benchmark.evaluation import build_ragas_metrics
+        from config import RAGAS_METRIC_NAMES
+
+        built = [m.name for m in build_ragas_metrics(RAGAS_METRIC_NAMES)]
+
+        assert built == list(RAGAS_METRIC_NAMES)
+
     def test_unknown_metric_name_rejected(self):
         with pytest.raises(ValueError, match="bogus"):
             evaluate_results(

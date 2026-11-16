@@ -446,6 +446,8 @@ def validate_benchmark_config(config: BenchmarkConfig) -> BenchmarkConfig:
             f"Unknown ragas_metrics: {', '.join(unknown_ragas)}. "
             f"Available: {', '.join(RAGAS_METRIC_NAMES)}"
         )
+    if len(set(config.ragas_metrics)) != len(config.ragas_metrics):
+        raise ValueError("ragas_metrics contains duplicate metric names")
     if config.ragas_enabled and not config.ragas_metrics:
         raise ValueError(
             "ragas_metrics must not be empty while ragas_enabled; "

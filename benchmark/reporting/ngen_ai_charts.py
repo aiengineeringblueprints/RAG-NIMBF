@@ -146,10 +146,10 @@ def plot_model_comparison(df: pd.DataFrame, out: Path) -> Path | None:
                     clean = sub[col].dropna()
                     if col.startswith("ragas_"):
                         clean = clean[clean > 0]
-                    vals.append(clean.mean() if len(clean) > 0 else 0)
+                    vals.append(clean.mean() if len(clean) > 0 else np.nan)
                     errs.append(clean.std() if len(clean) > 1 else 0)
                 else:
-                    vals.append(0)
+                    vals.append(np.nan)
                     errs.append(0)
 
             offset = (i - n_models / 2 + 0.5) * bar_width
@@ -225,10 +225,10 @@ def plot_retrieval_comparison(df: pd.DataFrame, out: Path) -> Path | None:
                         clean = s[col].dropna()
                         if col.startswith("ragas_"):
                             clean = clean[clean > 0]
-                        vals.append(clean.mean() if len(clean) > 0 else 0)
+                        vals.append(clean.mean() if len(clean) > 0 else np.nan)
                         errs.append(clean.std() if len(clean) > 1 else 0)
                     else:
-                        vals.append(0)
+                        vals.append(np.nan)
                         errs.append(0)
 
                 offset = (j - len(strategies) / 2 + 0.5) * bar_width
@@ -295,10 +295,10 @@ def plot_template_effect(df: pd.DataFrame, out: Path) -> Path | None:
                         clean = s[col].dropna()
                         if col.startswith("ragas_"):
                             clean = clean[clean > 0]
-                        vals.append(clean.mean() if len(clean) > 0 else 0)
+                        vals.append(clean.mean() if len(clean) > 0 else np.nan)
                         errs.append(clean.std() if len(clean) > 1 else 0)
                     else:
-                        vals.append(0)
+                        vals.append(np.nan)
                         errs.append(0)
 
                 offset = (j - len(templates) / 2 + 0.5) * bar_width

@@ -1179,6 +1179,11 @@ class TestRagasMetricSelection:
         with pytest.raises(ValueError, match="bogus"):
             validate_benchmark_config(cfg)
 
+    def test_duplicate_metric_rejected(self):
+        cfg = _make_config(ragas_metrics=("faithfulness", "faithfulness"))
+        with pytest.raises(ValueError, match="duplicate"):
+            validate_benchmark_config(cfg)
+
     def test_empty_selection_rejected_while_ragas_enabled(self):
         cfg = _make_config(ragas_metrics=())
         with pytest.raises(ValueError, match="ragas_metrics"):
