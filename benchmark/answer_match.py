@@ -174,8 +174,12 @@ def make_answer_judge(chat_model: Any) -> AnswerJudge:
 
 
 def _is_labelled(metadata: Mapping[str, Any]) -> bool:
-    """Whether a sample carries decline/answer labels the phrase list is meant for."""
-    return bool(metadata.get("expected_behavior") or metadata.get("answer_patterns"))
+    """Whether a sample carries the ``expected_behavior`` label the phrase list is meant for.
+
+    ``answer_patterns`` alone do not qualify: on free-text domains the phrase list
+    flags ordinary answers ("the failed login is caused by …") as refusals.
+    """
+    return bool(metadata.get("expected_behavior"))
 
 
 def score_answer(
@@ -189,14 +193,15 @@ def score_answer(
     """Score one answer against its sample labels.
 
     Returns ``declined`` (phrase list) for labelled samples (with
-    ``expected_behavior`` or ``answer_patterns``), ``declined_judge`` when a judge
+    ``expected_behavior``), ``declined_judge`` when a judge
     gave a verdict, ``forbidden_match`` when the sample has
     ``forbidden_patterns``, and ``answer_match`` when the sample is scoreable:
     an ``answer`` sample matches its ``answer_patterns`` (fallback: the ground
     truth); a ``decline`` sample matches when it declines (judge verdict, else
     phrase list) without stating a forbidden value.
 
-    Unlabelled samples (free-text datasets such as RAGBench TechQA) get no
+    Unlabelled samples (no ``expected_behavior``, e.g. RAGBench TechQA or a
+    dataset with only ``answer_patterns``) get no
     ``declined`` label: the phrase list was built for labelled question sets and
     is not a refusal measure on arbitrary domains. Use the decline judge there.
     """

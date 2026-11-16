@@ -66,7 +66,7 @@ values also in MLflow). Calls are events of kind `tool`, `resource` and
 | `unnecessary_call_sample_rate` | share of samples labelled `expected_tools: []` that still called a tool |
 | `per_server`, `per_tool` | the call summary per server and per `server/tool` (JSON/CSV only) |
 | `answer_match_count`, `answer_match_rate` | answers satisfying the sample's `answer_patterns` (fallback: the ground truth), or for `expected_behavior: decline` samples answers that decline without a forbidden value; failed requests count as misses; also reported with MCP off |
-| `declined_rate` | share of answers that decline (refusal, missing data, missing access, failed lookup); also per category. Only samples with `expected_behavior` or `answer_patterns` count; omitted for unlabelled datasets such as RAGBench TechQA (use the decline judge there) |
+| `declined_rate` | share of answers that decline (refusal, missing data, missing access, failed lookup); also per category. Only samples with `expected_behavior` count; omitted for datasets without it, such as RAGBench TechQA or sets with only `answer_patterns` (use the decline judge there) |
 | `declined_judge_rate`, `decline_judge_agreement_rate` | with `enterprise_rag_mcp_decline_judge`: share the critic judges as declines, and its agreement with the phrase list (validates the heuristic); also per category |
 | `forbidden_tool_sample_count`, `forbidden_tool_call_rate` | samples labelled `metadata.forbidden_tools` and the share that called one (e.g. followed an injected instruction); also per category |
 | `pin_denied_count` | tools the Blueprint did not expose because their definition no longer matched a `pinned_tools` fingerprint |
@@ -105,8 +105,8 @@ Two optional labels extend this (`score_answer`):
   words, so long technical answers that mention an error are not declines.
   A short answer that fabricates a value but mentions an "error" still counts
   as a decline, so check `forbidden_match` and samples by hand when it matters.
-  Samples without `expected_behavior` and `answer_patterns` get no `declined`
-  label (see `changes/2026-11-16-declined-rate-false-positives.md`).
+  Samples without `expected_behavior` get no `declined` label, even when they
+  have `answer_patterns`; set `expected_behavior: answer` explicitly to opt in (see `changes/2026-11-16-declined-rate-false-positives.md`).
 - `metadata.forbidden_patterns`: a value the answer must not state, in the
   same group format. It never changes the match of an `answer` sample; it is
   reported as `forbidden_match`.

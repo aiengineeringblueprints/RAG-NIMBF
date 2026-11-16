@@ -34,7 +34,10 @@ This writes `corpus/MHR-001.md` … `MHR-609.md` and `questions.jsonl`.
   per-category answer metrics.
 - `answer_patterns` holds the reference answer. Yes/no answers match only when
   the opposite word is absent, so a hedged "yes or no" counts for neither.
-- Null queries carry `expected_behavior: decline` and no gold documents.
+- Answer queries carry `expected_behavior: answer`, null queries
+  `expected_behavior: decline` and no gold documents. Every sample is
+  labelled, so `declined_rate` covers all queries; re-run `prepare.py` if your
+  `questions.jsonl` predates this label.
 - Questions are shuffled with a fixed seed, so any `sample_size` prefix mixes
   all question types.
 

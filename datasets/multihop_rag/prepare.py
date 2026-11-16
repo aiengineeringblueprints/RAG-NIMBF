@@ -66,6 +66,7 @@ def _question(query: dict, id_by_url: dict[str, str], index: int) -> dict:
     if question_type == "null_query":
         metadata["expected_behavior"] = "decline"
     else:
+        metadata["expected_behavior"] = "answer"
         answer = query["answer"].strip()
         pattern = _YES_NO.get(answer.lower().rstrip("."))
         metadata["answer_patterns"] = [[pattern or answer]]

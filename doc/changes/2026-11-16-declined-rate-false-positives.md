@@ -23,17 +23,21 @@ datasets without decline labels no longer report the phrase-list rate.
 
 ### Decision: unlabelled datasets (`score_answer()`, `benchmark/mcp_host.py`)
 - `declined` (phrase list) is set only for labelled samples: those with
-  `expected_behavior` or `answer_patterns`. Free-text datasets such as TechQA
-  get no `declined` label, so `declined_rate` is omitted from the run summary
-  and per-category entries.
+  `expected_behavior` (`answer` or `decline`). Samples without it get no
+  `declined` label, so `declined_rate` is omitted from the run summary and
+  per-category entries. This covers free-text datasets such as TechQA and
+  datasets that carry only `answer_patterns`: on those the phrase list still
+  flags ordinary answers ("The failed login is caused by an expired
+  certificate.") as refusals (PR #36 review).
 - The decline judge (`enterprise_rag_mcp_decline_judge: true`) still scores
   every sample; `declined_judge_rate` is the refusal measure for unlabelled
   datasets and now counts every judged sample (before: only samples that also
   had `declined`; identical on fully labelled sets such as the trust set).
   `decline_judge_agreement_rate` uses samples that carry both labels.
-- "Labelled" means `expected_behavior` **or** `answer_patterns`: MultiHop-RAG
-  labels only its null queries with `expected_behavior` and its answer queries
-  with `answer_patterns`, and must keep one rate over all samples.
+- `datasets/multihop_rag/prepare.py` now writes `expected_behavior: answer` on
+  answer queries (null queries already had `decline`), so MultiHop-RAG keeps
+  one `declined_rate` over all samples. A dataset opts in to the phrase-list
+  rate by setting `expected_behavior` on every sample.
 
 Why omit instead of reporting the corrected heuristic: the phrase list is a
 heuristic tuned on labelled question sets and cannot be validated on arbitrary
@@ -53,7 +57,12 @@ per sample.
   can raise `declined_rate` on `answer` samples. All 210 trust ground truths
   score the same under the old and new heuristic; no trust-run answers were
   available locally to quantify the effect on model answers.
-- MultiHop-RAG (labelled): on `results/Enterprise-RAG/multihop/run2` the rate
+- MultiHop-RAG: regenerate `datasets/multihop_rag/questions.jsonl` with
+  `python datasets/multihop_rag/prepare.py`; a file prepared before this
+  change has no `expected_behavior` on answer queries, so its runs would
+  report `declined_rate` over the null queries only. With the regenerated
+  file the labelled set is the same as before. On
+  `results/Enterprise-RAG/multihop/run2` the rate
   drops from 270 to 249 of 1000; declines on null queries (expected decline)
   rise from 101 to 102 of 117, so `answer_match` of decline samples is
   practically unchanged.
@@ -62,9 +71,12 @@ per sample.
 - New tests in `tests/test_answer_match.py`: TechQA false positives (error /
   failed / permission answers), real refusals ("The provided context does not
   contain …"), short trust-style declines, unlabelled samples without
-  `declined`. New test in `tests/test_mcp_host.py`: `declined_rate` omitted,
+  `declined`, samples with only `answer_patterns` without `declined` (PR #36
+  review reproduction), `expected_behavior: answer` samples keep it. New test
+  in `tests/test_multihop_rag_dataset.py`: every MultiHop-RAG sample carries
+  `expected_behavior`. New test in `tests/test_mcp_host.py`: `declined_rate` omitted,
   `declined_judge_rate` kept.
-- `pytest`: 874 passed.
+- `pytest`: 878 passed.
 - Rescored run6 answers (`results/Enterprise-RAG/run6`, n = 500) with the new
   `declines()`: 167 declines (33.4 %, old 286 / 58 %); reference answers
   flagged 26 (old 225); long answers flagged only because of "error": 0.

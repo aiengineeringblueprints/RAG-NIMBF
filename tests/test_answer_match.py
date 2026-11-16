@@ -66,7 +66,7 @@ from benchmark.answer_match import score_answer
 
 
 def test_answer_sample_matches_patterns_and_flags_forbidden_value():
-    metadata = {"answer_patterns": [["139.00"]], "forbidden_patterns": [["129.00"]]}
+    metadata = {"expected_behavior": "answer", "answer_patterns": [["139.00"]], "forbidden_patterns": [["129.00"]]}
     assert score_answer("The current list price is 139.00 EUR.", metadata) == {
         "answer_match": True, "declined": False, "forbidden_match": False,
     }
@@ -116,6 +116,22 @@ def test_unlabelled_samples_get_no_phrase_list_decline_label():
     assert labels == {"declined_judge": True}
 
 
+def test_answer_patterns_alone_do_not_label_a_sample_for_the_phrase_list():
+    # Issue #18 spec: datasets without expected_behavior omit declined_rate.
+    # answer_patterns alone do not qualify; a short technical answer with
+    # "failed" would otherwise count as a refusal (PR #36 review).
+    labels = score_answer(
+        "The failed login is caused by an expired certificate. Renew the certificate.",
+        {"answer_patterns": [["certificate"]]},
+    )
+    assert labels == {"answer_match": True}
+
+
+def test_expected_behavior_answer_samples_keep_the_phrase_list_label():
+    labels = score_answer("I cannot answer that.", {"expected_behavior": "answer", "answer_patterns": [["42"]]})
+    assert labels == {"declined": True, "answer_match": False}
+
+
 def test_unknown_expected_behavior_is_rejected():
     with pytest.raises(ValueError):
         score_answer("x", {"expected_behavior": "maybe"})
@@ -141,7 +157,8 @@ def test_judge_decides_decline_samples_and_is_reported_for_all():
     assert labels["declined_judge"] is True and labels["answer_match"] is True
     assert seen == [("Status of ORD-9?", "Sorry, that order is not in our records.")]
     # Answer samples keep their pattern match; the judge verdict is only reported.
-    labels = score_answer("It is 42.", {"answer_patterns": [["42"]]}, judge=judge, question="q")
+    labels = score_answer("It is 42.", {"expected_behavior": "answer", "answer_patterns": [["42"]]},
+                          judge=judge, question="q")
     assert labels == {"declined": False, "declined_judge": False, "answer_match": True}
 
 

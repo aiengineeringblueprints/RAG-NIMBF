@@ -75,6 +75,15 @@ def test_questions_resolve_evidence_to_unique_gold_doc_ids():
     assert inference["metadata"]["category"] == "inference_query"
 
 
+def test_answer_queries_are_labelled_for_the_decline_rate():
+    # Every MultiHop-RAG sample carries expected_behavior, so declined_rate
+    # covers answer and null queries alike (issue #18).
+    _, questions = prepare.build(CORPUS, QUERIES, seed=None)
+    behaviors = {q["metadata"]["question_type"]: q["metadata"]["expected_behavior"] for q in questions}
+    assert behaviors.pop("null_query") == "decline"
+    assert set(behaviors.values()) == {"answer"}
+
+
 def test_null_queries_expect_a_decline_without_gold():
     _, questions = prepare.build(CORPUS, QUERIES, seed=None)
     (null,) = [q for q in questions if q["metadata"]["question_type"] == "null_query"]
