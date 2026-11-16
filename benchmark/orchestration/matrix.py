@@ -12,6 +12,7 @@ from config import (
     BenchmarkConfig,
     get_env_combinations,
     parse_optional_float,
+    parse_ragas_metrics,
     validate_benchmark_config,
 )
 from benchmark.providers import parse_model_id
@@ -340,6 +341,8 @@ def _updates_for_combo(combo: dict[str, Any]) -> dict[str, Any]:
 def _coerce_field_value(key: str, value: Any) -> Any:
     if key == "eval_critic_temperature":
         return parse_optional_float(value)
+    if key == "ragas_metrics":
+        return parse_ragas_metrics(value)
     if key in {
         "rag_managed_options_json",
         "ingestion_options_json",

@@ -23,6 +23,7 @@ Generated: 2026-05-18 | Sources: 40+ | Agents: 3 parallel
 | [Environment Variables Reference](env-vars.md) | Full reference for every env var (moved out of the root README): core, HTTP adapter, parsers, retrieval, datasets, MCP, Blueprint plugins, generation, evaluation, cost monitoring |
 | [LLM Load Test](llm-load-test.md) | Integrated LLM latency/throughput testing inside a benchmark run: `llm_performance_*` settings, `generation` vs `load_test` sources, where results land |
 | [ClearML Agent Workflow](clearml-agent.md) | Clone/edit/enqueue benchmark tasks via ClearML: baseline task creation, agent daemon, hyperparameter cloning, what is (not) published |
+| [RAGAS Runtime](ragas-runtime.md) | Shortening RAGAS critic runtime: `ragas_metrics` / `RAGAS_METRICS` metric selection, measured `EVAL_CRITIC_MAX_WORKERS` 8 vs 16 on TechQA, smaller `sample_size` for sweeps |
 | [Results and MLflow](results-and-mlflow.md) | Output layout, compacted sample reports, LLM answer judge re-scoring, MLflow UI comparison and aggregate summary runs |
 | [External RAG System Usage](External_RAG_System_Usage.md) | HTTP adapter in depth: request/response contract, dotted fields, auth headers, token/cost fields, env vars, plugin loading via `RAG_ADAPTER_MODULES` |
 | [External RAG Python Adapter](External_RAG_Python_Adapter.md) | Python plugin adapter without HTTP: skeleton, `RagSystemOutput` fields, component sweep options, component injection (`supports_components` / `RAG_ADAPTER_ACCEPTS`) |
