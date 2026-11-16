@@ -36,7 +36,12 @@ documented with a recommendation in the new guide `doc/ragas-runtime.md`.
   `plot_ranking` and `paper_charts.plot_composite_ranking`, which previously
   filled missing metrics with 0 and so penalised runs with fewer metrics.
 - `benchmark/reporting/ngen_ai_charts.py`: no bar instead of a 0 bar for a
-  metric without values.
+  metric without values; the three chart functions share
+  `metric_mean_and_error` (PR #38 review).
+- `benchmark/reporting/visualization.py` (PR #38 review): new
+  `ragas_plot_matrix` drives the RAGAS comparison bars, radar and heatmap.
+  Metrics no config ran are left out; a metric missing for one config is NaN:
+  no bar, a gap in the radar, a grey `N/A` heatmap cell (was 0 / red).
 
 ### Docs
 - New `doc/ragas-runtime.md`: knob usage, per-metric cost, worker measurement
@@ -65,7 +70,9 @@ documented with a recommendation in the new guide `doc/ragas-runtime.md`.
   `tests/test_evaluation.py::TestEvaluateResultsMetricSelection`,
   `tests/test_run_path_uniformity.py::test_skipped_ragas_metrics_stay_absent_not_zero`,
   `tests/test_report_exports.py::test_markdown_report_omits_ragas_metrics_that_were_not_run`,
-  new `tests/test_ragas_composite.py`. Full suite: 875 passed.
+  new `tests/test_ragas_composite.py`, `tests/test_ragas_plot_data.py`.
+  Full suite: 880 passed. The three `visualization.py` plots rendered from a
+  mixed result set (one config without `context_precision`) without errors.
 - Critic replay, first 10 TechQA samples of run6, `deepseek-v4-flash`
   (details in `doc/ragas-runtime.md`):
 
@@ -80,4 +87,5 @@ documented with a recommendation in the new guide `doc/ragas-runtime.md`.
   full 150-question sweep and watch for 429/5xx retries.
 - Run identity for resume does not include `ragas_metrics` (or other
   non-name settings).
-- CSV/JSON keep columns/keys for skipped metrics as empty/`null`.
+- CSV/JSON keep columns/keys for skipped metrics as empty/`null` (stable
+  schema for downstream tools; no false zeros).

@@ -32,8 +32,9 @@ Rules:
   is expanded into one config per element, i.e. one metric per config.
 - Skipped metrics are never built, so they cost no critic calls. They stay
   `None` in results: absent from MLflow, `null` in JSON, empty cells in CSV,
-  dropped from the markdown RAGAS table, and left out (not counted as 0) of
-  composite rankings and paper charts.
+  dropped from the markdown RAGAS table and the report charts (comparison
+  bars, radar, heatmap), and left out (not counted as 0) of composite
+  rankings and paper charts.
 - Resume (`worker --run-dir`) identifies configs by name, which does not
   include the metric selection. Changing `ragas_metrics` for an existing run
   directory does not re-evaluate completed configs; use a new run directory.

@@ -27,6 +27,27 @@ _METRIC_LABELS = {
 }
 
 _METRIC_KEYS = list(_METRIC_LABELS.keys())
+
+
+def ragas_plot_matrix(
+    results: list[BenchmarkResultExtended],
+) -> tuple[list[str], np.ndarray]:
+    """RAGAS metric keys any config computed and a results × keys score matrix.
+
+    Metrics no config ran (deselected via ``ragas_metrics``) are left out;
+    a metric missing for a single config is NaN, never 0.
+    """
+    keys = [
+        key for key in _METRIC_KEYS
+        if any(getattr(r, f"ragas_{key}") is not None for r in results)
+    ]
+    data = np.full((len(results), len(keys)), np.nan)
+    for i, r in enumerate(results):
+        for j, key in enumerate(keys):
+            val = getattr(r, f"ragas_{key}")
+            if val is not None:
+                data[i, j] = val
+    return keys, data
 _PALETTE = ["#4C78A8", "#F58518", "#E45756", "#72B7B2", "#54A24B", "#EECA3B", "#B279A2", "#FF9DA6"]
 
 
@@ -102,31 +123,26 @@ def generate_plots(
 def _plot_ragas_comparison(
     results: list[BenchmarkResultExtended], plots_dir: Path
 ) -> Path | None:
+    keys, data = ragas_plot_matrix(results)
+    if not keys:
+        return None
     labels = _short_labels(results)
     n_configs = len(results)
-    n_metrics = len(_METRIC_KEYS)
+    n_metrics = len(keys)
     x = np.arange(n_configs)
     width = 0.18
 
     fig, ax = plt.subplots(figsize=(max(10, n_configs * 2.5), 6))
 
-    has_data = False
-    for i, key in enumerate(_METRIC_KEYS):
-        vals = [getattr(r, f"ragas_{key}") for r in results]
-        clean = [v if v is not None else 0.0 for v in vals]
+    for i, key in enumerate(keys):
         stds = []
         for r in results:
             stats = getattr(r, f"ragas_{key}_stats")
             stds.append(stats.std if stats and stats.count > 1 else 0.0)
-        if any(v is not None for v in vals):
-            has_data = True
         offset = (i - n_metrics / 2 + 0.5) * width
-        ax.bar(x + offset, clean, width, label=_METRIC_LABELS[key],
+        # NaN heights draw no bar for configs that lack this metric.
+        ax.bar(x + offset, data[:, i], width, label=_METRIC_LABELS[key],
                color=_PALETTE[i % len(_PALETTE)], yerr=stds, capsize=3)
-
-    if not has_data:
-        plt.close(fig)
-        return None
 
     ax.set_ylabel("Score")
     ax.set_title("RAGAS Metrics Comparison")
@@ -193,18 +209,11 @@ def _plot_performance_metrics(
 def _plot_radar(
     results: list[BenchmarkResultExtended], plots_dir: Path
 ) -> Path | None:
-    labels = list(_METRIC_LABELS.values())
-    n_metrics = len(labels)
-
-    # Check if we have any data
-    has_any = False
-    for r in results:
-        for key in _METRIC_KEYS:
-            if getattr(r, f"ragas_{key}") is not None:
-                has_any = True
-                break
-    if not has_any:
+    keys, data = ragas_plot_matrix(results)
+    if not keys:
         return None
+    labels = [_METRIC_LABELS[key] for key in keys]
+    n_metrics = len(labels)
 
     angles = np.linspace(0, 2 * np.pi, n_metrics, endpoint=False).tolist()
     angles += angles[:1]  # close the polygon
@@ -212,10 +221,8 @@ def _plot_radar(
     fig, ax = plt.subplots(figsize=(7, 7), subplot_kw={"projection": "polar"})
 
     for i, r in enumerate(results):
-        values = []
-        for key in _METRIC_KEYS:
-            val = getattr(r, f"ragas_{key}")
-            values.append(val if val is not None else 0.0)
+        # NaN leaves a gap instead of pulling the polygon to 0.
+        values = data[i].tolist()
         values += values[:1]
 
         ax.plot(angles, values, "o-", linewidth=1.5,
@@ -240,33 +247,27 @@ def _plot_heatmap(
     if not results:
         return None
 
-    config_labels = _short_labels(results)
-    metric_labels = list(_METRIC_LABELS.values())
-
-    data = np.full((len(results), len(_METRIC_KEYS)), np.nan)
-    for i, r in enumerate(results):
-        for j, key in enumerate(_METRIC_KEYS):
-            val = getattr(r, f"ragas_{key}")
-            if val is not None:
-                data[i, j] = val
-
-    if np.all(np.isnan(data)):
+    keys, data = ragas_plot_matrix(results)
+    if not keys:
         return None
+    config_labels = _short_labels(results)
+    metric_labels = [_METRIC_LABELS[key] for key in keys]
 
-    fig, ax = plt.subplots(figsize=(max(6, len(_METRIC_KEYS) * 1.5), max(4, len(results) * 0.8)))
+    fig, ax = plt.subplots(figsize=(max(6, len(keys) * 1.5), max(4, len(results) * 0.8)))
     nan_mask = np.isnan(data)
-    display_data = np.where(nan_mask, 0, data)
+    # Masked cells render in the neutral "bad" colour, not the 0-score red.
+    cmap = plt.get_cmap("RdYlGn").copy()
+    cmap.set_bad("#dddddd")
+    im = ax.imshow(np.ma.masked_invalid(data), cmap=cmap, aspect="auto", vmin=0, vmax=1)
 
-    im = ax.imshow(display_data, cmap="RdYlGn", aspect="auto", vmin=0, vmax=1)
-
-    ax.set_xticks(range(len(_METRIC_KEYS)))
+    ax.set_xticks(range(len(keys)))
     ax.set_xticklabels(metric_labels, fontsize=8, rotation=30, ha="right")
     ax.set_yticks(range(len(results)))
     ax.set_yticklabels(config_labels, fontsize=8)
 
     # Add text annotations
     for i in range(len(results)):
-        for j in range(len(_METRIC_KEYS)):
+        for j in range(len(keys)):
             if not nan_mask[i, j]:
                 val = data[i, j]
                 color = "white" if val < 0.4 or val > 0.85 else "black"

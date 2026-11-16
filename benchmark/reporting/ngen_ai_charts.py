@@ -102,6 +102,23 @@ def scan_data(results_dir: Path) -> pd.DataFrame:
     return df
 
 
+def metric_mean_and_error(df: pd.DataFrame, col: str) -> tuple[float, float]:
+    """Bar height and error for ``col``; NaN (no bar) when there is no value.
+
+    A metric a run skipped (``ragas_metrics``) or never scored must not show up
+    as a 0 bar. Legacy reports stored missing RAGAS scores as 0, so zeros are
+    dropped for ``ragas_`` columns.
+    """
+    if col not in df.columns:
+        return float("nan"), 0.0
+    clean = df[col].dropna()
+    if col.startswith("ragas_"):
+        clean = clean[clean > 0]
+    mean = float(clean.mean()) if len(clean) > 0 else float("nan")
+    err = float(clean.std()) if len(clean) > 1 else 0.0
+    return mean, err
+
+
 # ── 1. Model Comparison: Grouped Bar Chart ────────────────────────────────
 
 def plot_model_comparison(df: pd.DataFrame, out: Path) -> Path | None:
@@ -142,15 +159,9 @@ def plot_model_comparison(df: pd.DataFrame, out: Path) -> Path | None:
             vals = []
             errs = []
             for col, _ in metrics:
-                if col in sub.columns:
-                    clean = sub[col].dropna()
-                    if col.startswith("ragas_"):
-                        clean = clean[clean > 0]
-                    vals.append(clean.mean() if len(clean) > 0 else np.nan)
-                    errs.append(clean.std() if len(clean) > 1 else 0)
-                else:
-                    vals.append(np.nan)
-                    errs.append(0)
+                mean, err = metric_mean_and_error(sub, col)
+                vals.append(mean)
+                errs.append(err)
 
             offset = (i - n_models / 2 + 0.5) * bar_width
             bars = ax.bar(
@@ -221,15 +232,9 @@ def plot_retrieval_comparison(df: pd.DataFrame, out: Path) -> Path | None:
                 errs = []
                 for model in models:
                     s = sub[(sub["model"] == model) & (sub["retrieval_strategy"] == strat)]
-                    if col in s.columns:
-                        clean = s[col].dropna()
-                        if col.startswith("ragas_"):
-                            clean = clean[clean > 0]
-                        vals.append(clean.mean() if len(clean) > 0 else np.nan)
-                        errs.append(clean.std() if len(clean) > 1 else 0)
-                    else:
-                        vals.append(np.nan)
-                        errs.append(0)
+                    mean, err = metric_mean_and_error(s, col)
+                    vals.append(mean)
+                    errs.append(err)
 
                 offset = (j - len(strategies) / 2 + 0.5) * bar_width
                 bars = ax.bar(
@@ -291,15 +296,9 @@ def plot_template_effect(df: pd.DataFrame, out: Path) -> Path | None:
                 errs = []
                 for model in models:
                     s = sub[(sub["model"] == model) & (sub["prompt_template"] == tmpl)]
-                    if col in s.columns:
-                        clean = s[col].dropna()
-                        if col.startswith("ragas_"):
-                            clean = clean[clean > 0]
-                        vals.append(clean.mean() if len(clean) > 0 else np.nan)
-                        errs.append(clean.std() if len(clean) > 1 else 0)
-                    else:
-                        vals.append(np.nan)
-                        errs.append(0)
+                    mean, err = metric_mean_and_error(s, col)
+                    vals.append(mean)
+                    errs.append(err)
 
                 offset = (j - len(templates) / 2 + 0.5) * bar_width
                 bars = ax.bar(
