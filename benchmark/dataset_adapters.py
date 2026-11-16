@@ -7,6 +7,7 @@ format consumed by the rest of the framework.
 
 from __future__ import annotations
 
+import json
 import os
 from dataclasses import dataclass, replace
 from typing import Any, Callable
@@ -199,11 +200,19 @@ def derive_answerable_flag(metadata: dict[str, Any]) -> None:
 
     A RAGBench sample is answerable when it has at least one relevant
     sentence (``all_relevant_sentence_keys`` non-empty). Samples without the
-    label fields are left untouched.
+    label fields are left untouched. Values arriving as JSON strings (local
+    CSV/JSONL rows) are parsed first, so an unanswerable ``"[]"`` is not
+    truthy.
     """
     keys = metadata.get("all_relevant_sentence_keys")
-    if keys is not None:
-        metadata["answerable"] = bool(keys)
+    if keys is None:
+        return
+    if isinstance(keys, str):
+        try:
+            keys = json.loads(keys)
+        except (ValueError, TypeError):
+            keys = [keys]
+    metadata["answerable"] = bool(keys)
 
 
 # RAGBench sentence-label fields. They are needed on the *sample* metadata

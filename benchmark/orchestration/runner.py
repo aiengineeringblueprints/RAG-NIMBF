@@ -32,6 +32,7 @@ from benchmark.adapters import (
 )
 from benchmark.checkpoint import CheckpointStore, generation_result_from_record
 from benchmark.custom_metrics import CustomMetricsResult, compute_custom_metrics
+from benchmark.dataset_adapters import strip_sentence_label_metadata
 from benchmark.evaluation import EvaluationResult, evaluate_results
 from benchmark.generation import GenerationResult
 from benchmark.gold_retrieval_metrics import (
@@ -290,6 +291,16 @@ def _run_single_benchmark_impl(
             if checkpoint_store is not None
             else None
         )
+        # RAGBench sentence labels are evaluation ground truth: the system
+        # under test must never see them. Strip them from the sample handed
+        # to adapters and checkpoints; the full metadata stays on ``sample``
+        # for the metric.
+        adapter_sample = {
+            **sample,
+            "metadata": strip_sentence_label_metadata(
+                sample.get("metadata", {}) or {}
+            ),
+        }
         if cached_entry is not None:
             console.print(
                 f"  [dim cyan]({i + 1}/{len(data)}) [cached][/dim cyan] {sample['question'][:80]}{'...' if len(sample['question']) > 80 else ''}"
@@ -304,7 +315,7 @@ def _run_single_benchmark_impl(
                     raise RuntimeError("RAG adapter target was not prepared.")
                 if config.benchmark_stage == "retrieve":
                     retrieval_result = retrieve_adapter(
-                        rag_adapter, prepared_target, sample, config
+                        rag_adapter, prepared_target, adapter_sample, config
                     )
                     adapter_result = RagSystemOutput(
                         answer="",
@@ -320,7 +331,7 @@ def _run_single_benchmark_impl(
                     )
                 else:
                     adapter_result = generate_adapter(
-                        rag_adapter, prepared_target, sample, config
+                        rag_adapter, prepared_target, adapter_sample, config
                     )
             context_texts = adapter_result.contexts
             retrieved_metadata = adapter_result.metadata
@@ -360,7 +371,7 @@ def _run_single_benchmark_impl(
                 contexts=context_texts,
                 retrieved_metadata=retrieved_metadata,
                 gold_doc_id=gold_doc_ids[-1],
-                sample_metadata=all_sample_metadata[-1],
+                sample_metadata=adapter_sample["metadata"],
                 adapter_diagnostics=adapter_diagnostics,
                 result=result,
             ))
@@ -431,9 +442,6 @@ def _run_single_benchmark_impl(
             ),
         )
         console.print("  [dim]Computed retrieval-only gold metrics[/dim]")
-        custom_result = _with_relevant_sentence_recall(
-            custom_result, all_sample_metadata, all_contexts
-        )
     elif config.custom_metrics_enabled:
         console.print("  [dim]Computing custom metrics (IR + NLG)...[/dim]")
 
@@ -469,9 +477,6 @@ def _run_single_benchmark_impl(
                     sample_metadata=all_sample_metadata,
                     retrieved_contexts=all_contexts,
                 )
-            custom_result = _with_relevant_sentence_recall(
-                custom_result, all_sample_metadata, all_contexts
-            )
         if custom_result.error:
             console.print(f"  [yellow]Custom metrics error: {custom_result.error}[/yellow]")
         else:
@@ -483,12 +488,14 @@ def _run_single_benchmark_impl(
             per_sample=[{} for _ in questions],
             samples_with_valid_scores={},
         )
-        # relevant_sentence_recall is a cheap label lookup — it is computed
-        # even with custom metrics disabled, so RAGBench runs with
-        # CUSTOM_METRICS_ENABLED=false (e.g. smoke tests) still report it.
-        custom_result = _with_relevant_sentence_recall(
-            custom_result, all_sample_metadata, all_contexts
-        )
+
+    # relevant_sentence_recall is a cheap label lookup computed on every
+    # path — including with custom metrics disabled, so RAGBench runs with
+    # CUSTOM_METRICS_ENABLED=false (e.g. smoke tests) still report it.
+    # Datasets without sentence labels simply keep the metric absent.
+    custom_result = _with_relevant_sentence_recall(
+        custom_result, all_sample_metadata, all_contexts
+    )
 
     total_time = time.perf_counter() - run_start
     stage_timings["total"] = total_time

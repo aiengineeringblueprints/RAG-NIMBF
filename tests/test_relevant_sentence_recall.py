@@ -135,11 +135,42 @@ class TestRelevantSentenceRecall:
         assert result.per_sample[0] == 0.0
 
     def test_short_sentence_not_matched_inside_longer_word(self):
-        # "Yes." must not match "yesterday" — boundary-padded comparison.
+        # "Yes." is label-like (compact form < MIN_SENTENCE_COMPACT_CHARS):
+        # it is excluded from scoring entirely instead of matching anything.
         contexts = [["yesterday"]]
         meta = _meta(docs_sentences=[["Yes."]], relevant_keys=["0.0"])
         result = compute_relevant_sentence_recall(contexts, [meta])
-        assert result.per_sample[0] == 0.0
+        assert result.per_sample[0] is None
+
+    def test_label_like_sentence_excluded_from_denominator(self):
+        # Only the real sentence is scored; "Yes." does not drag the score.
+        contexts = [["Real content here."]]
+        meta = _meta(
+            docs_sentences=[["Yes.", "Real content here."]],
+            relevant_keys=["0.0", "0.1"],
+        )
+        result = compute_relevant_sentence_recall(contexts, [meta])
+        assert result.per_sample[0] == 1.0
+
+    def test_reviewer_repro_overlap_reverse_order(self):
+        # Reviewer repro: overlap between the two fragments in reverse rank
+        # order must be repaired as well.
+        contexts = [["gamma delta epsilon", "alpha beta gamma"]]
+        meta = _meta(
+            docs_sentences=[["alpha beta gamma delta epsilon."]],
+            relevant_keys=["0.0"],
+        )
+        result = compute_relevant_sentence_recall(contexts, [meta])
+        assert result.per_sample[0] == 1.0
+
+    def test_reviewer_repro_short_sentence_not_trivially_matched(self):
+        # 'Yes.' inside a chunk must not count — the sentence is label-like
+        # and excluded from scoring, so the sample gets no score at all
+        # rather than a spurious 1.0.
+        contexts = [["Yes, the drug is not approved yet."]]
+        meta = _meta(docs_sentences=[["Yes."]], relevant_keys=["0.0"])
+        result = compute_relevant_sentence_recall(contexts, [meta])
+        assert result.per_sample[0] is None
 
     def test_compact_repair_never_matches_inside_single_chunk(self):
         # With >= 2 chunks the compact joins contain each chunk whole; a
@@ -349,3 +380,58 @@ class TestRunnerIntegration:
             }
         )
         assert sample["metadata"]["answerable"] is False
+
+    def test_normalize_sample_does_not_mutate_caller_metadata(self):
+        from benchmark.dataset import normalize_sample
+
+        metadata = {"all_relevant_sentence_keys": ["0a"]}
+        sample = normalize_sample(
+            {
+                "question": "q",
+                "ground_truth": "gt",
+                "context": "ctx",
+                "metadata": metadata,
+            }
+        )
+        assert sample["metadata"]["answerable"] is True
+        assert "answerable" not in metadata
+
+    def test_answerable_flag_parses_json_string_values(self):
+        from benchmark.dataset_adapters import derive_answerable_flag
+
+        metadata = {"all_relevant_sentence_keys": "[]"}
+        derive_answerable_flag(metadata)
+        assert metadata["answerable"] is False
+
+        metadata = {"all_relevant_sentence_keys": '["0a"]'}
+        derive_answerable_flag(metadata)
+        assert metadata["answerable"] is True
+
+    def test_chroma_safe_metadata_serialises_empty_lists(self):
+        from benchmark.dataset import _chroma_safe_metadata
+
+        safe = _chroma_safe_metadata({"all_relevant_sentence_keys": []})
+        assert safe["all_relevant_sentence_keys"] == "[]"
+
+    def test_chunk_documents_strips_sentence_labels(self):
+        from benchmark.chunking import chunk_documents
+        from benchmark.chunking import get_chunker
+
+        chunker = get_chunker("recursive", 512, 64)
+        docs = [
+            {
+                "context": "Some long enough document text for chunking. " * 5,
+                "metadata": {
+                    "doc_id": "doc1",
+                    "documents_sentences": [["Full document text."]],
+                    "all_relevant_sentence_keys": ["0a"],
+                    "adherence_score": 1.0,
+                },
+            }
+        ]
+        chunks = chunk_documents(chunker, docs)
+        for chunk in chunks:
+            assert "documents_sentences" not in chunk.metadata
+            assert "all_relevant_sentence_keys" not in chunk.metadata
+            assert "adherence_score" not in chunk.metadata
+            assert chunk.metadata["doc_id"] == "doc1"

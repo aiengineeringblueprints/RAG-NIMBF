@@ -19,37 +19,44 @@ TechQA (see `doc/enterprise-rag-techqa-refusal-analysis.md`, section 2.2).
   never matches "yesterday", "The rapist …" never matches "Therapist …").
   Sentences split across a chunk boundary — even mid-word, across
   overlapping chunks, or with the fragments retrieved at non-adjacent ranks
-  — are repaired via compact (boundary-free) concatenations of chunk pairs,
-  where the match must span the join point and the longest overlap is
-  trimmed in linear time (KMP prefix function). Duplicate keys and key
-  variants ("3a", "3a.", repeated keys) are deduplicated before scoring;
-  empty or label-only sentences never match; malformed label values
-  (`None`, nested lists) are ignored instead of being stringified into
-  scored sentences.
+  in either order — are repaired by a direct two-chunk reconstruction check
+  (`_split_repair_match`): one chunk must end with a proper prefix of the
+  sentence while a different chunk starts with the corresponding suffix
+  (`q <= p` allows overlapping fragments). No per-pair join strings are
+  built, so the cost is independent of k². Duplicate keys and key variants
+  ("3a", "3a.", repeated keys) are deduplicated before scoring; empty,
+  label-like (compact form < 4 chars, e.g. "Yes.", "1.") and malformed
+  labels (`None`, nested lists, JSON strings) never reach the score.
 - `benchmark/dataset_adapters.py`: the `ragbench` adapter now carries
   `all_relevant_sentence_keys`, `documents_sentences` and `adherence_score`
-  as sample metadata; new `derive_answerable_flag` sets
-  `metadata["answerable"]` (True iff the sample has at least one relevant
-  sentence); new `strip_sentence_label_metadata` keeps the heavy label
-  fields (in particular the full `documents_sentences` text) out of corpus
-  document and chunk metadata, so the vector store and result JSON stay
-  small while sample metadata retains the labels.
-- `benchmark/dataset.py`: derives the `answerable` flag in
-  `normalize_sample`, so every load path (HuggingFace, local JSONL/CSV)
-  carries it.
+  as sample metadata; `derive_answerable_flag` sets
+  `metadata["answerable"]` (parsing JSON-string values, applied to the
+  normalised copy — the caller's dict is not mutated);
+  `strip_sentence_label_metadata` keeps the heavy label fields out of
+  corpus and chunk metadata.
+- `benchmark/chunking.py`: `chunk_documents` strips the sentence-label
+  fields at the chunking boundary, so no load path (shared corpus or
+  per-sample like `ragbench`) leaks the full document text into the vector
+  store or `retrieval_metadata`.
+- `benchmark/dataset.py`: `_chroma_safe_metadata` serialises empty lists to
+  JSON (Chroma rejects empty-list metadata values, e.g. unanswerable
+  samples with `all_relevant_sentence_keys == []`); `normalize_sample`
+  derives the `answerable` flag on the copy for every load path.
 - `benchmark/orchestration/runner.py`: `_with_relevant_sentence_recall`
   merges the metric into the custom-metrics result whenever the labels are
-  present — including when custom metrics are disabled, since the metric is
-  a cheap label lookup (smoke-test runs with `CUSTOM_METRICS_ENABLED=false`
-  still report it). Datasets without sentence labels skip the metric
-  silently (it is simply absent from the output). A shared
-  `_merge_custom_metric_results` helper now backs both this merge and the
+  present — computed on all metric paths including
+  `CUSTOM_METRICS_ENABLED=false`. Datasets without sentence labels skip the
+  metric silently. The samples handed to adapters and checkpoints have the
+  label fields stripped, so the system under test never sees the ground
+  truth and checkpoints stay small. A shared
+  `_merge_custom_metric_results` helper backs both this merge and the
   gold-doc retrieval metrics merge.
-- `tests/test_relevant_sentence_recall.py`: 28 tests for label resolution,
-  matching robustness (case/whitespace, chunk-boundary and overlapping-chunk
-  splits, non-adjacent ranks, word-boundary false positives, empty/Unicode
-  sentences, malformed labels, duplicate keys), exclusion rules, adapter
-  metadata, corpus-metadata filtering and runner wiring.
+- `tests/test_relevant_sentence_recall.py`: 35 tests for label resolution,
+  matching robustness (case/whitespace, chunk-boundary/overlapping/reverse-
+  order splits, word-boundary false positives, label-like short sentences,
+  empty/Unicode sentences, malformed and JSON-string labels, duplicate
+  keys), exclusion rules, adapter metadata, corpus/chunk-metadata filtering,
+  Chroma-safe empty lists and runner wiring.
 
 ## Semantics
 
@@ -70,11 +77,11 @@ points:
 
 | | n | Metric | Manual |
 |---|---|---|---|
-| Answered | 313 | 44.0 % | 48 % |
+| Answered | 313 | 43.9 % | 48 % |
 | Refused | 139 | 17.6 % | 19 % |
 
 (Differences come from the refusal-detection heuristic used for the split.)
-Full test suite: 888 passed.
+Full test suite: 895 passed.
 
 ## Migration
 

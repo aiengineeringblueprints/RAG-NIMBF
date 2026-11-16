@@ -105,15 +105,22 @@ def get_chunker(strategy: str, chunk_size: int, chunk_overlap: int, **kwargs):
 @mlflow.trace(name="chunk_documents", span_type="func")
 def chunk_documents(chunker, documents: list[dict], min_chunk_length: int = 50) -> list[Document]:
     from benchmark.dataset import _chroma_safe_metadata
+    from benchmark.dataset_adapters import strip_sentence_label_metadata
 
     docs = []
     for doc in documents:
         context = doc["context"]
         if isinstance(context, list):
             context = "\n".join(str(c) for c in context)
+        # RAGBench sentence-label fields (incl. the full documents_sentences
+        # text) belong to sample-level evaluation only — keep them off every
+        # chunk so they never reach the vector store or retrieval_metadata,
+        # regardless of the load path that produced the documents.
         docs.append(Document(
             page_content=context,
-            metadata=_chroma_safe_metadata(doc.get("metadata", {}) or {}),
+            metadata=_chroma_safe_metadata(
+                strip_sentence_label_metadata(doc.get("metadata", {}) or {})
+            ),
         ))
 
     chunks = chunker.split_documents(docs)

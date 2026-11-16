@@ -68,9 +68,6 @@ def normalize_sample(
         raise ValueError(
             f"{source}.metadata must be a dict, got {type(metadata).__name__}"
         )
-    # Shared derivation so every load path (HuggingFace, local JSONL/CSV)
-    # carries the RAGBench answerable flag when sentence labels are present.
-    derive_answerable_flag(metadata)
 
     context = sample["context"]
     if isinstance(context, list):
@@ -84,6 +81,10 @@ def normalize_sample(
         context=normalized_context,
         metadata=dict(metadata),
     ).to_dict()
+    # Shared derivation so every load path (HuggingFace, local JSONL/CSV)
+    # carries the RAGBench answerable flag when sentence labels are present.
+    # Applied to the copy — the caller's metadata dict is not mutated.
+    derive_answerable_flag(normalized["metadata"])
 
     for key, value in sample.items():
         if key not in normalized:
@@ -697,11 +698,18 @@ def _chroma_safe_metadata(metadata: Mapping[str, Any]) -> dict[str, Any]:
         if value is None or isinstance(value, _CHROMA_PRIMITIVES):
             safe[key] = value
             continue
-        if isinstance(value, list) and all(
-            item is None or isinstance(item, _CHROMA_PRIMITIVES) for item in value
-        ):
-            safe[key] = value
-            continue
+        if isinstance(value, list):
+            if not value:
+                # Chroma rejects empty lists ("Expected metadata list value
+                # ... to be non-empty"); store the JSON text instead.
+                safe[key] = json.dumps(value)
+                continue
+            if all(
+                item is None or isinstance(item, _CHROMA_PRIMITIVES)
+                for item in value
+            ):
+                safe[key] = value
+                continue
         safe[key] = json.dumps(value, ensure_ascii=False)
     return safe
 
