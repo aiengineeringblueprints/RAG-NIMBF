@@ -49,6 +49,13 @@ libraries … run the installer with `-console`"* is a correct answer.
 The metric is designed for datasets with `expected_behavior` labels. On TechQA
 it has no meaning.
 
+**Fixed in issue #18** (`changes/2026-11-16-declined-rate-false-positives.md`):
+ambiguous words count only in answers of at most 30 words, and unlabelled
+datasets such as TechQA no longer report `declined_rate` (use
+`enterprise_rag_mcp_decline_judge` → `declined_judge_rate`). The corrected
+heuristic flags 167 of the 500 run6 answers (33.4 %) and 26 instead of 225
+reference answers.
+
 ## 2. Why the real refusals happen
 
 Without a shared corpus (`has_shared_corpus` is `False` for `ragbench`), the

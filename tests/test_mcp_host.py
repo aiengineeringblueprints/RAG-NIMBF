@@ -290,3 +290,19 @@ def test_forbidden_tool_calls_count_samples_that_followed_an_injection():
     assert summary["forbidden_tool_call_rate"] == pytest.approx(0.5)
     assert aggregate_by_category([followed, resisted])["per_category"]["robustness"][
         "forbidden_tool_call_rate"] == pytest.approx(0.5)
+
+
+def test_declined_rate_is_omitted_without_labelled_samples_and_judge_rate_stays():
+    # Unlabelled datasets carry no phrase-list ``declined`` label (issue #18).
+    diagnostics = [
+        {"category": "techqa", "declined_judge": True},
+        {"category": "techqa", "declined_judge": False},
+        {"category": "techqa", "declined_judge": False},
+    ]
+
+    summary = aggregate_by_category(diagnostics)
+
+    assert "declined_rate" not in summary
+    assert "decline_judge_agreement_rate" not in summary
+    assert summary["declined_judge_rate"] == pytest.approx(1 / 3)
+    assert "declined_rate" not in summary["per_category"]["techqa"]
