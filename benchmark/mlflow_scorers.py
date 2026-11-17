@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -29,6 +30,10 @@ logger = logging.getLogger(__name__)
 # Metric prefix that keeps judge scores apart from the direct RAGAS
 # (``ragas_*``) and custom (``custom_*``) metrics on the same run.
 METRIC_PREFIX = "mlflow_judge_"
+
+# Wall time of the judge step on the config run; compared with the direct
+# RAGAS stage (``stage_ragas_eval_seconds``) by the calibration report (#46).
+RUNTIME_METRIC = f"{METRIC_PREFIX}seconds"
 
 # Custom RAGAS-style correctness judge (issue #45).
 ANSWER_CORRECTNESS_NAME = "answer_correctness"
@@ -297,19 +302,22 @@ def score_run_traces(
 
     Reads the traces linked to ``run_id`` (no pipeline re-run), lets MLflow
     attach per-trace assessments, and logs one ``mlflow_judge_<name>_mean``
-    metric per scorer. Failures are logged and tagged, never raised.
+    metric per scorer plus the step's wall time (``mlflow_judge_seconds``,
+    not part of the returned means). Failures are logged and tagged, never raised.
     """
     if not names:
         return {}
     nested = mlflow.active_run() is not None
     with mlflow.start_run(run_id=run_id, nested=nested):
         mlflow.set_tag("mlflow_scorer_model", endpoint.model_uri)
+        started = time.perf_counter()
         try:
             status, metrics = _evaluate(run_id, names, endpoint, factories)
         except Exception as exc:
             mlflow.set_tag("mlflow_scorers", "failed")
             logger.warning("MLflow scorers failed for run %s (non-fatal): %s", run_id, exc)
             return {}
+        mlflow.log_metric(RUNTIME_METRIC, time.perf_counter() - started)
         if metrics:
             mlflow.log_metrics(metrics)
         mlflow.set_tag("mlflow_scorers", status)

@@ -1,0 +1,69 @@
+# Issue 46 calibration: direct RAGAS vs. post-run MLflow scorers.
+# One internal-pipeline config on a fixed 50-question SQuAD slice (seed-42
+# shuffle, see benchmark/dataset.py). The same local critic (Ollama
+# gemma3:12b, temperature 0) judges both paths:
+#   - direct RAGAS stage   -> per-sample ragas_scores in the config JSON,
+#                             wall time stage_ragas_eval_seconds
+#   - MLflow scorers       -> per-trace assessments on the config run,
+#                             wall time mlflow_judge_seconds
+# Compare afterwards (run id: worker log "Logged MLflow run <id>"):
+#   python -m benchmark.reporting.judge_calibration \
+#     results/runN/configs/<config>.json --run-id <id> \
+#     --tracking-uri sqlite:///mlflow.db --out results/runN/judge_calibration.md
+# Report and decision: doc/14-ragas-vs-mlflow-calibration.md
+experiment_name: ragas-mlflow-calibration
+
+dataset:
+  name: squad
+  subset: null
+  sample_size: 50
+
+settings:
+  rag_system_adapter: internal
+  benchmark_stage: all
+  retrieval_mode: retrieval
+  retrieval_strategy: similarity
+  retrieval_top_k: 4
+  retrieval_multihop: false
+  retrieval_use_hyde: false
+  chunking_strategy: recursive
+  chunk_size: 512
+  chunk_overlap: 64
+  custom_metrics_enabled: false
+  # Direct RAGAS: every metric with an MLflow counterpart
+  # (semantic_similarity has none).
+  ragas_enabled: true
+  ragas_metrics:
+    - faithfulness
+    - answer_relevancy
+    - answer_correctness
+    - context_precision
+    - context_recall
+  # One critic for both paths; pinned so the Spark .env cannot swap it.
+  eval_critic_llm: ollama:gemma3:12b
+  eval_critic_ollama_base_url: http://localhost:11434
+  eval_critic_embedding: ollama:nomic-embed-text:latest
+  eval_critic_temperature: 0.0
+  eval_critic_max_tokens: 4096
+  eval_critic_thinking_control: none
+  eval_critic_max_workers: 8
+  eval_critic_max_retries: 3
+  # MLflow scorers read the per-sample traces.
+  mlflow_tracing_enabled: true
+  mlflow_scorers:
+    - ragas_faithfulness
+    - ragas_context_precision
+    - ragas_context_recall
+    - ragas_factual_correctness
+    - answer_correctness
+    - retrieval_groundedness
+    - retrieval_relevance
+    - retrieval_sufficiency
+    - correctness
+    - relevance_to_query
+
+matrix:
+  llm_models: [openai:qwen3.8-27b]
+  embedding_models: [nomic-embed-text:latest]
+  prompt_templates: [concise]
+  reranker_models: [null]

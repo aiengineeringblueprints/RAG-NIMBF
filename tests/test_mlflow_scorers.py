@@ -168,6 +168,23 @@ def test_scores_land_on_the_config_run_without_rerunning(
     assert len(seen_env) == len(SAMPLES)
 
 
+def test_judge_wall_time_is_logged_on_the_config_run(
+    tracking_store, generator_calls, monkeypatch
+):
+    # Issue #46 compares judge runtime with stage_ragas_eval_seconds.
+    run_id = _finished_config_run(monkeypatch)
+
+    metrics = score_run_traces(
+        run_id,
+        ("stub",),
+        ENDPOINT,
+        factories={"stub": lambda endpoint: _reference_judge([])},
+    )
+
+    assert "mlflow_judge_seconds" not in metrics  # return value: judge means only
+    assert mlflow.get_run(run_id).data.metrics["mlflow_judge_seconds"] >= 0.0
+
+
 def test_judge_reaches_the_critic_endpoint_and_env_is_restored(
     tracking_store, generator_calls, monkeypatch
 ):
