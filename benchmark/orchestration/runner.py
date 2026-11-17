@@ -46,7 +46,7 @@ from benchmark.reporting.models import (
     compute_stats,
 )
 from benchmark.resource_monitor import ResourceMonitor
-from benchmark.tracing import flush_traces, trace_sample, tracing_state
+from benchmark.tracing import expectations_logged_on_exit, trace_sample, tracing_state
 from config import BenchmarkConfig
 
 console = Console()
@@ -291,11 +291,14 @@ def _run_single_benchmark_impl(
     gen_results: list[GenerationResult] = []
 
     tracing_enabled = bool(getattr(config, "mlflow_tracing_enabled", False))
-    trace_ids: list[str] = []
     adapter_name = str(getattr(rag_adapter, "name", config.rag_system_adapter))
     # The run is traced-off by default (see run_single_benchmark); only the
-    # per-sample loop records traces, one per sample, when enabled.
-    with tracing_state(tracing_enabled):
+    # per-sample loop records traces, one per sample, when enabled. Ground
+    # truth goes onto the traces only after the samples ran (also when the
+    # loop crashes), so the system under test never sees it (issue #43).
+    with expectations_logged_on_exit(
+        source_id=f"dataset:{config.dataset_name}"
+    ) as traced_samples, tracing_state(tracing_enabled):
         for i, sample in enumerate(data):
             cached_entry = (
                 checkpoint_store.entry_for(i, sample["question"])
@@ -368,7 +371,7 @@ def _run_single_benchmark_impl(
                         stage_timings[stage_name] = stage_timings.get(stage_name, 0.0) + seconds
                 sample_trace.record(result.answer, context_texts, retrieved_metadata)
             if sample_trace.trace_id is not None:
-                trace_ids.append(sample_trace.trace_id)
+                traced_samples.append((sample_trace.trace_id, sample))
 
             questions.append(sample["question"])
             ground_truths.append(sample["ground_truth"])
@@ -402,8 +405,6 @@ def _run_single_benchmark_impl(
                     result=result,
                 ))
 
-    if trace_ids:
-        flush_traces()
     console.print(f"  [dim]Generated {len(gen_results)} answers[/dim]       ")
 
     # 4. Evaluate with RAGAS using a separate critic model
@@ -653,7 +654,7 @@ def _run_single_benchmark_impl(
     }
 
     benchmark_result = BenchmarkResultExtended(
-        trace_ids=tuple(trace_ids),
+        trace_ids=tuple(trace_id for trace_id, _ in traced_samples),
         config_name=config.name,
         llm_model=config.llm_model,
         embedding_model=config.embedding_model,

@@ -308,3 +308,125 @@ def test_real_mcp_agentic_adapter_traces_contexts_and_model_calls(tracking_store
     _assert_one_trace_per_sample_matching(tracking_store, result, expected)
     for trace in _traces(tracking_store):
         assert len(_spans_of_type(trace, "LLM")) == 3
+
+
+# ---------------------------------------------------------------------------
+# Ground-truth expectations (issue #43)
+# ---------------------------------------------------------------------------
+
+
+def _expectations(trace):
+    return {
+        assessment.name: assessment.value
+        for assessment in trace.info.assessments
+        if assessment.expectation is not None
+    }
+
+
+def test_every_trace_carries_the_reference_answer(
+    tracking_store, generator_calls, monkeypatch
+):
+    _inject(monkeypatch)
+
+    run_single_benchmark(_traced(), SAMPLES, corpus=CORPUS)
+
+    traces = _traces(tracking_store)
+    assert [_expectations(t)["expected_response"] for t in traces] == [
+        "Paris",
+        "Gustave Eiffel",
+    ]
+
+
+def test_gold_context_and_doc_ids_become_expected_retrieved_context(
+    tracking_store, generator_calls, monkeypatch
+):
+    _inject(monkeypatch)
+    samples = [
+        # Single gold document: its id and text (the sample's context).
+        {
+            "question": "Where is the Eiffel Tower?",
+            "ground_truth": "Paris",
+            "context": DOCS["doc-a"],
+            "metadata": {"gold_doc_id": "doc-a"},
+        },
+        # Multi-hop: several gold ids, context mixes in distractors -> ids only.
+        {
+            "question": "Who built the tower in Paris?",
+            "ground_truth": "Gustave Eiffel",
+            "context": "\n\n".join(DOCS.values()),
+            "metadata": {"gold_doc_ids": ["doc-a", "doc-b"]},
+        },
+        # No gold annotation at all: reference answer only.
+        {"question": "What is in Rome?", "ground_truth": "The Colosseum"},
+        # Blank reference answer: nothing to score against.
+        {"question": "Unanswerable?", "ground_truth": "   "},
+    ]
+
+    run_single_benchmark(_traced(), samples, corpus=CORPUS)
+
+    first, second, third, fourth = (_expectations(t) for t in _traces(tracking_store))
+    assert first["expected_retrieved_context"] == [
+        {"doc_uri": "doc-a", "content": DOCS["doc-a"]}
+    ]
+    assert second["expected_retrieved_context"] == [
+        {"doc_uri": "doc-a"},
+        {"doc_uri": "doc-b"},
+    ]
+    assert "expected_retrieved_context" not in third
+    assert third["expected_response"] == "The Colosseum"
+    assert fourth == {}
+
+
+def test_run_traces_are_scoreable_without_rerunning(
+    tracking_store, generator_calls, monkeypatch
+):
+    """A config run's traces hold everything an offline judge needs."""
+    from benchmark.tracking import log_benchmark_run
+
+    _inject(monkeypatch)
+    with mlflow.start_run(run_name="parent"):
+        result = run_single_benchmark(_traced(), SAMPLES, corpus=CORPUS)
+        run_id = log_benchmark_run(result, nested=True)
+
+    linked = mlflow.search_traces(
+        locations=[tracking_store], run_id=run_id, return_type="list"
+    )
+    assert len(linked) == len(SAMPLES)
+    for trace in sorted(linked, key=_sample_index):
+        sample = SAMPLES[_sample_index(trace)]
+        (root,) = [s for s in trace.data.spans if s.parent_id is None]
+        assert root.inputs == {"question": sample["question"]}
+        assert root.outputs == {"response": f"answer to: {sample['question']}"}
+        assert _retriever_contents(trace)
+        assert _expectations(trace)["expected_response"] == sample["ground_truth"]
+
+
+class _FailsOnSecondSampleAdapter:
+    """Answers the first sample, then raises — a run that dies mid-loop."""
+
+    name = "fails-second"
+
+    def __init__(self, config):
+        pass
+
+    def prepare(self, config, data, corpus=None):
+        return None
+
+    def answer(self, sample, config):
+        if sample["question"] != SAMPLES[0]["question"]:
+            raise RuntimeError("adapter crashed")
+        return RagSystemOutput(answer="Paris", contexts=[DOCS["doc-a"]])
+
+
+def test_traces_written_before_a_crash_still_get_expectations(tracking_store):
+    register_rag_adapter("fails-second", _FailsOnSecondSampleAdapter)
+    try:
+        with pytest.raises(RuntimeError, match="adapter crashed"):
+            run_single_benchmark(
+                _traced(rag_system_adapter="fails-second"), SAMPLES, corpus=CORPUS
+            )
+    finally:
+        RAG_ADAPTER_REGISTRY.pop("fails-second", None)
+
+    first = next(t for t in _traces(tracking_store) if _sample_index(t) == 0)
+    assert _expectations(first)["expected_response"] == "Paris"

@@ -277,6 +277,93 @@ def flush_traces() -> None:
         logger.warning("Flushing MLflow traces failed: %s", exc)
 
 
+def sample_expectations(sample: dict[str, Any]) -> dict[str, Any]:
+    """Ground truth of one sample as MLflow expectations (issue #43).
+
+    Uses MLflow's reserved names so built-in judges pick them up:
+    ``expected_response`` is the reference answer, ``expected_retrieved_context``
+    lists the gold documents (``doc_uri`` = gold doc id, matching the RETRIEVER
+    span's document ids). Gold text is attached only for a single
+    ``gold_doc_id``, where the sample context *is* that document; multi-gold
+    contexts (multi-hop) mix in distractors, so they carry ids only. A
+    sample with both keys uses ``gold_doc_id``; loaders set only one of them.
+    ``content`` is the dataset's reference context: identical to the indexed
+    gold document for per-sample datasets and deduplicated corpora, but for
+    ``jsonl-shared`` it is whatever the context field holds (possibly a
+    passage of the corpus document).
+    """
+    expectations: dict[str, Any] = {}
+    reference = str(sample.get("ground_truth") or "").strip()
+    if reference:
+        expectations["expected_response"] = reference
+
+    metadata = sample.get("metadata") or {}
+    gold_contexts: list[dict[str, str]] = []
+    if metadata.get("gold_doc_id"):
+        gold = {"doc_uri": str(metadata["gold_doc_id"])}
+        context = sample.get("context")
+        if isinstance(context, list):
+            context = "\n".join(str(part) for part in context)
+        if context:
+            gold["content"] = str(context)
+        gold_contexts.append(gold)
+    else:
+        gold_contexts = [
+            {"doc_uri": str(doc_id)}
+            for doc_id in metadata.get("gold_doc_ids") or []
+            if doc_id
+        ]
+    if gold_contexts:
+        expectations["expected_retrieved_context"] = gold_contexts
+    return expectations
+
+
+def log_sample_expectations(
+    samples_by_trace: Sequence[tuple[str, dict[str, Any]]], *, source_id: str
+) -> int:
+    """Attach each sample's ground truth to its trace; returns the count logged.
+
+    Flushes async trace logging first: an expectation can only be attached
+    to a trace that is already persisted. Failures are logged, never raised —
+    a missing expectation must not fail the benchmark.
+    """
+    from mlflow.entities import AssessmentSource, AssessmentSourceType
+
+    if not samples_by_trace:
+        return 0
+    flush_traces()
+    source = AssessmentSource(source_type=AssessmentSourceType.CODE, source_id=source_id)
+    logged = 0
+    for trace_id, sample in samples_by_trace:
+        for name, value in sample_expectations(sample).items():
+            try:
+                mlflow.log_expectation(
+                    trace_id=trace_id, name=name, value=value, source=source
+                )
+                logged += 1
+            except Exception as exc:
+                logger.warning(
+                    "Logging expectation %r on trace %s failed: %s", name, trace_id, exc
+                )
+    return logged
+
+
+@contextmanager
+def expectations_logged_on_exit(
+    *, source_id: str
+) -> Iterator[list[tuple[str, dict[str, Any]]]]:
+    """Collect ``(trace_id, sample)`` pairs; attach their ground truth on exit.
+
+    Runs on any exit, so traces persisted before a mid-loop crash still get
+    their expectations instead of silently looking complete without them.
+    """
+    traced_samples: list[tuple[str, dict[str, Any]]] = []
+    try:
+        yield traced_samples
+    finally:
+        log_sample_expectations(traced_samples, source_id=source_id)
+
+
 def _noop_observe(name: str | None = None) -> Callable:
     """Identity decorator used when tracing is disabled."""
     def decorator(fn: Callable) -> Callable:

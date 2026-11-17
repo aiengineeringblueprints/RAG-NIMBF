@@ -108,6 +108,43 @@ rag_sample            CHAIN      inputs: question · outputs: response · attrs:
 - Traces dominate `mlflow.db` growth; keep tracing off for large sweeps you
   do not intend to inspect.
 
+### Ground-truth expectations on traces
+
+After the per-sample loop, async trace logging is flushed and each trace gets
+the sample's ground truth as MLflow **expectations** (issue #43), under
+MLflow's reserved names so built-in judges pick them up:
+
+| Expectation | Value | When |
+|---|---|---|
+| `expected_response` | reference answer (`ground_truth`, stripped) | always, unless blank |
+| `expected_retrieved_context` | `[{"doc_uri": <gold doc id>, "content": <gold text>}]` | sample has `metadata.gold_doc_id` (per-sample datasets, deduplicated shared corpora) |
+| `expected_retrieved_context` | `[{"doc_uri": <id>}, ...]` (ids only) | sample has `metadata.gold_doc_ids` (multi-hop; the context mixes in distractors) |
+
+`doc_uri` uses the same ids as the RETRIEVER span's document `id`, so
+retrieval can be compared by id. If a sample carries both keys,
+`gold_doc_id` wins. `content` is the dataset's reference context: identical to
+the indexed gold document for per-sample datasets and deduplicated corpora,
+but for `jsonl-shared` it is whatever the manifest's context field holds and
+may be only a passage of the corpus document — compare by `doc_uri` there.
+
+Expectations are written only after the samples ran, so the system under test
+never sees them — also when the run crashes mid-loop: traces persisted before
+the crash still get their expectations. Their source is
+`CODE` / `dataset:<dataset_name>`. A failed write logs a warning and never
+fails the benchmark.
+
+A run's traces can then be scored later without re-running the pipeline:
+
+```python
+import mlflow
+traces = mlflow.search_traces(run_id="<config run id>", return_type="list")
+for t in traces:
+    expectations = {a.name: a.value for a in t.info.assessments if a.expectation}
+```
+
+or pass the DataFrame from `mlflow.search_traces(run_id=...)` to
+`mlflow.genai.evaluate(data=..., scorers=[...])`.
+
 Smoke manifest: `experiments/mlflow-tracing-smoke.yaml`.
 
 ## MLflow DB maintenance
