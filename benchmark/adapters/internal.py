@@ -318,9 +318,26 @@ class InternalRagAdapter:
         reranker = self._reranker(config)
         if reranker is None:
             return docs
-        return reranker.rerank(
-            sample["question"], docs, config.reranker_top_k,
-        )
+        import mlflow
+        from mlflow.entities import SpanType
+
+        from benchmark.tracing import contexts_to_documents
+
+        with mlflow.start_span(name="rerank", span_type=SpanType.RERANKER) as span:
+            span.set_inputs({
+                "query": sample["question"],
+                "documents": contexts_to_documents(
+                    [d.page_content for d in docs], [d.metadata or {} for d in docs]
+                ),
+                "top_k": config.reranker_top_k,
+            })
+            reranked = reranker.rerank(
+                sample["question"], docs, config.reranker_top_k,
+            )
+            span.set_outputs(contexts_to_documents(
+                [d.page_content for d in reranked], [d.metadata or {} for d in reranked]
+            ))
+        return reranked
 
 
 def cache_corpus_fingerprint(chunk_source: list[dict]) -> str:

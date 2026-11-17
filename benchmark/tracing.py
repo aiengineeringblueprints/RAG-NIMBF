@@ -9,9 +9,12 @@ from __future__ import annotations
 import functools
 import logging
 import os
+from collections.abc import Iterator, Sequence
+from contextlib import contextmanager
 from typing import Any, Callable
 
 import mlflow
+from mlflow.entities import SpanType
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +82,147 @@ def _configure_otlp_exporter(endpoint: str) -> None:
         )
     except Exception as e:
         logger.warning("Failed to configure OTLP exporter: %s", e)
+
+
+# ---------------------------------------------------------------------------
+# Per-sample tracing (issue #42)
+# ---------------------------------------------------------------------------
+
+
+def contexts_to_documents(
+    contexts: Sequence[Any],
+    metadata: Sequence[dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
+    """Convert generator contexts into MLflow ``Document`` dicts.
+
+    Every context becomes exactly one document, in order, so retrieval
+    judges see what the generator saw. Bare strings without metadata are
+    first-class input: they get a positional id instead of being dropped.
+    """
+    from mlflow.entities import Document
+
+    metadata = list(metadata or [])
+    documents: list[dict[str, Any]] = []
+    for index, context in enumerate(contexts):
+        meta = dict(metadata[index]) if index < len(metadata) and metadata[index] else {}
+        doc_id = next(
+            (meta[key] for key in ("doc_id", "chunk_id", "id") if meta.get(key) is not None),
+            f"ctx_{index}",
+        )
+        meta.setdefault("rank", index + 1)
+        documents.append(
+            Document(
+                page_content=str(context),
+                metadata=_jsonable(meta),
+                id=str(doc_id),
+            ).to_dict()
+        )
+    return documents
+
+
+def _jsonable(meta: dict[str, Any]) -> dict[str, Any]:
+    """Keep span attributes serializable: stringify exotic metadata values."""
+    safe: dict[str, Any] = {}
+    for key, value in meta.items():
+        if value is None or isinstance(value, (str, int, float, bool)):
+            safe[str(key)] = value
+        else:
+            safe[str(key)] = str(value)
+    return safe
+
+
+class SampleTrace:
+    """Handle on one sample's trace; a no-op when tracing is disabled."""
+
+    def __init__(self, root: Any | None = None) -> None:
+        self._root = root
+        self.trace_id: str | None = None
+
+    @contextmanager
+    def adapter_call(self, adapter_name: str, stage: str) -> Iterator[None]:
+        """Client-side span around the adapter call (internal or external)."""
+        if self._root is None:
+            yield
+            return
+        with mlflow.start_span(
+            name=f"adapter.{stage}", span_type=SpanType.CHAIN
+        ) as span:
+            span.set_attributes({"rag.adapter": adapter_name, "rag.stage": stage})
+            yield
+
+    def record(
+        self,
+        question: str,
+        answer: str,
+        contexts: Sequence[Any],
+        metadata: Sequence[dict[str, Any]] | None = None,
+    ) -> None:
+        """Emit the single RETRIEVER span from the generator's contexts."""
+        if self._root is None:
+            return
+        with mlflow.start_span(name="retrieved_contexts", span_type=SpanType.RETRIEVER) as span:
+            span.set_inputs({"query": question})
+            span.set_outputs(contexts_to_documents(contexts, metadata))
+        self._root.set_outputs({"response": answer})
+
+
+@contextmanager
+def trace_sample(
+    *,
+    enabled: bool,
+    question: str,
+    config_name: str,
+    adapter_name: str,
+    index: int,
+    cached: bool = False,
+) -> Iterator[SampleTrace]:
+    """Wrap one benchmark sample in one MLflow trace.
+
+    Disabled yields a no-op handle. Callers control the global tracing state
+    with :func:`tracing_state` so decorated pipeline functions outside a
+    sample (ingestion, evaluation) do not leak stray root traces.
+    """
+    if not enabled:
+        yield SampleTrace()
+        return
+    with mlflow.start_span(name="rag_sample", span_type=SpanType.CHAIN) as root:
+        root.set_inputs({"question": question})
+        root.set_attributes({
+            "benchmark.config_name": config_name,
+            "benchmark.sample_index": index,
+            "benchmark.cached": cached,
+            "rag.adapter": adapter_name,
+        })
+        handle = SampleTrace(root)
+        yield handle
+    handle.trace_id = root.trace_id
+
+
+@contextmanager
+def tracing_state(enabled: bool) -> Iterator[None]:
+    """Force MLflow tracing on or off for a block, restoring the prior state.
+
+    ``mlflow.tracing.enable/disable`` swap the global tracer provider, so
+    callers toggle once per phase (not per sample).
+    """
+    from mlflow.tracing.provider import is_tracing_enabled
+
+    was_enabled = is_tracing_enabled()
+    if was_enabled != enabled:
+        (mlflow.tracing.enable if enabled else mlflow.tracing.disable)()
+    try:
+        yield
+    finally:
+        if was_enabled != enabled:
+            (mlflow.tracing.enable if was_enabled else mlflow.tracing.disable)()
+
+
+def flush_traces() -> None:
+    """Block until asynchronously exported traces are persisted."""
+    try:
+        mlflow.flush_trace_async_logging()
+    except Exception as exc:  # pragma: no cover - best effort
+        logger.warning("Flushing MLflow traces failed: %s", exc)
 
 
 def _noop_observe(name: str | None = None) -> Callable:

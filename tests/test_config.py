@@ -1429,3 +1429,27 @@ def test_dataset_split_env_fallback():
         configs = get_all_combinations()
 
     assert configs[0].dataset_split == "validation"
+
+
+class TestMlflowTracingSetting:
+    def test_tracing_is_off_by_default(self):
+        assert _make_config().mlflow_tracing_enabled is False
+
+    @pytest.mark.parametrize("raw, expected", [("true", True), (True, True), ("0", False)])
+    def test_manifest_setting_coerces(self, raw, expected):
+        from benchmark.orchestration.matrix import ExperimentSpec, build_configs_from_spec
+
+        spec = ExperimentSpec(
+            name="traced", dataset={}, matrix={},
+            settings={"mlflow_tracing_enabled": raw},
+        )
+
+        cfg = build_configs_from_spec(spec, base_configs=[_make_config()])[0]
+
+        assert cfg.mlflow_tracing_enabled is expected
+
+    def test_env_fallback(self):
+        with patch.dict(os.environ, {**_MINIMAL_MATRIX_ENV, "MLFLOW_TRACING_ENABLED": "true"}, clear=False):
+            configs = get_all_combinations()
+
+        assert configs[0].mlflow_tracing_enabled is True

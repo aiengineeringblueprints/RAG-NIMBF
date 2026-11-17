@@ -386,7 +386,10 @@ def _vector_store_count(vector_store: Any) -> int | None:
     return None
 
 
-@mlflow.trace(name="retrieve", span_type="RETRIEVER")
+# Plain func span: the per-sample trace carries the single canonical
+# RETRIEVER span built from the generator's final contexts (issue #42).
+# Multi-hop / hybrid call this several times per sample.
+@mlflow.trace(name="vector_search", span_type="func")
 def retrieve(
     vector_store: Any,
     query: str,
