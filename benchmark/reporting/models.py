@@ -113,6 +113,8 @@ class BenchmarkResultExtended:
     corpus_parser: str | None = None
     parser_version: str | None = None
     dataset_license: str | None = None
+    # MLflow trace IDs, one per sample, when mlflow_tracing_enabled (#42).
+    trace_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

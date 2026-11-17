@@ -486,7 +486,7 @@ def _postprocess_answer(
     return answer
 
 
-@mlflow.trace(name="generate_answer", span_type="func")
+@mlflow.trace(name="generate_answer", span_type="LLM")
 def generate_answer(
     llm: BaseChatModel,
     question: str,

@@ -20,6 +20,7 @@ from benchmark.doc_ids import canonical_doc_id
 from benchmark.generation import extract_concise_fallback, generate_answer, get_llm
 from benchmark.mcp_host import percentile as _percentile
 from benchmark.prompt_templates import get_template
+from benchmark.tracing import traced_model_call
 
 logger = logging.getLogger(__name__)
 
@@ -721,7 +722,7 @@ class McpRagAdapter:
 
         for round_number in range(1, self.max_agent_rounds + 1):
             model_started = time.perf_counter()
-            response = model.invoke(messages)
+            response = traced_model_call(model, messages, round_number=round_number)
             model_seconds += time.perf_counter() - model_started
             diagnostics["model_calls"] += 1
             diagnostics["tool_schema_chars"] += schema_chars

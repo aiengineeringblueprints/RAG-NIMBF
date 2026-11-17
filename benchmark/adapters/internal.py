@@ -318,8 +318,10 @@ class InternalRagAdapter:
         reranker = self._reranker(config)
         if reranker is None:
             return docs
-        return reranker.rerank(
-            sample["question"], docs, config.reranker_top_k,
+        from benchmark.tracing import traced_rerank
+
+        return traced_rerank(
+            reranker, sample["question"], docs, config.reranker_top_k,
         )
 
 

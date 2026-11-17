@@ -124,6 +124,8 @@ class BenchmarkConfig:
     # RAGAS metrics to run when ragas_enabled; skipped ones stay None in results.
     ragas_metrics: tuple[str, ...] = RAGAS_METRIC_NAMES
     custom_metrics_enabled: bool = True
+    # MLflow Tracing: one trace per sample with a single RETRIEVER span (#42).
+    mlflow_tracing_enabled: bool = False
     # Prompt template
     prompt_template: str = "concise"
     # Reranker
@@ -787,6 +789,7 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
     ragas_enabled = _env_bool("RAGAS_ENABLED", True)
     ragas_metrics = parse_ragas_metrics(os.getenv("RAGAS_METRICS", ""))
     custom_metrics_enabled = _env_bool("CUSTOM_METRICS_ENABLED", True)
+    mlflow_tracing_enabled = _env_bool("MLFLOW_TRACING_ENABLED", False)
 
     # Per-role URLs (fall back to shared defaults when not set)
     llm_ollama_base_url = os.getenv("LLM_OLLAMA_BASE_URL") or None
@@ -1293,6 +1296,7 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
                     ragas_enabled=ragas_enabled,
                     ragas_metrics=ragas_metrics,
                     custom_metrics_enabled=custom_metrics_enabled,
+                    mlflow_tracing_enabled=mlflow_tracing_enabled,
                     reranker_model=reranker,
                     reranker_top_k=reranker_top_k,
                     prompt_template=tmpl,

@@ -46,6 +46,7 @@ from benchmark.reporting.models import (
     compute_stats,
 )
 from benchmark.resource_monitor import ResourceMonitor
+from benchmark.tracing import flush_traces, trace_sample, tracing_state
 from config import BenchmarkConfig
 
 console = Console()
@@ -144,15 +145,19 @@ def run_single_benchmark(
     cleanup_registry: list[tuple[Any, PreparedTarget, BenchmarkConfig]] = []
     failed = False
     try:
-        return _run_single_benchmark_impl(
-            config,
-            data,
-            run_dir=run_dir,
-            corpus=corpus,
-            load_data_seconds=load_data_seconds,
-            resource_monitor=resource_monitor,
-            cleanup_registry=cleanup_registry,
-        )
+        # Only the per-sample loop may record traces (issue #42); ingestion
+        # and evaluation helpers carry @mlflow.trace but must not leak stray
+        # root traces into the experiment.
+        with tracing_state(False):
+            return _run_single_benchmark_impl(
+                config,
+                data,
+                run_dir=run_dir,
+                corpus=corpus,
+                load_data_seconds=load_data_seconds,
+                resource_monitor=resource_monitor,
+                cleanup_registry=cleanup_registry,
+            )
     except BaseException:
         failed = True
         raise
@@ -285,99 +290,120 @@ def _run_single_benchmark_impl(
     all_adapter_diagnostics: list[dict[str, Any]] = []
     gen_results: list[GenerationResult] = []
 
-    for i, sample in enumerate(data):
-        cached_entry = (
-            checkpoint_store.entry_for(i, sample["question"])
-            if checkpoint_store is not None
-            else None
-        )
-        # RAGBench sentence labels are evaluation ground truth: the system
-        # under test must never see them. Strip them from the sample handed
-        # to adapters and checkpoints; the full metadata stays on ``sample``
-        # for the metric. (The reference ``ground_truth`` answer is a
-        # separate, pre-existing exposure of HTTP adapters — tracked in
-        # issue #39.)
-        adapter_sample = {
-            **sample,
-            "metadata": strip_sentence_label_metadata(
-                sample.get("metadata", {}) or {}
-            ),
-        }
-        if cached_entry is not None:
-            console.print(
-                f"  [dim cyan]({i + 1}/{len(data)}) [cached][/dim cyan] {sample['question'][:80]}{'...' if len(sample['question']) > 80 else ''}"
+    tracing_enabled = bool(getattr(config, "mlflow_tracing_enabled", False))
+    trace_ids: list[str] = []
+    adapter_name = str(getattr(rag_adapter, "name", config.rag_system_adapter))
+    # The run is traced-off by default (see run_single_benchmark); only the
+    # per-sample loop records traces, one per sample, when enabled.
+    with tracing_state(tracing_enabled):
+        for i, sample in enumerate(data):
+            cached_entry = (
+                checkpoint_store.entry_for(i, sample["question"])
+                if checkpoint_store is not None
+                else None
             )
-            context_texts = cached_entry["contexts"]
-            retrieved_metadata = cached_entry["retrieved_metadata"]
-            adapter_diagnostics = dict(cached_entry.get("adapter_diagnostics") or {})
-            result = generation_result_from_record(cached_entry)
-        else:
-            with _stage_timer(stage_timings, "external_rag", resource_monitor):
-                if prepared_target is None:
-                    raise RuntimeError("RAG adapter target was not prepared.")
-                if config.benchmark_stage == "retrieve":
-                    retrieval_result = retrieve_adapter(
-                        rag_adapter, prepared_target, adapter_sample, config
-                    )
-                    adapter_result = RagSystemOutput(
-                        answer="",
-                        contexts=retrieval_result.contexts,
-                        metadata=retrieval_result.metadata,
-                        raw_response=(
-                            retrieval_result.raw_response
-                            if isinstance(retrieval_result.raw_response, dict)
-                            else None
-                        ),
-                        total_seconds=retrieval_result.total_seconds,
-                        answer_valid=True,
-                    )
-                else:
-                    adapter_result = generate_adapter(
-                        rag_adapter, prepared_target, adapter_sample, config
-                    )
-            context_texts = adapter_result.contexts
-            retrieved_metadata = adapter_result.metadata
-            result = _generation_result_from_adapter(adapter_result)
-            adapter_diagnostics = dict(getattr(adapter_result, "diagnostics", {}) or {})
-            # Uniform, adapter-agnostic stage-timing contributions; the
-            # orchestrator never reads adapter-internal diagnostic keys.
-            for stage_name, seconds in adapter_stage_timings(
-                rag_adapter, adapter_diagnostics
-            ).items():
-                stage_timings[stage_name] = stage_timings.get(stage_name, 0.0) + seconds
-
-        questions.append(sample["question"])
-        ground_truths.append(sample["ground_truth"])
-        all_contexts.append(context_texts)
-        all_retrieved_metadata.append(retrieved_metadata)
-        gold_doc_ids.append(sample.get("metadata", {}).get("gold_doc_id"))
-        all_sample_metadata.append(sample.get("metadata", {}) or {})
-        all_adapter_diagnostics.append(adapter_diagnostics)
-        gen_results.append(result)
-
-        # Stream QA pair to log file after each answer
-        if qa_log_path is not None:
-            qa_log.append({
-                "index": i,
-                "question": sample["question"],
-                "answer": result.answer,
-                "raw_content": result.raw_content,
-                "raw_reasoning": result.raw_reasoning,
-            })
-            qa_log_path.write_text(json.dumps(qa_log, indent=2, ensure_ascii=False))
-
-        if checkpoint_store is not None and cached_entry is None:
-            checkpoint_store.save(checkpoint_store.build_record(
-                index=i,
+            # RAGBench sentence labels are evaluation ground truth: the system
+            # under test must never see them. Strip them from the sample handed
+            # to adapters and checkpoints; the full metadata stays on ``sample``
+            # for the metric. (The reference ``ground_truth`` answer is a
+            # separate, pre-existing exposure of HTTP adapters — tracked in
+            # issue #39.)
+            adapter_sample = {
+                **sample,
+                "metadata": strip_sentence_label_metadata(
+                    sample.get("metadata", {}) or {}
+                ),
+            }
+            with trace_sample(
+                enabled=tracing_enabled,
                 question=sample["question"],
-                contexts=context_texts,
-                retrieved_metadata=retrieved_metadata,
-                gold_doc_id=gold_doc_ids[-1],
-                sample_metadata=adapter_sample["metadata"],
-                adapter_diagnostics=adapter_diagnostics,
-                result=result,
-            ))
+                config_name=config.name,
+                adapter_name=adapter_name,
+                index=i,
+                cached=cached_entry is not None,
+            ) as sample_trace:
+                if cached_entry is not None:
+                    console.print(
+                        f"  [dim cyan]({i + 1}/{len(data)}) [cached][/dim cyan] {sample['question'][:80]}{'...' if len(sample['question']) > 80 else ''}"
+                    )
+                    context_texts = cached_entry["contexts"]
+                    retrieved_metadata = cached_entry["retrieved_metadata"]
+                    adapter_diagnostics = dict(cached_entry.get("adapter_diagnostics") or {})
+                    result = generation_result_from_record(cached_entry)
+                else:
+                    with _stage_timer(stage_timings, "external_rag", resource_monitor):
+                        if prepared_target is None:
+                            raise RuntimeError("RAG adapter target was not prepared.")
+                        retrieve_only = config.benchmark_stage == "retrieve"
+                        with sample_trace.adapter_call(retrieve_only=retrieve_only):
+                            if retrieve_only:
+                                retrieval_result = retrieve_adapter(
+                                    rag_adapter, prepared_target, adapter_sample, config
+                                )
+                                adapter_result = RagSystemOutput(
+                                    answer="",
+                                    contexts=retrieval_result.contexts,
+                                    metadata=retrieval_result.metadata,
+                                    raw_response=(
+                                        retrieval_result.raw_response
+                                        if isinstance(retrieval_result.raw_response, dict)
+                                        else None
+                                    ),
+                                    total_seconds=retrieval_result.total_seconds,
+                                    answer_valid=True,
+                                )
+                            else:
+                                adapter_result = generate_adapter(
+                                    rag_adapter, prepared_target, adapter_sample, config
+                                )
+                    context_texts = adapter_result.contexts
+                    retrieved_metadata = adapter_result.metadata
+                    result = _generation_result_from_adapter(adapter_result)
+                    adapter_diagnostics = dict(getattr(adapter_result, "diagnostics", {}) or {})
+                    # Uniform, adapter-agnostic stage-timing contributions; the
+                    # orchestrator never reads adapter-internal diagnostic keys.
+                    for stage_name, seconds in adapter_stage_timings(
+                        rag_adapter, adapter_diagnostics
+                    ).items():
+                        stage_timings[stage_name] = stage_timings.get(stage_name, 0.0) + seconds
+                sample_trace.record(result.answer, context_texts, retrieved_metadata)
+            if sample_trace.trace_id is not None:
+                trace_ids.append(sample_trace.trace_id)
 
+            questions.append(sample["question"])
+            ground_truths.append(sample["ground_truth"])
+            all_contexts.append(context_texts)
+            all_retrieved_metadata.append(retrieved_metadata)
+            gold_doc_ids.append(sample.get("metadata", {}).get("gold_doc_id"))
+            all_sample_metadata.append(sample.get("metadata", {}) or {})
+            all_adapter_diagnostics.append(adapter_diagnostics)
+            gen_results.append(result)
+
+            # Stream QA pair to log file after each answer
+            if qa_log_path is not None:
+                qa_log.append({
+                    "index": i,
+                    "question": sample["question"],
+                    "answer": result.answer,
+                    "raw_content": result.raw_content,
+                    "raw_reasoning": result.raw_reasoning,
+                })
+                qa_log_path.write_text(json.dumps(qa_log, indent=2, ensure_ascii=False))
+
+            if checkpoint_store is not None and cached_entry is None:
+                checkpoint_store.save(checkpoint_store.build_record(
+                    index=i,
+                    question=sample["question"],
+                    contexts=context_texts,
+                    retrieved_metadata=retrieved_metadata,
+                    gold_doc_id=gold_doc_ids[-1],
+                    sample_metadata=adapter_sample["metadata"],
+                    adapter_diagnostics=adapter_diagnostics,
+                    result=result,
+                ))
+
+    if trace_ids:
+        flush_traces()
     console.print(f"  [dim]Generated {len(gen_results)} answers[/dim]       ")
 
     # 4. Evaluate with RAGAS using a separate critic model
@@ -627,6 +653,7 @@ def _run_single_benchmark_impl(
     }
 
     benchmark_result = BenchmarkResultExtended(
+        trace_ids=tuple(trace_ids),
         config_name=config.name,
         llm_model=config.llm_model,
         embedding_model=config.embedding_model,

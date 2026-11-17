@@ -158,6 +158,7 @@ and `doc/changes/2026-11-15-pr33-review-fixes.md`.
 | `RAGAS_ENABLED` | Set to `false` to skip RAGAS critic metrics. |
 | `RAGAS_METRICS` | Comma-separated RAGAS metrics to run (manifest: `ragas_metrics`, list or string). Blank = full set: `faithfulness,answer_relevancy,answer_correctness,context_precision,context_recall,semantic_similarity`. Skipped metrics are absent from results, not 0. See [ragas-runtime.md](ragas-runtime.md). |
 | `CUSTOM_METRICS_ENABLED` | Set to `false` to skip custom embedding/BERTScore metrics. |
+| `MLFLOW_TRACING_ENABLED` | Set to `true` to record one MLflow trace per sample with a single RETRIEVER span (manifest: `mlflow_tracing_enabled`). Default `false`. See [results-and-mlflow.md](results-and-mlflow.md#mlflow-tracing). |
 | `EVAL_CRITIC_LLM` | Critic model used for RAGAS evaluation. |
 | `EVAL_CRITIC_EMBEDDING` | Embedding model used by evaluator metrics. |
 | `EVAL_CRITIC_THINKING_CONTROL` | How reasoning is disabled on an OpenAI-compatible critic: `chat_template_kwargs` (default, vLLM/SGLang), `reasoning_effort_low` (e.g. GLM behind LiteLLM, which leaks reasoning into the answer otherwise), or `none`. |

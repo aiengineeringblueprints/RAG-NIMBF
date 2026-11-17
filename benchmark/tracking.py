@@ -328,6 +328,7 @@ def log_benchmark_run(
             if artifact_path.exists():
                 mlflow.log_artifact(str(artifact_path), artifact_path="llm_performance")
 
+        _link_sample_traces(result, run.info.run_id)
         _log_classic_retriever_metrics(result)
         _log_genai_rag_judges(result)
 
@@ -335,6 +336,26 @@ def log_benchmark_run(
             "Logged MLflow run %s for config '%s'", run.info.run_id, result.config_name
         )
         return run.info.run_id
+
+
+def _link_sample_traces(result: BenchmarkResultExtended, run_id: str) -> None:
+    """Link per-sample traces (issue #42) to this config's run.
+
+    Traces are recorded while the worker's parent run is active, i.e. before
+    the config run exists; linking makes them show up on the config run.
+    """
+    if not result.trace_ids:
+        return
+    try:
+        client = mlflow.MlflowClient()
+        trace_ids = list(result.trace_ids)
+        # The tracking API caps a single link call at 100 traces.
+        for start in range(0, len(trace_ids), 100):
+            client.link_traces_to_run(trace_ids[start:start + 100], run_id)
+        mlflow.set_tag("mlflow_tracing", f"linked_{len(trace_ids)}")
+    except Exception as exc:
+        mlflow.set_tag("mlflow_tracing", "link_failed")
+        logger.warning("Linking traces to run %s failed (non-fatal): %s", run_id, exc)
 
 
 def _log_per_sample_csv(result: BenchmarkResultExtended, run_id: str) -> None:
