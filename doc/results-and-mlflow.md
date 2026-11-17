@@ -68,6 +68,47 @@ Use the aggregate run when you want all tables and plots for one sweep in one
 place. MLflow utilities live in `scripts/` — see the scripts themselves for
 usage; back up `mlflow.db` before running destructive cleanup scripts.
 
+## MLflow Tracing
+
+Opt-in per-sample tracing (issue #42). Enable it in the manifest:
+
+```yaml
+settings:
+  mlflow_tracing_enabled: true   # env fallback: MLFLOW_TRACING_ENABLED=true; default off
+```
+
+Every sample then produces **one trace** in the `RAG-Benchmark` experiment,
+identical in shape for the internal pipeline and external HTTP/MCP/plugin
+adapters:
+
+```
+rag_sample            CHAIN      inputs: question · outputs: response · attrs: config name, sample index, adapter, cached
+├─ adapter.generate   CHAIN      client-side span around the adapter call (adapter.retrieve for benchmark_stage=retrieve)
+│  ├─ vector_search   func       internal only; one per search round (multi-hop, hybrid dense leg)
+│  ├─ rerank          RERANKER   internal only, when a reranker is configured
+│  └─ generate_answer LLM        internal only
+└─ retrieved_contexts RETRIEVER  exactly the contexts the generator saw, as MLflow Documents
+```
+
+- There is exactly one RETRIEVER span per trace. It is built from the
+  adapter's final contexts (after multi-hop merging, hybrid fusion and
+  reranking), so MLflow retrieval judges see the generator's evidence.
+  Document `id` comes from `doc_id` / `chunk_id` / `id` metadata, falling back
+  to `ctx_<n>` for bare string contexts.
+- External adapters are black boxes: their spans are client-side only.
+- Checkpoint-resumed samples are traced too (`benchmark.cached=true`).
+- Traces are recorded while the worker's parent run is active and are then
+  linked to the config's child run (`mlflow_tracing` run tag:
+  `linked_<n>` or `link_failed`). Open a config run → *Traces* to see them.
+- Outside the per-sample loop tracing is switched off, so ingestion and
+  evaluation helpers (`chunk_documents`, `build_vector_store`, RAGAS) no
+  longer create stray root traces — also when the setting is off, which now
+  records no traces at all.
+- Traces dominate `mlflow.db` growth; keep tracing off for large sweeps you
+  do not intend to inspect.
+
+Smoke manifest: `experiments/mlflow-tracing-smoke.yaml`.
+
 ## MLflow DB maintenance
 
 `mlflow.db` grows with every run (traces dominate) and SQLite never shrinks the
