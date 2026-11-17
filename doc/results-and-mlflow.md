@@ -44,6 +44,17 @@ Start the MLflow UI against the local SQLite store:
 mlflow ui --backend-store-uri sqlite:///mlflow.db
 ```
 
+The framework requires MLflow ≥ 3.18. If MLflow reports an out-of-date
+database schema (e.g. an `mlflow.db` created with an older version), back the
+file up and migrate it once — the migration is one-way:
+
+```bash
+cp mlflow.db mlflow.db.backup-$(date +%Y%m%d)
+mlflow db upgrade sqlite:///mlflow.db
+```
+
+See `changes/2026-11-17-mlflow-3-18-upgrade.md`.
+
 In the `RAG-Benchmark` experiment you can compare per-config runs as a table by
 selecting visible params, metrics, and tags. Each benchmark sweep also logs an
 aggregate summary run named like `summary_runN_<timestamp>` with:
