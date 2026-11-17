@@ -43,8 +43,10 @@ root trace.
 - `benchmark/retrieval.py`: `retrieve` now creates a `vector_search` func
   span. Before, it created a RETRIEVER span, once per multi-hop round or
   hybrid leg.
-- `benchmark/adapters/internal.py`: reranking is wrapped in a `rerank`
-  RERANKER span with the input and output documents. This also covers
+- `benchmark/adapters/internal.py`: reranking goes through
+  `benchmark.tracing.traced_rerank`, which records a `rerank` RERANKER span
+  with the input and output documents. It does this only while a sample span
+  is active, so tracing-off runs skip the conversion. This also covers
   injected rerankers.
 - `benchmark/generation.py`: `generate_answer` span type changed from `func`
   to `LLM`.
@@ -74,7 +76,8 @@ root trace.
   `run_single_benchmark` against a temporary SQLite tracking store:
   - one trace per sample, with the single RETRIEVER span's documents equal to
     the generator's contexts, for the internal pipeline with similarity,
-    multi-hop, hybrid and rerank (which also needs exactly one RERANKER span);
+    multi-hop (which also asserts at least 2 `vector_search` rounds), hybrid
+    and rerank (which also needs exactly one RERANKER span);
   - a legacy `answer()` adapter with bare string contexts;
   - the real `HttpRagAdapter` with a patched `urlopen` (document ids come from
     the metadata);
@@ -94,8 +97,13 @@ root trace.
     parent run.
 
 ## Follow-ups
-- MCP is covered through the shared `answer()` adapter path (with a stub). No
-  live MCP smoke run was made in this session.
+- MCP is covered through the shared `answer()` adapter path (with a stub). The
+  real `McpRagAdapter`, which merges contexts from several tool calls, has no
+  tracing test and had no live smoke run in this session.
+- The `generate_answer` LLM span is checked only by the Spark smoke run; unit
+  tests stub the generator.
+- `tracing_state` switches MLflow tracing process-wide. That is fine for the
+  sequential worker, but not for running configs concurrently in threads.
 - `_log_genai_rag_judges` could score the new per-sample traces directly
   instead of replaying them. That belongs to the judge follow-up of #40.
 - The RETRIEVER span is emitted after the adapter returns, so its duration is

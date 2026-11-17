@@ -155,6 +155,9 @@ def test_internal_multihop_emits_single_retriever_span(
     result = run_single_benchmark(config, SAMPLES, corpus=CORPUS)
 
     _assert_one_trace_per_sample_matching(tracking_store, result, generator_calls)
+    for trace in _traces(tracking_store):
+        searches = [s for s in trace.data.spans if s.name == "vector_search"]
+        assert len(searches) >= 2, "multi-hop must run several search rounds"
 
 
 def test_internal_hybrid_emits_single_retriever_span(

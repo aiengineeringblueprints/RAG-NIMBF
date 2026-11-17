@@ -131,6 +131,27 @@ def _jsonable(meta: dict[str, Any]) -> dict[str, Any]:
     return safe
 
 
+def _langchain_docs_to_documents(docs: Sequence[Any]) -> list[dict[str, Any]]:
+    return contexts_to_documents(
+        [doc.page_content for doc in docs], [doc.metadata or {} for doc in docs]
+    )
+
+
+def traced_rerank(reranker: Any, query: str, docs: list[Any], top_k: int) -> list[Any]:
+    """Run ``reranker.rerank`` inside a RERANKER span (only while tracing)."""
+    if mlflow.get_current_active_span() is None:
+        return reranker.rerank(query, docs, top_k)
+    with mlflow.start_span(name="rerank", span_type=SpanType.RERANKER) as span:
+        span.set_inputs({
+            "query": query,
+            "documents": _langchain_docs_to_documents(docs),
+            "top_k": top_k,
+        })
+        reranked = reranker.rerank(query, docs, top_k)
+        span.set_outputs(_langchain_docs_to_documents(reranked))
+    return reranked
+
+
 class SampleTrace:
     """Handle on one sample's trace; a no-op when tracing is disabled."""
 
