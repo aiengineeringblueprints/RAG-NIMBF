@@ -36,12 +36,13 @@ def _locked_version(name: str) -> Version:
     return Version(match.group(1))
 
 
-def test_requirements_floor_excludes_mlflow_below_3_18():
+def test_requirements_floor_excludes_mlflow_below_minimum():
     spec = _requirement("mlflow").specifier
-    assert not spec.contains("3.17.2"), f"mlflow floor too low: {spec}"
-    assert spec.contains("3.18.0")
+    below_min = Version(f"{MLFLOW_MIN.major}.{MLFLOW_MIN.minor - 1}.99")
+    assert not spec.contains(below_min), f"mlflow floor too low: {spec}"
+    assert spec.contains(MLFLOW_MIN)
 
 
-def test_lock_pins_mlflow_family_at_or_above_3_18():
+def test_lock_pins_mlflow_family_at_or_above_minimum():
     for name in MLFLOW_PACKAGES:
         assert _locked_version(name) >= MLFLOW_MIN, name

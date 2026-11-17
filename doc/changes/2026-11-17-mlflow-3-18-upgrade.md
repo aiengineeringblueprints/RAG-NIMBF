@@ -33,15 +33,10 @@ existing `mlflow.db` backend after a one-off schema migration.
 
 ## Behaviour changes and migration
 - **Schema migration required.** MLflow 3.18 refuses to open an `mlflow.db`
-  with an older schema. After upgrading, run once per database:
-
-  ```bash
-  cp mlflow.db mlflow.db.backup-$(date +%Y%m%d)-pre-mlflow318
-  .venv/bin/mlflow db upgrade sqlite:///mlflow.db
-  ```
-
-  This is one-way: MLflow < 3.18 clients/UIs cannot open the migrated DB.
-  Restore the backup if you need to roll back.
+  with an older schema. Back it up and run `mlflow db upgrade` once per
+  database; steps in [`../results-and-mlflow.md`](../results-and-mlflow.md#mlflow-run-comparison).
+  The migration is one-way: MLflow < 3.18 clients/UIs cannot open the migrated
+  DB. Restore the backup to roll back.
 - Existing venvs: `pip install "mlflow==3.18.0" "mlflow-skinny==3.18.0" "mlflow-tracing==3.18.0"`
   upgrades just the MLflow family without reinstalling the rest of the lock
   (that is how the Spark venv was upgraded).
@@ -50,7 +45,11 @@ existing `mlflow.db` backend after a one-off schema migration.
 
 ## Verification
 All runs on the DGX Spark (`~/source/Benchmarking-Framework`, branch
-`optimaise-connectivity`, MLflow 3.13.0 → 3.18.0 in the venv, `pip check` clean).
+`optimaise-connectivity`). The Spark venv had drifted from the old lock
+(MLflow 3.13.0 instead of 3.15.1) and went 3.13.0 → 3.18.0; its other packages
+already matched the new lock (`langchain-community` 0.4.1,
+`langchain-experimental` 0.4.1, `apted` 1.0.3, `jiwer` 4.0.0, `lxml` 6.1.3),
+so the runs below exercised the resynced lock. `pip check` clean.
 
 - `mlflow.db` (3.7 GB) backed up to `mlflow.db.backup-20261117-pre-mlflow318`;
   `mlflow db upgrade` moved alembic revision `da6fb0208061` → `f4a9b2c7d1e6`
