@@ -6,6 +6,7 @@ import os
 from dataclasses import replace
 
 import mlflow
+import pytest
 
 import benchmark.mlflow_scorers as mlflow_scorers_module
 from benchmark.mlflow_scorers import (
@@ -325,6 +326,32 @@ class TestAnswerCorrectness:
         assert feedback.value is None
         assert feedback.error is not None
 
+    @pytest.mark.parametrize("bad_count", [1.7, "2", True, None, float("nan"), float("inf")])
+    def test_non_integer_claim_counts_are_rejected(self, bad_count):
+        from mlflow.entities import Feedback
+
+        def sloppy(**kwargs):
+            return Feedback(
+                name="answer_correctness_claims",
+                value={"true_positives": bad_count, "false_positives": 0, "false_negatives": 1},
+            )
+
+        feedback = _score(sloppy, "Warsaw.")
+
+        assert feedback.value is None
+        assert feedback.error is not None
+
+    def test_integral_float_counts_are_accepted(self):
+        from mlflow.entities import Feedback
+
+        def floaty(**kwargs):
+            return Feedback(
+                name="answer_correctness_claims",
+                value={"true_positives": 1.0, "false_positives": 0, "false_negatives": 1.0},
+            )
+
+        assert _score(floaty, "Warsaw.").value == 2 / 3
+
     def test_no_claims_on_either_side_is_an_error_not_a_perfect_score(self):
         feedback = _score(_claims_judge(tp=0, fp=0, fn=0), "")
 
@@ -391,3 +418,32 @@ def test_answer_correctness_is_logged_on_the_config_run(
     # Ground truth from the traces' expectations reaches the judge.
     references = {call[2]["expected_response"] for call in judge.calls}
     assert references == {s["ground_truth"] for s in SAMPLES}
+
+
+def test_answer_correctness_errors_are_excluded_from_the_run_mean(
+    tracking_store, generator_calls, monkeypatch
+):
+    from mlflow.entities import Feedback
+
+    from benchmark.mlflow_scorers import answer_correctness_scorer
+
+    run_id = _finished_config_run(monkeypatch)
+    first_reference = SAMPLES[0]["ground_truth"]
+
+    def judge(*, inputs=None, outputs=None, expectations=None):
+        if expectations["expected_response"] == first_reference:
+            return Feedback(name="answer_correctness_claims", value="unparsable")
+        return Feedback(
+            name="answer_correctness_claims",
+            value={"true_positives": 1, "false_positives": 1, "false_negatives": 0},
+        )
+
+    metrics = score_run_traces(
+        run_id,
+        ("answer_correctness",),
+        ENDPOINT,
+        factories={"answer_correctness": lambda endpoint: answer_correctness_scorer(judge)},
+    )
+
+    # Mean over the scorable traces only (2/3 each), not dragged down by a 0.
+    assert metrics == {"mlflow_judge_answer_correctness_mean": 2 / 3}

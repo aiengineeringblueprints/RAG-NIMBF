@@ -30,8 +30,9 @@ penalises both missing facts and wrong/unsupported added claims.
   - `answer_correctness_scorer(claims_judge)` wraps the judge into an MLflow
     scorer named `answer_correctness`: numeric 0–1 value, rationale
     `TP=…, FP=…, FN=…` plus the judge's claim lists. A missing
-    `expected_response` (judge not called), judge errors, malformed/negative
-    counts and an all-zero verdict become `Feedback.error` (excluded from the
+    `expected_response` (judge not called), judge errors, malformed,
+    non-whole-number (e.g. `1.7`, `"2"`, `true`, NaN) or negative counts and
+    an all-zero verdict become `Feedback.error` (excluded from the
     mean) instead of a fake score.
   - Registered in `SCORER_FACTORIES`; the judge uses the critic endpoint and
     `eval_critic_temperature` / `eval_critic_max_tokens` like the built-ins.
@@ -53,11 +54,12 @@ None. New opt-in scorer name; existing selections are unchanged.
   stub claim judge — complete answer (1.0), missing fact (2/3), wrong added
   content (0.8), wrong answer (0.0), rationale with counts; malformed judge
   output, no claims, and a missing reference → error (judge not called for
-  the latter); factory wires `make_judge` to the critic model and
+  the latter); strict whole-number counts; an end-to-end test proving
+  errored traces are excluded from `mlflow_judge_answer_correctness_mean`; factory wires `make_judge` to the critic model and
   inference params; end-to-end `score_run_traces` on a traced run logs
   `mlflow_judge_answer_correctness_mean` and passes trace ground truth to the
   judge. `tests/test_config.py`: name is selectable.
-- Full suite on the DGX Spark: 999 passed, 3 failed — the same 3 fail on
+- Full suite on the DGX Spark: 1007 passed, 3 failed — the same 3 fail on
   `dev` without this change (`test_hybrid_defaults` picks up the Spark `.env`,
   `test_worker_pipeline_runs_parsed_corpus_unchanged`, and the order-dependent
   `test_internal_and_stubbed_external_runs_are_structurally_identical`).
@@ -77,6 +79,12 @@ None. New opt-in scorer name; existing selections are unchanged.
   `mlflow_scorers=logged`, `mlflow_judge_answer_correctness_mean = 1.0`,
   `mlflow_judge_correctness_mean = 1.0`; each trace carries an
   `answer_correctness` assessment with a `TP=1, FP=0, FN=0` rationale.
+
+## PR review follow-up
+PR #54 review (approved) noted that `int()` silently truncated fractional or
+string/bool counts and that exclusion of errored assessments from the mean was
+unverified. Counts are now validated strictly (`_count`), and the exclusion is
+covered by `test_answer_correctness_errors_are_excluded_from_the_run_mean`.
 
 ## Follow-ups
 - Claim granularity still depends on the judge model: with the first prompt

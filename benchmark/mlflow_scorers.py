@@ -171,14 +171,21 @@ def _claim_counts(value: object) -> ClaimCounts:
     if not isinstance(value, Mapping):
         raise ValueError(f"answer_correctness judge returned no claim counts: {value!r}")
     try:
-        counts = ClaimCounts(*(int(value[key]) for key in ClaimCounts._fields))
-    except (KeyError, TypeError, ValueError) as exc:
+        counts = ClaimCounts(*(_count(value[key]) for key in ClaimCounts._fields))
+    except (KeyError, ValueError) as exc:
         raise ValueError(f"answer_correctness judge returned bad claim counts: {value!r}") from exc
     if any(count < 0 for count in counts):
         raise ValueError(f"answer_correctness judge returned negative claim counts: {value!r}")
     if not any(counts):
         raise ValueError("answer_correctness judge found no claims in answer or reference")
     return counts
+
+
+def _count(raw: object) -> int:
+    """A whole-number claim count; no truncation, no bools or strings."""
+    if isinstance(raw, bool) or not isinstance(raw, (int, float)) or not float(raw).is_integer():
+        raise ValueError(f"not a whole-number count: {raw!r}")
+    return int(raw)
 
 
 # Claim classification follows RAGAS answer_correctness: statements are
