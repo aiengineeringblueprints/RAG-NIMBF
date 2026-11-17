@@ -19,7 +19,7 @@ from typing import Any
 import mlflow
 from scipy import stats as _scipy_stats
 
-from benchmark.mlflow_scorers import RUNTIME_METRIC
+from benchmark.mlflow_scorers import RUNTIME_METRIC, SCORER_NAMES_TAG
 from benchmark.reporting.exports import load_json_report
 
 # Direct RAGAS stage wall time, logged by the runner's stage timer.
@@ -221,22 +221,26 @@ def build_report(
     """Compare a config's direct RAGAS scores with its run's MLflow scorers.
 
     ``results_path`` is the worker's config JSON (``results/runN/configs``)
-    of the run that was logged as ``run_id``. Pairs where either evaluator
-    produced no score at all (not configured) are left out.
+    of the run that was logged as ``run_id``. A pair is reported when direct
+    RAGAS scored the metric and the scorer was run (``mlflow_scorer_names``
+    tag; older runs: at least one score), even if it failed on every sample.
     """
     result = _select_result(load_json_report(Path(results_path)), config_name)
     samples = result.get("per_sample") or []
     n = len(samples)
     judged = judge_scores(run_id, sorted({p.judge for p in METRIC_PAIRS}), n_samples=n)
 
+    run = mlflow.get_run(run_id)
+    configured = set(filter(None, run.data.tags.get(SCORER_NAMES_TAG, "").split(",")))
     pairs = []
     for pair in METRIC_PAIRS:
         direct = [_direct_score(sample, pair.direct) for sample in samples]
         judge = judged[pair.judge]
-        if any(_is_score(v) for v in direct) and any(_is_score(v) for v in judge):
+        judge_ran = pair.judge in configured or any(_is_score(v) for v in judge)
+        if any(_is_score(v) for v in direct) and judge_ran:
             pairs.append((pair, pair_stats(direct, judge)))
 
-    metrics = mlflow.get_run(run_id).data.metrics
+    metrics = run.data.metrics
     return CalibrationReport(
         config_name=str(result.get("config_name", "")),
         run_id=run_id,

@@ -34,6 +34,8 @@ METRIC_PREFIX = "mlflow_judge_"
 # Wall time of the judge step on the config run; compared with the direct
 # RAGAS stage (``stage_ragas_eval_seconds``) by the calibration report (#46).
 RUNTIME_METRIC = f"{METRIC_PREFIX}seconds"
+# Run tag listing the scorer config names that were run on the config run.
+SCORER_NAMES_TAG = "mlflow_scorer_names"
 
 # Custom RAGAS-style correctness judge (issue #45).
 ANSWER_CORRECTNESS_NAME = "answer_correctness"
@@ -310,6 +312,8 @@ def score_run_traces(
     nested = mlflow.active_run() is not None
     with mlflow.start_run(run_id=run_id, nested=nested):
         mlflow.set_tag("mlflow_scorer_model", endpoint.model_uri)
+        # Selected names, so reports can tell "not configured" from "always failed".
+        mlflow.set_tag(SCORER_NAMES_TAG, ",".join(names))
         started = time.perf_counter()
         try:
             status, metrics = _evaluate(run_id, names, endpoint, factories)

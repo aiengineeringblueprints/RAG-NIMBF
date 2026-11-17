@@ -208,6 +208,35 @@ def test_report_pairs_direct_ragas_with_the_judges(
     assert report.n_samples == 2
 
 
+def test_a_configured_scorer_that_always_fails_is_still_reported(
+    tracking_store, generator_calls, monkeypatch, tmp_path
+):
+    # A judge that errors on every sample (e.g. critic timeouts) is a
+    # calibration finding, not a pair to hide.
+    from mlflow.entities import Feedback
+    from mlflow.genai.scorers import scorer
+
+    @scorer(name="ContextPrecision")
+    def timing_out(outputs) -> Feedback:
+        return Feedback(name="ContextPrecision", error=TimeoutError("read timed out"))
+
+    run_id = _finished_config_run(monkeypatch)
+    score_run_traces(
+        run_id,
+        ("ragas_context_precision",),
+        ENDPOINT,
+        factories={"ragas_context_precision": lambda e: timing_out},
+    )
+    results = _config_json(tmp_path, [{"context_precision": 1.0}, {"context_precision": 0.5}])
+
+    report = build_report(results, run_id)
+
+    ((pair, stats),) = report.pairs
+    assert (pair.direct, pair.judge) == ("context_precision", "ragas_context_precision")
+    assert stats.judge_failure_rate == 1.0
+    assert stats.n_paired == 0
+
+
 def test_cli_writes_markdown_and_json(
     tracking_store, generator_calls, monkeypatch, tmp_path
 ):
