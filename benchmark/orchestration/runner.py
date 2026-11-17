@@ -46,7 +46,7 @@ from benchmark.reporting.models import (
     compute_stats,
 )
 from benchmark.resource_monitor import ResourceMonitor
-from benchmark.tracing import flush_traces, trace_sample, tracing_state
+from benchmark.tracing import log_sample_expectations, trace_sample, tracing_state
 from config import BenchmarkConfig
 
 console = Console()
@@ -292,6 +292,7 @@ def _run_single_benchmark_impl(
 
     tracing_enabled = bool(getattr(config, "mlflow_tracing_enabled", False))
     trace_ids: list[str] = []
+    traced_samples: list[tuple[str, dict[str, Any]]] = []
     adapter_name = str(getattr(rag_adapter, "name", config.rag_system_adapter))
     # The run is traced-off by default (see run_single_benchmark); only the
     # per-sample loop records traces, one per sample, when enabled.
@@ -369,6 +370,7 @@ def _run_single_benchmark_impl(
                 sample_trace.record(result.answer, context_texts, retrieved_metadata)
             if sample_trace.trace_id is not None:
                 trace_ids.append(sample_trace.trace_id)
+                traced_samples.append((sample_trace.trace_id, sample))
 
             questions.append(sample["question"])
             ground_truths.append(sample["ground_truth"])
@@ -402,8 +404,11 @@ def _run_single_benchmark_impl(
                     result=result,
                 ))
 
-    if trace_ids:
-        flush_traces()
+    # Ground truth goes onto the traces only after the samples ran, so the
+    # system under test never sees it (issue #43).
+    log_sample_expectations(
+        traced_samples, source_id=f"dataset:{config.dataset_name}"
+    )
     console.print(f"  [dim]Generated {len(gen_results)} answers[/dim]       ")
 
     # 4. Evaluate with RAGAS using a separate critic model
