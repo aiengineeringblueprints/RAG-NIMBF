@@ -31,27 +31,38 @@ METRIC_PREFIX = "mlflow_judge_"
 
 # Ollama serves its OpenAI-compatible API under this path.
 _OLLAMA_OPENAI_PATH = "/v1"
-# MLflow's OpenAI provider refuses to start without a key; local servers
-# ignore it.
+# MLflow's OpenAI provider refuses to start without a key; custom
+# (local) endpoints ignore it.
 _PLACEHOLDER_API_KEY = "not-needed"
 
 
 @dataclass(frozen=True)
 class JudgeEndpoint:
-    """Where and how MLflow's judges reach the critic LLM."""
+    """Where and how MLflow's judges reach the critic LLM.
+
+    ``None`` base URL / key leave the process environment as it is: an
+    ``openai:`` critic without a compat URL is the hosted OpenAI API and uses
+    the user's own ``OPENAI_API_KEY``.
+    """
 
     model_uri: str
-    base_url: str
-    api_key: str = field(repr=False)
+    base_url: str | None
+    api_key: str | None = field(repr=False)
     inference_params: dict[str, Any] = field(default_factory=dict)
 
 
 def resolve_judge_endpoint(config: BenchmarkConfig) -> JudgeEndpoint:
     """Map the critic LLM settings onto an MLflow ``openai:/`` judge."""
     provider, model_name = parse_model_id(config.eval_critic_llm)
-    base_url = (config.eval_critic_base_url(provider) or "").rstrip("/")
-    if provider != "openai" and not base_url.endswith(_OLLAMA_OPENAI_PATH):
-        base_url += _OLLAMA_OPENAI_PATH
+    url = (config.eval_critic_base_url(provider) or "").rstrip("/")
+    if provider != "openai" and not url.endswith(_OLLAMA_OPENAI_PATH):
+        url += _OLLAMA_OPENAI_PATH
+    # Custom endpoint: always route there, with a placeholder key if keyless.
+    # No URL (hosted OpenAI): keep the environment's base URL and key.
+    base_url = url or None
+    api_key = config.eval_critic_api_key(provider)
+    if base_url and not api_key:
+        api_key = _PLACEHOLDER_API_KEY
 
     inference_params: dict[str, Any] = {"max_tokens": config.eval_critic_max_tokens}
     if config.eval_critic_temperature is not None:
@@ -60,7 +71,7 @@ def resolve_judge_endpoint(config: BenchmarkConfig) -> JudgeEndpoint:
     return JudgeEndpoint(
         model_uri=f"openai:/{model_name}",
         base_url=base_url,
-        api_key=config.eval_critic_api_key(provider) or _PLACEHOLDER_API_KEY,
+        api_key=api_key,
         inference_params=inference_params,
     )
 
@@ -109,7 +120,14 @@ def judge_environment(endpoint: JudgeEndpoint) -> Iterator[None]:
     MLflow resolves the provider's base URL and key from the environment on
     every judge call, so the override must span construction and scoring.
     """
-    overrides = {"OPENAI_API_BASE": endpoint.base_url, "OPENAI_API_KEY": endpoint.api_key}
+    overrides = {
+        name: value
+        for name, value in (
+            ("OPENAI_API_BASE", endpoint.base_url),
+            ("OPENAI_API_KEY", endpoint.api_key),
+        )
+        if value is not None
+    }
     previous = {name: os.environ.get(name) for name in overrides}
     os.environ.update(overrides)
     try:
@@ -182,13 +200,27 @@ def _evaluate(
     metrics: dict[str, float] = {}
     for name, scorer in scorers.items():
         value = result.metrics.get(f"{scorer.name}/mean")
-        if value is not None:
-            metrics[f"{METRIC_PREFIX}{name}_mean"] = float(value)
+        if value is None:
+            logger.warning(
+                "MLflow scorer %r (%s) produced no '%s/mean' metric; skipped",
+                name, scorer.name, scorer.name,
+            )
+            continue
+        metrics[f"{METRIC_PREFIX}{name}_mean"] = float(value)
     return ("logged" if metrics else "no_scores"), metrics
 
 
 def score_config_run(run_id: str, config: BenchmarkConfig) -> dict[str, float]:
-    """Run the config's selected scorers on its logged run (no-op when none)."""
+    """Run the config's selected scorers on its logged run (no-op when none).
+
+    Never raises: the config already completed, so a judge-side problem must
+    not mark it failed.
+    """
     if not config.mlflow_scorers:
         return {}
-    return score_run_traces(run_id, config.mlflow_scorers, resolve_judge_endpoint(config))
+    try:
+        endpoint = resolve_judge_endpoint(config)
+    except Exception as exc:
+        logger.warning("MLflow scorers skipped for run %s (non-fatal): %s", run_id, exc)
+        return {}
+    return score_run_traces(run_id, config.mlflow_scorers, endpoint)

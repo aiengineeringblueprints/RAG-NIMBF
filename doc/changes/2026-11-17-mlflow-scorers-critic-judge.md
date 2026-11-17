@@ -62,6 +62,20 @@ env-only judge prototype in `benchmark/tracking.py` is removed.
   `eval_critic_llm`.
 - Default is off; existing manifests are unaffected.
 
+## PR #53 review fixes
+- `openai:` critic without a compat base URL (hosted OpenAI): previously the
+  judge env was set to an empty base URL and the placeholder key, overriding
+  the user's real `OPENAI_API_KEY`. `JudgeEndpoint.base_url` / `api_key` are
+  now optional and `judge_environment` only overrides non-`None` values; the
+  placeholder key is used only for custom endpoints.
+- `score_config_run` is fully non-fatal: endpoint resolution errors are logged
+  and skipped, so a completed config is never marked failed by the judge step.
+- A scorer whose `<ScorerName>/mean` metric is missing is logged as a warning
+  instead of being dropped silently.
+- Tests: `test_hosted_openai_critic_keeps_the_real_openai_environment`,
+  `test_endpoint_resolution_failure_is_non_fatal`,
+  `test_scorer_without_a_mean_metric_is_reported`.
+
 ## Verification
 - Tests (all on the DGX Spark, MLflow 3.18):
   - `tests/test_config.py::TestMlflowScorersSetting` — default, manifest list

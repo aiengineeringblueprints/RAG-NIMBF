@@ -7,10 +7,13 @@ from dataclasses import replace
 
 import mlflow
 
+import benchmark.mlflow_scorers as mlflow_scorers_module
 from benchmark.mlflow_scorers import (
     JudgeEndpoint,
     build_scorers,
+    judge_environment,
     resolve_judge_endpoint,
+    score_config_run,
     score_run_traces,
 )
 from config import MLFLOW_SCORER_NAMES
@@ -71,6 +74,20 @@ class TestJudgeEndpoint:
         )
 
         assert resolve_judge_endpoint(config).api_key
+
+    def test_hosted_openai_critic_keeps_the_real_openai_environment(self, monkeypatch):
+        # openai: critic without a compat URL = the actual OpenAI API; the
+        # user's own OPENAI_API_KEY must survive scoring untouched.
+        monkeypatch.setenv("OPENAI_API_KEY", "real-openai-key")
+        monkeypatch.delenv("OPENAI_API_BASE", raising=False)
+        config = _make_config(eval_critic_llm="openai:gpt-4o-mini")
+
+        endpoint = resolve_judge_endpoint(config)
+        with judge_environment(endpoint):
+            seen = (os.environ.get("OPENAI_API_BASE"), os.environ.get("OPENAI_API_KEY"))
+
+        assert endpoint.model_uri == "openai:/gpt-4o-mini"
+        assert seen == (None, "real-openai-key")
 
     def test_critic_inference_settings_are_reused(self):
         config = _make_config(
@@ -189,3 +206,34 @@ def test_every_configured_scorer_name_builds_an_mlflow_scorer():
 
     assert set(scorers) == set(MLFLOW_SCORER_NAMES)
     assert all(isinstance(s, Scorer) for s in scorers.values())
+
+
+def test_endpoint_resolution_failure_is_non_fatal(monkeypatch):
+    def unusable(config):
+        raise ValueError("no usable critic endpoint")
+
+    monkeypatch.setattr(mlflow_scorers_module, "resolve_judge_endpoint", unusable)
+    config = _make_config(mlflow_tracing_enabled=True, mlflow_scorers=("correctness",))
+
+    assert score_config_run("run-1", config) == {}
+
+
+def test_scorer_without_a_mean_metric_is_reported(
+    tracking_store, generator_calls, monkeypatch, caplog
+):
+    from mlflow.genai.scorers import scorer
+
+    run_id = _finished_config_run(monkeypatch)
+
+    @scorer(name="label_judge")
+    def label_judge(outputs) -> str:
+        return "free-text label without a mean"
+
+    with caplog.at_level("WARNING", logger="benchmark.mlflow_scorers"):
+        metrics = score_run_traces(
+            run_id, ("label",), ENDPOINT, factories={"label": lambda e: label_judge}
+        )
+
+    assert metrics == {}
+    assert mlflow.get_run(run_id).data.tags["mlflow_scorers"] == "no_scores"
+    assert "label" in caplog.text

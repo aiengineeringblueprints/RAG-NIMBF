@@ -184,7 +184,11 @@ same base URL / key resolution as RAGAS). It is reached through MLflow's
 `ollama:` critics use `<eval_critic_ollama_base_url or ollama_base_url>/v1`,
 `openai:` critics use their compat base URL as-is. `OPENAI_API_BASE` /
 `OPENAI_API_KEY` are set only while scoring and restored afterwards; keyless
-local servers get a placeholder key. Built-in judges also receive
+custom endpoints get a placeholder key. An `openai:` critic with no compat base
+URL is the hosted OpenAI API: the environment's `OPENAI_API_BASE` /
+`OPENAI_API_KEY` are left untouched (only a configured critic key overrides
+the key). A failing scorer that yields no `<ScorerName>/mean` is logged and
+skipped. Built-in judges also receive
 `eval_critic_temperature` and `eval_critic_max_tokens`.
 
 **Results.** One metric per scorer on the **same config run**:
