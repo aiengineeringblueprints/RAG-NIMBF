@@ -61,6 +61,8 @@ so the runs below exercised the resynced lock. `pip check` clean.
   pre-existing and unrelated: the Spark `.env` sets `RETRIEVAL_STRATEGY=mmr`,
   which leaks into the default-config test. With
   `RETRIEVAL_STRATEGY=similarity`, `tests/test_config.py` passes (125/125).
+  Full suite with `RETRIEVAL_STRATEGY=similarity` (after review fixes,
+  commit `9310959`): **831 passed, 0 failed**.
 - Smoke run (internal adapter, `squad`, 3 samples, `ollama:llama3.2:1b`,
   `nomic-embed-text:latest`, recursive 500/50, k=3,
   `RAGAS_ENABLED=false CUSTOM_METRICS_ENABLED=false`, run dir
