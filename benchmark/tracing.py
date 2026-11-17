@@ -152,28 +152,59 @@ def traced_rerank(reranker: Any, query: str, docs: list[Any], top_k: int) -> lis
     return reranked
 
 
+def traced_model_call(model: Any, messages: list[Any], *, round_number: int) -> Any:
+    """Invoke a chat model inside an LLM span (only while tracing).
+
+    Used by agentic adapters that call ``model.invoke`` directly instead of
+    going through ``generate_answer``.
+    """
+    if mlflow.get_current_active_span() is None:
+        return model.invoke(messages)
+    with mlflow.start_span(name="agent_model_call", span_type=SpanType.LLM) as span:
+        span.set_inputs({
+            "round": round_number,
+            "messages": [
+                {"type": getattr(m, "type", type(m).__name__), "content": str(getattr(m, "content", m))}
+                for m in messages
+            ],
+        })
+        response = model.invoke(messages)
+        span.set_outputs({
+            "content": str(getattr(response, "content", "")),
+            "tool_calls": [
+                {"name": call.get("name"), "args": call.get("args")}
+                for call in (getattr(response, "tool_calls", None) or [])
+            ],
+        })
+    return response
+
+
 class SampleTrace:
     """Handle on one sample's trace; a no-op when tracing is disabled."""
 
-    def __init__(self, root: Any | None = None) -> None:
+    def __init__(
+        self, root: Any | None = None, *, question: str = "", adapter_name: str = ""
+    ) -> None:
         self._root = root
+        self._question = question
+        self._adapter_name = adapter_name
         self.trace_id: str | None = None
 
     @contextmanager
-    def adapter_call(self, adapter_name: str, stage: str) -> Iterator[None]:
+    def adapter_call(self, *, retrieve_only: bool) -> Iterator[None]:
         """Client-side span around the adapter call (internal or external)."""
         if self._root is None:
             yield
             return
+        stage = "retrieve" if retrieve_only else "generate"
         with mlflow.start_span(
             name=f"adapter.{stage}", span_type=SpanType.CHAIN
         ) as span:
-            span.set_attributes({"rag.adapter": adapter_name, "rag.stage": stage})
+            span.set_attributes({"rag.adapter": self._adapter_name, "rag.stage": stage})
             yield
 
     def record(
         self,
-        question: str,
         answer: str,
         contexts: Sequence[Any],
         metadata: Sequence[dict[str, Any]] | None = None,
@@ -182,7 +213,7 @@ class SampleTrace:
         if self._root is None:
             return
         with mlflow.start_span(name="retrieved_contexts", span_type=SpanType.RETRIEVER) as span:
-            span.set_inputs({"query": question})
+            span.set_inputs({"query": self._question})
             span.set_outputs(contexts_to_documents(contexts, metadata))
         self._root.set_outputs({"response": answer})
 
@@ -214,7 +245,7 @@ def trace_sample(
             "benchmark.cached": cached,
             "rag.adapter": adapter_name,
         })
-        handle = SampleTrace(root)
+        handle = SampleTrace(root, question=question, adapter_name=adapter_name)
         yield handle
     handle.trace_id = root.trace_id
 

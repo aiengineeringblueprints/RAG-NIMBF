@@ -334,9 +334,9 @@ def _run_single_benchmark_impl(
                     with _stage_timer(stage_timings, "external_rag", resource_monitor):
                         if prepared_target is None:
                             raise RuntimeError("RAG adapter target was not prepared.")
-                        stage = "retrieve" if config.benchmark_stage == "retrieve" else "generate"
-                        with sample_trace.adapter_call(adapter_name, stage):
-                            if config.benchmark_stage == "retrieve":
+                        retrieve_only = config.benchmark_stage == "retrieve"
+                        with sample_trace.adapter_call(retrieve_only=retrieve_only):
+                            if retrieve_only:
                                 retrieval_result = retrieve_adapter(
                                     rag_adapter, prepared_target, adapter_sample, config
                                 )
@@ -366,9 +366,7 @@ def _run_single_benchmark_impl(
                         rag_adapter, adapter_diagnostics
                     ).items():
                         stage_timings[stage_name] = stage_timings.get(stage_name, 0.0) + seconds
-                sample_trace.record(
-                    sample["question"], result.answer, context_texts, retrieved_metadata
-                )
+                sample_trace.record(result.answer, context_texts, retrieved_metadata)
             if sample_trace.trace_id is not None:
                 trace_ids.append(sample_trace.trace_id)
 

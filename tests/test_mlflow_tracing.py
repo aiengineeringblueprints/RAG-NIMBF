@@ -274,3 +274,37 @@ def test_traces_are_linked_to_the_config_run(
     )
     assert sorted(t.info.trace_id for t in linked) == sorted(result.trace_ids)
     assert len(linked) == len(SAMPLES)
+
+
+def test_real_mcp_agentic_adapter_traces_contexts_and_model_calls(tracking_store):
+    from langchain_core.messages import AIMessage
+    from test_mcp_adapter import FakeAgentModel, _adapter, _call, _evidence
+
+    def _rounds(answer):
+        return [
+            AIMessage(content="", tool_calls=[_call("search", "1", query="tower")]),
+            AIMessage(content="", tool_calls=[_call("lookup", "2", query="builder")]),
+            AIMessage(content=answer),
+        ]
+
+    adapter, _ = _adapter(
+        _evidence("first A"), _evidence("first B"),
+        _evidence("second A"), _evidence("second B"),
+        result_mode="context",
+        result_field="contexts",
+        execution_mode="agentic",
+        tools=("search", "lookup"),
+    )
+    adapter.llm = FakeAgentModel(_rounds("Paris") + _rounds("Gustave Eiffel"))
+    register_rag_adapter("mcp-agentic-test", lambda config: adapter)
+    try:
+        result = run_single_benchmark(
+            _traced(rag_system_adapter="mcp-agentic-test"), SAMPLES, corpus=CORPUS
+        )
+    finally:
+        RAG_ADAPTER_REGISTRY.pop("mcp-agentic-test", None)
+
+    expected = [["first A", "first B"], ["second A", "second B"]]
+    _assert_one_trace_per_sample_matching(tracking_store, result, expected)
+    for trace in _traces(tracking_store):
+        assert len(_spans_of_type(trace, "LLM")) == 3

@@ -86,7 +86,8 @@ rag_sample            CHAIN      inputs: question · outputs: response · attrs:
 ├─ adapter.generate   CHAIN      client-side span around the adapter call (adapter.retrieve for benchmark_stage=retrieve)
 │  ├─ vector_search   func       internal only; one per search round (multi-hop, hybrid dense leg)
 │  ├─ rerank          RERANKER   internal only, when a reranker is configured
-│  └─ generate_answer LLM        internal only
+│  ├─ generate_answer LLM        internal / MCP context mode
+│  └─ agent_model_call LLM       MCP agentic mode, one per model round
 └─ retrieved_contexts RETRIEVER  exactly the contexts the generator saw, as MLflow Documents
 ```
 

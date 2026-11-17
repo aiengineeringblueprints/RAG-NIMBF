@@ -51,6 +51,14 @@ root trace.
 - `benchmark/generation.py`: `generate_answer` span type changed from `func`
   to `LLM`.
 
+### MCP agentic generation (`benchmark/adapters/mcp.py`)
+- The agentic loop invokes the model through `benchmark.tracing.traced_model_call`.
+  This adds one `agent_model_call` LLM span per model round, with the messages
+  as inputs and the content and tool calls as outputs. The span is recorded
+  only while a sample trace is active. It was added after the PR review,
+  because these model calls previously bypassed `generate_answer` and left no
+  LLM span.
+
 ### Run linking (`benchmark/tracking.py`)
 - `log_benchmark_run` links `result.trace_ids` to the config's child run in
   batches of 100 and sets the run tag `mlflow_tracing=linked_<n>` (or
@@ -81,11 +89,14 @@ root trace.
   - a legacy `answer()` adapter with bare string contexts;
   - the real `HttpRagAdapter` with a patched `urlopen` (document ids come from
     the metadata);
+  - the real `McpRagAdapter` in agentic mode with a fake MCP session and a fake
+    chat model: two tool rounds per sample, merged contexts in the single
+    RETRIEVER span, and 3 `agent_model_call` LLM spans per trace;
   - no traces when the setting is off;
   - traces linked to the `log_benchmark_run` config run.
 - `tests/test_config.py::TestMlflowTracingSetting`: default, manifest
   coercion and env fallback.
-- Full suite on the DGX Spark: 963 passed.
+- Full suite on the DGX Spark: 964 passed (after the review fixes).
 - Spark smoke run: `experiments/mlflow-tracing-smoke.yaml` →
   `results/run-tracing-smoke` (2 internal configs × 3 SQuAD questions, qwen3.8-27b,
   cross-encoder reranker):
@@ -97,9 +108,8 @@ root trace.
     parent run.
 
 ## Follow-ups
-- MCP is covered through the shared `answer()` adapter path (with a stub). The
-  real `McpRagAdapter`, which merges contexts from several tool calls, has no
-  tracing test and had no live smoke run in this session.
+- No live MCP server smoke run was made in this session. The real
+  `McpRagAdapter` is covered by a unit test that uses a fake MCP session.
 - The `generate_answer` LLM span is checked only by the Spark smoke run; unit
   tests stub the generator.
 - `tracing_state` switches MLflow tracing process-wide. That is fine for the
