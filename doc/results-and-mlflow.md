@@ -67,3 +67,21 @@ aggregate summary run named like `summary_runN_<timestamp>` with:
 Use the aggregate run when you want all tables and plots for one sweep in one
 place. MLflow utilities live in `scripts/` — see the scripts themselves for
 usage; back up `mlflow.db` before running destructive cleanup scripts.
+
+## MLflow DB maintenance
+
+`mlflow.db` grows with every run (traces dominate) and SQLite never shrinks the
+file on its own. Stop any `mlflow server` using the DB first, then:
+
+```bash
+# compact backup (also a dry run of VACUUM)
+python -c "import sqlite3; sqlite3.connect('mlflow.db').execute(\"VACUUM INTO 'mlflow.db.backup-$(date +%Y%m%d)'\")"
+# hard-delete runs that were deleted in the UI / via delete_run (also removes their artifacts)
+mlflow gc --backend-store-uri sqlite:///mlflow.db --tracking-uri sqlite:///mlflow.db
+# reclaim free pages
+python -c "import sqlite3; sqlite3.connect('mlflow.db').execute('VACUUM')"
+```
+
+Runs stuck in `RUNNING` after a crashed worker can be closed with
+`MlflowClient().set_terminated(run_id, status="KILLED")`. Keep parent runs
+that still have children — deleting them flattens the run hierarchy in the UI.
