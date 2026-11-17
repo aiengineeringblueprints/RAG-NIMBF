@@ -237,3 +237,139 @@ def test_scorer_without_a_mean_metric_is_reported(
     assert metrics == {}
     assert mlflow.get_run(run_id).data.tags["mlflow_scorers"] == "no_scores"
     assert "label" in caplog.text
+
+
+# ---------------------------------------------------------------------------
+# answer_correctness: RAGAS-style claim F1 (issue #45)
+# ---------------------------------------------------------------------------
+
+QUESTION = {"question": "Where and when was Marie Curie born?"}
+REFERENCE = {"expected_response": "Marie Curie was born in Warsaw in 1867."}
+
+
+def _claims_judge(tp: int, fp: int, fn: int, rationale: str = "claims listed"):
+    """Stub for the claim-classifying LLM judge with a fixed verdict."""
+    from mlflow.entities import Feedback
+
+    calls: list = []
+
+    def judge(*, inputs=None, outputs=None, expectations=None):
+        calls.append((inputs, outputs, expectations))
+        return Feedback(
+            name="answer_correctness_claims",
+            value={"true_positives": tp, "false_positives": fp, "false_negatives": fn},
+            rationale=rationale,
+        )
+
+    judge.calls = calls
+    return judge
+
+
+def _score(judge, answer: str):
+    from benchmark.mlflow_scorers import answer_correctness_scorer
+
+    scorer = answer_correctness_scorer(judge)
+    return scorer(inputs=QUESTION, outputs=answer, expectations=REFERENCE)
+
+
+class TestAnswerCorrectness:
+    def test_complete_answer_scores_one(self):
+        feedback = _score(_claims_judge(tp=2, fp=0, fn=0), "Warsaw, in 1867.")
+
+        assert feedback.value == 1.0
+
+    def test_missing_fact_is_penalised(self):
+        # Answer: "Warsaw." -> birthplace matches, the year is missing.
+        feedback = _score(_claims_judge(tp=1, fp=0, fn=1), "Warsaw.")
+
+        assert feedback.value == 2 / 3
+
+    def test_wrong_added_content_is_penalised(self):
+        # All reference facts present, plus a false claim. MLflow's built-in
+        # Correctness only checks presence and would pass this answer.
+        feedback = _score(
+            _claims_judge(tp=2, fp=1, fn=0),
+            "Warsaw, in 1867. She was born a French citizen.",
+        )
+
+        assert feedback.value == 0.8
+
+    def test_wrong_answer_scores_zero(self):
+        feedback = _score(_claims_judge(tp=0, fp=2, fn=2), "Paris, in 1901.")
+
+        assert feedback.value == 0.0
+
+    def test_judge_sees_question_answer_and_reference(self):
+        judge = _claims_judge(tp=2, fp=0, fn=0)
+
+        _score(judge, "Warsaw, in 1867.")
+
+        assert judge.calls == [(QUESTION, "Warsaw, in 1867.", REFERENCE)]
+
+    def test_rationale_carries_the_judge_reasoning_and_counts(self):
+        feedback = _score(
+            _claims_judge(tp=1, fp=0, fn=1, rationale="FN: born in 1867"), "Warsaw."
+        )
+
+        assert "FN: born in 1867" in feedback.rationale
+        assert "TP=1" in feedback.rationale and "FN=1" in feedback.rationale
+
+    def test_unusable_judge_output_becomes_an_error_not_a_score(self):
+        from mlflow.entities import Feedback
+
+        def garbled(**kwargs):
+            return Feedback(name="answer_correctness_claims", value="looks fine to me")
+
+        feedback = _score(garbled, "Warsaw, in 1867.")
+
+        assert feedback.value is None
+        assert feedback.error is not None
+
+
+def test_answer_correctness_judge_reaches_the_critic(monkeypatch):
+    # The factory wires make_judge to the critic endpoint and settings.
+    captured: dict = {}
+
+    def fake_make_judge(**kwargs):
+        captured.update(kwargs)
+        return _claims_judge(tp=1, fp=0, fn=0)
+
+    monkeypatch.setattr("mlflow.genai.judges.make_judge", fake_make_judge)
+    endpoint = JudgeEndpoint(
+        model_uri="openai:/gemma3:12b",
+        base_url="http://judge.local:11434/v1",
+        api_key="judge-key",
+        inference_params={"temperature": 0.0, "max_tokens": 2048},
+    )
+
+    scorer = build_scorers(("answer_correctness",), endpoint)["answer_correctness"]
+    feedback = scorer(inputs=QUESTION, outputs="Warsaw, in 1867.", expectations=REFERENCE)
+
+    assert scorer.name == "answer_correctness"
+    assert feedback.value == 1.0
+    assert captured["model"] == "openai:/gemma3:12b"
+    assert captured["inference_params"] == {"temperature": 0.0, "max_tokens": 2048}
+    for variable in ("{{ inputs }}", "{{ outputs }}", "{{ expectations }}"):
+        assert variable in captured["instructions"]
+
+
+def test_answer_correctness_is_logged_on_the_config_run(
+    tracking_store, generator_calls, monkeypatch
+):
+    from benchmark.mlflow_scorers import answer_correctness_scorer
+
+    run_id = _finished_config_run(monkeypatch)
+    judge = _claims_judge(tp=1, fp=1, fn=0)
+
+    metrics = score_run_traces(
+        run_id,
+        ("answer_correctness",),
+        ENDPOINT,
+        factories={"answer_correctness": lambda endpoint: answer_correctness_scorer(judge)},
+    )
+
+    assert metrics == {"mlflow_judge_answer_correctness_mean": 2 / 3}
+    assert mlflow.get_run(run_id).data.metrics["mlflow_judge_answer_correctness_mean"] == 2 / 3
+    # Ground truth from the traces' expectations reaches the judge.
+    references = {call[2]["expected_response"] for call in judge.calls}
+    assert references == {s["ground_truth"] for s in SAMPLES}

@@ -1491,6 +1491,14 @@ class TestMlflowScorersSetting:
         with pytest.raises(ValueError, match="bogus_judge"):
             validate_benchmark_config(cfg)
 
+    def test_answer_correctness_judge_is_selectable(self):
+        # Issue #45: custom RAGAS-style correctness judge next to Correctness.
+        cfg = _make_config(
+            mlflow_tracing_enabled=True, mlflow_scorers=("correctness", "answer_correctness")
+        )
+
+        validate_benchmark_config(cfg)
+
     def test_duplicate_scorer_rejected(self):
         cfg = _make_config(
             mlflow_tracing_enabled=True, mlflow_scorers=("correctness", "correctness")

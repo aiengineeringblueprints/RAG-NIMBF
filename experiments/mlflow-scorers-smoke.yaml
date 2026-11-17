@@ -33,6 +33,7 @@ settings:
     - retrieval_relevance
     - retrieval_sufficiency
     - correctness
+    - answer_correctness
     - relevance_to_query
     - ragas_faithfulness
     - ragas_context_precision
