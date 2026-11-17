@@ -90,6 +90,14 @@ env-only judge prototype in `benchmark/tracking.py` is removed.
   were created (parent, config, summary only).
 
 ## Follow-ups
+- `eval_critic_thinking_control` is not forwarded to the judges, and the
+  RAGAS-via-MLflow scorers get no temperature/max_tokens. Reasoning critics
+  (Qwen3, GLM on vLLM/NIM) may emit reasoning text the judge parser rejects;
+  prefer a non-reasoning critic for `mlflow_scorers` until this is wired.
+- A vLLM/NIM critic must use the `openai:` prefix; unprefixed / `ollama:`
+  critics get `/v1` appended to the Ollama base URL.
+- MLflow also logs its own `<ScorerName>/mean` keys on the run; the
+  documented, prefixed names are `mlflow_judge_<name>_mean`.
 - A CLI to score an older run by id (`score_run_traces` already supports it).
 - Embedding-based RAGAS-via-MLflow scorers would need an embedding override
   pointing at `eval_critic_embedding`.

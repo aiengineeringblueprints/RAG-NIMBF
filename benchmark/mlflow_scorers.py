@@ -14,11 +14,14 @@ import os
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import mlflow
 
 from benchmark.providers import parse_model_id
+
+if TYPE_CHECKING:
+    from config import BenchmarkConfig
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +46,7 @@ class JudgeEndpoint:
     inference_params: dict[str, Any] = field(default_factory=dict)
 
 
-def resolve_judge_endpoint(config: Any) -> JudgeEndpoint:
+def resolve_judge_endpoint(config: BenchmarkConfig) -> JudgeEndpoint:
     """Map the critic LLM settings onto an MLflow ``openai:/`` judge."""
     provider, model_name = parse_model_id(config.eval_critic_llm)
     base_url = (config.eval_critic_base_url(provider) or "").rstrip("/")
@@ -184,7 +187,7 @@ def _evaluate(
     return ("logged" if metrics else "no_scores"), metrics
 
 
-def score_config_run(run_id: str, config: Any) -> dict[str, float]:
+def score_config_run(run_id: str, config: BenchmarkConfig) -> dict[str, float]:
     """Run the config's selected scorers on its logged run (no-op when none)."""
     if not config.mlflow_scorers:
         return {}

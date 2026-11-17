@@ -44,25 +44,23 @@ def _parse_list(value: str) -> list[str]:
     return [v.strip() for v in value.split(",") if v.strip()]
 
 
-def parse_ragas_metrics(value: object) -> tuple[str, ...]:
-    """Parse a RAGAS metric selection; blank/``None`` means the full set."""
-    if value is None:
-        return RAGAS_METRIC_NAMES
-    items = (
-        [str(v).strip() for v in value if str(v).strip()]
-        if isinstance(value, (list, tuple))
-        else _parse_list(str(value))
-    )
-    return tuple(items) if items else RAGAS_METRIC_NAMES
-
-
-def parse_mlflow_scorers(value: object) -> tuple[str, ...]:
-    """Parse an MLflow scorer selection; blank/``None`` means no scorers."""
+def _parse_name_list(value: object) -> tuple[str, ...]:
+    """Parse a YAML list or comma-separated string of names; ``None`` -> ()."""
     if value is None:
         return ()
     if isinstance(value, (list, tuple)):
         return tuple(str(v).strip() for v in value if str(v).strip())
     return tuple(_parse_list(str(value)))
+
+
+def parse_ragas_metrics(value: object) -> tuple[str, ...]:
+    """Parse a RAGAS metric selection; blank/``None`` means the full set."""
+    return _parse_name_list(value) or RAGAS_METRIC_NAMES
+
+
+def parse_mlflow_scorers(value: object) -> tuple[str, ...]:
+    """Parse an MLflow scorer selection; blank/``None`` means no scorers."""
+    return _parse_name_list(value)
 
 
 def parse_optional_float(value: object) -> float | None:
