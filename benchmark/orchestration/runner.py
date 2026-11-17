@@ -291,7 +291,6 @@ def _run_single_benchmark_impl(
     gen_results: list[GenerationResult] = []
 
     tracing_enabled = bool(getattr(config, "mlflow_tracing_enabled", False))
-    trace_ids: list[str] = []
     traced_samples: list[tuple[str, dict[str, Any]]] = []
     adapter_name = str(getattr(rag_adapter, "name", config.rag_system_adapter))
     # The run is traced-off by default (see run_single_benchmark); only the
@@ -369,7 +368,6 @@ def _run_single_benchmark_impl(
                         stage_timings[stage_name] = stage_timings.get(stage_name, 0.0) + seconds
                 sample_trace.record(result.answer, context_texts, retrieved_metadata)
             if sample_trace.trace_id is not None:
-                trace_ids.append(sample_trace.trace_id)
                 traced_samples.append((sample_trace.trace_id, sample))
 
             questions.append(sample["question"])
@@ -658,7 +656,7 @@ def _run_single_benchmark_impl(
     }
 
     benchmark_result = BenchmarkResultExtended(
-        trace_ids=tuple(trace_ids),
+        trace_ids=tuple(trace_id for trace_id, _ in traced_samples),
         config_name=config.name,
         llm_model=config.llm_model,
         embedding_model=config.embedding_model,
