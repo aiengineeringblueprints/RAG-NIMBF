@@ -24,20 +24,43 @@ RAGAS_METRIC_NAMES: tuple[str, ...] = (
 )
 
 
+# MLflow scorers the post-run judge step can run on a config run's traces
+# (issue #44). Built-in MLflow judges plus RAGAS-via-MLflow scorers that need
+# no embedding model; benchmark.mlflow_scorers maps names to scorer classes.
+MLFLOW_SCORER_NAMES: tuple[str, ...] = (
+    "retrieval_groundedness",
+    "retrieval_relevance",
+    "retrieval_sufficiency",
+    "correctness",
+    "relevance_to_query",
+    "ragas_faithfulness",
+    "ragas_context_precision",
+    "ragas_context_recall",
+    "ragas_factual_correctness",
+)
+
+
 def _parse_list(value: str) -> list[str]:
     return [v.strip() for v in value.split(",") if v.strip()]
 
 
+def _parse_name_list(value: object) -> tuple[str, ...]:
+    """Parse a YAML list or comma-separated string of names; ``None`` -> ()."""
+    if value is None:
+        return ()
+    if isinstance(value, (list, tuple)):
+        return tuple(str(v).strip() for v in value if str(v).strip())
+    return tuple(_parse_list(str(value)))
+
+
 def parse_ragas_metrics(value: object) -> tuple[str, ...]:
     """Parse a RAGAS metric selection; blank/``None`` means the full set."""
-    if value is None:
-        return RAGAS_METRIC_NAMES
-    items = (
-        [str(v).strip() for v in value if str(v).strip()]
-        if isinstance(value, (list, tuple))
-        else _parse_list(str(value))
-    )
-    return tuple(items) if items else RAGAS_METRIC_NAMES
+    return _parse_name_list(value) or RAGAS_METRIC_NAMES
+
+
+def parse_mlflow_scorers(value: object) -> tuple[str, ...]:
+    """Parse an MLflow scorer selection; blank/``None`` means no scorers."""
+    return _parse_name_list(value)
 
 
 def parse_optional_float(value: object) -> float | None:
@@ -126,6 +149,9 @@ class BenchmarkConfig:
     custom_metrics_enabled: bool = True
     # MLflow Tracing: one trace per sample with a single RETRIEVER span (#42).
     mlflow_tracing_enabled: bool = False
+    # Post-run MLflow scorers judged by the critic LLM over the run's traces
+    # (#44); empty = off. Metrics land as mlflow_judge_<name>_mean.
+    mlflow_scorers: tuple[str, ...] = ()
     # Prompt template
     prompt_template: str = "concise"
     # Reranker
@@ -454,6 +480,18 @@ def validate_benchmark_config(config: BenchmarkConfig) -> BenchmarkConfig:
         raise ValueError(
             "ragas_metrics must not be empty while ragas_enabled; "
             "set ragas_enabled=false to skip RAGAS"
+        )
+    unknown_scorers = [s for s in config.mlflow_scorers if s not in MLFLOW_SCORER_NAMES]
+    if unknown_scorers:
+        raise ValueError(
+            f"Unknown mlflow_scorers: {', '.join(unknown_scorers)}. "
+            f"Available: {', '.join(MLFLOW_SCORER_NAMES)}"
+        )
+    if len(set(config.mlflow_scorers)) != len(config.mlflow_scorers):
+        raise ValueError("mlflow_scorers contains duplicate scorer names")
+    if config.mlflow_scorers and not config.mlflow_tracing_enabled:
+        raise ValueError(
+            "mlflow_scorers score per-sample traces; set mlflow_tracing_enabled=true"
         )
     if config.benchmark_stage not in {"all", "index", "query", "retrieve", "parsing"}:
         raise ValueError("benchmark_stage must be one of: all, index, query, retrieve, parsing")
@@ -790,6 +828,7 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
     ragas_metrics = parse_ragas_metrics(os.getenv("RAGAS_METRICS", ""))
     custom_metrics_enabled = _env_bool("CUSTOM_METRICS_ENABLED", True)
     mlflow_tracing_enabled = _env_bool("MLFLOW_TRACING_ENABLED", False)
+    mlflow_scorers = parse_mlflow_scorers(os.getenv("MLFLOW_SCORERS", ""))
 
     # Per-role URLs (fall back to shared defaults when not set)
     llm_ollama_base_url = os.getenv("LLM_OLLAMA_BASE_URL") or None
@@ -1297,6 +1336,7 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
                     ragas_metrics=ragas_metrics,
                     custom_metrics_enabled=custom_metrics_enabled,
                     mlflow_tracing_enabled=mlflow_tracing_enabled,
+                    mlflow_scorers=mlflow_scorers,
                     reranker_model=reranker,
                     reranker_top_k=reranker_top_k,
                     prompt_template=tmpl,

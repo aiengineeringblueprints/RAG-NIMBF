@@ -1453,3 +1453,52 @@ class TestMlflowTracingSetting:
             configs = get_all_combinations()
 
         assert configs[0].mlflow_tracing_enabled is True
+
+
+class TestMlflowScorersSetting:
+    def test_no_scorers_by_default(self):
+        assert _make_config().mlflow_scorers == ()
+
+    @pytest.mark.parametrize(
+        "raw",
+        [["retrieval_groundedness", "ragas_faithfulness"], "retrieval_groundedness, ragas_faithfulness"],
+    )
+    def test_manifest_setting(self, raw):
+        from benchmark.orchestration.matrix import ExperimentSpec, build_configs_from_spec
+
+        spec = ExperimentSpec(
+            name="judged", dataset={}, matrix={},
+            settings={"mlflow_tracing_enabled": True, "mlflow_scorers": raw},
+        )
+
+        cfg = build_configs_from_spec(spec, base_configs=[_make_config()])[0]
+
+        assert cfg.mlflow_scorers == ("retrieval_groundedness", "ragas_faithfulness")
+
+    def test_env_fallback(self):
+        env = {
+            **_MINIMAL_MATRIX_ENV,
+            "MLFLOW_TRACING_ENABLED": "true",
+            "MLFLOW_SCORERS": "correctness",
+        }
+        with patch.dict(os.environ, env, clear=False):
+            cfg = get_all_combinations()[0]
+
+        assert cfg.mlflow_scorers == ("correctness",)
+
+    def test_unknown_scorer_rejected(self):
+        cfg = _make_config(mlflow_tracing_enabled=True, mlflow_scorers=("bogus_judge",))
+        with pytest.raises(ValueError, match="bogus_judge"):
+            validate_benchmark_config(cfg)
+
+    def test_duplicate_scorer_rejected(self):
+        cfg = _make_config(
+            mlflow_tracing_enabled=True, mlflow_scorers=("correctness", "correctness")
+        )
+        with pytest.raises(ValueError, match="duplicate"):
+            validate_benchmark_config(cfg)
+
+    def test_scorers_require_tracing(self):
+        cfg = _make_config(mlflow_scorers=("correctness",))
+        with pytest.raises(ValueError, match="mlflow_tracing_enabled"):
+            validate_benchmark_config(cfg)

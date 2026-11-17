@@ -330,7 +330,6 @@ def log_benchmark_run(
 
         _link_sample_traces(result, run.info.run_id)
         _log_classic_retriever_metrics(result)
-        _log_genai_rag_judges(result)
 
         logger.info(
             "Logged MLflow run %s for config '%s'", run.info.run_id, result.config_name
@@ -494,89 +493,6 @@ def _classic_retriever_metric_means(rows: list[dict[str, Any]], k: int) -> dict[
         f"classic_recall_at_{k}": mean(recall_scores),
         f"classic_ndcg_at_{k}": mean(ndcg_scores),
     }
-
-
-def _log_genai_rag_judges(result: BenchmarkResultExtended) -> None:
-    """Replay per-sample RAG outputs through MLflow RAG judges.
-
-    The benchmark has already generated answers. This function avoids another
-    expensive RAG pass by replaying the stored answer and contexts while still
-    creating a RETRIEVER span that MLflow's RAG judges can inspect.
-    """
-    if not _env_flag("MLFLOW_GENAI_JUDGES_ENABLED", False):
-        mlflow.set_tag("mlflow_genai_judges", "disabled")
-        return
-    if not result.per_sample:
-        mlflow.set_tag("mlflow_genai_judges", "skipped_no_samples")
-        return
-
-    judge_model = os.getenv("MLFLOW_GENAI_JUDGE_MODEL", "openai:/gpt-4o-mini")
-    samples_by_query = {sample.question: sample for sample in result.per_sample}
-    eval_dataset = [
-        {
-            "inputs": {"query": sample.question},
-            "expectations": {"expected_facts": [sample.ground_truth]},
-        }
-        for sample in result.per_sample
-        if sample.ground_truth
-    ]
-    if not eval_dataset:
-        mlflow.set_tag("mlflow_genai_judges", "skipped_no_expectations")
-        return
-
-    try:
-        from mlflow.entities import Document
-        from mlflow.genai.scorers import (
-            RetrievalGroundedness,
-            RetrievalRelevance,
-            RetrievalSufficiency,
-        )
-
-        def coerce_query(query: Any = None, **kwargs: Any) -> str:
-            if isinstance(query, dict):
-                query = query.get("query")
-            if query is None:
-                query = kwargs.get("query")
-            return str(query)
-
-        @mlflow.trace(span_type="RETRIEVER")
-        def replay_retrieve_docs(query: Any = None, **kwargs: Any) -> list[Document]:
-            actual_query = coerce_query(query, **kwargs)
-            sample = samples_by_query[actual_query]
-            doc_ids = sample.retrieved_doc_ids
-            docs: list[Document] = []
-            for index, context in enumerate(sample.contexts):
-                doc_id = doc_ids[index] if index < len(doc_ids) else f"ctx_{index}"
-                docs.append(
-                    Document(
-                        id=str(doc_id),
-                        page_content=context,
-                        metadata={"rank": index + 1},
-                    )
-                )
-            return docs
-
-        @mlflow.trace
-        def replay_rag_app(query: Any = None, **kwargs: Any) -> dict[str, str]:
-            actual_query = coerce_query(query, **kwargs)
-            replay_retrieve_docs(actual_query)
-            return {"response": samples_by_query[actual_query].answer}
-
-        eval_result = mlflow.genai.evaluate(
-            data=eval_dataset,
-            predict_fn=replay_rag_app,
-            scorers=[
-                RetrievalRelevance(model=judge_model),
-                RetrievalGroundedness(model=judge_model),
-                RetrievalSufficiency(model=judge_model),
-            ],
-        )
-        mlflow.set_tag("mlflow_genai_judges", "logged")
-        mlflow.set_tag("mlflow_genai_judge_model", judge_model)
-        logger.info("Logged MLflow GenAI RAG judges: %s", type(eval_result).__name__)
-    except Exception as exc:
-        mlflow.set_tag("mlflow_genai_judges", "failed")
-        logger.warning("MLflow GenAI RAG judges failed (non-fatal): %s", exc)
 
 
 def log_genai_eval(result: BenchmarkResultExtended) -> None:

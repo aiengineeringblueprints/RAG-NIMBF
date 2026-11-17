@@ -306,3 +306,44 @@ def test_worker_writes_benchmark_json_per_config_as_soon_as_it_finishes(
 
     # Aggregate report at the end is still produced.
     assert len(list(run_dir.glob("benchmark_*.json"))) == 1
+
+
+@pytest.fixture
+def recorded_scoring(monkeypatch, fake_tracking):
+    """Config runs get an id; post-run scorer calls are recorded."""
+    import benchmark.orchestration.worker as worker_module
+
+    def fake_log_run(result, reproducibility_dir=None, nested=None):
+        fake_tracking["runs"].append(result.config_name)
+        return f"run-{len(fake_tracking['runs'])}"
+
+    scored: list[tuple[str, tuple[str, ...]]] = []
+    monkeypatch.setattr(worker_module, "log_benchmark_run", fake_log_run)
+    monkeypatch.setattr(
+        worker_module,
+        "score_config_run",
+        lambda run_id, config: scored.append((run_id, config.mlflow_scorers)),
+    )
+    return scored
+
+
+def test_worker_scores_each_logged_config_run(tmp_path, recorded_scoring, stubbed_data):
+    from dataclasses import replace
+
+    # Tracing itself is out of scope here; the worker only routes the run id.
+    configs = [replace(c, mlflow_scorers=("correctness",)) for c in _one_cell_configs()]
+
+    ExperimentWorker(
+        configs, WorkerOptions(run_dir=tmp_path / "run1", experiment_name="worker-loop")
+    ).run()
+
+    assert recorded_scoring == [("run-1", ("correctness",))]
+
+
+def test_worker_skips_scoring_without_scorers(tmp_path, recorded_scoring, stubbed_data):
+    ExperimentWorker(
+        _one_cell_configs(),
+        WorkerOptions(run_dir=tmp_path / "run1", experiment_name="worker-loop"),
+    ).run()
+
+    assert recorded_scoring == []
