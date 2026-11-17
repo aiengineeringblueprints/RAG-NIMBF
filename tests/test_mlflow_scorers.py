@@ -325,6 +325,24 @@ class TestAnswerCorrectness:
         assert feedback.value is None
         assert feedback.error is not None
 
+    def test_no_claims_on_either_side_is_an_error_not_a_perfect_score(self):
+        feedback = _score(_claims_judge(tp=0, fp=0, fn=0), "")
+
+        assert feedback.value is None
+        assert feedback.error is not None
+
+    def test_missing_reference_is_an_error_without_calling_the_judge(self):
+        from benchmark.mlflow_scorers import answer_correctness_scorer
+
+        judge = _claims_judge(tp=0, fp=2, fn=0)
+        scorer = answer_correctness_scorer(judge)
+
+        feedback = scorer(inputs=QUESTION, outputs="Warsaw, in 1867.", expectations={})
+
+        assert feedback.value is None
+        assert feedback.error is not None
+        assert judge.calls == []
+
 
 def test_answer_correctness_judge_reaches_the_critic(monkeypatch):
     # The factory wires make_judge to the critic endpoint and settings.

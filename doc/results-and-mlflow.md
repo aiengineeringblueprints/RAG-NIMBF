@@ -186,13 +186,14 @@ false negatives (reference facts missing from the answer). The framework, not
 the LLM, computes the score:
 
 ```
-score = TP / (TP + 0.5 * (FP + FN))     # 1.0 when there are no claims at all
+score = TP / (TP + 0.5 * (FP + FN))
 ```
 
 So both missing facts and wrong added content lower the score (0–1). The
 trace assessment's rationale starts with `TP=…, FP=…, FN=…` followed by the
-judge's claim lists. Unparsable judge output becomes an assessment error and
-is excluded from the mean rather than scored as 0. Differences from RAGAS:
+judge's claim lists. A trace without `expected_response` (judge not
+called), unparsable or negative counts, and a verdict with no claims at all
+become assessment errors and are excluded from the mean rather than scored. Differences from RAGAS:
 no 0.25-weighted embedding similarity term (factuality F1 only), and claims
 are classified in one judge call rather than RAGAS's separate
 extraction/classification prompts. Example (local `gemma3:12b`, reference
