@@ -147,6 +147,61 @@ or pass the DataFrame from `mlflow.search_traces(run_id=...)` to
 
 Smoke manifest: `experiments/mlflow-tracing-smoke.yaml`.
 
+### MLflow scorers (post-run judges)
+
+Opt-in (issue #44). After a config run is logged, the worker scores that
+run's traces with MLflow scorers — **no pipeline re-run**: answers, RETRIEVER
+documents and ground-truth expectations all come from the stored traces.
+
+```yaml
+settings:
+  mlflow_tracing_enabled: true    # required: scorers read the traces
+  mlflow_scorers:                 # env fallback: MLFLOW_SCORERS=a,b; default empty = off
+    - retrieval_groundedness
+    - correctness
+    - ragas_faithfulness
+```
+
+| Name | Scorer | Needs |
+|---|---|---|
+| `retrieval_groundedness` | MLflow `RetrievalGroundedness` | RETRIEVER span |
+| `retrieval_relevance` | MLflow `RetrievalRelevance` | RETRIEVER span |
+| `retrieval_sufficiency` | MLflow `RetrievalSufficiency` | RETRIEVER span + `expected_response` |
+| `correctness` | MLflow `Correctness` | `expected_response` |
+| `relevance_to_query` | MLflow `RelevanceToQuery` | — |
+| `ragas_faithfulness` | `mlflow.genai.scorers.ragas.Faithfulness` | RETRIEVER span |
+| `ragas_context_precision` | RAGAS-via-MLflow `ContextPrecision` | RETRIEVER span + `expected_response` |
+| `ragas_context_recall` | RAGAS-via-MLflow `ContextRecall` | RETRIEVER span + `expected_response` |
+| `ragas_factual_correctness` | RAGAS-via-MLflow `FactualCorrectness` | `expected_response` |
+
+RAGAS-via-MLflow scorers that need an embedding model (answer relevancy,
+semantic similarity) are not offered: MLflow would default them to OpenAI
+embeddings.
+
+**Judge model.** The judge is the configured critic LLM (`eval_critic_llm`,
+same base URL / key resolution as RAGAS). It is reached through MLflow's
+`openai:/<model>` provider at the critic's OpenAI-compatible endpoint:
+`ollama:` critics use `<eval_critic_ollama_base_url or ollama_base_url>/v1`,
+`openai:` critics use their compat base URL as-is. `OPENAI_API_BASE` /
+`OPENAI_API_KEY` are set only while scoring and restored afterwards; keyless
+local servers get a placeholder key. Built-in judges also receive
+`eval_critic_temperature` and `eval_critic_max_tokens`.
+
+**Results.** One metric per scorer on the **same config run**:
+`mlflow_judge_<name>_mean` (built-in yes/no judges: share of `yes`). They sit
+next to the direct `ragas_*` metrics without clashing, so both can be
+compared side by side. MLflow additionally logs its own
+`<ScorerName>/mean` keys and attaches each judgement (with rationale) as an
+assessment on its trace. Run tags: `mlflow_scorers` =
+`logged` / `no_scores` / `skipped_no_traces` / `failed`, and
+`mlflow_scorer_model`. Failures (judge unreachable, unparsable output) are
+logged and tagged, never fail the benchmark.
+
+Each scorer makes at least one critic call per sample, so cost scales like
+RAGAS — use a small `sample_size` for sweeps.
+
+Smoke manifest: `experiments/mlflow-scorers-smoke.yaml`.
+
 ## MLflow DB maintenance
 
 `mlflow.db` grows with every run (traces dominate) and SQLite never shrinks the

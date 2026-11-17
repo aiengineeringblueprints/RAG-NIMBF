@@ -13,6 +13,7 @@ import mlflow
 from rich.console import Console
 
 from config import BenchmarkConfig
+from benchmark.mlflow_scorers import score_config_run
 from benchmark.orchestration.runner import _stage_timer, run_single_benchmark
 from benchmark.parsing.evaluation import (
     generate_parsing_leaderboard,
@@ -228,11 +229,13 @@ class ExperimentWorker:
                     console.print(f"[green]  Config JSON saved to {result_path}[/green]")
                     progress.mark_completed(config, result_path)
                     if self.options.log_mlflow:
-                        log_benchmark_run(
+                        run_id = log_benchmark_run(
                             result,
                             reproducibility_dir=reproducibility_dir,
                             nested=True,
                         )
+                        if run_id and config.mlflow_scorers:
+                            score_config_run(run_id, config)
                     results.append(result)
                 except Exception as exc:
                     progress.mark_failed(config, str(exc))

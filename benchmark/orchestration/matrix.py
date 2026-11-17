@@ -12,6 +12,7 @@ from config import (
     BenchmarkConfig,
     get_env_combinations,
     parse_optional_float,
+    parse_mlflow_scorers,
     parse_ragas_metrics,
     validate_benchmark_config,
 )
@@ -343,6 +344,8 @@ def _coerce_field_value(key: str, value: Any) -> Any:
         return parse_optional_float(value)
     if key == "ragas_metrics":
         return parse_ragas_metrics(value)
+    if key == "mlflow_scorers":
+        return parse_mlflow_scorers(value)
     if key in {
         "rag_managed_options_json",
         "ingestion_options_json",
