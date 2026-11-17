@@ -46,7 +46,7 @@ from benchmark.reporting.models import (
     compute_stats,
 )
 from benchmark.resource_monitor import ResourceMonitor
-from benchmark.tracing import log_sample_expectations, trace_sample, tracing_state
+from benchmark.tracing import expectations_logged_on_exit, trace_sample, tracing_state
 from config import BenchmarkConfig
 
 console = Console()
@@ -291,11 +291,14 @@ def _run_single_benchmark_impl(
     gen_results: list[GenerationResult] = []
 
     tracing_enabled = bool(getattr(config, "mlflow_tracing_enabled", False))
-    traced_samples: list[tuple[str, dict[str, Any]]] = []
     adapter_name = str(getattr(rag_adapter, "name", config.rag_system_adapter))
     # The run is traced-off by default (see run_single_benchmark); only the
-    # per-sample loop records traces, one per sample, when enabled.
-    with tracing_state(tracing_enabled):
+    # per-sample loop records traces, one per sample, when enabled. Ground
+    # truth goes onto the traces only after the samples ran (also when the
+    # loop crashes), so the system under test never sees it (issue #43).
+    with expectations_logged_on_exit(
+        source_id=f"dataset:{config.dataset_name}"
+    ) as traced_samples, tracing_state(tracing_enabled):
         for i, sample in enumerate(data):
             cached_entry = (
                 checkpoint_store.entry_for(i, sample["question"])
@@ -402,11 +405,6 @@ def _run_single_benchmark_impl(
                     result=result,
                 ))
 
-    # Ground truth goes onto the traces only after the samples ran, so the
-    # system under test never sees it (issue #43).
-    log_sample_expectations(
-        traced_samples, source_id=f"dataset:{config.dataset_name}"
-    )
     console.print(f"  [dim]Generated {len(gen_results)} answers[/dim]       ")
 
     # 4. Evaluate with RAGAS using a separate critic model

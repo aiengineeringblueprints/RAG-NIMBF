@@ -358,11 +358,13 @@ def test_gold_context_and_doc_ids_become_expected_retrieved_context(
         },
         # No gold annotation at all: reference answer only.
         {"question": "What is in Rome?", "ground_truth": "The Colosseum"},
+        # Blank reference answer: nothing to score against.
+        {"question": "Unanswerable?", "ground_truth": "   "},
     ]
 
     run_single_benchmark(_traced(), samples, corpus=CORPUS)
 
-    first, second, third = (_expectations(t) for t in _traces(tracking_store))
+    first, second, third, fourth = (_expectations(t) for t in _traces(tracking_store))
     assert first["expected_retrieved_context"] == [
         {"doc_uri": "doc-a", "content": DOCS["doc-a"]}
     ]
@@ -372,6 +374,7 @@ def test_gold_context_and_doc_ids_become_expected_retrieved_context(
     ]
     assert "expected_retrieved_context" not in third
     assert third["expected_response"] == "The Colosseum"
+    assert fourth == {}
 
 
 def test_run_traces_are_scoreable_without_rerunning(
@@ -396,3 +399,34 @@ def test_run_traces_are_scoreable_without_rerunning(
         assert root.outputs == {"response": f"answer to: {sample['question']}"}
         assert _retriever_contents(trace)
         assert _expectations(trace)["expected_response"] == sample["ground_truth"]
+
+
+class _FailsOnSecondSampleAdapter:
+    """Answers the first sample, then raises — a run that dies mid-loop."""
+
+    name = "fails-second"
+
+    def __init__(self, config):
+        pass
+
+    def prepare(self, config, data, corpus=None):
+        return None
+
+    def answer(self, sample, config):
+        if sample["question"] != SAMPLES[0]["question"]:
+            raise RuntimeError("adapter crashed")
+        return RagSystemOutput(answer="Paris", contexts=[DOCS["doc-a"]])
+
+
+def test_traces_written_before_a_crash_still_get_expectations(tracking_store):
+    register_rag_adapter("fails-second", _FailsOnSecondSampleAdapter)
+    try:
+        with pytest.raises(RuntimeError, match="adapter crashed"):
+            run_single_benchmark(
+                _traced(rag_system_adapter="fails-second"), SAMPLES, corpus=CORPUS
+            )
+    finally:
+        RAG_ADAPTER_REGISTRY.pop("fails-second", None)
+
+    first = next(t for t in _traces(tracking_store) if _sample_index(t) == 0)
+    assert _expectations(first)["expected_response"] == "Paris"

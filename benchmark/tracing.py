@@ -285,12 +285,17 @@ def sample_expectations(sample: dict[str, Any]) -> dict[str, Any]:
     lists the gold documents (``doc_uri`` = gold doc id, matching the RETRIEVER
     span's document ids). Gold text is attached only for a single
     ``gold_doc_id``, where the sample context *is* that document; multi-gold
-    contexts (multi-hop) mix in distractors, so they carry ids only.
+    contexts (multi-hop) mix in distractors, so they carry ids only. A
+    sample with both keys uses ``gold_doc_id``; loaders set only one of them.
+    ``content`` is the dataset's reference context: identical to the indexed
+    gold document for per-sample datasets and deduplicated corpora, but for
+    ``jsonl-shared`` it is whatever the context field holds (possibly a
+    passage of the corpus document).
     """
     expectations: dict[str, Any] = {}
-    reference = sample.get("ground_truth")
-    if reference not in (None, ""):
-        expectations["expected_response"] = str(reference)
+    reference = str(sample.get("ground_truth") or "").strip()
+    if reference:
+        expectations["expected_response"] = reference
 
     metadata = sample.get("metadata") or {}
     gold_contexts: list[dict[str, str]] = []
@@ -341,6 +346,22 @@ def log_sample_expectations(
                     "Logging expectation %r on trace %s failed: %s", name, trace_id, exc
                 )
     return logged
+
+
+@contextmanager
+def expectations_logged_on_exit(
+    *, source_id: str
+) -> Iterator[list[tuple[str, dict[str, Any]]]]:
+    """Collect ``(trace_id, sample)`` pairs; attach their ground truth on exit.
+
+    Runs on any exit, so traces persisted before a mid-loop crash still get
+    their expectations instead of silently looking complete without them.
+    """
+    traced_samples: list[tuple[str, dict[str, Any]]] = []
+    try:
+        yield traced_samples
+    finally:
+        log_sample_expectations(traced_samples, source_id=source_id)
 
 
 def _noop_observe(name: str | None = None) -> Callable:

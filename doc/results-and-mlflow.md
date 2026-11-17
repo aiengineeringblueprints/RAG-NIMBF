@@ -116,13 +116,20 @@ MLflow's reserved names so built-in judges pick them up:
 
 | Expectation | Value | When |
 |---|---|---|
-| `expected_response` | reference answer (`ground_truth`) | always, unless empty |
+| `expected_response` | reference answer (`ground_truth`, stripped) | always, unless blank |
 | `expected_retrieved_context` | `[{"doc_uri": <gold doc id>, "content": <gold text>}]` | sample has `metadata.gold_doc_id` (per-sample datasets, deduplicated shared corpora) |
 | `expected_retrieved_context` | `[{"doc_uri": <id>}, ...]` (ids only) | sample has `metadata.gold_doc_ids` (multi-hop; the context mixes in distractors) |
 
 `doc_uri` uses the same ids as the RETRIEVER span's document `id`, so
-retrieval can be compared by id. Expectations are written only after the
-sample finished, so the system under test never sees them. Their source is
+retrieval can be compared by id. If a sample carries both keys,
+`gold_doc_id` wins. `content` is the dataset's reference context: identical to
+the indexed gold document for per-sample datasets and deduplicated corpora,
+but for `jsonl-shared` it is whatever the manifest's context field holds and
+may be only a passage of the corpus document — compare by `doc_uri` there.
+
+Expectations are written only after the samples ran, so the system under test
+never sees them — also when the run crashes mid-loop: traces persisted before
+the crash still get their expectations. Their source is
 `CODE` / `dataset:<dataset_name>`. A failed write logs a warning and never
 fails the benchmark.
 
