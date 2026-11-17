@@ -168,11 +168,38 @@ settings:
 | `retrieval_relevance` | MLflow `RetrievalRelevance` | RETRIEVER span |
 | `retrieval_sufficiency` | MLflow `RetrievalSufficiency` | RETRIEVER span + `expected_response` |
 | `correctness` | MLflow `Correctness` | `expected_response` |
+| `answer_correctness` | Custom `make_judge` claim F1 (RAGAS `answer_correctness` semantics, see below) | `expected_response` |
 | `relevance_to_query` | MLflow `RelevanceToQuery` | — |
 | `ragas_faithfulness` | `mlflow.genai.scorers.ragas.Faithfulness` | RETRIEVER span |
 | `ragas_context_precision` | RAGAS-via-MLflow `ContextPrecision` | RETRIEVER span + `expected_response` |
 | `ragas_context_recall` | RAGAS-via-MLflow `ContextRecall` | RETRIEVER span + `expected_response` |
 | `ragas_factual_correctness` | RAGAS-via-MLflow `FactualCorrectness` | `expected_response` |
+
+**`answer_correctness` (custom judge, issue #45).** MLflow does not wrap
+RAGAS `answer_correctness`, and the built-in `Correctness` judge only checks
+that the expected facts are present — an answer with extra wrong claims still
+passes. `answer_correctness` approximates the RAGAS semantics: a `make_judge`
+call on the critic LLM splits answer and reference (`expected_response`) into
+atomic claims and counts true positives (answer claims supported by the
+reference), false positives (unsupported or contradicting answer claims) and
+false negatives (reference facts missing from the answer). The framework, not
+the LLM, computes the score:
+
+```
+score = TP / (TP + 0.5 * (FP + FN))
+```
+
+So both missing facts and wrong added content lower the score (0–1). The
+trace assessment's rationale starts with `TP=…, FP=…, FN=…` followed by the
+judge's claim lists. A trace without `expected_response` (judge not
+called), unparsable, non-whole-number or negative counts, and a verdict
+with no claims at all become assessment errors; MLflow leaves errored
+assessments out of `answer_correctness/mean`, so they are not scored as 0. Differences from RAGAS:
+no 0.25-weighted embedding similarity term (factuality F1 only), and claims
+are classified in one judge call rather than RAGAS's separate
+extraction/classification prompts. Example (local `gemma3:12b`, reference
+"born in Warsaw in 1867"): an answer that adds "she was born in France" gets
+`correctness` = yes but `answer_correctness` = 0.67.
 
 RAGAS-via-MLflow scorers that need an embedding model (answer relevancy,
 semantic similarity) are not offered: MLflow would default them to OpenAI
@@ -204,7 +231,8 @@ logged and tagged, never fail the benchmark.
 Each scorer makes at least one critic call per sample, so cost scales like
 RAGAS — use a small `sample_size` for sweeps.
 
-Smoke manifest: `experiments/mlflow-scorers-smoke.yaml`.
+Smoke manifests: `experiments/mlflow-scorers-smoke.yaml` (all scorers),
+`experiments/answer-correctness-smoke.yaml` (`correctness` vs. `answer_correctness`).
 
 ## MLflow DB maintenance
 

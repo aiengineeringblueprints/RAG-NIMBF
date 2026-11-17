@@ -1,8 +1,9 @@
 """Post-run MLflow scorers judged by the critic LLM (issue #44).
 
 Scores a finished config run's per-sample traces (issue #42, with ground
-truth attached as expectations by #43) with MLflow built-in judges and
-RAGAS-via-MLflow scorers, without re-running the RAG pipeline. The judge is
+truth attached as expectations by #43) with MLflow built-in judges,
+RAGAS-via-MLflow scorers and the custom RAGAS-style ``answer_correctness``
+judge (#45), without re-running the RAG pipeline. The judge is
 the configured critic LLM, reached through its OpenAI-compatible route so
 local Ollama/vLLM/NIM models work.
 """
@@ -14,7 +15,7 @@ import os
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, NamedTuple
 
 import mlflow
 
@@ -28,6 +29,9 @@ logger = logging.getLogger(__name__)
 # Metric prefix that keeps judge scores apart from the direct RAGAS
 # (``ragas_*``) and custom (``custom_*``) metrics on the same run.
 METRIC_PREFIX = "mlflow_judge_"
+
+# Custom RAGAS-style correctness judge (issue #45).
+ANSWER_CORRECTNESS_NAME = "answer_correctness"
 
 # Ollama serves its OpenAI-compatible API under this path.
 _OLLAMA_OPENAI_PATH = "/v1"
@@ -99,12 +103,142 @@ def _ragas(class_name: str) -> ScorerFactory:
     return build
 
 
+class ClaimCounts(NamedTuple):
+    """Claims of an answer classified against the reference answer."""
+
+    true_positives: int  # answer claims supported by the reference
+    false_positives: int  # answer claims unsupported by / contradicting it
+    false_negatives: int  # reference facts the answer does not state
+
+
+def claim_f1(counts: ClaimCounts) -> float:
+    """RAGAS ``answer_correctness`` factuality F1 over classified claims.
+
+    ``TP / (TP + 0.5 * (FP + FN))``: missing reference facts (FN) and wrong
+    or unsupported answer claims (FP) both lower the score.
+    """
+    tp, fp, fn = counts
+    return tp / (tp + 0.5 * (fp + fn))
+
+
+def answer_correctness_scorer(claims_judge: Callable[..., Any]) -> Any:
+    """Wrap a claim-classifying judge into the ``answer_correctness`` scorer.
+
+    ``claims_judge`` is called with ``inputs``/``outputs``/``expectations``
+    and returns a ``Feedback`` whose value holds the TP/FP/FN claim counts;
+    the score itself is computed here, not by the LLM. Anything that cannot
+    be scored honestly (no reference, judge error, unusable or all-zero
+    counts) becomes an assessment error, excluded from the mean.
+    """
+    from mlflow.entities import Feedback
+    from mlflow.genai.scorers import scorer
+
+    def error(message: object, source: Any = None) -> Feedback:
+        exc = message if isinstance(message, Exception) else ValueError(message)
+        return Feedback(name=ANSWER_CORRECTNESS_NAME, error=exc, source=source)
+
+    @scorer(name=ANSWER_CORRECTNESS_NAME)
+    def answer_correctness(inputs, outputs, expectations) -> Feedback:
+        if not (expectations or {}).get("expected_response"):
+            return error("answer_correctness needs an expected_response expectation")
+        verdict = claims_judge(inputs=inputs, outputs=outputs, expectations=expectations)
+        if verdict.error is not None:
+            return Feedback(
+                name=ANSWER_CORRECTNESS_NAME, error=verdict.error, source=verdict.source
+            )
+        try:
+            counts = _claim_counts(verdict.value)
+        except ValueError as exc:
+            return error(exc, verdict.source)
+        rationale = (
+            f"TP={counts.true_positives}, FP={counts.false_positives}, "
+            f"FN={counts.false_negatives}"
+        )
+        if verdict.rationale:
+            rationale = f"{rationale}\n{verdict.rationale}"
+        return Feedback(
+            name=ANSWER_CORRECTNESS_NAME,
+            value=claim_f1(counts),
+            rationale=rationale,
+            source=verdict.source,
+        )
+
+    return answer_correctness
+
+
+def _claim_counts(value: object) -> ClaimCounts:
+    """Validate the judge's TP/FP/FN counts; ``ValueError`` when unusable."""
+    if not isinstance(value, Mapping):
+        raise ValueError(f"answer_correctness judge returned no claim counts: {value!r}")
+    try:
+        counts = ClaimCounts(*(_count(value[key]) for key in ClaimCounts._fields))
+    except (KeyError, ValueError) as exc:
+        raise ValueError(f"answer_correctness judge returned bad claim counts: {value!r}") from exc
+    if any(count < 0 for count in counts):
+        raise ValueError(f"answer_correctness judge returned negative claim counts: {value!r}")
+    if not any(counts):
+        raise ValueError("answer_correctness judge found no claims in answer or reference")
+    return counts
+
+
+def _count(raw: object) -> int:
+    """A whole-number claim count; no truncation, no bools or strings."""
+    if isinstance(raw, bool) or not isinstance(raw, (int, float)) or not float(raw).is_integer():
+        raise ValueError(f"not a whole-number count: {raw!r}")
+    return int(raw)
+
+
+# Claim classification follows RAGAS answer_correctness: statements are
+# compared against the reference answer, never against retrieved context.
+ANSWER_CORRECTNESS_INSTRUCTIONS = """\
+You grade how correct an answer is compared with a reference answer.
+
+Question: {{ inputs }}
+Answer to grade: {{ outputs }}
+Reference (use its expected_response field as ground truth): {{ expectations }}
+
+Step 1. Break the reference's expected_response into atomic facts: one fact
+per independent piece of information (for example, a place and a date are two
+facts). Break the answer into atomic claims at the same granularity. Ignore
+filler, hedging, and restatements of the question.
+Step 2. Classify every item into exactly one group:
+- true_positives: answer claims that state a reference fact. Each reference
+  fact counts at most once.
+- false_positives: answer claims that the reference does not support, or that
+  contradict it (wrong or unsupported added content). Count each such claim
+  separately.
+- false_negatives: reference facts that the answer does not state.
+Paraphrases and equivalent units, numbers, or names count as supported.
+Judge only against the reference, not against your own world knowledge.
+
+Return value: a JSON object with exactly the integer keys
+"true_positives", "false_positives", "false_negatives".
+Rationale: first list the reference facts and the answer claims, then name the
+group of each.
+"""
+
+
+def _build_answer_correctness(endpoint: JudgeEndpoint) -> Any:
+    from mlflow.genai.judges import make_judge
+
+    claims_judge = make_judge(
+        name=f"{ANSWER_CORRECTNESS_NAME}_claims",
+        instructions=ANSWER_CORRECTNESS_INSTRUCTIONS,
+        model=endpoint.model_uri,
+        description="Classifies answer/reference claims as TP, FP, FN.",
+        feedback_value_type=dict[str, int],
+        inference_params=dict(endpoint.inference_params),
+    )
+    return answer_correctness_scorer(claims_judge)
+
+
 # Keys mirror config.MLFLOW_SCORER_NAMES.
 SCORER_FACTORIES: dict[str, ScorerFactory] = {
     "retrieval_groundedness": _builtin("RetrievalGroundedness"),
     "retrieval_relevance": _builtin("RetrievalRelevance"),
     "retrieval_sufficiency": _builtin("RetrievalSufficiency"),
     "correctness": _builtin("Correctness"),
+    ANSWER_CORRECTNESS_NAME: _build_answer_correctness,
     "relevance_to_query": _builtin("RelevanceToQuery"),
     "ragas_faithfulness": _ragas("Faithfulness"),
     "ragas_context_precision": _ragas("ContextPrecision"),

@@ -26,12 +26,14 @@ RAGAS_METRIC_NAMES: tuple[str, ...] = (
 
 # MLflow scorers the post-run judge step can run on a config run's traces
 # (issue #44). Built-in MLflow judges plus RAGAS-via-MLflow scorers that need
-# no embedding model; benchmark.mlflow_scorers maps names to scorer classes.
+# no embedding model, and the custom RAGAS-style ``answer_correctness`` judge
+# (issue #45); benchmark.mlflow_scorers maps names to scorer factories.
 MLFLOW_SCORER_NAMES: tuple[str, ...] = (
     "retrieval_groundedness",
     "retrieval_relevance",
     "retrieval_sufficiency",
     "correctness",
+    "answer_correctness",
     "relevance_to_query",
     "ragas_faithfulness",
     "ragas_context_precision",
