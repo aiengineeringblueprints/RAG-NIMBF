@@ -146,7 +146,9 @@ move it to the MLflow path.
   direct RAGAS `answer_correctness` / `context_precision`.
 - Re-scoring a finished run: `score_run_traces(run_id, names, endpoint)`
   (see `results/run100/rescore_pass2.py`); the report picks the newest
-  assessment.
+  assessment per scorer and sample, errors included. Re-score every sample
+  of a scorer, not a subset: a partial re-score whose calls fail shows those
+  samples as failures even where an older pass had a score.
 
 ## 7. Limits
 

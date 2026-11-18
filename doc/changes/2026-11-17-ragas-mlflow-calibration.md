@@ -47,6 +47,15 @@ sample, and the measured result with a decision
 - `doc/14-ragas-vs-mlflow-calibration.md`: results and decision.
 - `doc/results-and-mlflow.md`: `mlflow_judge_seconds`, calibration CLI.
 - `doc/00-README.md`: index entry for doc 14.
+
+### Review follow-ups (PR #55)
+- `_sample_index` takes the first root span that carries
+  `benchmark.sample_index` instead of giving up on the first root span.
+- `--out pass.2` writes `pass.2.md` / `pass.2.json` (only a `.md`/`.json`
+  suffix is replaced).
+- Doc 14 §6: re-score whole scorers, not subsets (newest assessment wins).
+- `mlflow.search_traces(max_results=None)` already pages through all
+  traces (MLflow 3.18), so large runs are not truncated; no change.
 - `results/run100/`: the calibration run (Spark), both report passes, and
   `rescore_pass2.py` used for the throttled re-score.
 

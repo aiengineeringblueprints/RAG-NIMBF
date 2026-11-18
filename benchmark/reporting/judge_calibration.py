@@ -163,10 +163,12 @@ def judge_scores(
 
 
 def _sample_index(trace: Any) -> int | None:
+    """Sample index from the first root span that carries one."""
     for span in trace.data.spans:
         if span.parent_id is None:
             index = span.attributes.get("benchmark.sample_index")
-            return int(index) if index is not None else None
+            if index is not None:
+                return int(index)
     return None
 
 
@@ -311,6 +313,12 @@ def _runtime_row(label: str, seconds: float | None, n_samples: int) -> str:
     return f"| {label} | {seconds:.0f} | {_fmt(per_sample)} |"
 
 
+def _output_paths(out: Path) -> tuple[Path, Path]:
+    """``<out>.md`` and ``<out>.json``; a ``.md``/``.json`` suffix is replaced."""
+    base = out.with_suffix("") if out.suffix in (".md", ".json") else out
+    return base.with_name(base.name + ".md"), base.with_name(base.name + ".json")
+
+
 def main(argv: Sequence[str] | None = None) -> CalibrationReport:
     parser = argparse.ArgumentParser(
         prog="python -m benchmark.reporting.judge_calibration",
@@ -330,11 +338,10 @@ def main(argv: Sequence[str] | None = None) -> CalibrationReport:
     report = build_report(args.results, args.run_id, config_name=args.config_name)
     markdown = render_markdown(report)
     if args.out:
-        args.out.parent.mkdir(parents=True, exist_ok=True)
-        args.out.with_suffix(".md").write_text(markdown, encoding="utf-8")
-        args.out.with_suffix(".json").write_text(
-            json.dumps(report.to_dict(), indent=2), encoding="utf-8"
-        )
+        md_path, json_path = _output_paths(args.out)
+        md_path.parent.mkdir(parents=True, exist_ok=True)
+        md_path.write_text(markdown, encoding="utf-8")
+        json_path.write_text(json.dumps(report.to_dict(), indent=2), encoding="utf-8")
     print(markdown)
     return report
 

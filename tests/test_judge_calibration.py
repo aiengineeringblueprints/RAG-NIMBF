@@ -253,3 +253,42 @@ def test_cli_writes_markdown_and_json(
     assert payload["run_id"] == run_id
     (pair,) = payload["pairs"]
     assert pair["direct"] == "faithfulness" and pair["n_paired"] == 2
+
+
+@pytest.mark.parametrize(
+    ("out", "expected"),
+    [
+        ("calib.md", ("calib.md", "calib.json")),
+        ("calib.json", ("calib.md", "calib.json")),
+        ("pass.2", ("pass.2.md", "pass.2.json")),  # dot in the stem is kept
+        ("calib", ("calib.md", "calib.json")),
+    ],
+)
+def test_output_paths_keep_dotted_stems(out, expected):
+    from pathlib import Path
+
+    from benchmark.reporting.judge_calibration import _output_paths
+
+    md, js = _output_paths(Path(out))
+
+    assert (md.name, js.name) == expected
+
+
+def test_sample_index_skips_root_spans_without_the_attribute():
+    # A stray root span (no sample index) before the sample's root span
+    # must not hide the sample.
+    from types import SimpleNamespace
+
+    from benchmark.reporting.judge_calibration import _sample_index
+
+    def span(parent, attrs):
+        return SimpleNamespace(parent_id=parent, attributes=attrs)
+
+    trace = SimpleNamespace(data=SimpleNamespace(spans=[
+        span(None, {}),
+        span("x", {"benchmark.sample_index": 9}),  # child spans are ignored
+        span(None, {"benchmark.sample_index": 3}),
+    ]))
+
+    assert _sample_index(trace) == 3
+    assert _sample_index(SimpleNamespace(data=SimpleNamespace(spans=[span(None, {})]))) is None
