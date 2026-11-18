@@ -225,8 +225,27 @@ compared side by side. MLflow additionally logs its own
 `<ScorerName>/mean` keys and attaches each judgement (with rationale) as an
 assessment on its trace. Run tags: `mlflow_scorers` =
 `logged` / `no_scores` / `skipped_no_traces` / `failed`, and
-`mlflow_scorer_model`. Failures (judge unreachable, unparsable output) are
+`mlflow_scorer_model`. The judge step's wall time is logged as
+`mlflow_judge_seconds` (compare with the direct RAGAS stage,
+`stage_ragas_eval_seconds`). Failures (judge unreachable, unparsable output) are
 logged and tagged, never fail the benchmark.
+
+**Calibration against direct RAGAS (issue #46).** With both `ragas_enabled`
+and `mlflow_scorers` on, compare the two evaluators sample by sample:
+
+```bash
+python -m benchmark.reporting.judge_calibration \
+  results/runN/configs/<config>.json --run-id <config run id> \
+  --tracking-uri sqlite:///mlflow.db --out results/runN/judge_calibration.md
+```
+
+It pairs each sample's direct `ragas_scores` with the scorer assessment on
+the trace with the same `benchmark.sample_index` (yes/no → 1/0;
+`retrieval_relevance` uses the per-sample `retrieval_relevance/precision`;
+errors → missing) and writes, per metric pair, mean Δ (judge − direct), mean
+|Δ|, Pearson/Spearman, failure rates, plus both runtimes (Markdown + JSON).
+Manifest: `experiments/ragas-mlflow-calibration.yaml`; results and decision:
+[doc 14](14-ragas-vs-mlflow-calibration.md).
 
 Each scorer makes at least one critic call per sample, so cost scales like
 RAGAS — use a small `sample_size` for sweeps.
