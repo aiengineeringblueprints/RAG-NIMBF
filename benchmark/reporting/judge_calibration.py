@@ -171,7 +171,11 @@ def _sample_index(trace: Any) -> int | None:
 
 
 def _latest_feedback(assessments: Sequence[Any]) -> Mapping[str, Any]:
-    """Newest valid feedback per assessment name (re-scoring appends)."""
+    """Newest feedback per assessment name, skipping invalidated ones.
+
+    Re-scoring appends assessments, so the newest pass wins; an error in the
+    newest pass counts as a failure even if an older pass had a score.
+    """
     latest: dict[str, Any] = {}
     for assessment in sorted(assessments, key=lambda a: a.create_time_ms or 0):
         if getattr(assessment, "feedback", None) is None or assessment.valid is False:
@@ -316,7 +320,9 @@ def main(argv: Sequence[str] | None = None) -> CalibrationReport:
     parser.add_argument("--run-id", required=True, help="MLflow config run that holds the judge assessments")
     parser.add_argument("--config", dest="config_name", help="config name if the JSON holds several")
     parser.add_argument("--tracking-uri", help="MLflow tracking URI, e.g. sqlite:///mlflow.db")
-    parser.add_argument("--out", type=Path, help="write Markdown here and JSON next to it")
+    parser.add_argument(
+        "--out", type=Path, help="write <out>.md (Markdown) and <out>.json next to it"
+    )
     args = parser.parse_args(argv)
 
     if args.tracking_uri:
@@ -325,7 +331,7 @@ def main(argv: Sequence[str] | None = None) -> CalibrationReport:
     markdown = render_markdown(report)
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)
-        args.out.write_text(markdown, encoding="utf-8")
+        args.out.with_suffix(".md").write_text(markdown, encoding="utf-8")
         args.out.with_suffix(".json").write_text(
             json.dumps(report.to_dict(), indent=2), encoding="utf-8"
         )

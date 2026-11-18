@@ -14,6 +14,7 @@ Generated: 2026-05-18 | Sources: 40+ | Agents: 3 parallel
 | 06 | [Research Improvements](06-research-improvements.md) | No CIs, no significance tests, no baselines, no ablation. Only 16% of benchmarks use stats |
 | 07 | [Code Quality Issues](07-code-quality-issues.md) | 9 hardcoded values, silent failures, no circuit breaker, no version pinning |
 | 08 | [Priority Roadmap](08-priority-roadmap.md) | 4 tiers. Start: enable all RAGAS metrics, .env.example, pyproject.toml. Then: stats + more datasets |
+| 14 | [Calibration: direct RAGAS vs. MLflow scorers](14-ragas-vs-mlflow-calibration.md) | Issue #46, `results/run100` (50 SQuAD, critic gemma3:12b): no MLflow scorer meets mean \|Δ\| < 0.05 + Spearman > 0.9; `ragas_factual_correctness` / `retrieval_relevance` are not substitutes; MLflow defaults flood Ollama (38–100 % failures), throttled 2.4× slower per sample. Decision: side by side, direct RAGAS stays default |
 
 ## Guides
 

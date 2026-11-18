@@ -1,0 +1,103 @@
+{
+  "timestamp": "20261117_211504",
+  "num_configs": 1,
+  "dataset": {
+    "name": "squad",
+    "subset": "",
+    "sample_size": 50
+  },
+  "system_info": {
+    "python": "3.12.3",
+    "os": "Linux",
+    "os_version": "6.17.0-1014-nvidia",
+    "platform": "Linux-6.17.0-1014-nvidia-aarch64-with-glibc2.39",
+    "gpu": "NVIDIA GB10",
+    "gpu_memory_total_mb": "[N/A]"
+  },
+  "results": [
+    {
+      "config_name": "recursive_cs512_co64_nomic-embed-text:latest_qwen3.8-27b_concise_k4",
+      "llm_model": "qwen3.8-27b",
+      "embedding_model": "nomic-embed-text:latest",
+      "prompt_template": "concise",
+      "chunking_strategy": "recursive",
+      "chunk_size": 512,
+      "chunk_overlap": 64,
+      "num_chunks": 104,
+      "num_questions": 50,
+      "ragas_faithfulness": 0.875,
+      "ragas_answer_relevancy": 0.5606768650774171,
+      "ragas_answer_correctness": 0.8190082763552408,
+      "ragas_context_precision": 0.9466666665879999,
+      "ragas_context_recall": 0.96,
+      "ragas_semantic_similarity": null,
+      "stage_timings": {
+        "load_data": 2.9814014879520983,
+        "adapter_prepare": 4.8693553761113435,
+        "external_rag": 8.390938240103424,
+        "ragas_eval": 788.4608078238089,
+        "total": 803.0807963358238
+      },
+      "vector_db_backend": "chroma",
+      "total_input_tokens": 26789,
+      "total_output_tokens": 483,
+      "total_tokens": 27272,
+      "critic_input_tokens": 506740,
+      "critic_output_tokens": 40041,
+      "critic_total_tokens": 546781,
+      "total_estimated_cost_usd": null,
+      "avg_estimated_cost_per_answer_usd": null,
+      "llm_performance_metrics": {},
+      "llm_performance_artifact": null,
+      "llm_performance_error": null,
+      "adapter_metrics": {},
+      "avg_contexts_per_question": 4.0,
+      "max_contexts_per_question": 4,
+      "avg_context_chars_per_question": 1597.62,
+      "stats": {
+        "ragas_faithfulness": {
+          "mean": 0.875,
+          "std": 0.3282995769794685,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 50
+        },
+        "ragas_answer_relevancy": {
+          "mean": 0.5606768650774172,
+          "std": 0.30420690937699163,
+          "min": 0.0,
+          "max": 0.9999999999999997,
+          "median": 0.6150166239010717,
+          "count": 50
+        },
+        "ragas_answer_correctness": {
+          "mean": 0.8190082763552408,
+          "std": 0.29521085631161387,
+          "min": 0.07523933227796206,
+          "max": 1.0,
+          "median": 0.9440453380338706,
+          "count": 50
+        },
+        "ragas_context_precision": {
+          "mean": 0.946666666588,
+          "std": 0.18269834373096694,
+          "min": 0.0,
+          "max": 0.999999999975,
+          "median": 0.9999999999,
+          "count": 50
+        },
+        "ragas_context_recall": {
+          "mean": 0.96,
+          "std": 0.19794866372215741,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 1.0,
+          "count": 50
+        },
+        "ragas_semantic_similarity": null
+      }
+    }
+  ],
+  "samples_file": "benchmark_20261117_211504.samples.json.gz"
+}
