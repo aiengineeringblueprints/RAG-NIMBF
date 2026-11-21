@@ -1,4 +1,4 @@
-# RAG-NIMBF — RAG Benchmarking Framework
+# RAG-NIMBF — Non-Invasive, Modular Benchmarking Framework for RAG
 
 This project benchmarks RAG systems across datasets, retrieval outputs, answer
 quality metrics, runtime measurements, reports, and MLflow tracking.
