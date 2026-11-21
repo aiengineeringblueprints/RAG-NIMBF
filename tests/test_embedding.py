@@ -139,9 +139,9 @@ class TestResilientOllamaEmbeddings:
         self._model().embed_query("")
         assert mock_embed.call_args[0][1] == "empty"
 
-    @patch("time.sleep")
+    @patch("benchmark.embedding.time")
     @patch.object(OllamaEmbeddings, "embed_documents")
-    def test_embed_documents_retries_on_connection_reset(self, mock_embed, mock_sleep):
+    def test_embed_documents_retries_on_connection_reset(self, mock_embed, mock_time):
         mock_embed.side_effect = [
             ollama.ResponseError(
                 'Post "http://127.0.0.1:45887/tokenize": read: connection reset by peer',
@@ -153,18 +153,18 @@ class TestResilientOllamaEmbeddings:
         assert result == [[0.1]]
         assert mock_embed.call_count == 2
 
-    @patch("time.sleep")
+    @patch("benchmark.embedding.time")
     @patch.object(OllamaEmbeddings, "embed_documents")
-    def test_embed_documents_retries_on_builtin_connection_error(self, mock_embed, mock_sleep):
+    def test_embed_documents_retries_on_builtin_connection_error(self, mock_embed, mock_time):
         # The ollama client maps httpx.ConnectError to the built-in
         # ConnectionError (e.g. server restarting after a crash).
         mock_embed.side_effect = [ConnectionError("connection refused"), [[0.1]]]
         assert self._model().embed_documents(["text"]) == [[0.1]]
         assert mock_embed.call_count == 2
 
-    @patch("time.sleep")
+    @patch("benchmark.embedding.time")
     @patch.object(OllamaEmbeddings, "embed_documents")
-    def test_embed_documents_raises_after_max_retries(self, mock_embed, mock_sleep):
+    def test_embed_documents_raises_after_max_retries(self, mock_embed, mock_time):
         mock_embed.side_effect = ollama.ResponseError("boom", status_code=503)
         with pytest.raises(ollama.ResponseError):
             self._model().embed_documents(["text"])
@@ -172,31 +172,31 @@ class TestResilientOllamaEmbeddings:
 
         assert mock_embed.call_count == _EMBED_RETRIES
 
-    @patch("time.sleep")
+    @patch("benchmark.embedding.time")
     @patch.object(OllamaEmbeddings, "embed_documents")
-    def test_embed_documents_retries_on_httpx_error(self, mock_embed, mock_sleep):
+    def test_embed_documents_retries_on_httpx_error(self, mock_embed, mock_time):
         mock_embed.side_effect = [httpx.RemoteProtocolError("peer closed"), [[0.1]]]
         assert self._model().embed_documents(["text"]) == [[0.1]]
 
-    @patch("time.sleep")
+    @patch("benchmark.embedding.time")
     @patch.object(OllamaEmbeddings, "embed_documents")
-    def test_embed_documents_no_retry_on_client_errors(self, mock_embed, mock_sleep):
+    def test_embed_documents_no_retry_on_client_errors(self, mock_embed, mock_time):
         # 404 (model not found) / 400 will never succeed — fail fast.
         mock_embed.side_effect = ollama.ResponseError("model not found", status_code=404)
         with pytest.raises(ollama.ResponseError):
             self._model().embed_documents(["text"])
         assert mock_embed.call_count == 1
-        mock_sleep.assert_not_called()
+        mock_time.sleep.assert_not_called()
 
-    @patch("time.sleep")
+    @patch("benchmark.embedding.time")
     @patch.object(OllamaEmbeddings, "embed_documents")
-    def test_embed_documents_no_sleep_after_final_attempt(self, mock_embed, mock_sleep):
+    def test_embed_documents_no_sleep_after_final_attempt(self, mock_embed, mock_time):
         from benchmark.embedding import _EMBED_RETRIES
 
         mock_embed.side_effect = ollama.ResponseError("boom", status_code=500)
         with pytest.raises(ollama.ResponseError):
             self._model().embed_documents(["text"])
-        assert mock_sleep.call_count == _EMBED_RETRIES - 1
+        assert mock_time.sleep.call_count == _EMBED_RETRIES - 1
 
     @patch.object(OllamaEmbeddings, "embed_documents")
     def test_embed_documents_retries_each_batch_independently(self, mock_embed):
@@ -214,7 +214,7 @@ class TestResilientOllamaEmbeddings:
             return result
 
         mock_embed.side_effect = side_effect
-        with patch("time.sleep"):
+        with patch("benchmark.embedding.time"):
             result = self._model().embed_documents(texts)
         assert len(result) == len(texts)
         assert mock_embed.call_count == 3  # batch1 ok, batch2 retry, batch2 ok
