@@ -256,7 +256,8 @@ Implements benchmarking of *document parsers* (OCR models) as a first-class stag
 - **Custom metrics** (`custom_metrics.py`): non-RAGAS suite — IR heuristics
   (embedding-similarity relevance, `hit_at_k`, `ndcg_at_k`, `recall_at_k`,
   `context_relevance`), NLG metrics (`rouge_l`, `bleu`, `meteor_score`, `bert_score`
-  via roberta-large), refusal detection. Driver `compute_custom_metrics()`
+  via roberta-large), refusal detection (`is_refusal_answer()`: first sentence
+  checked with `answer_match.states_refusal()`; refusals get NLG scores 0). Driver `compute_custom_metrics()`
   (custom_metrics.py:408).
 - **Gold-doc retrieval metrics** (`gold_retrieval_metrics.py`):
   `compute_gold_doc_retrieval_metrics()` (gold_retrieval_metrics.py:207) — Hit@k /

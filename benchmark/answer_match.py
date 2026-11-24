@@ -93,20 +93,32 @@ _SHORT_ANSWER_WORDS = 30
 EXPECTED_BEHAVIORS = ("answer", "decline")
 
 
+def _states_refusal_normalized(normalized: str) -> bool:
+    return (not normalized.strip()
+            or any(p in normalized for p in _REFUSAL_PHRASES)
+            or any(p.search(normalized) for p in _REFUSAL_PATTERNS))
+
+
+def states_refusal(answer: str) -> bool:
+    """Return whether ``answer`` is empty or states unambiguously that it cannot answer.
+
+    Counts refusal phrases and "the context does not contain …" statements,
+    also as a caveat inside a longer answer, but never the ambiguous words
+    :func:`declines` accepts in short answers ("error", "does not exist"), which
+    also occur in genuine technical answers.
+    """
+    return _states_refusal_normalized(normalize_answer(answer or ""))
+
+
 def declines(answer: str) -> bool:
     """Return whether ``answer`` declines, i.e. reports that it cannot answer.
 
-    Empty answers, refusal phrases and "the context does not contain …"
-    statements always count, also as a caveat inside a longer answer. Ambiguous
-    words such as "error", "failed" or "permission" count only in short answers
-    (at most ``_SHORT_ANSWER_WORDS`` words).
+    True when :func:`states_refusal` is. Ambiguous words such as "error",
+    "failed" or "permission" count as well in short answers (at most
+    ``_SHORT_ANSWER_WORDS`` words), as on the MCP trust question set.
     """
     normalized = normalize_answer(answer or "")
-    if not normalized.strip():
-        return True
-    if any(p in normalized for p in _REFUSAL_PHRASES):
-        return True
-    if any(p.search(normalized) for p in _REFUSAL_PATTERNS):
+    if _states_refusal_normalized(normalized):
         return True
     return (len(normalized.split()) <= _SHORT_ANSWER_WORDS
             and any(p in normalized for p in _AMBIGUOUS_DECLINE_PHRASES))

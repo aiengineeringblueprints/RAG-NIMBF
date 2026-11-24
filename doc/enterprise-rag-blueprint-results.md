@@ -301,12 +301,21 @@ McNemar tests (discordant questions in parentheses):
 - **nDCG@10 is ≤ 1 with the PR #33 fix** (0.730–0.788). The baseline (0.730)
   sits inside the withdrawn run7 interim range, but run7 has still not been
   re-scored, so do not compare the two directly.
-- **NLG metrics are biased by a refusal-detector bug.** `is_refusal_answer()`
-  (`benchmark/custom_metrics.py`) zeroes BERT/ROUGE/BLEU/METEOR for answers
-  containing substrings such as "insufficient", "provided context" or "does not
-  provide": 195 answers in the baseline vs 161 by `declines()`, i.e. ~37 genuine
-  answers scored 0. The bias applies to every config (and earlier runs), so
-  orderings hold but absolute BERT F1 / ROUGE-L are too low.
+- **NLG metrics above were biased by a refusal-detector bug (fixed, issue
+  #57).** The old `is_refusal_answer()` zeroed BERT/ROUGE/BLEU/METEOR for
+  genuine answers containing "insufficient", "provided context" or "does not
+  provide". Re-scored from the stored samples
+  (`results/Enterprise-RAG/run8/nlg_rescore_issue57.json`,
+  `changes/2026-11-24-refusal-nlg-false-positives.md`):
+
+  | Refinement | α | BERT F1 (fixed) | ROUGE-L (fixed) |
+  |---|---|---|---|
+  | on (baseline) | 0.5 | 0.675 | 0.170 |
+  | on | 0.3 | 0.675 | 0.168 |
+  | off | 0.5 | 0.755 | 0.197 |
+  | off | 0.3 | **0.757** | **0.199** |
+
+  Refinement off still wins, by 0.08 BERT F1 instead of 0.04–0.06.
 - RAGAS follow-up (faithfulness, correctness) for refinement on vs off at
   α 0.5: run9, `experiments/enterprise-rag-run9-ragas.yaml`.
 
