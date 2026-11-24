@@ -6,7 +6,8 @@ answers to 0. This script reads every ``configs/*.samples.json.gz`` of a run
 directory and:
 
 * recomputes the NLG metrics of samples the old check zeroed (stored
-  ``bert_score_f1 == 0``) that the new check no longer counts as refusals,
+  ``rouge_l == 0``) that the new check no longer counts as refusals,
+  (BLEU with the default ``max_n=4``, BERTScore on CPU),
 * sets the NLG metrics of samples the new check counts as refusals to 0,
 * keeps all other stored scores.
 
@@ -46,12 +47,17 @@ def rescore(samples: list[dict], bert_model) -> tuple[list[dict[str, float]], in
         stored = s.get("custom_scores") or {}
         old = {m: stored.get(m) for m in NLG_METRICS}
         answer, truth = s.get("answer") or "", s.get("ground_truth") or ""
+        # BERTScore fields are None when the run had no BERT model; keep them None.
+        has_bert = old["bert_score_f1"] is not None
         if is_refusal_answer(answer):
-            zeroed += old["bert_score_f1"] not in (0, 0.0)
-            out.append({m: 0.0 for m in NLG_METRICS})
-        elif old["bert_score_f1"] == 0.0:
+            zeroed += any(old[m] for m in NLG_METRICS)
+            out.append({m: (0.0 if has_bert or not m.startswith("bert") else None)
+                        for m in NLG_METRICS})
+        elif old["rouge_l"] == 0.0:
+            # The old check zeroed this sample (or ROUGE-L is genuinely 0, in
+            # which case recomputing yields the same scores).
             rescored += 1
-            p, r, f1 = bert_score(answer, truth, bert_model)
+            p, r, f1 = bert_score(answer, truth, bert_model) if has_bert else (None,) * 3
             out.append({"rouge_l": rouge_l(answer, truth), "bleu": bleu(answer, truth),
                         "meteor": meteor_score(answer, truth), "bert_score_precision": p,
                         "bert_score_recall": r, "bert_score_f1": f1})

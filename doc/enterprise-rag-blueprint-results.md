@@ -207,22 +207,22 @@ calls), so answer-quality numbers below are critic-free custom metrics only.
 Summary sources: `results/Enterprise-RAG/run7/configs/*.json` (final report
 `benchmark_20261115_141853.json` covers only the last re-run config).
 
-| Chunking | k | hit@1 | hit@5 | hit@10 | recall@10 | nDCG@10 (raw, invalid — see below) | Ctx. rel. | BERT F1 | ROUGE-L |
-|---|---|---|---|---|---|---|---|---|---|
-| rec 512/64 | 10 | 0.480 | 0.842 | 0.912 | 0.912 | 1.646 | 0.717 | 0.530 | 0.126 |
-| rec 512/64 | 12 | 0.482 | 0.836 | 0.906 | 0.906 | 1.638 | 0.713 | 0.534 | 0.129 |
-| rec 512/128 | 10 | 0.484 | 0.828 | 0.898 | 0.898 | 1.664 | 0.719 | 0.533 | 0.129 |
-| rec 512/128 | 12 | 0.486 | 0.832 | 0.900 | 0.900 | 1.663 | 0.715 | 0.541 | 0.133 |
-| rec 1024/64 | 10 | 0.486 | 0.858 | **0.932** | **0.932** | 1.609 | 0.712 | 0.564 | 0.140 |
-| rec 1024/64 | 12 | 0.486 | 0.854 | 0.928 | 0.928 | 1.605 | 0.706 | 0.560 | 0.141 |
-| rec 1024/128 | 10 | 0.490 | 0.850 | 0.910 | 0.910 | 1.610 | 0.712 | 0.577 | 0.145 |
-| rec 1024/128 | 12 | 0.488 | 0.856 | 0.912 | 0.912 | 1.611 | 0.707 | 0.571 | 0.144 |
-| rec 2048/64 | 10 | 0.500 | 0.868 | 0.940 | 0.940 | 1.512 | 0.698 | 0.587 | 0.151 |
-| rec 2048/64 | 12 | 0.500 | 0.870 | 0.946 | 0.946 | 1.525 | 0.693 | 0.587 | 0.151 |
-| rec 2048/128 | 10 | **0.508** | 0.886 | 0.948 | 0.948 | 1.526 | 0.699 | 0.581 | 0.150 |
-| rec 2048/128 | 12 | 0.502 | 0.880 | 0.942 | 0.942 | 1.530 | 0.694 | **0.593** | **0.154** |
-| semantic p95 | 10 | 0.484 | 0.886 | 0.948 | 0.948 | 1.416 | 0.693 | 0.583 | 0.148 |
-| semantic p95 | 12 | 0.484 | **0.890** | **0.948** | **0.948** | 1.418 | 0.687 | 0.570 | 0.146 |
+| Chunking | k | hit@1 | hit@5 | hit@10 | recall@10 | nDCG@10 (raw, invalid — see below) | Ctx. rel. | BERT F1 | ROUGE-L | BERT F1 (fixed) | ROUGE-L (fixed) |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| rec 512/64 | 10 | 0.480 | 0.842 | 0.912 | 0.912 | 1.646 | 0.717 | 0.530 | 0.126 | 0.661 | 0.154 |
+| rec 512/64 | 12 | 0.482 | 0.836 | 0.906 | 0.906 | 1.638 | 0.713 | 0.534 | 0.129 | 0.665 | 0.159 |
+| rec 512/128 | 10 | 0.484 | 0.828 | 0.898 | 0.898 | 1.664 | 0.719 | 0.533 | 0.129 | 0.655 | 0.155 |
+| rec 512/128 | 12 | 0.486 | 0.832 | 0.900 | 0.900 | 1.663 | 0.715 | 0.541 | 0.133 | 0.678 | 0.162 |
+| rec 1024/64 | 10 | 0.486 | 0.858 | **0.932** | **0.932** | 1.609 | 0.712 | 0.564 | 0.140 | 0.665 | 0.160 |
+| rec 1024/64 | 12 | 0.486 | 0.854 | 0.928 | 0.928 | 1.605 | 0.706 | 0.560 | 0.141 | 0.689 | 0.169 |
+| rec 1024/128 | 10 | 0.490 | 0.850 | 0.910 | 0.910 | 1.610 | 0.712 | 0.577 | 0.145 | 0.673 | 0.166 |
+| rec 1024/128 | 12 | 0.488 | 0.856 | 0.912 | 0.912 | 1.611 | 0.707 | 0.571 | 0.144 | **0.690** | 0.169 |
+| rec 2048/64 | 10 | 0.500 | 0.868 | 0.940 | 0.940 | 1.512 | 0.698 | 0.587 | 0.151 | 0.667 | 0.168 |
+| rec 2048/64 | 12 | 0.500 | 0.870 | 0.946 | 0.946 | 1.525 | 0.693 | 0.587 | 0.151 | 0.671 | 0.169 |
+| rec 2048/128 | 10 | **0.508** | 0.886 | 0.948 | 0.948 | 1.526 | 0.699 | 0.581 | 0.150 | 0.673 | 0.169 |
+| rec 2048/128 | 12 | 0.502 | 0.880 | 0.942 | 0.942 | 1.530 | 0.694 | **0.593** | **0.154** | 0.687 | **0.174** |
+| semantic p95 | 10 | 0.484 | 0.886 | 0.948 | 0.948 | 1.416 | 0.693 | 0.583 | 0.148 | 0.658 | 0.164 |
+| semantic p95 | 12 | 0.484 | **0.890** | **0.948** | **0.948** | 1.418 | 0.687 | 0.570 | 0.146 | 0.658 | 0.164 |
 
 Reading of the numbers (compare `doc/enterprise-rag-techqa-refusal-analysis.md`
 §2.4, which reconstructed gold top-10 coverage manually at 91–97 %):
@@ -256,9 +256,13 @@ Reading of the numbers (compare `doc/enterprise-rag-techqa-refusal-analysis.md`
   duplicates; they only change if some retrieved chunks lacked a doc id
   (those chunks previously shifted later chunks into the top-k window) —
   check the run7 metadata for gaps during the re-score.
-- Context relevance (0.687–0.719) and BERT F1 (0.530–0.593) confirm the run6
-  order: answer quality follows context length (2048/semantic > 1024 > 512),
-  not hit@k alone — 512 has the *highest* nDCG@10 but the worst BERT F1.
+- Context relevance (0.687–0.719) and the original BERT F1 (0.530–0.593)
+  suggested the run6 order (2048/semantic > 1024 > 512). That order was
+  largely an artefact of the refusal check (issue #57): it zeroed more genuine
+  answers in the small-chunk configs. With the fixed check (BERT F1
+  0.656–0.690) the spread shrinks to 0.035, k12 beats k10 for every recursive
+  chunking, and semantic p95 sits with the 512 k10 configs at the bottom —
+  chunk size alone no longer explains answer quality.
 - Infra note: both semantic configs needed the Ollama embed-batching fix
   (`04a171f6`); with it, index builds run clean (see failure details above).
 

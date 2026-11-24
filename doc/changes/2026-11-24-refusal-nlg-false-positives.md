@@ -8,8 +8,9 @@ context", "does not provide", "no information", …) and set ROUGE-L, BLEU,
 METEOR and BERTScore of genuine answers to 0 (issue #57). It now uses the
 refusal phrases and "the context does not contain …" patterns of
 `benchmark/answer_match.py` on the answer's first sentence. Re-scored from the
-stored samples, BERT F1 of run7/run8 rises by 0.06–0.13 and ROUGE-L by
-0.01–0.03 per config.
+stored samples, BERT F1 of run7/run8 rises by 0.07–0.14 and ROUGE-L by
+0.02–0.03 per config; in run7 the chunk-size ranking of BERT F1 mostly
+disappears (spread 0.06 → 0.03).
 
 ## Changes
 
@@ -35,7 +36,9 @@ stored samples, BERT F1 of run7/run8 rises by 0.06–0.13 and ROUGE-L by
 
 ### Re-scoring script (`scripts/rescore_nlg_refusals.py`)
 - Reads `configs/*.samples.json.gz` of a run, recomputes the NLG metrics of
-  samples the old check zeroed and the new one does not, zeroes samples the new
+  samples the old check zeroed (stored `rouge_l == 0`) and the new one does not
+  (BLEU with the default `max_n=4`, BERTScore on CPU; BERT fields stay `None`
+  when the run had no BERT model), zeroes samples the new
   check counts as refusals, keeps all other stored scores.
 - Writes old and new per-config means to `<run_dir>/nlg_rescore_issue57.json`;
   the run's own files stay untouched (`results/` is append-only).
@@ -66,6 +69,9 @@ trailing it.
 - New runs report higher NLG means; compare against old runs only through
   `nlg_rescore_issue57.json` (run7, run8) or a re-score with the script.
 - `declines()` / `declined_rate` unchanged.
+- `scripts/analyze_blueprint_ablation.py` uses `is_refusal_answer()`; its
+  `is_refusal` column now follows the new rule, so re-runs differ from earlier
+  printed results.
 - The re-score uses the stored answers and `custom_scores`; MLflow metrics of
   run7/run8 keep the old values.
 
@@ -80,4 +86,12 @@ trailing it.
 - A leading sentence matching `according to the retrieved context, there is
   no …` still counts as a refusal although "there is no limit to the number of
   items …" is an answer (1 question in run8, 2 of its configs).
+- Only the first sentence is checked: a refusal in the second sentence ("The
+  question asks about X. However, the provided context does not contain …")
+  keeps its NLG scores, and the split `(?<=[.!?])\s+` ends a sentence early at
+  abbreviations such as "e.g. ". A hand check of 8 random answers among the 239
+  trailing-caveat answers found only genuine answers; the reverse error was not
+  measured.
 - Earlier runs (run6 and before) were not re-scored.
+- The re-scored NLG means live only in `nlg_rescore_issue57.json` on the DGX
+  Spark (run7/run8 results are not in git), not in MLflow.

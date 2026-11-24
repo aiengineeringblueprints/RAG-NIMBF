@@ -56,6 +56,14 @@ datasets such as TechQA no longer report `declined_rate` (use
 heuristic flags 167 of the 500 run6 answers (33.4 %) and 26 instead of 225
 reference answers.
 
+**NLG metrics had the same kind of false positive (issue #57,
+`changes/2026-11-24-refusal-nlg-false-positives.md`).** `is_refusal_answer()`
+in `benchmark/custom_metrics.py` set ROUGE-L, BLEU, METEOR and BERTScore to 0
+for answers containing "insufficient" or "provided context". It now checks only
+the first sentence with the unambiguous refusal phrases and patterns of
+`answer_match.states_refusal()`. `scripts/rescore_nlg_refusals.py` re-scores
+finished runs from their stored samples.
+
 ## 2. Why the real refusals happen
 
 Without a shared corpus (`has_shared_corpus` is `False` for `ragbench`), the

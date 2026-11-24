@@ -12,12 +12,11 @@ from __future__ import annotations
 import logging
 import math
 import re
-
-import mlflow
 from collections import Counter
 from dataclasses import dataclass
 from typing import Callable, Sequence
 
+import mlflow
 import numpy as np
 
 from benchmark.answer_match import states_refusal
