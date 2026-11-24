@@ -1,0 +1,50 @@
+# run9: RAGAS follow-up to run8 (issue #22): refinement on vs off at alpha 0.5.
+# Fixed best-known cell from run7 (recursive 2048/64, top-k 10, nomic, hybrid)
+# on 500 TechQA questions (same as run7); 2x2 ablation over query refinement and the hybrid
+# alpha. Measures refusal rate, relevant_sentence_recall, gold hit@k and
+# answer time. RAGAS off (cost), custom metrics on (gold_doc retrieval).
+# Run with (machine-local paths come from the script / .env):
+#   scripts/run_blueprint_rag.sh results/Enterprise-RAG/run9 \
+#     experiments/enterprise-rag-run9-ragas.yaml
+experiment_name: enterprise-rag-blueprint-ragas-run9
+
+dataset:
+  name: ragbench
+  subset: techqa
+  split: train
+  sample_size: 500
+
+settings:
+  rag_system_adapter: enterprise_rag_mcp
+  rag_adapter_accepts: "chunker,embedder"
+  benchmark_stage: all
+  retrieval_mode: retrieval
+  retrieval_strategy: hybrid
+  retrieval_fetch_k: 50
+  retrieval_multihop: false
+  retrieval_use_hyde: false
+  generation_temperature: 0
+  enterprise_rag_mcp_transport: inprocess
+  enterprise_rag_mcp_enabled: false
+  enterprise_rag_mcp_apply_settings: true
+  enterprise_rag_mcp_guardrails: true
+  enterprise_rag_mcp_index_corpus: true
+  eval_critic_llm: openai:deepseek-v4-flash
+  eval_critic_embedding: ollama:nomic-embed-text:latest
+  ragas_enabled: true            # LLM-judge metrics for the main run8 effect
+  custom_metrics_enabled: true
+  custom_retrieval_metrics_mode: gold_doc
+  mlflow_tracing_enabled: true   # per-sample traces for refusal inspection
+
+matrix:
+  llm_models: [openai:qwen3.8-27b]
+  embedding_models: [nomic-embed-text:latest]
+  retrieval_top_k: [10]
+  chunking_strategies: [recursive]
+  chunk_sizes: [2048]
+  chunk_overlaps: [64]
+  prompt_templates: [concise]
+  reranker_models: [null]
+  # 2x2 ablation (issue #22): baseline = refinement on, alpha 0.5
+  enterprise_rag_mcp_query_refinement: [true, false]
+  retrieval_hybrid_alpha: [0.5]

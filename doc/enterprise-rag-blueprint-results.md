@@ -1,7 +1,8 @@
 # Enterprise RAG Blueprint — Results Overview
 
-Status: 2026-11-15. Source: `results/Enterprise-RAG/run1..run7` on the DGX Spark
-(`~/source/Benchmarking-Framework`), manifest `experiments/enterprise-rag-blueprint-rag.yaml`.
+Status: 2026-11-24. Source: `results/Enterprise-RAG/run1..run8` on the DGX Spark
+(`~/source/Benchmarking-Framework`), manifest `experiments/enterprise-rag-blueprint-rag.yaml`
+(run7: `enterprise-rag-gold-run7.yaml`, run8: `enterprise-rag-run8-ablation.yaml`).
 Setup guide: [enterprise-rag-blueprint-setup.md](enterprise-rag-blueprint-setup.md).
 
 All runs benchmark the Blueprint as **plain RAG (MCP off)** through the
@@ -31,6 +32,8 @@ Blueprint retrieves and answers itself, with guardrails and query refinement on.
 | run5 | 2026-11-04 → 06 | RAGBench TechQA (train) | 500 | nomic-embed-text | deepseek-v4-flash / nomic | rec 512/1024/2048 × overlap 64/128 + semantic p95, each at top-k 10 and 12 (14) | 14/14 done |
 | run6 | 2026-11-08 → 11 | RAGBench TechQA (train) | 500 | nomic-embed-text | deepseek-v4-flash / nomic | same 14 as run5, **hybrid retrieval** | 14/14 done (semantic k10 failed once, re-run 2026-11-11) |
 | run7 | 2026-11-13 → 15 | RAGBench TechQA (train) | 500 | nomic-embed-text | critic off / nomic (RAGAS off) | same 14 as run5/6, **gold_doc retrieval metrics** | 14/14 done (both semantic configs failed twice on the Ollama runner batch bug, fixed + re-run 2026-11-14/15) |
+| run8 | 2026-11-24 | RAGBench TechQA (train) | 500 | nomic-embed-text | critic off / nomic (RAGAS off) | rec 2048/64 k10 hybrid; **query refinement on/off × alpha 0.5/0.3** (4) | 4/4 done |
+| run9 | 2026-11-24 → | RAGBench TechQA (train) | 500 | nomic-embed-text | deepseek-v4-flash / nomic (RAGAS on) | rec 2048/64 k10 hybrid α 0.5; refinement on/off (2) | running |
 
 Combination matrix (✅ done, ❌ failed, ⏹ aborted, — not run):
 
@@ -259,6 +262,54 @@ Reading of the numbers (compare `doc/enterprise-rag-techqa-refusal-analysis.md`
 - Infra note: both semantic configs needed the Ollama embed-batching fix
   (`04a171f6`); with it, index builds run clean (see failure details above).
 
+### RAGBench TechQA: query refinement × hybrid alpha ablation (run8), n = 500
+
+Issue #22. Manifest `experiments/enterprise-rag-run8-ablation.yaml`: fixed cell
+rec 2048/64, top-k 10, nomic, hybrid (fetch-k 50), `gold_doc` metrics, RAGAS
+off, MLflow tracing on; 2×2 over Blueprint query refinement (on/off) and
+hybrid alpha (0.5/0.3). Same 500 questions in every config (paired). Ran
+2026-11-24 05:34–07:25 UTC, ~28 min per config, 4/4 done. Config hash
+`managed-a6b2f4cd80` = refinement on, `managed-2c9672c978` = refinement off.
+Refusals, latency and McNemar tests: `scripts/analyze_blueprint_ablation.py`.
+
+| Refinement | α | hit@1 | hit@5 | hit@10 | nDCG@10 | sent. recall | BERT F1 | ROUGE-L | declined | declined with gold@10 | answer time mean / p95 (s) |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| on (baseline) | 0.5 | 0.502 | 0.876 | 0.944 | 0.730 | 0.718 | 0.587 | 0.151 | 32.2 % | 148 | 2.48 / 2.96 |
+| on | 0.3 | 0.506 | 0.880 | 0.958 | 0.739 | 0.733 | 0.583 | 0.147 | 31.2 % | 146 | 2.49 / 2.98 |
+| off | 0.5 | 0.540 | 0.908 | 0.972 | 0.768 | 0.740 | **0.643** | **0.171** | **23.8 %** | 116 | **2.24 / 2.68** |
+| off | 0.3 | **0.572** | **0.938** | **0.976** | **0.788** | **0.749** | 0.624 | 0.168 | 24.6 % | 120 | 2.27 / 2.70 |
+
+`declined` = `declines()` from `benchmark/answer_match.py`. Exact paired
+McNemar tests (discordant questions in parentheses):
+
+| Comparison | hit@1 | hit@10 | declined |
+|---|---|---|---|
+| refinement off vs on, α 0.5 | p = 0.040 (48 vs 29) | p = 0.007 (19 vs 5) | p < 0.001 (20 vs 62 refused only by one side) |
+| refinement off vs on, α 0.3 | p < 0.001 (59 vs 26) | p = 0.049 (13 vs 4) | p < 0.001 (29 vs 62) |
+| α 0.3 vs 0.5, refinement on | p = 0.86 | p = 0.039 (8 vs 1) | p = 0.49 |
+
+- **Query refinement hurts on TechQA.** Turning it off raises hit@1 by 4–7 pp
+  and hit@10 by 2–3 pp, cuts refusals from ~32 % to ~24 % (−42 refused
+  questions net, significant at both alphas), raises BERT F1 by 0.04–0.06 and
+  saves ~0.25 s per answer (one LLM call less). The refined query loses
+  vocabulary that matters on TechQA (product names, error codes); the adapter
+  does not yet log the refined query, so this mechanism is unverified.
+- **Alpha 0.3 vs 0.5 is secondary**: +0.4–3 pp retrieval, only hit@10 with
+  refinement on is (barely) significant; no effect on refusals.
+- **Refusals are a generation problem.** 92–98 % of refused questions have the
+  gold document in the top 10 (148 of 161 in the baseline).
+- **nDCG@10 is ≤ 1 with the PR #33 fix** (0.730–0.788). The baseline (0.730)
+  sits inside the withdrawn run7 interim range, but run7 has still not been
+  re-scored, so do not compare the two directly.
+- **NLG metrics are biased by a refusal-detector bug.** `is_refusal_answer()`
+  (`benchmark/custom_metrics.py`) zeroes BERT/ROUGE/BLEU/METEOR for answers
+  containing substrings such as "insufficient", "provided context" or "does not
+  provide": 195 answers in the baseline vs 161 by `declines()`, i.e. ~37 genuine
+  answers scored 0. The bias applies to every config (and earlier runs), so
+  orderings hold but absolute BERT F1 / ROUGE-L are too low.
+- RAGAS follow-up (faithfulness, correctness) for refinement on vs off at
+  α 0.5: run9, `experiments/enterprise-rag-run9-ragas.yaml`.
+
 ## Findings
 
 1. **TechQA is much harder than SQuAD for the Blueprint.** Context recall falls
@@ -321,6 +372,13 @@ Reading of the numbers (compare `doc/enterprise-rag-techqa-refusal-analysis.md`
     so the remaining answer-quality levers are not retrieval-side. run7 also
     exposed and fixed the nDCG duplicate-document bug (corrected nDCG@10
     0.711–0.739, see the run7 section).
+11. **Turn Blueprint query refinement off for TechQA (run8).** On the
+    recommended rec 2048/64 k10 hybrid cell, refinement off is significantly
+    better on gold hit@1/@10 and refusals (32 % → 24 %), answers faster, and
+    raises BERT F1; alpha 0.3 vs 0.5 is a minor second-order effect. Best cell:
+    refinement off, α 0.3 (retrieval) or α 0.5 (answer metrics, refusals).
+    Almost all remaining refusals have the gold document in the context, so
+    the next lever is the generation side (prompt, model), not retrieval.
 
 ## Caveats
 
@@ -363,7 +421,11 @@ Refusal causes, runtime and next steps for run6 are analysed in
 - Deduplicate the TechQA corpus before indexing: about a quarter of the context
   slots are duplicate texts.
 - Inspect the Blueprint prompt and query refinement on refusals with high
-  context recall (over-cautious generator).
+  context recall (over-cautious generator). run8 shows refinement itself
+  causes ~42 extra refusals; logging the refined query in the adapter is
+  needed to see what it drops.
+- Fix `is_refusal_answer()` false positives (see run8) and re-score NLG
+  metrics.
 - Re-test semantic chunking with a bounded chunk size or a matched context
   budget.
 - Gold-doc retrieval metrics for TechQA (map RAGBench documents to
