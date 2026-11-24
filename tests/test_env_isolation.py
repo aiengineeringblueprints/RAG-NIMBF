@@ -30,10 +30,19 @@ def test_benchmark_vars_are_absent_inside_tests():
     # with the variables exported to prove the suite clears them.
     assert "RETRIEVAL_STRATEGY" not in os.environ
     assert "LLM_MODELS" not in os.environ
+    # Read via config helper (_env_bool) and outside config.py (benchmark/).
+    assert "ENTERPRISE_RAG_MCP_ENABLED" not in os.environ
+    assert "ELECTRICITY_PRICE_EUR_PER_KWH" not in os.environ
 
 
 def test_shell_exported_benchmark_vars_are_cleared_per_test():
-    env = {**os.environ, "RETRIEVAL_STRATEGY": "mmr", "LLM_MODELS": "leaky:1b"}
+    env = {
+        **os.environ,
+        "RETRIEVAL_STRATEGY": "mmr",
+        "LLM_MODELS": "leaky:1b",
+        "ENTERPRISE_RAG_MCP_ENABLED": "false",
+        "ELECTRICITY_PRICE_EUR_PER_KWH": "9.99",
+    }
 
     result = subprocess.run(
         [

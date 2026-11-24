@@ -16,15 +16,21 @@ any machine.
     never writes `.env` values into `os.environ` (which also stopped leaking
     across tests within one session);
   - deletes every benchmark-related variable for the duration of each test.
-    The key set (`BENCHMARK_ENV_KEYS`, ~160 names) is collected once at import
+    The key set (`BENCHMARK_ENV_KEYS`, ~180 names) is collected once at import
     from `.env.example` (including commented-out keys), the local `.env` if
-    present, and every `os.getenv("…")` / `os.environ.get("…")` in `config.py`;
+    present, and every env read in `config.py` and `benchmark/**/*.py`
+    (`os.getenv("…")`, `os.environ.get("…")`, `os.environ["…"]`, and helpers
+    named `_env_*("…")` such as `config._env_bool`, `tracking._env_flag`);
   - keeps `PROMPT_TEMPLATES=concise` as before.
 - **Regression tests** `tests/test_env_isolation.py`: `config.load_dotenv` on a
   temp `.env` does not leak; the env matrix yields code defaults
   (`retrieval_strategy == "similarity"`); a pytest subprocess started with
   `RETRIEVAL_STRATEGY` / `LLM_MODELS` exported still sees them cleared inside
-  the test.
+  the test. Covered vars include ones read via `_env_bool`
+  (`ENTERPRISE_RAG_MCP_ENABLED`) and outside `config.py`
+  (`ELECTRICITY_PRICE_EUR_PER_KWH`, `benchmark/costing.py`).
+- Removed `tests/test_dataset.py::_clean_local_dataset_field_env`; the global
+  fixture now covers the `DATASET_*_FIELD` vars it cleared.
 
 ## Behaviour changes and migration
 - Tests can no longer read real `.env` values or shell-exported benchmark
@@ -39,7 +45,17 @@ any machine.
   order-dependent leak from one test into the next), green after.
 - Full suite on the DGX Spark with its real `.env` in place:
   `1030 passed` (previously 5 failures, listed in #60).
+- Code review (standards + spec) flagged that the first key harvest missed
+  helper reads and `benchmark/` reads; extended test went red, then green.
+  Final full suite on the Spark: one run with 1 intermittent failure (see
+  follow-ups), then `1030 passed` in two consecutive runs.
 
 ## Follow-ups
-- `tests/test_dataset.py::_clean_local_dataset_field_env` is now redundant
-  with the global fixture but left in place as harmless local documentation.
+- New env reads that use neither `os.getenv`/`os.environ` nor an `_env_*`
+  helper, or that live outside `config.py`/`benchmark/`, are not cleared
+  automatically; add them to `.env.example` (which is harvested too).
+- `tests/test_embedding.py::TestResilientOllamaEmbeddings::test_embed_documents_no_retry_on_client_errors`
+  failed once in a full run (`mock_sleep.assert_not_called`) and passed in
+  isolation and in every other full run. It patches the global `time.sleep`,
+  so likely a background thread from an earlier test calls it. Unrelated to
+  this change; worth patching `benchmark.embedding.time.sleep` instead.

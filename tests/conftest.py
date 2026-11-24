@@ -14,17 +14,27 @@ if str(project_root) not in sys.path:
 
 
 _ENV_KEY_PATTERN = re.compile(r"^\s*#?\s*(?:export\s+)?([A-Z][A-Z0-9_]*)\s*=", re.M)
-_GETENV_PATTERN = re.compile(r"""os\.(?:getenv|environ\.get)\(\s*["']([A-Z][A-Z0-9_]*)["']""")
+# os.getenv("X"), os.environ.get("X"), os.environ["X"], and env helpers such as
+# config._env_bool("X") / tracking._env_flag("X").
+_ENV_READ_PATTERN = re.compile(
+    r"""(?:\bgetenv\(|\benviron\.get\(|\benviron\[|\b_env_\w+\()\s*["']([A-Z][A-Z0-9_]*)["']"""
+)
 
 
 def _benchmark_env_keys() -> frozenset[str]:
-    """Env var names the framework reads: .env.example, local .env, config.py."""
+    """Env var names the framework reads.
+
+    Collected from .env.example, the local .env, and every env read in
+    config.py and the benchmark/ package.
+    """
     keys: set[str] = set()
     for name in (".env.example", ".env"):
         path = project_root / name
         if path.is_file():
             keys.update(_ENV_KEY_PATTERN.findall(path.read_text(errors="ignore")))
-    keys.update(_GETENV_PATTERN.findall((project_root / "config.py").read_text()))
+    sources = [project_root / "config.py", *(project_root / "benchmark").rglob("*.py")]
+    for path in sources:
+        keys.update(_ENV_READ_PATTERN.findall(path.read_text(errors="ignore")))
     return frozenset(keys)
 
 
@@ -36,8 +46,9 @@ def isolated_benchmark_env(monkeypatch):
     """Make every test independent of the machine-local .env and shell (#60).
 
     Disables dotenv loading in ``config`` and clears every benchmark-related
-    variable, so config code under test only sees its own defaults plus what
-    the test sets explicitly via ``monkeypatch.setenv``.
+    variable, so code under test only sees its defaults plus what the test
+    sets explicitly via ``monkeypatch.setenv``. ``PROMPT_TEMPLATES`` is pinned
+    to ``concise`` so config unit tests get a single prompt per matrix cell.
     """
     import config
 
