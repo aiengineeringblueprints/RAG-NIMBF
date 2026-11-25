@@ -17,8 +17,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-from benchmark.lineage.dataset import assign_sample_ids
-from benchmark.regression.metrics import _RETRIEVAL_PREFIXES, sample_metrics
+from benchmark.lineage.dataset import assign_sample_identities
+from benchmark.regression.metrics import RETRIEVAL_PREFIXES, sample_metrics
 
 LINEAGE_ARTIFACT_DIR = "lineage"
 LINEAGE_FILE = "lineage.json"
@@ -33,6 +33,8 @@ class RunRecord:
     # One entry per sample: sample_id, category, metrics (name -> value|None).
     samples: list[dict[str, Any]] = field(default_factory=list)
     mlflow_run_id: str | None = None
+    # Run-level failures, e.g. {"evaluation_error": "..."}; empty when unknown.
+    run_errors: dict[str, Any] = field(default_factory=dict)
 
 
 def _number(value: Any) -> float | None:
@@ -52,22 +54,28 @@ def per_sample_metrics(sample: Mapping[str, Any]) -> dict[str, float | None]:
     for name, value in (sample.get("ragas_scores") or {}).items():
         metrics.setdefault(name, _number(value))
     for name, value in (sample.get("custom_scores") or {}).items():
-        if not name.startswith(_RETRIEVAL_PREFIXES):
+        if not name.startswith(RETRIEVAL_PREFIXES):
             metrics.setdefault(name, _number(value))
     return metrics
 
 
 def lineage_samples(per_sample: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
-    """Text-free per-sample records: ID, category, metrics."""
-    derived = assign_sample_ids(per_sample)
+    """Text-free per-sample records: IDs, category, validity, metrics."""
+    derived = assign_sample_identities(per_sample)
     return [
         {
-            "sample_id": sample.get("sample_id") or fallback,
+            "sample_id": sample.get("sample_id") or identity.sample_id,
+            "question_id": identity.question_id,
             "category": sample.get("category"),
+            "answer_valid": sample.get("answer_valid"),
             "metrics": per_sample_metrics(sample),
         }
-        for sample, fallback in zip(per_sample, derived)
+        for sample, identity in zip(per_sample, derived, strict=True)
     ]
+
+
+def run_errors(result: Mapping[str, Any]) -> dict[str, Any]:
+    return {"evaluation_error": result.get("evaluation_error")}
 
 
 def scorer_fingerprint(scorer: Mapping[str, Any] | None) -> str | None:
@@ -102,6 +110,7 @@ def load_report_record(path: str | Path, config_name: str | None = None) -> RunR
         lineage=lineage,
         samples=lineage_samples(result.get("per_sample") or []),
         mlflow_run_id=result.get("mlflow_run_id"),
+        run_errors=run_errors(result),
     )
 
 
@@ -111,7 +120,7 @@ def load_mlflow_record(run_id: str) -> RunRecord:
     base = f"runs:/{run_id}/{LINEAGE_ARTIFACT_DIR}"
     try:
         lineage = mlflow.artifacts.load_dict(f"{base}/{LINEAGE_FILE}")
-        samples = mlflow.artifacts.load_dict(f"{base}/{SAMPLES_FILE}")["samples"]
+        payload = mlflow.artifacts.load_dict(f"{base}/{SAMPLES_FILE}")
     except Exception as exc:
         raise ValueError(
             f"MLflow run {run_id} has no lineage artifacts (logged before #65?); "
@@ -119,7 +128,12 @@ def load_mlflow_record(run_id: str) -> RunRecord:
         ) from exc
     config_name = mlflow.get_run(run_id).data.tags.get("config_name")
     return RunRecord(
-        ref=run_id, config_name=config_name, lineage=lineage, samples=samples, mlflow_run_id=run_id
+        ref=run_id,
+        config_name=config_name,
+        lineage=lineage,
+        samples=payload["samples"],
+        mlflow_run_id=run_id,
+        run_errors=payload.get("run_errors") or {},
     )
 
 

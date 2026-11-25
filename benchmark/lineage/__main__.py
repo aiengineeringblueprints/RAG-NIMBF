@@ -10,12 +10,9 @@ import argparse
 import sys
 from pathlib import Path
 
-from benchmark.lineage.compare import (
-    compare_runs,
-    default_output_dir,
-    log_comparison_to_mlflow,
-    write_comparison,
-)
+from benchmark.lineage.compare import compare_runs
+from benchmark.lineage.publish import log_comparison_to_mlflow
+from benchmark.lineage.report import default_output_dir, write_comparison
 from benchmark.lineage.runs import load_run_record
 
 
@@ -36,7 +33,7 @@ def main(argv: list[str] | None = None) -> int:
     json_path, md_path = write_comparison(result, out_dir)
     print(f"status: {result['status']}")
     for reason in result["reasons"]:
-        print(f"  not comparable: {reason}")
+        print(f"  {result['status'].replace('_', ' ')}: {reason}")
     print(f"wrote {md_path} and {json_path}")
     if args.log_mlflow:
         print(f"mlflow run: {log_comparison_to_mlflow(result, json_path, md_path)}")

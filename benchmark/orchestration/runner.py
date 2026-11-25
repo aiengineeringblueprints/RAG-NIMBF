@@ -578,8 +578,8 @@ def _run_single_benchmark_impl(
             adapter_diagnostics=all_adapter_diagnostics[i]
             if i < len(all_adapter_diagnostics)
             else None,
-            sample_id=run_lineage.sample_ids[i],
-            category=run_lineage.categories[i],
+            sample_id=run_lineage.samples[i].sample_id,
+            category=run_lineage.samples[i].category,
         )
         for i, (q, gt, ctx, gr) in enumerate(
             zip(questions, ground_truths, all_contexts, gen_results)

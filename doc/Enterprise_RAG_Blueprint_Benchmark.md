@@ -171,8 +171,12 @@ python -m benchmark.lineage compare \
 
 `comparison.md` zeigt oben beide Blueprint-Commits, darunter pro Metrik
 Baseline, Kandidat, Delta mit 95%-KI und die Zahl gepaarter Fragen, danach die
-Kategorien (`answerable` / `unanswerable`). Status `not_comparable` heißt:
-anderer Critic/andere Bewertung oder keine gemeinsamen Fragen; Details unter
+Kategorien (`answerable` / `unanswerable`) und die Fehlerzahlen beider Läufe.
+Status `not_comparable` heißt: anderer Critic, andere Bewertungs-Version
+(Evaluator-Code oder RAGAS), anderer Corpus oder keine gemeinsamen Fragen.
+`unverified` heißt: ein Lauf hat keine Lineage (älter als #65), die
+Bedingungen sind also nicht prüfbar. `candidate_id` braucht immer eine
+`baseline_run_id`. Details unter
 [results-and-mlflow.md](results-and-mlflow.md#experiment-lineage-and-paired-comparisons).
 
 ## Häufige Probleme

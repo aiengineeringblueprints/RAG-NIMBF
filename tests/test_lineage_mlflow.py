@@ -18,7 +18,12 @@ from benchmark.tracking import log_benchmark_run
 
 main = pytest.importorskip("main")
 
-EXPERIMENT = {"study_id": "retrieval-k", "candidate_id": "k8", "issue_reference": "#65"}
+EXPERIMENT = {
+    "study_id": "retrieval-k",
+    "candidate_id": "k8",
+    "baseline_run_id": "base-run",
+    "issue_reference": "#65",
+}
 DECLARED = {"system_id": "acme-rag", "version_source": "container", "version": "sha256:feed"}
 
 

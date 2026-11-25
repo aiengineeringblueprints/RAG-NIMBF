@@ -2,27 +2,32 @@
 
 Samples are paired by stable ``sample_id``. A metric missing on one side is
 counted as missing, never scored as 0. Confidence intervals come from the
-paired bootstrap already used by ``benchmark.regression``.
+paired bootstrap already used by ``benchmark.regression``, resampling whole
+questions (``question_id``) so a question asked with several reference
+answers is not counted as independent evidence.
 
 Status:
-- ``paired``: same scorer, identical sample sets.
-- ``partially_paired``: same scorer, overlapping but different sample sets;
-  statistics use the overlap only.
+- ``paired``: verified same scorer and corpus, identical sample sets.
+- ``partially_paired``: verified same scorer and corpus, overlapping but
+  different sample sets; statistics use the overlap only.
+- ``unverified``: shared samples, but the scorer or corpus identity of at
+  least one side is unknown (e.g. a run recorded before lineage existed);
+  deltas are shown but must not be read as a paired comparison.
 - ``not_comparable``: different scorer identity, different corpus
   fingerprint, or no shared samples.
+
+Rendering lives in ``benchmark.lineage.report``, MLflow publishing in
+``benchmark.lineage.publish``.
 """
 
 from __future__ import annotations
 
-import json
-import re
-from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 import numpy as np
 
-from benchmark.lineage.provenance import FRAMEWORK_ROOT, SystemProvenance
-from benchmark.lineage.runs import RunRecord, lineage_tags, scorer_fingerprint
+from benchmark.lineage.provenance import SystemProvenance
+from benchmark.lineage.runs import RunRecord, scorer_fingerprint
 from benchmark.regression.compare import Paired
 from benchmark.regression.metrics import LOWER_IS_BETTER
 
@@ -59,11 +64,45 @@ def _by_id(record: RunRecord) -> dict[str, Mapping[str, Any]]:
     return {s["sample_id"]: s for s in record.samples}
 
 
+def _cluster(sample: Mapping[str, Any]) -> str:
+    """Bootstrap cluster: the question, so repeats are resampled together."""
+    return sample.get("question_id") or sample["sample_id"]
+
+
 def _stats(pairs: Sequence[tuple[float, float, str]]) -> dict[str, Any]:
     paired = Paired.from_triples(pairs)
     base, cand = float(paired.baseline.mean()), float(paired.candidate.mean())
-    ci = list(paired.bootstrap_ci(N_BOOT, SEED)) if len(pairs) >= 2 else None
-    return {"baseline": base, "candidate": cand, "delta": cand - base, "n": len(pairs), "ci95": ci}
+    clusters = len({cluster for _, _, cluster in pairs})
+    ci = list(paired.bootstrap_ci(N_BOOT, SEED)) if clusters >= 2 else None
+    return {
+        "baseline": base,
+        "candidate": cand,
+        "delta": cand - base,
+        "n": len(pairs),
+        "clusters": clusters,
+        "ci95": ci,
+    }
+
+
+def _unverified_reasons(base: dict, cand: dict) -> list[str]:
+    """Conditions that cannot be checked because one side never recorded them."""
+    reasons = []
+    for label, side in (("baseline", base), ("candidate", cand)):
+        if side["scorer_fingerprint"] is None:
+            reasons.append(f"{label} scorer identity unknown (run predates lineage)")
+    b_fp = base["dataset"].get("corpus_fingerprint")
+    c_fp = cand["dataset"].get("corpus_fingerprint")
+    if bool(b_fp) != bool(c_fp):
+        unknown = "baseline" if not b_fp else "candidate"
+        reasons.append(f"{unknown} corpus fingerprint unknown; same corpus cannot be verified")
+    return reasons
+
+
+def _error_counts(record: RunRecord) -> dict[str, Any]:
+    return {
+        "invalid_answers": sum(s.get("answer_valid") is False for s in record.samples),
+        "evaluation_error": record.run_errors.get("evaluation_error"),
+    }
 
 
 def _blocking_reasons(base: dict, cand: dict, shared: list[str]) -> list[str]:
@@ -90,8 +129,6 @@ def _blocking_reasons(base: dict, cand: dict, shared: list[str]) -> list[str]:
 def _warnings(base: dict, cand: dict) -> list[str]:
     warnings = []
     for label, side in (("baseline", base), ("candidate", cand)):
-        if side["scorer_fingerprint"] is None:
-            warnings.append(f"{label} scorer identity unknown (run predates lineage)")
         if side["system"]["status"] == "not_available":
             warnings.append(f"{label} system provenance not available")
         elif side["system"]["status"] == "dirty":
@@ -100,7 +137,9 @@ def _warnings(base: dict, cand: dict) -> list[str]:
     if b_ds.get("name") and c_ds.get("name") and b_ds["name"] != c_ds["name"]:
         warnings.append(f"dataset names differ: {b_ds['name']} vs {c_ds['name']}")
     intended = cand["experiment"].get("baseline_run_id")
-    if intended and intended not in (base["ref"], base.get("mlflow_run_id")):
+    if not intended:
+        warnings.append("candidate does not declare baseline_run_id in its experiment metadata")
+    elif intended not in (base["ref"], base.get("mlflow_run_id")):
         warnings.append(
             f"candidate declares baseline_run_id {intended}, "
             f"but was compared against {base['ref']}"
@@ -113,6 +152,7 @@ def compare_runs(baseline: RunRecord, candidate: RunRecord) -> dict[str, Any]:
     base_samples, cand_samples = _by_id(baseline), _by_id(candidate)
     shared = [sid for sid in base_samples if sid in cand_samples]
     reasons = _blocking_reasons(base_side, cand_side, shared)
+    unverified = [] if reasons else _unverified_reasons(base_side, cand_side)
     pairing = {
         "paired": len(shared),
         "only_baseline": len(base_samples) - len(shared),
@@ -120,6 +160,9 @@ def compare_runs(baseline: RunRecord, candidate: RunRecord) -> dict[str, Any]:
     }
     if reasons:
         status = "not_comparable"
+    elif unverified:
+        status = "unverified"
+        reasons = unverified
     elif pairing["only_baseline"] or pairing["only_candidate"]:
         status = "partially_paired"
     else:
@@ -131,6 +174,7 @@ def compare_runs(baseline: RunRecord, candidate: RunRecord) -> dict[str, Any]:
         "reasons": reasons,
         "warnings": _warnings(base_side, cand_side),
         "pairing": pairing,
+        "errors": {"baseline": _error_counts(baseline), "candidate": _error_counts(candidate)},
         "baseline": base_side,
         "candidate": cand_side,
         "metrics": {},
@@ -155,8 +199,9 @@ def compare_runs(baseline: RunRecord, candidate: RunRecord) -> dict[str, Any]:
             if bv is None or cv is None:
                 deltas[metric] = None
                 continue
-            per_metric[metric].append((bv, cv, sid))
-            per_category.setdefault(category, {}).setdefault(metric, []).append((bv, cv, sid))
+            pair = (bv, cv, _cluster(c))
+            per_metric[metric].append(pair)
+            per_category.setdefault(category, {}).setdefault(metric, []).append(pair)
             deltas[metric] = cv - bv
         result["questions"].append({"sample_id": sid, "category": category, "deltas": deltas})
 
@@ -167,7 +212,7 @@ def compare_runs(baseline: RunRecord, candidate: RunRecord) -> dict[str, Any]:
         if per_metric[metric]:
             entry.update(_stats(per_metric[metric]))
         else:
-            entry.update(baseline=None, candidate=None, delta=None, n=0, ci95=None)
+            entry.update(baseline=None, candidate=None, delta=None, n=0, clusters=0, ci95=None)
         entry.update(missing_baseline=missing_b, missing_candidate=missing_c)
         result["metrics"][metric] = entry
 
@@ -180,125 +225,3 @@ def compare_runs(baseline: RunRecord, candidate: RunRecord) -> dict[str, Any]:
             for metric, pairs in sorted(metrics.items())
         }
     return result
-
-
-# ---------------------------------------------------------------------------
-# Rendering
-# ---------------------------------------------------------------------------
-
-
-def _fmt(value: Any, *, signed: bool = False) -> str:
-    if value is None:
-        return "–"
-    if isinstance(value, (int, float)):
-        return f"{value:+.4f}" if signed else f"{value:.4f}"
-    return str(value)
-
-
-def _provenance_line(side: Mapping[str, Any]) -> str:
-    system = side["system"]
-    version = system.get("version") or "unknown"
-    branch = f", branch {system['branch']}" if system.get("branch") else ""
-    return (
-        f"`{side['ref']}` ({side.get('config_name') or 'n/a'}): "
-        f"system **{system.get('system_id')}** {version}{branch} "
-        f"[{system.get('status')}, source {system.get('version_source')}]"
-    )
-
-
-def render_markdown(result: Mapping[str, Any]) -> str:
-    lines = [
-        "# Run comparison",
-        "",
-        f"**Status:** `{result['status']}`",
-        "",
-        f"- Baseline: {_provenance_line(result['baseline'])}",
-        f"- Candidate: {_provenance_line(result['candidate'])}",
-        f"- Pairing: {result['pairing']['paired']} paired, "
-        f"{result['pairing']['only_baseline']} only in baseline, "
-        f"{result['pairing']['only_candidate']} only in candidate",
-    ]
-    for side in ("baseline", "candidate"):
-        ds = result[side]["dataset"]
-        lines.append(
-            f"- {side.title()} dataset: {ds.get('name') or 'unknown'}, "
-            f"question set `{ds.get('question_set_hash') or 'unknown'}`, "
-            f"corpus `{ds.get('corpus_fingerprint') or 'unknown'}`, "
-            f"scorer `{result[side]['scorer_fingerprint'] or 'unknown'}`"
-        )
-    experiment = result["candidate"]["experiment"]
-    if experiment:
-        lines += ["", "## Experiment", ""]
-        lines += [f"- {key}: {value}" for key, value in experiment.items()]
-    if result["reasons"]:
-        lines += ["", "## Not comparable", ""] + [f"- {r}" for r in result["reasons"]]
-    if result["warnings"]:
-        lines += ["", "## Warnings", ""] + [f"- {w}" for w in result["warnings"]]
-    if result["metrics"]:
-        lines += [
-            "",
-            "## Metrics (paired samples)",
-            "",
-            "| Metric | Direction | Baseline | Candidate | Delta | 95% CI | n | Missing (b/c) |",
-            "|---|---|---|---|---|---|---|---|",
-        ]
-        for name, m in result["metrics"].items():
-            ci = f"[{_fmt(m['ci95'][0], signed=True)}, {_fmt(m['ci95'][1], signed=True)}]" if m["ci95"] else "–"
-            lines.append(
-                f"| {name} | {m['direction']} | {_fmt(m['baseline'])} | {_fmt(m['candidate'])} "
-                f"| {_fmt(m['delta'], signed=True)} | {ci} | {m['n']} "
-                f"| {m['missing_baseline']}/{m['missing_candidate']} |"
-            )
-    if result["categories"]:
-        lines += ["", "## Categories (mean delta, n)", ""]
-        for category, metrics in result["categories"].items():
-            cells = ", ".join(f"{k} {_fmt(v['delta'], signed=True)} (n={v['n']})" for k, v in metrics.items())
-            lines.append(f"- **{category}**: {cells}")
-    lines += ["", "Per-question deltas: see `comparison.json` (`questions`).", ""]
-    return "\n".join(lines)
-
-
-def write_comparison(result: Mapping[str, Any], out_dir: str | Path) -> tuple[Path, Path]:
-    out = Path(out_dir)
-    out.mkdir(parents=True, exist_ok=True)
-    json_path, md_path = out / "comparison.json", out / "comparison.md"
-    json_path.write_text(json.dumps(result, indent=2, default=str), encoding="utf-8")
-    md_path.write_text(render_markdown(result), encoding="utf-8")
-    return json_path, md_path
-
-
-def default_output_dir(baseline: RunRecord, candidate: RunRecord) -> Path:
-    def slug(record: RunRecord) -> str:
-        name = record.config_name or Path(record.ref.partition("#")[0]).stem or record.ref
-        return re.sub(r"[^A-Za-z0-9._-]+", "_", name)[:60]
-
-    base_path = Path(baseline.ref.partition("#")[0])
-    root = (
-        base_path.parent / "comparisons"
-        if base_path.is_file()
-        else FRAMEWORK_ROOT / "results" / "comparisons"
-    )
-    return root / f"{slug(baseline)}__vs__{slug(candidate)}"
-
-
-def log_comparison_to_mlflow(result: Mapping[str, Any], json_path: Path, md_path: Path) -> str:
-    """Log the comparison as its own MLflow run, linked to both inputs by tag."""
-    import mlflow
-
-    tags = {
-        "run_type": "comparison",
-        "comparison.status": result["status"],
-        "comparison.baseline": str(result["baseline"]["ref"]),
-        "comparison.candidate": str(result["candidate"]["ref"]),
-    }
-    tags.update(lineage_tags({"experiment": result["candidate"]["experiment"]}))
-    for side in ("baseline", "candidate"):
-        if result[side].get("mlflow_run_id"):
-            tags[f"comparison.{side}_run_id"] = result[side]["mlflow_run_id"]
-    with mlflow.start_run(run_name=f"compare:{json_path.parent.name}"[:250], tags=tags) as run:
-        for name, m in result["metrics"].items():
-            if m["delta"] is not None:
-                mlflow.log_metric(f"delta.{name}", m["delta"])
-        mlflow.log_artifact(str(json_path), artifact_path="comparison")
-        mlflow.log_artifact(str(md_path), artifact_path="comparison")
-        return run.info.run_id

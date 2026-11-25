@@ -354,7 +354,10 @@ def _log_lineage(result: BenchmarkResultExtended) -> None:
         return
     mlflow.log_dict(result.lineage, f"{LINEAGE_ARTIFACT_DIR}/{LINEAGE_FILE}")
     samples = lineage_samples([dataclasses.asdict(s) for s in result.per_sample])
-    mlflow.log_dict({"samples": samples}, f"{LINEAGE_ARTIFACT_DIR}/{SAMPLES_FILE}")
+    mlflow.log_dict(
+        {"samples": samples, "run_errors": {"evaluation_error": result.evaluation_error}},
+        f"{LINEAGE_ARTIFACT_DIR}/{SAMPLES_FILE}",
+    )
 
 
 def _link_sample_traces(result: BenchmarkResultExtended, run_id: str) -> None:

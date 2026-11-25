@@ -6,17 +6,24 @@ import json
 
 import pytest
 
-from benchmark.lineage.compare import compare_runs, write_comparison
-from benchmark.lineage.runs import RunRecord, load_run_record
+from benchmark.lineage.compare import compare_runs
+from benchmark.lineage.report import write_comparison
+from benchmark.lineage.experiment import scorer_identity
+from benchmark.lineage.runs import RunRecord, load_run_record, scorer_fingerprint
 
 SCORER = {"eval_critic_llm": "judge-a", "ragas_enabled": True}
 
 
-def _record(ref, scores, *, scorer=SCORER, corpus="c1", system=None, extra=None):
+def _record(
+    ref, scores, *, scorer=SCORER, corpus="c1", system=None, extra=None, questions=None,
+    invalid=(), run_errors=None,
+):
     """scores: {sample_id: (answer_correctness, total_seconds)}"""
     samples = [
         {
             "sample_id": sid,
+            "question_id": (questions or {}).get(sid, f"question-{sid}"),
+            "answer_valid": sid not in invalid,
             "category": "answerable" if i % 2 == 0 else "unanswerable",
             "metrics": {
                 "answer_correctness": ac,
@@ -35,6 +42,7 @@ def _record(ref, scores, *, scorer=SCORER, corpus="c1", system=None, extra=None)
             "scorer": scorer,
         },
         samples=samples,
+        run_errors=run_errors or {},
     )
 
 
@@ -140,15 +148,55 @@ def test_missing_report_path_is_reported_as_missing(tmp_path):
         load_run_record(str(tmp_path / "nope.json#cfg"))
 
 
-def test_unknown_lineage_is_reported_as_unknown():
+def test_unknown_lineage_is_unverified_not_paired():
     old = RunRecord(ref="old", config_name=None, lineage={}, samples=_record("b", BASE).samples)
 
     result = compare_runs(old, _record("cand", CAND))
 
-    assert result["status"] == "paired"
+    assert result["status"] == "unverified"
     assert result["baseline"]["system"]["status"] == "not_available"
     assert result["baseline"]["scorer_fingerprint"] is None
-    assert any("scorer" in w and "unknown" in w for w in result["warnings"])
+    assert any("scorer" in r and "unknown" in r for r in result["reasons"])
+    assert result["metrics"]["answer_correctness"]["n"] == 4
+
+
+def test_unknown_corpus_on_one_side_is_unverified():
+    result = compare_runs(_record("base", BASE, corpus=None), _record("cand", CAND))
+
+    assert result["status"] == "unverified"
+    assert any("corpus" in r for r in result["reasons"])
+
+
+def test_repeated_question_is_one_bootstrap_cluster():
+    same_question = {"q1": "Q-A", "q2": "Q-A", "q3": "Q-B", "q4": "Q-C"}
+
+    result = compare_runs(
+        _record("base", BASE, questions=same_question),
+        _record("cand", CAND, questions=same_question),
+    )
+
+    ac = result["metrics"]["answer_correctness"]
+    assert ac["n"] == 4
+    assert ac["clusters"] == 3
+
+
+def test_error_counts_are_reported_per_side():
+    base = _record("base", BASE, run_errors={"evaluation_error": "critic timeout"})
+    cand = _record("cand", CAND, invalid={"q2", "q3"})
+
+    errors = compare_runs(base, cand)["errors"]
+
+    assert errors["baseline"] == {"invalid_answers": 0, "evaluation_error": "critic timeout"}
+    assert errors["candidate"] == {"invalid_answers": 2, "evaluation_error": None}
+
+
+def test_candidate_without_declared_baseline_is_flagged():
+    cand = _record("cand", CAND)
+    cand.lineage["experiment"] = {"candidate_id": "k8"}
+
+    result = compare_runs(_record("base", BASE), cand)
+
+    assert any("does not declare baseline_run_id" in w for w in result["warnings"])
 
 
 def test_write_comparison_emits_json_and_markdown(tmp_path):
@@ -208,3 +256,26 @@ def test_cli_compares_two_reports_end_to_end(tmp_path):
     written = json.loads((tmp_path / "o" / "comparison.json").read_text())
     assert written["status"] == "paired"
     assert written["metrics"]["answer_correctness"]["delta"] == pytest.approx(0.3)
+
+
+def test_scorer_identity_covers_critic_limits_and_implementation():
+    from types import SimpleNamespace
+
+    scorer = scorer_identity(
+        SimpleNamespace(eval_critic_max_tokens=512, eval_critic_thinking_control="none")
+    )
+
+    assert scorer["eval_critic_max_tokens"] == 512
+    assert scorer["eval_critic_thinking_control"] == "none"
+    implementation = scorer["implementation"]
+    assert len(implementation["evaluator_source_sha256"]) == 64
+    assert "ragas" in implementation["packages"]
+
+
+def test_changed_evaluator_implementation_changes_fingerprint():
+    old = {**SCORER, "implementation": {"evaluator_source_sha256": "a"}}
+    new = {**SCORER, "implementation": {"evaluator_source_sha256": "b"}}
+
+    assert scorer_fingerprint(old) != scorer_fingerprint(new)
+    result = compare_runs(_record("base", BASE, scorer=old), _record("cand", CAND, scorer=new))
+    assert result["status"] == "not_comparable"

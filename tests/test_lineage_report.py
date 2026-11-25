@@ -13,6 +13,7 @@ from test_run_path_uniformity import (  # noqa: F401 - fixture import
 )
 
 from benchmark.lineage.dataset import assign_sample_ids, corpus_fingerprint
+from benchmark.lineage.runs import load_run_record
 from benchmark.reporting.exports import load_json_report, write_json_report
 from benchmark.reporting.models import BenchmarkRun
 
@@ -84,6 +85,11 @@ def test_lineage_and_sample_ids_survive_the_json_report(stubbed_seam, tmp_path):
     assert loaded["per_sample"][0]["sample_id"] == result.per_sample[0].sample_id
     assert "category" in loaded["per_sample"][0]
 
+    record = load_run_record(str(path))
+    assert record.samples[0]["question_id"]
+    assert record.samples[0]["answer_valid"] is True
+    assert record.run_errors == {"evaluation_error": result.evaluation_error}
+
 
 def test_reproducibility_manifest_records_experiment_metadata():
     from types import SimpleNamespace
@@ -91,14 +97,16 @@ def test_reproducibility_manifest_records_experiment_metadata():
     from benchmark.reproducibility import build_reproducibility_manifest
 
     configs = [
-        SimpleNamespace(experiment_metadata_json='{"study_id": "s1", "candidate_id": "a"}'),
-        SimpleNamespace(experiment_metadata_json='{"study_id": "s1", "candidate_id": "a"}'),
+        SimpleNamespace(experiment_metadata_json='{"study_id": "s1", "candidate_id": "a", "baseline_run_id": "b"}'),
+        SimpleNamespace(experiment_metadata_json='{"study_id": "s1", "candidate_id": "a", "baseline_run_id": "b"}'),
         SimpleNamespace(experiment_metadata_json=None),
     ]
 
     manifest = build_reproducibility_manifest(configs)
 
-    assert manifest["experiments"] == [{"study_id": "s1", "candidate_id": "a"}]
+    assert manifest["experiments"] == [
+        {"study_id": "s1", "candidate_id": "a", "baseline_run_id": "b"}
+    ]
 
 
 def test_run_dir_reproducibility_bundle_holds_lineage(tmp_path, stubbed_seam):

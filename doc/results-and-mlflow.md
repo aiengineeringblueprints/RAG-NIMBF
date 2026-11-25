@@ -94,8 +94,8 @@ and in MLflow.
 | --- | --- | --- |
 | `experiment` | `study_id`, `hypothesis`, `candidate_id`, `baseline_run_id`, `change_under_test`, `change_summary`, `issue_reference` | manifest `experiment:` block / `EXPERIMENT_METADATA_JSON` |
 | `system` | `system_id`, `system_name`, `version_source`, `version`, `branch`, `remote` (credentials stripped), `dirty`, `diff_hash`, `status` | adapter hook `system_provenance(config)`, else manifest `system_provenance:` / `SYSTEM_PROVENANCE_JSON` |
-| `dataset` | name, subset, split, sample size, sampling seed (`42`), `num_samples`, ordered `question_set_hash`, `source_sha256` of a local dataset file, order-independent `corpus_fingerprint` | computed from the loaded data |
-| `scorer` | critic LLM/embedding/temperature, RAGAS on/metrics, custom metrics, BERTScore model, retrieval-metric mode | config |
+| `dataset` | name, dataset `adapter`, `source` (HuggingFace ID or `local`), `version` (content hash of a local file; unknown for HuggingFace), subset, split, sample size, `sampling_method` (`none`, `head`, `seeded_shuffle`), `sampling_seed` (`42`, only for `seeded_shuffle`), `num_samples`, ordered `question_set_hash`, `source_sha256`, order-independent `corpus_fingerprint` | computed from the loaded data |
+| `scorer` | critic LLM/embedding/temperature/max tokens/thinking control, RAGAS on/metrics, custom metrics, BERTScore model, retrieval-metric mode, MLflow scorers, and `implementation`: SHA-256 of the framework's evaluator sources plus `ragas`, `bert-score`, `mlflow`, `langchain-openai` versions | config + installed packages |
 
 Provenance `status` is one of `captured` (clean checkout read by the adapter),
 `dirty` (uncommitted changes; only a SHA-256 `diff_hash` of the diff is kept,
@@ -106,14 +106,19 @@ capture the Blueprint checkout; HTTP/MCP/managed systems need a declared
 `system_provenance:` block. Plugin adapters opt in by implementing
 `system_provenance(self, config) -> SystemProvenance`.
 
+A `candidate_id` requires a `baseline_run_id`; config validation rejects a
+candidate without one.
+
 `sample_id` is a 16-hex SHA-256 of (question, ground truth, occurrence), so it
 is stable across runs and re-derivable for reports written before lineage
-existed.
+existed. `question_id` hashes the question alone, so a question asked twice
+with different reference answers shares it.
 
 **MLflow.** Each config run gets searchable tags `experiment.*`, `system.*`,
 `dataset.*` (hashes and identifiers only, never question text) and
 `scorer.fingerprint`, plus the artifacts `lineage/lineage.json` and
-`lineage/samples.json` (sample ID, category, metrics; no text). Example
+`lineage/samples.json` (sample ID, question ID, category, answer validity,
+metrics, run-level evaluation error; no text). Example
 search: `tags."experiment.study_id" = 'retrieval-k'`.
 
 **Comparing two runs.** A reference is a JSON report path
@@ -132,22 +137,28 @@ It writes `comparison.json` and `comparison.md` (default
 a `run_type=comparison` MLflow run with `delta.<metric>` metrics. The output
 holds both sides' provenance, dataset and scorer fingerprints, and per metric
 the baseline/candidate mean, delta, direction (`higher_is_better`,
-`lower_is_better`, `neutral`), paired `n`, missing counts on each side, and a
-paired bootstrap 95% CI; per-question deltas; a per-category summary; latency
-(`total_seconds`, `ttft_seconds`), tokens, and cost. Metrics come from the same
+`lower_is_better`, `neutral`), paired `n`, the number of distinct questions
+(`clusters`), missing counts on each side, and a paired bootstrap 95% CI that
+resamples whole questions (repeats with another reference answer are not
+independent evidence); per-question deltas; a per-category summary; latency
+(`total_seconds`, `ttft_seconds`), tokens, and cost; and per side the number of
+invalid answers and the run's evaluation error (`errors`). Metrics come from the same
 per-sample extraction as `benchmark.regression`.
 
 | Status | Meaning |
 | --- | --- |
-| `paired` | Same scorer and corpus, identical sample sets |
-| `partially_paired` | Same scorer, overlapping sample sets; statistics on the overlap only, counts in `pairing` |
+| `paired` | Scorer and corpus verified identical on both sides, identical sample sets |
+| `partially_paired` | Scorer and corpus verified identical, overlapping sample sets; statistics on the overlap only, counts in `pairing` |
+| `unverified` | Shared samples, but one side's scorer identity or corpus fingerprint is unknown (e.g. a run from before lineage); deltas are shown, `reasons` says what could not be checked; do not read it as a paired comparison |
 | `not_comparable` | Scorer identity or corpus fingerprint differs, or no shared samples; `reasons` lists why and no metrics are computed |
 
 A metric missing on one side is counted in `missing_baseline` /
 `missing_candidate`, never scored as 0. Dataset-name mismatches, dirty
-checkouts, unknown provenance/scorer (runs from before lineage), and a candidate
-whose `experiment.baseline_run_id` names a different run are reported as
-`warnings`. The CLI exits `2` for `not_comparable`. MLflow runs
+checkouts, unknown provenance, a candidate without `experiment.baseline_run_id`,
+and a candidate whose `baseline_run_id` names a different run are reported as
+`warnings`. Scorer implementation versions are part of the scorer fingerprint,
+so a run scored by changed evaluator code or another RAGAS version is
+`not_comparable`. The CLI exits `2` for `not_comparable`. MLflow runs
 logged before lineage have no artifacts; compare their JSON reports instead.
 
 ## MLflow Tracing

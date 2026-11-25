@@ -17,9 +17,25 @@ from benchmark.dataset_adapters import (
     strip_sentence_label_metadata,
 )
 from benchmark.doc_ids import resolve_dataset_doc_id
-from benchmark.lineage.dataset import SAMPLING_SEED
 
 console = Console()
+
+# Seed of every ``shuffle().select()`` subsample below. Local and document
+# ground-truth datasets are truncated to their first rows instead.
+SAMPLING_SEED = 42
+_HEAD_SAMPLED_DATASETS = frozenset({"jsonl", "jsonl-shared", "csv", *OCR_GT_DATASET_NAMES})
+
+
+def sampling_method(dataset_name: str, sample_size: int | None, num_loaded: int) -> str:
+    """How the loaders above chose the evaluated rows.
+
+    ``none`` when no subsample was drawn (no ``sample_size``, or fewer rows
+    than requested), ``head`` for local/document datasets (first N rows),
+    ``seeded_shuffle`` for HuggingFace datasets (``SAMPLING_SEED``).
+    """
+    if not sample_size or num_loaded < sample_size:
+        return "none"
+    return "head" if dataset_name in _HEAD_SAMPLED_DATASETS else "seeded_shuffle"
 
 RAGPERF_WIKIPEDIA_DATASET = "ragperf-wikipedia-nq"
 RAGPERF_WIKIPEDIA_HF_ID = "wikimedia/wikipedia"

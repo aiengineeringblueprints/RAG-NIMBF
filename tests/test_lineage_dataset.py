@@ -5,8 +5,9 @@ from __future__ import annotations
 import json
 from types import SimpleNamespace
 
+from benchmark.dataset import SAMPLING_SEED
 from benchmark.lineage.dataset import (
-    SAMPLING_SEED,
+    assign_sample_identities,
     assign_sample_ids,
     corpus_fingerprint,
     dataset_identity,
@@ -96,10 +97,42 @@ def test_dataset_identity_records_sampling_and_hashes(tmp_path):
 
     assert identity["name"] == "jsonl-shared"
     assert identity["sample_size"] == 5
-    assert identity["sampling_seed"] == SAMPLING_SEED
+    assert identity["adapter"] == "jsonl-shared"
+    assert identity["sampling_method"] == "none"
+    assert identity["sampling_seed"] is None
+    assert identity["version"] == identity["source_sha256"]
     assert identity["num_samples"] == 1
     assert identity["question_set_hash"] == question_set_hash(assign_sample_ids(data))
     assert identity["corpus_fingerprint"] == corpus_fingerprint(corpus)
     assert identity["corpus_documents"] == 1
     assert len(identity["source_sha256"]) == 64
     assert "Q" not in json.dumps(identity)
+
+
+def test_local_dataset_truncation_is_head_sampling():
+    identity = dataset_identity(_config(dataset_sample_size=1), [_sample("Q")])
+
+    assert identity["sampling_method"] == "head"
+    assert identity["sampling_seed"] is None
+
+
+def test_huggingface_subsample_is_seeded_shuffle():
+    identity = dataset_identity(
+        _config(dataset_name="squad", dataset_sample_size=1), [_sample("Q")]
+    )
+
+    assert identity["adapter"] == "squad"
+    assert identity["source"] == "rajpurkar/squad"
+    assert identity["sampling_method"] == "seeded_shuffle"
+    assert identity["sampling_seed"] == SAMPLING_SEED
+
+
+def test_sample_identities_share_question_id_across_references():
+    first, second, other = assign_sample_identities(
+        [_sample("Q", "gt-1"), _sample("Q", "gt-2", category="x"), _sample("R")]
+    )
+
+    assert first.sample_id != second.sample_id
+    assert first.question_id == second.question_id != other.question_id
+    assert second.category == "x"
+    assert "Q" not in first.question_id

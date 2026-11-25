@@ -1537,6 +1537,11 @@ class TestExperimentLineageConfig:
         with pytest.raises(ValueError, match="Unknown experiment metadata field"):
             validate_benchmark_config(cfg)
 
+    def test_candidate_without_baseline_is_rejected(self):
+        cfg = _make_config(experiment_metadata_json='{"candidate_id": "k8"}')
+        with pytest.raises(ValueError, match="baseline_run_id"):
+            validate_benchmark_config(cfg)
+
     def test_unknown_provenance_key_is_rejected(self):
         cfg = _make_config(system_provenance_json='{"api_key": "secret"}')
         with pytest.raises(ValueError, match="Unknown system_provenance field"):
@@ -1577,9 +1582,9 @@ class TestExperimentLineageConfig:
 
         spec = ExperimentSpec(
             name="s", dataset={}, matrix={},
-            settings={"experiment_metadata_json": {"candidate_id": "k8"}},
+            settings={"experiment_metadata_json": {"study_id": "k8"}},
         )
 
         (cfg,) = build_configs_from_spec(spec, base_configs=[_make_config()])
 
-        assert json.loads(cfg.experiment_metadata_json) == {"candidate_id": "k8"}
+        assert json.loads(cfg.experiment_metadata_json) == {"study_id": "k8"}

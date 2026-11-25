@@ -51,7 +51,7 @@ _ENV_PREFIXES = (
 )
 
 
-def _run_git(args: list[str], cwd: str | Path | None = None) -> str | None:
+def run_git(args: list[str], cwd: str | Path | None = None) -> str | None:
     try:
         result = subprocess.run(
             ["git", *args],
@@ -102,7 +102,7 @@ def _packages() -> list[str]:
 
 def build_reproducibility_manifest(configs: list[Any]) -> dict[str, Any]:
     """Build a JSON-serializable run snapshot."""
-    git_status = _run_git(["status", "--short"]) or ""
+    git_status = run_git(["status", "--short"]) or ""
     return {
         "created_at_utc": datetime.now(timezone.utc).isoformat(),
         "python": {
@@ -115,12 +115,12 @@ def build_reproducibility_manifest(configs: list[Any]) -> dict[str, Any]:
             "argv": sys.argv,
         },
         "git": {
-            "commit": _run_git(["rev-parse", "HEAD"]),
-            "branch": _run_git(["rev-parse", "--abbrev-ref", "HEAD"]),
-            "remote": _run_git(["remote", "get-url", "origin"]),
+            "commit": run_git(["rev-parse", "HEAD"]),
+            "branch": run_git(["rev-parse", "--abbrev-ref", "HEAD"]),
+            "remote": run_git(["remote", "get-url", "origin"]),
             "dirty": bool(git_status),
             "status_short": git_status.splitlines(),
-            "diff_stat": _run_git(["diff", "--stat"]),
+            "diff_stat": run_git(["diff", "--stat"]),
         },
         "environment": _tracked_environment(),
         "experiments": _experiment_metadata(configs),

@@ -15,14 +15,14 @@ URLs lose their credentials and uncommitted changes are reduced to a hash.
 from __future__ import annotations
 
 import hashlib
-import json
 import logging
 import re
 from dataclasses import asdict, dataclass, fields
 from pathlib import Path
 from typing import Any, Mapping
 
-from benchmark.reproducibility import _run_git
+from benchmark.lineage.json_object import parse_json_object
+from benchmark.reproducibility import run_git
 
 log = logging.getLogger(__name__)
 
@@ -73,15 +73,15 @@ def capture_git_provenance(
 ) -> SystemProvenance:
     """Version of the git checkout at ``path``; ``not_available`` outside git."""
     root = Path(path)
-    commit = _run_git(["rev-parse", "HEAD"], cwd=root) if root.is_dir() else None
+    commit = run_git(["rev-parse", "HEAD"], cwd=root) if root.is_dir() else None
     if not commit:
         return SystemProvenance(system_id=system_id, system_name=system_name)
-    branch = _run_git(["rev-parse", "--abbrev-ref", "HEAD"], cwd=root)
-    status = _run_git(["status", "--porcelain"], cwd=root) or ""
+    branch = run_git(["rev-parse", "--abbrev-ref", "HEAD"], cwd=root)
+    status = run_git(["status", "--porcelain"], cwd=root) or ""
     dirty = bool(status)
     diff_hash = None
     if dirty:
-        diff = _run_git(["diff", "HEAD", "--binary"], cwd=root) or ""
+        diff = run_git(["diff", "HEAD", "--binary"], cwd=root) or ""
         diff_hash = hashlib.sha256(f"{status}\n{diff}".encode("utf-8")).hexdigest()
     return SystemProvenance(
         system_id=system_id,
@@ -89,7 +89,7 @@ def capture_git_provenance(
         version_source="git",
         version=commit,
         branch=None if branch in (None, "HEAD") else branch,
-        remote=_strip_credentials(_run_git(["remote", "get-url", "origin"], cwd=root)),
+        remote=_strip_credentials(run_git(["remote", "get-url", "origin"], cwd=root)),
         dirty=dirty,
         diff_hash=diff_hash,
         status="dirty" if dirty else "captured",
@@ -107,17 +107,11 @@ def framework_provenance() -> SystemProvenance:
 
 def parse_supplied_provenance(value: str | Mapping[str, Any] | None) -> dict[str, Any] | None:
     """Validate a manifest-declared provenance object; ``None`` when unset."""
-    if value is None or value == "":
+    data = parse_json_object(
+        value, setting="system_provenance_json", label="system_provenance", allowed=SUPPLIED_FIELDS
+    )
+    if data is None:
         return None
-    data = json.loads(value) if isinstance(value, str) else dict(value)
-    if not isinstance(data, dict):
-        raise ValueError("system_provenance_json must contain a JSON object")
-    unknown = sorted(set(data) - set(SUPPLIED_FIELDS))
-    if unknown:
-        raise ValueError(
-            f"Unknown system_provenance field(s): {', '.join(unknown)}; "
-            f"allowed: {', '.join(SUPPLIED_FIELDS)}"
-        )
     source = data.get("version_source", "user")
     if source not in VERSION_SOURCES:
         raise ValueError(

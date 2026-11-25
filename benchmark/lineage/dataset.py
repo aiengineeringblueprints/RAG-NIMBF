@@ -8,13 +8,16 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
+from benchmark.dataset import SAMPLING_SEED, sampling_method
+from benchmark.dataset_adapters import ENV_HF_ID_SENTINEL, REGISTRY
 from benchmark.regression.question_set import sample_keys
 
-# Seed of every ``shuffle().select()`` subsample in ``benchmark.dataset``.
-SAMPLING_SEED = 42
+_LOCAL_SOURCES = frozenset({"local-jsonl", "local-csv"})
 
 _DOC_TEXT_KEYS = ("context", "text", "page_content", "content")
 
@@ -33,6 +36,31 @@ def assign_sample_ids(records: Sequence[Mapping[str, Any]]) -> list[str]:
     return [
         _sha256(json.dumps(list(key), ensure_ascii=False))[:16]
         for key in sample_keys(records)
+    ]
+
+
+def question_id(question: str) -> str:
+    """Hash of the question alone: repeats with other references share it.
+
+    Bootstrap resampling clusters on this ID, so a question asked twice with
+    different reference answers counts as one piece of evidence.
+    """
+    return _sha256(json.dumps([question], ensure_ascii=False))[:16]
+
+
+@dataclass(frozen=True)
+class SampleIdentity:
+    """Text-free identity of one evaluated sample."""
+
+    sample_id: str
+    question_id: str
+    category: str | None
+
+
+def assign_sample_identities(records: Sequence[Mapping[str, Any]]) -> list[SampleIdentity]:
+    return [
+        SampleIdentity(sid, question_id(str(record.get("question", ""))), sample_category(record))
+        for sid, record in zip(assign_sample_ids(records), records, strict=True)
     ]
 
 
@@ -84,6 +112,18 @@ def _file_sha256(path: str | None) -> str | None:
     return digest.hexdigest()
 
 
+def _source(dataset_name: str | None) -> str | None:
+    """HuggingFace dataset ID, or ``local`` for file-backed datasets."""
+    adapter = REGISTRY.get(dataset_name or "")
+    if adapter is None:
+        return None
+    if adapter.hf_id in _LOCAL_SOURCES:
+        return "local"
+    if adapter.hf_id == ENV_HF_ID_SENTINEL:
+        return os.getenv("DATASET_HF_ID") or None
+    return adapter.hf_id
+
+
 def dataset_identity(
     config: Any,
     data: Sequence[Mapping[str, Any]],
@@ -93,15 +133,25 @@ def dataset_identity(
 ) -> dict[str, Any]:
     """Identity of the evaluated dataset slice; hashes and counts only."""
     ids = list(sample_ids) if sample_ids is not None else assign_sample_ids(data)
+    name = getattr(config, "dataset_name", None)
+    sample_size = getattr(config, "dataset_sample_size", None)
+    method = sampling_method(name or "", sample_size, len(ids))
+    source_sha256 = _file_sha256(getattr(config, "dataset_path", None))
     return {
-        "name": getattr(config, "dataset_name", None),
+        "name": name,
+        "adapter": name if name in REGISTRY else None,
+        "source": _source(name),
+        # Local files are versioned by content; HuggingFace revisions are not
+        # pinned by the loader yet, so their version stays unknown.
+        "version": source_sha256,
         "subset": getattr(config, "dataset_subset", None) or None,
         "split": getattr(config, "dataset_split", None) or None,
-        "sample_size": getattr(config, "dataset_sample_size", None),
-        "sampling_seed": SAMPLING_SEED,
+        "sample_size": sample_size,
+        "sampling_method": method,
+        "sampling_seed": SAMPLING_SEED if method == "seeded_shuffle" else None,
         "num_samples": len(ids),
         "question_set_hash": question_set_hash(ids),
-        "source_sha256": _file_sha256(getattr(config, "dataset_path", None)),
+        "source_sha256": source_sha256,
         "corpus_fingerprint": corpus_fingerprint(corpus),
         "corpus_documents": None if corpus is None else len(corpus),
     }

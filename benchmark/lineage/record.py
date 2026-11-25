@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import dataclasses
 import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-from benchmark.lineage.dataset import assign_sample_ids, dataset_identity, sample_category
+from benchmark.lineage.dataset import SampleIdentity, assign_sample_identities, dataset_identity
 from benchmark.lineage.experiment import parse_experiment_metadata, scorer_identity
 from benchmark.lineage.provenance import framework_provenance, resolve_system_provenance
 
@@ -20,8 +21,7 @@ class RunLineage:
     system: dict[str, Any]
     dataset: dict[str, Any]
     scorer: dict[str, Any]
-    sample_ids: tuple[str, ...]
-    categories: tuple[str | None, ...]
+    samples: tuple[SampleIdentity, ...]
     framework: dict[str, Any] | None = None
 
     def as_dict(self) -> dict[str, Any]:
@@ -50,16 +50,18 @@ def build_run_lineage(
     data: Sequence[Mapping[str, Any]],
     corpus: Sequence[Any] | None = None,
 ) -> RunLineage:
-    sample_ids = assign_sample_ids(data)
+    samples = assign_sample_identities(data)
     return RunLineage(
         experiment=parse_experiment_metadata(getattr(config, "experiment_metadata_json", None)),
         system=resolve_system_provenance(adapter, config).as_dict(),
         dataset=dataset_identity(
-            config, data, _evaluated_corpus(data, corpus), sample_ids=sample_ids
+            config,
+            data,
+            _evaluated_corpus(data, corpus),
+            sample_ids=[sample.sample_id for sample in samples],
         ),
         scorer=scorer_identity(config),
-        sample_ids=tuple(sample_ids),
-        categories=tuple(sample_category(sample) for sample in data),
+        samples=tuple(samples),
         framework=framework_provenance().as_dict(),
     )
 
@@ -70,10 +72,7 @@ def write_lineage_record(run_dir: Path, config_name: str, lineage: RunLineage) -
     out.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         **lineage.as_dict(),
-        "samples": [
-            {"sample_id": sid, "category": cat}
-            for sid, cat in zip(lineage.sample_ids, lineage.categories)
-        ],
+        "samples": [dataclasses.asdict(sample) for sample in lineage.samples],
     }
     out.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
     return out
