@@ -119,7 +119,7 @@ def fake_tracking(monkeypatch):
     def fake_log_run(result, reproducibility_dir=None, nested=None):
         calls["runs"].append(result.config_name)
 
-    def fake_log_aggregate(run_dir, run_name=None, reproducibility_dir=None):
+    def fake_log_aggregate(run_dir, run_name=None, reproducibility_dir=None, config_run_ids=None):
         calls["aggregate"].append(str(run_dir))
 
     @contextmanager

@@ -567,13 +567,15 @@ def log_aggregate_artifacts_to_mlflow(
     *,
     run_name: str = "run_summary",
     reproducibility_dir: Path | None = None,
+    config_run_ids: dict[str, str | None] | None = None,
 ) -> None:
-    """Log run-level tables, reports, plots, and reproducibility artifacts.
+    """Log sweep-level material, not full per-config payloads (issue #66).
 
-    This creates one MLflow run that is easy to open when comparing a full
-    benchmark sweep: summary tables live under ``tables/``, plots under
-    ``plots/``, reports under ``reports/``, and rerun metadata under
-    ``reproducibility/``.
+    The aggregate run keeps summary reports, plots, the reproducibility
+    bundle, and a ``config_run_links.json`` map from config name to its
+    MLflow run ID. Full per-sample data stays on each configuration run
+    (canonical per-sample artifacts there); the heavy
+    ``*.samples.json.gz`` sidecars are deliberately NOT re-uploaded here.
     """
     if not results_dir.exists():
         logger.warning("Results directory does not exist: %s", results_dir)
@@ -582,8 +584,6 @@ def log_aggregate_artifacts_to_mlflow(
     artifact_groups: list[tuple[Path, str]] = []
 
     for path in sorted(results_dir.glob("benchmark_*.json")):
-        artifact_groups.append((path, "reports"))
-    for path in sorted(results_dir.glob("benchmark_*.samples.json.gz")):
         artifact_groups.append((path, "reports"))
 
     repro_dir = reproducibility_dir or (results_dir / "reproducibility")
@@ -598,6 +598,14 @@ def log_aggregate_artifacts_to_mlflow(
         ) as run:
             for path, artifact_path in artifact_groups:
                 mlflow.log_artifact(str(path), artifact_path=artifact_path)
+            if config_run_ids:
+                links = {
+                    name: run_id
+                    for name, run_id in config_run_ids.items()
+                    if run_id
+                }
+                if links:
+                    mlflow.log_dict(links, "reports/config_run_links.json")
             if repro_dir.exists():
                 mlflow.log_artifacts(str(repro_dir), artifact_path="reproducibility")
             mlflow.log_metric("num_logged_artifacts", float(len(artifact_groups)))
