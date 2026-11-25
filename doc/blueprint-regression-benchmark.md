@@ -23,8 +23,15 @@ Built from RAGBench TechQA `train` with the loader's seeded shuffle
 
 | Split | Size | Answerable | Unanswerable | sha256 of the split file |
 |---|---|---|---|---|
-| `dev` | 500 | 452 | 48 | `b7a4707d…f63c` |
-| `holdout` | 200 | 182 | 18 | `7fd22497…9cd8` |
+| `dev` | 500 | 452 | 48 | `98b458f2…328f` |
+| `holdout` | 200 | 182 | 18 | `51a02ab9…7939` |
+
+(The hashes were re-pinned before the first reference runs: the lineage
+stamping (PR #65) adds `metadata.dataset_rows` / `dataset_split` to every
+row, which changes the split files' serialization — and therefore their
+hashes — without changing questions, references, labels or corpus. The
+pre-stamping hashes (`b7a4707d…f63c`, `7fd22497…9cd8`) were verified to
+differ only by those two keys.)
 
 - `dev` is the first 500 shuffled rows — **identical to the questions of
   `results/Enterprise-RAG/run7..run9`** (checked against run8: same 500
