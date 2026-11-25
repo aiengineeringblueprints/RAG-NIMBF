@@ -1,3 +1,9 @@
+# ARCHIVED: Deep-dive optimization report (historical)
+
+Archived 2026-11-25 (issue #67). Written against the removed single-file `main.py` loop; the worker loop (ADR-003) addresses the parallelism finding. Kept as a research record.
+
+---
+
 # Deep Dive: Optimization Report
 
 ## CRITICAL Issues (must fix)

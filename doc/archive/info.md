@@ -1,3 +1,9 @@
+# ARCHIVED: Scratch notes: MLflow run viewer CLI (historical)
+
+Archived 2026-11-25 (issue #67). Refers to an old `view_mlflow_runs.py` invocation layout. See `scripts/view_mlflow_runs.py --help` and `doc/results-and-mlflow.md`.
+
+---
+
 # Kompakte Vergleichsansicht (empfohlen)                                      
   python3 view_mlflow_runs.py --compare                                         
                                                                                 

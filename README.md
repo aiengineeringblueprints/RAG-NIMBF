@@ -110,6 +110,40 @@ MLflow UI usage: **[doc/results-and-mlflow.md](doc/results-and-mlflow.md)**.
 
 All guides, gap analyses, and the change log: **[doc/00-README.md](doc/00-README.md)**
 
+## Repository Layout
+
+| Path | Contents |
+|------|----------|
+| `benchmark/` | Framework package: pipeline stages (`chunking`, `embedding`, `retrieval`, `reranker`, `generation`), adapters (`benchmark/adapters/`), datasets, evaluation/metrics, orchestration (`orchestration/`), reporting, lineage, tracking |
+| `config.py`, `main.py` | `BenchmarkConfig` model + YAML/env loading; thin CLI entry point |
+| `experiments/` | Experiment manifests (YAML) — the version-controlled benchmark definitions |
+| `datasets/` | Dataset definitions, manifests, and small committed corpora (see `datasets/*/README.md`; generated corpora are gitignored) |
+| `tests/` | Pytest suite (`pytest` runs everything; see `pytest.ini`) |
+| `scripts/` | Helper scripts for MLflow, results, scoring, and corpus preparation |
+| `tools/` | Small analysis/plotting utilities |
+| `examples/` | Runnable example systems (HTTP demo server, Python plugins) and a sample dataset |
+| `doc/` | All documentation; index in [doc/00-README.md](doc/00-README.md), ADRs in `doc/adr/`, change log in `doc/changes/`, superseded docs in `doc/archive/` |
+| `results/`, `mlruns/`, `mlflow.db` | Generated benchmark output and local MLflow data — gitignored, never commit |
+| `Optimizations/` | Historical research notes (archived, see its README) |
+| `LLM_Performance_Tests-main/` et al. | Separate sandbox subprojects with their own docs — not part of the framework package |
+
+## Development and Testing
+
+```bash
+source .venv/bin/activate        # Python 3.12 venv; no global install
+pytest                           # full suite (pytest.ini sets testpaths=tests)
+pytest tests/test_chunking.py -k name   # single test
+
+# smoke-test a manifest without running models (expand matrix, resumable):
+python -m benchmark.worker plan experiments/full-grid-example.yaml
+```
+
+Cheap smoke runs skip the paid evaluator LLM calls:
+`RAGAS_ENABLED=false CUSTOM_METRICS_ENABLED=false` plus a small
+`DATASET_SAMPLE_SIZE`. See [doc/00-README.md](doc/00-README.md) for the
+documentation index and [doc/agents/](doc/agents/) for
+repo conventions (issue tracker, triage labels, domain docs).
+
 ## Publication
 
 - [RAG-NIMBF: A Non-Invasive, Modular Benchmarking Framework for Automated RAG Configuration Analysis](https://doi.org/10.48550/arXiv.2610.27816) — Niclas Hart and Nicolas Weeger, Ansbach University of Applied Sciences. Describes the framework architecture, the hybrid evaluation methodology, and an empirical configuration study across six generation models on SQuAD.

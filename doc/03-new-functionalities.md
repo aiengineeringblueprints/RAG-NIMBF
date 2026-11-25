@@ -38,7 +38,7 @@ No document ingestion pipeline. Add:
 ## 3. RAG Pipeline Optimization
 
 ### Automatic Prompt Optimization
-`prompts.md` has 9 manual prompt templates. Add:
+`prompts.md` *(now `doc/archive/prompts.md`)* has 9 manual prompt templates. Add:
 - Automatic prompt tuning via DSPy or similar
 - Prompt performance tracking
 - A/B test prompts automatically

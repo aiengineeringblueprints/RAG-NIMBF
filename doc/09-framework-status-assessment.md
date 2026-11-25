@@ -72,7 +72,7 @@ Vor Telefonat klären, welche (a–d) gemeint war. Empfehlung: (a) — siehe `Ex
    - Framework = Pipeline + Adapter-API
    - Harness = Metriken + Tracking + Reporting
 5. **Reproducibility-Claim verkaufen** — `reproducibility.py` schreibt Manifest + Freeze → starkes Argument, prominent im Paper platzieren.
-6. **EVAL_MATRIX.md** — 502 Zeilen Sweep-Plan + beste Konfigs → als Beleg für systematisches Vorgehen zeigen.
+6. **EVAL_MATRIX.md** — 502 Zeilen Sweep-Plan + beste Konfigs → als Beleg für systematisches Vorgehen zeigen. *(2026-11-25 nach `doc/archive/eval-matrix.md` verschoben.)*
 
 ---
 
@@ -120,6 +120,6 @@ cd Poster && latexmk -pdf main.tex
 - `benchmark/adapters/{base,http}.py`
 - `benchmark/orchestration/{worker,matrix}.py`
 - `doc/External_RAG_Python_Adapter.md`
-- `EVAL_MATRIX.md`
+- `doc/archive/eval-matrix.md` *(früher `EVAL_MATRIX.md`)*
 - `requirements.txt`
 - WhatsApp-Chat Niclas ↔ Nico Weeger, 15.6.2026 11:43–12:42

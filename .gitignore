@@ -234,6 +234,11 @@ graphify-out/
 /Enterprise/
 /optimAIseRAG/
 
+# Scratch / private working files
+/.scratch/
+/.vscode/
+/tmp/
+
 # Local run outputs and machine-specific workspace files
 /mlflow_start.txt
 /texput.log

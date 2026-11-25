@@ -610,8 +610,8 @@ Benchmarking-Framework/
 ├── compare_runs.py            # Compare benchmark results
 ├── clear_mlflow.py            # Clear MLflow data
 ├── view_mlflow_runs.py        # CLI to view MLflow experiments
-├── helper_functions/
-│   └── view_ground_truths.py
+├── tools/
+│   └── view_ground_truths.py   # (moved from helper_functions/, 2026-11-25)
 ├── benchmark/                 # Core modules
 │   ├── __init__.py
 │   ├── dataset.py             # Dataset loading

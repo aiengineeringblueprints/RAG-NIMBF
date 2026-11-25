@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Backfill EVAL_MATRIX results into MLflow.
+"""Backfill EVAL_MATRIX results into MLflow (matrix now at
+doc/archive/eval-matrix.md).
 
 Scans results/ directories, matches to EVAL_MATRIX rows by config parameters,
 and logs each as a completed MLflow run with original timestamps.
@@ -247,8 +248,8 @@ def log_backfill_run(row: dict, json_path: Path, json_data: dict) -> bool:
 
 
 def main():
-    project_root = Path(__file__).parent
-    eval_matrix_path = project_root / "EVAL_MATRIX.md"
+    project_root = Path(__file__).resolve().parent.parent
+    eval_matrix_path = project_root / "doc" / "archive" / "eval-matrix.md"
     results_dir = project_root / "results"
 
     if not eval_matrix_path.exists():
