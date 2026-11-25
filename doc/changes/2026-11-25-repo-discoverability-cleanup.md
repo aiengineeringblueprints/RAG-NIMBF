@@ -67,3 +67,17 @@ referenced by the thesis work; `doc/superpowers/` (plans/specs from the
 agent workflow) left untouched; sandbox subprojects
 (`NGEN-AI/`, `LLM_Performance_Tests-main/`, `hallucination_eval/`) are
 untracked local clones and out of scope.
+
+### Review follow-up (same PR)
+
+- `scripts/backfill_mlflow.py`: `project_root` fixed to
+  `Path(__file__).resolve().parent.parent`; matrix path now
+  `doc/archive/eval-matrix.md` (the script was broken before — it looked for
+  root `EVAL_MATRIX.md` relative to `scripts/`, so `results/` also resolved
+  wrong).
+- `doc/agents/domain.md`: all `docs/adr/` references corrected to
+  `doc/adr/` (pure-rename fallout missed in the first pass).
+- Stale references to moved files annotated at their historical locations:
+  `doc/09-framework-status-assessment.md` (2× EVAL_MATRIX),
+  `doc/03-new-functionalities.md` (prompts.md),
+  `Optimizations/full-project-audit-report.md` (helper_functions path).
