@@ -37,6 +37,7 @@ from langchain_core.documents import Document
 from benchmark.adapters import register_rag_adapter
 from benchmark.adapters.base import RagSystemOutput
 from benchmark.adapters.components import ComponentBundle
+from benchmark.lineage.provenance import SystemProvenance, capture_git_provenance
 from benchmark.doc_ids import (
     canonical_doc_id,
     resolve_dataset_doc_id,
@@ -44,6 +45,10 @@ from benchmark.doc_ids import (
 )
 
 log = logging.getLogger(__name__)
+
+
+BLUEPRINT_SYSTEM_ID = "enterprise_rag_blueprint"
+BLUEPRINT_SYSTEM_NAME = "Enterprise RAG Blueprint"
 
 
 def ensure_blueprint_importable(config: Any) -> None:
@@ -81,6 +86,26 @@ def _retrieved_metadata(entry: dict[str, Any]) -> dict[str, Any]:
     return entry
 
 
+def blueprint_provenance(config: Any) -> SystemProvenance:
+    """Version of the configured Blueprint checkout (issue #65).
+
+    Without a configured path the Blueprint runs from PYTHONPATH and its
+    version is unknown here; a manifest can then declare it.
+    """
+    raw = getattr(config, "enterprise_rag_blueprint_path", None) or os.environ.get(
+        "ENTERPRISE_RAG_BLUEPRINT_PATH"
+    )
+    if not raw or not isinstance(raw, str):
+        return SystemProvenance(
+            system_id=BLUEPRINT_SYSTEM_ID, system_name=BLUEPRINT_SYSTEM_NAME
+        )
+    return capture_git_provenance(
+        Path(raw).expanduser().resolve(),
+        system_id=BLUEPRINT_SYSTEM_ID,
+        system_name=BLUEPRINT_SYSTEM_NAME,
+    )
+
+
 class EnterpriseRagAdapter:
     name = "enterprise_rag"
 
@@ -90,6 +115,9 @@ class EnterpriseRagAdapter:
         self.chain = None
         self.retriever = None
         self.prompt_key = None
+
+    def system_provenance(self, config: Any) -> SystemProvenance:
+        return blueprint_provenance(config)
 
     def supports_components(self) -> dict[str, bool]:
         return {

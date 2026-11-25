@@ -167,6 +167,13 @@ and `doc/changes/2026-11-15-pr33-review-fixes.md`.
 | `EVAL_CRITIC_MAX_WORKERS` | Parallel RAGAS critic jobs; defaults to `1` (local models). Raise for hosted endpoints; `16` recommended for the hosted `deepseek-v4-flash` critic (measured in [ragas-runtime.md](ragas-runtime.md)). |
 | `EVAL_CRITIC_MAX_RETRIES` | RAGAS retries per failed critic call (e.g. proxy 500s); defaults to `2`. |
 
+## Experiment lineage
+
+| Variable | Description |
+| --- | --- |
+| `EXPERIMENT_METADATA_JSON` | JSON object describing the experiment a run belongs to (manifest: top-level `experiment:` block or `experiment_metadata_json`). Keys: `study_id`, `hypothesis`, `candidate_id`, `baseline_run_id`, `change_under_test`, `change_summary`, `issue_reference`; unknown keys are rejected. Logged as `experiment.*` MLflow tags. See [results-and-mlflow.md](results-and-mlflow.md#experiment-lineage-and-paired-comparisons). |
+| `SYSTEM_PROVENANCE_JSON` | JSON object with the version of the system under test when the adapter cannot capture it (manifest: top-level `system_provenance:` block or `system_provenance_json`). Keys: `system_id`, `system_name`, `version_source` (`git`, `container`, `deployment`, `user`, `not_available`), `version`, `branch`, `dirty`; unknown keys are rejected, so secrets cannot slip in. Adapter-captured provenance (Blueprint checkout, built-in pipeline) wins. |
+
 ## Cost and resource monitoring
 
 | Variable | Description |

@@ -91,9 +91,12 @@ def _result_to_dict(r: BenchmarkResultExtended) -> dict:
             "output_tokens": s.output_tokens,
             "total_tokens": s.total_tokens,
             "estimated_cost_usd": s.estimated_cost_usd,
+            "sample_id": s.sample_id,
+            "category": s.category,
         }
         for s in r.per_sample
     ]
+    d["lineage"] = r.lineage
 
     # Custom metrics (IR + NLG) — averages at top level alongside RAGAS
     if r.custom_metric_means:

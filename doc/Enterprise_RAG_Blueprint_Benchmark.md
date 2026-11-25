@@ -139,6 +139,46 @@ Wichtige Dateien und Ordner:
 - `reproducibility/`: Manifest, Git-Stand und Paketliste
 - `plots/`, `reports/`, `results_summary.csv`: aggregierte Auswertung, wenn Reports erzeugt wurden
 
+## Comparing iterations (experiment lineage)
+
+Every run records which Blueprint state was measured. The adapter reads the
+checkout under `enterprise_rag_blueprint_path` itself (commit, branch, remote
+without credentials, `dirty` plus a hash of the diff); nothing has to be
+declared. The manifest only describes the experiment:
+
+```yaml
+experiment:
+  study_id: blueprint-reranker
+  hypothesis: Reranker top-k 8 instead of 4 raises answer_correctness
+  candidate_id: rerank-k8
+  baseline_run_id: <MLflow run ID of the baseline run>
+  change_under_test: reranker_top_k 4 -> 8
+  issue_reference: "#65"
+```
+
+Workflow:
+
+1. Run the baseline on the current Blueprint state (as above), e.g. into `results/run40`.
+2. Commit the change in the Blueprint (an uncommitted checkout shows up as `status: dirty`).
+3. Run the candidate with the same dataset, the same `DATASET_SAMPLE_SIZE` and the same critic, e.g. into `results/run41`.
+4. Compare:
+
+```bash
+python -m benchmark.lineage compare \
+  --baseline results/run40/benchmark_<...>.json \
+  --candidate results/run41/benchmark_<...>.json --log-mlflow
+```
+
+`comparison.md` shows both Blueprint commits at the top, then per metric the
+baseline, candidate, delta with 95% CI and the number of paired questions,
+followed by the categories (`answerable` / `unanswerable`) and the error
+counts of both runs. Status `not_comparable` means: a different critic, a
+different scorer version (evaluator code or RAGAS), a different corpus, or no
+shared questions. `unverified` means the scorer or corpus identity is missing
+on at least one side (e.g. a run older than #65), so the conditions cannot be
+checked. `candidate_id` always needs a non-empty `baseline_run_id`. Details in
+[results-and-mlflow.md](results-and-mlflow.md#experiment-lineage-and-paired-comparisons).
+
 ## Häufige Probleme
 
 ### 504 Gateway Time-out beim Remote-Ollama-Host

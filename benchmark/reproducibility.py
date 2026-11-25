@@ -51,16 +51,17 @@ _ENV_PREFIXES = (
 )
 
 
-def _run_git(args: list[str]) -> str | None:
+def run_git(args: list[str], cwd: str | Path | None = None) -> str | None:
     try:
         result = subprocess.run(
             ["git", *args],
+            cwd=cwd,
             capture_output=True,
             text=True,
             timeout=5,
             check=False,
         )
-    except (FileNotFoundError, subprocess.TimeoutExpired):
+    except (OSError, subprocess.TimeoutExpired):
         return None
     if result.returncode != 0:
         return None
@@ -101,7 +102,7 @@ def _packages() -> list[str]:
 
 def build_reproducibility_manifest(configs: list[Any]) -> dict[str, Any]:
     """Build a JSON-serializable run snapshot."""
-    git_status = _run_git(["status", "--short"]) or ""
+    git_status = run_git(["status", "--short"]) or ""
     return {
         "created_at_utc": datetime.now(timezone.utc).isoformat(),
         "python": {
@@ -114,16 +115,29 @@ def build_reproducibility_manifest(configs: list[Any]) -> dict[str, Any]:
             "argv": sys.argv,
         },
         "git": {
-            "commit": _run_git(["rev-parse", "HEAD"]),
-            "branch": _run_git(["rev-parse", "--abbrev-ref", "HEAD"]),
-            "remote": _run_git(["remote", "get-url", "origin"]),
+            "commit": run_git(["rev-parse", "HEAD"]),
+            "branch": run_git(["rev-parse", "--abbrev-ref", "HEAD"]),
+            "remote": run_git(["remote", "get-url", "origin"]),
             "dirty": bool(git_status),
             "status_short": git_status.splitlines(),
-            "diff_stat": _run_git(["diff", "--stat"]),
+            "diff_stat": run_git(["diff", "--stat"]),
         },
         "environment": _tracked_environment(),
+        "experiments": _experiment_metadata(configs),
         "configs": [_config_to_dict(config) for config in configs],
     }
+
+
+def _experiment_metadata(configs: list[Any]) -> list[dict[str, str]]:
+    """Distinct experiment metadata blocks of the planned configs (#65)."""
+    from benchmark.lineage.experiment import parse_experiment_metadata
+
+    seen: list[dict[str, str]] = []
+    for config in configs:
+        metadata = parse_experiment_metadata(getattr(config, "experiment_metadata_json", None))
+        if metadata and metadata not in seen:
+            seen.append(metadata)
+    return seen
 
 
 def write_reproducibility_bundle(results_dir: Path, configs: list[Any]) -> Path:

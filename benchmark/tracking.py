@@ -1,6 +1,7 @@
 """MLflow experiment tracking for RAG benchmark runs."""
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import json
 import logging
@@ -11,6 +12,13 @@ from typing import Any
 
 import mlflow
 
+from benchmark.lineage.runs import (
+    LINEAGE_ARTIFACT_DIR,
+    LINEAGE_FILE,
+    SAMPLES_FILE,
+    lineage_samples,
+    lineage_tags,
+)
 from benchmark.reporting.models import BenchmarkResultExtended
 
 logger = logging.getLogger(__name__)
@@ -175,6 +183,7 @@ def log_benchmark_run(
 
     tags = _make_tags(result)
     tags.update(_reproducibility_tags(reproducibility_dir))
+    tags.update(lineage_tags(result.lineage, result.config_name))
 
     params: dict[str, Any] = {
         "chunk_size": result.chunk_size if result.chunk_size is not None else "n/a",
@@ -319,6 +328,8 @@ def log_benchmark_run(
         if reproducibility_dir is not None and reproducibility_dir.exists():
             mlflow.log_artifacts(str(reproducibility_dir), artifact_path="reproducibility")
 
+        _log_lineage(result)
+
         if result.evaluation_error:
             mlflow.set_tag("evaluation_error", result.evaluation_error)
         if result.llm_performance_error:
@@ -335,6 +346,18 @@ def log_benchmark_run(
             "Logged MLflow run %s for config '%s'", run.info.run_id, result.config_name
         )
         return run.info.run_id
+
+
+def _log_lineage(result: BenchmarkResultExtended) -> None:
+    """Lineage + text-free per-sample metrics, so runs compare by run ID (#65)."""
+    if result.lineage is None:
+        return
+    mlflow.log_dict(result.lineage, f"{LINEAGE_ARTIFACT_DIR}/{LINEAGE_FILE}")
+    samples = lineage_samples([dataclasses.asdict(s) for s in result.per_sample])
+    mlflow.log_dict(
+        {"samples": samples, "run_errors": {"evaluation_error": result.evaluation_error}},
+        f"{LINEAGE_ARTIFACT_DIR}/{SAMPLES_FILE}",
+    )
 
 
 def _link_sample_traces(result: BenchmarkResultExtended, run_id: str) -> None:

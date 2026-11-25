@@ -29,6 +29,10 @@ class PerSampleResult:
     ground_truth_doc_ids: tuple[str, ...] = ()
     retrieval_metadata: tuple[dict[str, Any], ...] = ()
     adapter_diagnostics: dict[str, Any] | None = None
+    # Lineage (#65): stable content-derived ID and optional category, so
+    # paired comparisons can match samples across runs.
+    sample_id: str | None = None
+    category: str | None = None
 
 
 @dataclass(frozen=True)
@@ -115,6 +119,9 @@ class BenchmarkResultExtended:
     dataset_license: str | None = None
     # MLflow trace IDs, one per sample, when mlflow_tracing_enabled (#42).
     trace_ids: tuple[str, ...] = ()
+    # Experiment lineage (#65): experiment metadata, system provenance,
+    # dataset identity and scorer identity (see benchmark.lineage).
+    lineage: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)

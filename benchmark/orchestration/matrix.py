@@ -56,6 +56,17 @@ def load_experiment_spec(path: Path) -> ExperimentSpec:
         key: _as_list(value) for key, value in _dict_or_empty(raw.get("matrix")).items()
     }
     settings = _dict_or_empty(raw.get("settings"))
+    # Lineage blocks (#65) are top-level for readability; they map onto the
+    # JSON config fields and must not also be given under ``settings``.
+    for block, field_name in (
+        ("experiment", "experiment_metadata_json"),
+        ("system_provenance", "system_provenance_json"),
+    ):
+        if raw.get(block) is None:
+            continue
+        if field_name in settings:
+            raise ValueError(f"Give either '{block}:' or settings.{field_name}, not both")
+        settings[field_name] = _dict_or_empty(raw[block])
     return ExperimentSpec(name=name, dataset=dataset, matrix=matrix, settings=settings)
 
 
@@ -348,6 +359,8 @@ def _coerce_field_value(key: str, value: Any) -> Any:
         return parse_mlflow_scorers(value)
     if key in {
         "rag_managed_options_json",
+        "experiment_metadata_json",
+        "system_provenance_json",
         "ingestion_options_json",
         "mcp_args_json",
         "mcp_http_headers_json",
@@ -436,6 +449,8 @@ def _coerce_field_value(key: str, value: Any) -> Any:
         "rag_managed_api_key_env",
         "rag_managed_dataset_prefix",
         "rag_managed_options_json",
+        "experiment_metadata_json",
+        "system_provenance_json",
         "ingestion_method",
         "ingestion_options_json",
         "dataset_path",

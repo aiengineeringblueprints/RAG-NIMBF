@@ -11,7 +11,7 @@ from benchmark.regression.question_set import question_categories, sample_keys
 
 # Gold-label retrieval scores in ``custom_scores`` (benchmark.gold_retrieval_metrics
 # and the RAGBench relevant-sentence recall).
-_RETRIEVAL_PREFIXES = (
+RETRIEVAL_PREFIXES = (
     "hit@",
     "recall@",
     "ndcg@",
@@ -53,7 +53,7 @@ def sample_metrics(result: Mapping[str, Any], category: str = "unlabeled") -> di
     }
     if result.get("ground_truth_doc_ids") and category != "unanswerable":
         for name, value in custom.items():
-            if name.startswith(_RETRIEVAL_PREFIXES):
+            if name.startswith(RETRIEVAL_PREFIXES):
                 metrics[name] = _number(value)
     refused = float(declines(result.get("answer") or ""))
     metrics["abstained"] = refused if category == "unanswerable" else None
@@ -100,7 +100,7 @@ def summarize_run(
             if (values := _values(per_sample, name))
         }
 
-    retrieval_names = sorted({n for m in per_sample for n in m if n.startswith(_RETRIEVAL_PREFIXES)})
+    retrieval_names = sorted({n for m in per_sample for n in m if n.startswith(RETRIEVAL_PREFIXES)})
 
     abstention: dict[str, float] = {}
     if n_ambiguous := sum(1 for key in sample_keys(results) if categories.get(key) == "ambiguous"):

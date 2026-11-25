@@ -20,6 +20,49 @@ from benchmark.doc_ids import resolve_dataset_doc_id
 
 console = Console()
 
+# Seed of every ``shuffle().select()`` subsample below. Local and document
+# ground-truth datasets are truncated to their first rows instead.
+SAMPLING_SEED = 42
+_HEAD_SAMPLED_DATASETS = frozenset({"jsonl", "jsonl-shared", "csv", *OCR_GT_DATASET_NAMES})
+
+
+# Per-sample metadata stamped by the loaders so lineage can tell how the
+# evaluated rows were chosen without reloading the source.
+DATASET_ROWS_KEY = "dataset_rows"
+DATASET_SPLIT_KEY = "dataset_split"
+
+
+def stamp_source_rows(samples: list[dict], rows: int, split: str | None = None) -> list[dict]:
+    """Record the source row count (and resolved split) on every sample."""
+    for sample in samples:
+        metadata = sample.setdefault("metadata", {})
+        metadata[DATASET_ROWS_KEY] = rows
+        if split is not None:
+            metadata[DATASET_SPLIT_KEY] = split
+    return samples
+
+
+def sampling_method(
+    dataset_name: str, sample_size: int | None, num_loaded: int, source_rows: int | None = None
+) -> str:
+    """How the loaders above chose the evaluated rows.
+
+    Loaders subsample only when ``sample_size < source_rows``: ``head`` for
+    local/document datasets (first N rows), ``seeded_shuffle`` for HuggingFace
+    datasets (``SAMPLING_SEED``), otherwise ``none``. Without the source row
+    count a full-size load is indistinguishable from a subsample: ``unknown``.
+    """
+    if not sample_size:
+        return "none"
+    if source_rows is None:
+        if num_loaded < sample_size:
+            return "none"
+        return "unknown"
+    if sample_size >= source_rows:
+        return "none"
+    return "head" if dataset_name in _HEAD_SAMPLED_DATASETS else "seeded_shuffle"
+
+
 RAGPERF_WIKIPEDIA_DATASET = "ragperf-wikipedia-nq"
 RAGPERF_WIKIPEDIA_HF_ID = "wikimedia/wikipedia"
 RAGPERF_WIKIPEDIA_CONFIG = "20231101.en"
@@ -197,8 +240,9 @@ def load_benchmark_data(
             split = list(ds.keys())[0]
     data = ds[split]
 
-    if sample_size and sample_size < len(data):
-        data = data.shuffle(seed=42).select(range(sample_size))
+    source_rows = len(data)
+    if sample_size and sample_size < source_rows:
+        data = data.shuffle(seed=SAMPLING_SEED).select(range(sample_size))
 
     samples = []
     for row in data:
@@ -223,6 +267,7 @@ def load_benchmark_data(
         )
 
     _finalize_per_sample_dataset(samples, adapter)
+    stamp_source_rows(samples, source_rows, split)
 
     console.print(
         f"[green]Loaded {len(samples)} samples from {adapter.hf_id} "
@@ -613,7 +658,8 @@ def _load_local_dataset(
     else:
         raise ValueError(f"Unsupported local dataset type: {dataset_name}")
 
-    if sample_size and sample_size < len(rows):
+    source_rows = len(rows)
+    if sample_size and sample_size < source_rows:
         rows = rows[:sample_size]
 
     samples = []
@@ -639,6 +685,7 @@ def _load_local_dataset(
             )
         )
 
+    stamp_source_rows(samples, source_rows)
     console.print(f"[green]Loaded {len(samples)} local samples from {path}[/green]")
     return samples
 
@@ -754,7 +801,7 @@ def _load_ragperf_wikipedia_nq(sample_size: int) -> tuple[list[dict], list[dict]
         RAGPERF_WIKIPEDIA_HF_ID, RAGPERF_WIKIPEDIA_CONFIG, split="train"
     )
     if corpus_size and corpus_size < len(wiki):
-        wiki = wiki.shuffle(seed=42).select(range(corpus_size))
+        wiki = wiki.shuffle(seed=SAMPLING_SEED).select(range(corpus_size))
 
     corpus = [
         {
@@ -775,8 +822,9 @@ def _load_ragperf_wikipedia_nq(sample_size: int) -> tuple[list[dict], list[dict]
         f"({sample_size} questions)...[/bold blue]"
     )
     nq = load_dataset(RAGPERF_NQ_HF_ID, split="train")
-    if sample_size and sample_size < len(nq):
-        nq = nq.shuffle(seed=42).select(range(sample_size))
+    source_rows = len(nq)
+    if sample_size and sample_size < source_rows:
+        nq = nq.shuffle(seed=SAMPLING_SEED).select(range(sample_size))
 
     questions = normalize_samples(
         [
@@ -793,6 +841,7 @@ def _load_ragperf_wikipedia_nq(sample_size: int) -> tuple[list[dict], list[dict]
         ],
         source=RAGPERF_NQ_HF_ID,
     )
+    stamp_source_rows(questions, source_rows, "train")
 
     console.print(
         f"[green]Loaded {len(corpus)} Wikipedia documents and "

@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any
 
 from benchmark.dataset_adapters import OCR_GT_DATASET_NAMES, get_adapter
-from benchmark.dataset import normalize_sample
+from benchmark.dataset import stamp_source_rows, normalize_sample
 
 # OmniDocBench layout_dets categories whose text counts as page ground truth.
 # Tables carry their GT as HTML and are collected separately.
@@ -78,9 +78,10 @@ def load_ocr_gt_dataset(
     for sample in samples:
         sample["metadata"] = {**license_meta, **sample["metadata"]}
 
-    if sample_size and sample_size < len(samples):
+    source_rows = len(samples)
+    if sample_size and sample_size < source_rows:
         samples = samples[:sample_size]
-    return samples
+    return stamp_source_rows(samples, source_rows)
 
 
 def ocr_dataset_license_metadata(dataset_name: str) -> dict[str, Any]:

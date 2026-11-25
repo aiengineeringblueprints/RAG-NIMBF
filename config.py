@@ -274,6 +274,9 @@ class BenchmarkConfig:
     rag_managed_cleanup: bool = False
     rag_managed_dataset_prefix: str = "benchmark"
     rag_managed_options_json: str | None = None
+    # Experiment lineage (#65): JSON objects, see benchmark.lineage.
+    experiment_metadata_json: str | None = None
+    system_provenance_json: str | None = None
     ingestion_method: str | None = None
     ingestion_options_json: str | None = None
     retrieval_candidate_k: int = 1024
@@ -592,6 +595,7 @@ def validate_benchmark_config(config: BenchmarkConfig) -> BenchmarkConfig:
                 "raw documents to parse"
             )
     _validate_json_object(config.rag_managed_options_json, "rag_managed_options_json")
+    _validate_lineage_json(config.experiment_metadata_json, config.system_provenance_json)
     _validate_json_object(config.ingestion_options_json, "ingestion_options_json")
     _validate_json_object(config.mcp_http_headers_json, "mcp_http_headers_json")
     _validate_json_object(config.mcp_tool_arguments_json, "mcp_tool_arguments_json")
@@ -689,6 +693,17 @@ def _env_bool(name: str, default: bool = False) -> bool:
 def _validate_positive_int(value: int, name: str) -> None:
     if value <= 0:
         raise ValueError(f"{name} must be a positive non-zero integer, got {value}")
+
+
+def _validate_lineage_json(experiment: str | None, provenance: str | None) -> None:
+    """Experiment metadata and system provenance must use the known keys."""
+    from benchmark.lineage.experiment import parse_experiment_metadata
+    from benchmark.lineage.provenance import parse_supplied_provenance
+
+    _validate_json_object(experiment, "experiment_metadata_json")
+    _validate_json_object(provenance, "system_provenance_json")
+    parse_experiment_metadata(experiment)
+    parse_supplied_provenance(provenance)
 
 
 def _validate_json_object(value: str | None, name: str) -> None:
@@ -1189,6 +1204,8 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
         os.getenv("RAG_MANAGED_DATASET_PREFIX", "benchmark").strip() or "benchmark"
     )
     rag_managed_options_json = os.getenv("RAG_MANAGED_OPTIONS_JSON") or None
+    experiment_metadata_json = os.getenv("EXPERIMENT_METADATA_JSON") or None
+    system_provenance_json = os.getenv("SYSTEM_PROVENANCE_JSON") or None
     ingestion_method = os.getenv("INGESTION_METHOD") or None
     ingestion_options_json = os.getenv("INGESTION_OPTIONS_JSON") or None
     _validate_json_object(rag_managed_options_json, "RAG_MANAGED_OPTIONS_JSON")
@@ -1419,6 +1436,8 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
                     rag_managed_cleanup=rag_managed_cleanup,
                     rag_managed_dataset_prefix=rag_managed_dataset_prefix,
                     rag_managed_options_json=rag_managed_options_json,
+                    experiment_metadata_json=experiment_metadata_json,
+                    system_provenance_json=system_provenance_json,
                     ingestion_method=ingestion_method,
                     ingestion_options_json=ingestion_options_json,
                     retrieval_candidate_k=retrieval_candidate_k,
