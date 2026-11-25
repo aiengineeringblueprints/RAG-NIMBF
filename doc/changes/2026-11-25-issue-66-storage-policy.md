@@ -73,3 +73,23 @@ ignore rule, and makes the run output root configurable outside the checkout.
   failure on `dev` (duplicate SQLite index) needs its own fix.
 - MLflow tracing storage footprint on large sweeps could be measured once
   tracing-heavy sweeps exist.
+
+## Review fixes (a61ce683, PR #73 review round 1)
+
+- `ProgressStore.is_completed`: completed record with `mlflow_run_id` stays
+  completed after local cleanup (no re-runs on resume).
+- `verify_config_run`: requires `data/per_sample_results.csv` specifically.
+- Per-sample CSV: added `contexts_json` column; aggregate report uploads get
+  `samples_file` keys stripped so downloaded copies load cleanly.
+- `--prune-samples`: only when `progress.json` exists and every completed
+  config is verified; per-config `configs/<name>.samples.json.gz` added to
+  cleanup suffixes.
+- Worker seeds `config_run_ids` from the ledger (complete
+  `config_run_links.json` on resume).
+- `BENCHMARK_RESULTS_DIR` became the `BenchmarkConfig.run_results_dir` knob
+  (env fallback + tests per AGENTS.md).
+- Untracked `results/` from Git index (`git rm -r --cached`, 148 files);
+  updated `doc/00-README.md` index entry and the storage-policy guide.
+
+Verification: full suite 1170 passed; only the 3 known pre-existing flaky
+failures (mlflow sqlite index race) remain, reproduced on plain dev too.
