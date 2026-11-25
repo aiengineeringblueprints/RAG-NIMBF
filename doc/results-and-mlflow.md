@@ -139,14 +139,15 @@ per-sample extraction as `benchmark.regression`.
 
 | Status | Meaning |
 | --- | --- |
-| `paired` | Same scorer, identical sample sets |
+| `paired` | Same scorer and corpus, identical sample sets |
 | `partially_paired` | Same scorer, overlapping sample sets; statistics on the overlap only, counts in `pairing` |
-| `not_comparable` | Scorer identity differs, or no shared samples; `reasons` lists why and no metrics are computed |
+| `not_comparable` | Scorer identity or corpus fingerprint differs, or no shared samples; `reasons` lists why and no metrics are computed |
 
 A metric missing on one side is counted in `missing_baseline` /
-`missing_candidate`, never scored as 0. Corpus or dataset-name mismatches,
-dirty checkouts, and unknown provenance/scorer (runs from before lineage) are
-reported as `warnings`. The CLI exits `2` for `not_comparable`. MLflow runs
+`missing_candidate`, never scored as 0. Dataset-name mismatches, dirty
+checkouts, unknown provenance/scorer (runs from before lineage), and a candidate
+whose `experiment.baseline_run_id` names a different run are reported as
+`warnings`. The CLI exits `2` for `not_comparable`. MLflow runs
 logged before lineage have no artifacts; compare their JSON reports instead.
 
 ## MLflow Tracing

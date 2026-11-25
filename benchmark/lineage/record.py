@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from benchmark.lineage.dataset import assign_sample_ids, dataset_identity, sample_category
 from benchmark.lineage.experiment import parse_experiment_metadata, scorer_identity
-from benchmark.lineage.provenance import resolve_system_provenance
+from benchmark.lineage.provenance import framework_provenance, resolve_system_provenance
 
 LINEAGE_SCHEMA_VERSION = 1
 
@@ -20,6 +22,7 @@ class RunLineage:
     scorer: dict[str, Any]
     sample_ids: tuple[str, ...]
     categories: tuple[str | None, ...]
+    framework: dict[str, Any] | None = None
 
     def as_dict(self) -> dict[str, Any]:
         """Run-level record (per-sample IDs live on the samples themselves)."""
@@ -29,6 +32,7 @@ class RunLineage:
             "system": dict(self.system),
             "dataset": dict(self.dataset),
             "scorer": dict(self.scorer),
+            "framework": dict(self.framework or {}),
         }
 
 
@@ -56,4 +60,20 @@ def build_run_lineage(
         scorer=scorer_identity(config),
         sample_ids=tuple(sample_ids),
         categories=tuple(sample_category(sample) for sample in data),
+        framework=framework_provenance().as_dict(),
     )
+
+
+def write_lineage_record(run_dir: Path, config_name: str, lineage: RunLineage) -> Path:
+    """Add the run's lineage and sample IDs to the reproducibility bundle."""
+    out = run_dir / "reproducibility" / "lineage" / f"{config_name}.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        **lineage.as_dict(),
+        "samples": [
+            {"sample_id": sid, "category": cat}
+            for sid, cat in zip(lineage.sample_ids, lineage.categories)
+        ],
+    }
+    out.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
+    return out

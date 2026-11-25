@@ -8,7 +8,8 @@ Status:
 - ``paired``: same scorer, identical sample sets.
 - ``partially_paired``: same scorer, overlapping but different sample sets;
   statistics use the overlap only.
-- ``not_comparable``: different scorer identity, or no shared samples.
+- ``not_comparable``: different scorer identity, different corpus
+  fingerprint, or no shared samples.
 """
 
 from __future__ import annotations
@@ -20,8 +21,8 @@ from typing import Any, Mapping, Sequence
 
 import numpy as np
 
-from benchmark.lineage.provenance import SystemProvenance
-from benchmark.lineage.runs import RunRecord, scorer_fingerprint
+from benchmark.lineage.provenance import FRAMEWORK_ROOT, SystemProvenance
+from benchmark.lineage.runs import RunRecord, lineage_tags, scorer_fingerprint
 from benchmark.regression.compare import Paired
 from benchmark.regression.metrics import LOWER_IS_BETTER
 
@@ -48,6 +49,8 @@ def _side(record: RunRecord) -> dict[str, Any]:
         "dataset": dict(lineage.get("dataset") or {}),
         "scorer": scorer,
         "scorer_fingerprint": scorer_fingerprint(scorer),
+        "framework": dict(lineage.get("framework") or {}),
+        "mlflow_run_id": record.mlflow_run_id,
         "num_samples": len(record.samples),
     }
 
@@ -75,6 +78,10 @@ def _blocking_reasons(base: dict, cand: dict, shared: list[str]) -> list[str]:
             if base["scorer"].get(k) != cand["scorer"].get(k)
         )
         reasons.append(f"scorer identity differs ({', '.join(changed)})")
+    b_fp = base["dataset"].get("corpus_fingerprint")
+    c_fp = cand["dataset"].get("corpus_fingerprint")
+    if b_fp and c_fp and b_fp != c_fp:
+        reasons.append("corpus fingerprints differ: retrieval searched different documents")
     if not shared:
         reasons.append("no shared samples between baseline and candidate")
     return reasons
@@ -92,9 +99,12 @@ def _warnings(base: dict, cand: dict) -> list[str]:
     b_ds, c_ds = base["dataset"], cand["dataset"]
     if b_ds.get("name") and c_ds.get("name") and b_ds["name"] != c_ds["name"]:
         warnings.append(f"dataset names differ: {b_ds['name']} vs {c_ds['name']}")
-    b_fp, c_fp = b_ds.get("corpus_fingerprint"), c_ds.get("corpus_fingerprint")
-    if b_fp and c_fp and b_fp != c_fp:
-        warnings.append("corpus fingerprints differ: retrieval saw different documents")
+    intended = cand["experiment"].get("baseline_run_id")
+    if intended and intended not in (base["ref"], base.get("mlflow_run_id")):
+        warnings.append(
+            f"candidate declares baseline_run_id {intended}, "
+            f"but was compared against {base['ref']}"
+        )
     return warnings
 
 
@@ -177,11 +187,11 @@ def compare_runs(baseline: RunRecord, candidate: RunRecord) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def _fmt(value: Any) -> str:
+def _fmt(value: Any, *, signed: bool = False) -> str:
     if value is None:
         return "–"
-    if isinstance(value, float):
-        return f"{value:+.4f}" if value < 0 else f"{value:.4f}"
+    if isinstance(value, (int, float)):
+        return f"{value:+.4f}" if signed else f"{value:.4f}"
     return str(value)
 
 
@@ -233,16 +243,16 @@ def render_markdown(result: Mapping[str, Any]) -> str:
             "|---|---|---|---|---|---|---|---|",
         ]
         for name, m in result["metrics"].items():
-            ci = f"[{_fmt(m['ci95'][0])}, {_fmt(m['ci95'][1])}]" if m["ci95"] else "–"
+            ci = f"[{_fmt(m['ci95'][0], signed=True)}, {_fmt(m['ci95'][1], signed=True)}]" if m["ci95"] else "–"
             lines.append(
                 f"| {name} | {m['direction']} | {_fmt(m['baseline'])} | {_fmt(m['candidate'])} "
-                f"| {_fmt(m['delta'])} | {ci} | {m['n']} "
+                f"| {_fmt(m['delta'], signed=True)} | {ci} | {m['n']} "
                 f"| {m['missing_baseline']}/{m['missing_candidate']} |"
             )
     if result["categories"]:
         lines += ["", "## Categories (mean delta, n)", ""]
         for category, metrics in result["categories"].items():
-            cells = ", ".join(f"{k} {_fmt(v['delta'])} (n={v['n']})" for k, v in metrics.items())
+            cells = ", ".join(f"{k} {_fmt(v['delta'], signed=True)} (n={v['n']})" for k, v in metrics.items())
             lines.append(f"- **{category}**: {cells}")
     lines += ["", "Per-question deltas: see `comparison.json` (`questions`).", ""]
     return "\n".join(lines)
@@ -263,7 +273,11 @@ def default_output_dir(baseline: RunRecord, candidate: RunRecord) -> Path:
         return re.sub(r"[^A-Za-z0-9._-]+", "_", name)[:60]
 
     base_path = Path(baseline.ref.partition("#")[0])
-    root = base_path.parent / "comparisons" if base_path.is_file() else Path("results") / "comparisons"
+    root = (
+        base_path.parent / "comparisons"
+        if base_path.is_file()
+        else FRAMEWORK_ROOT / "results" / "comparisons"
+    )
     return root / f"{slug(baseline)}__vs__{slug(candidate)}"
 
 
@@ -277,8 +291,10 @@ def log_comparison_to_mlflow(result: Mapping[str, Any], json_path: Path, md_path
         "comparison.baseline": str(result["baseline"]["ref"]),
         "comparison.candidate": str(result["candidate"]["ref"]),
     }
-    for key, value in result["candidate"]["experiment"].items():
-        tags[f"experiment.{key}"] = str(value)[:5000]
+    tags.update(lineage_tags({"experiment": result["candidate"]["experiment"]}))
+    for side in ("baseline", "candidate"):
+        if result[side].get("mlflow_run_id"):
+            tags[f"comparison.{side}_run_id"] = result[side]["mlflow_run_id"]
     with mlflow.start_run(run_name=f"compare:{json_path.parent.name}"[:250], tags=tags) as run:
         for name, m in result["metrics"].items():
             if m["delta"] is not None:

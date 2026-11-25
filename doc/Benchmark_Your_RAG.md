@@ -206,6 +206,14 @@ Dann baut das Framework die gewünschten Komponenten aus YAML und `.env` und üb
 
 Beispiel: `examples/enterprise_rag_plugin/adapter.py`.
 
+### Optional: Systemstand melden (`system_provenance`)
+
+Ein Python-Adapter kann zusätzlich `system_provenance(self, config)` implementieren und ein
+`benchmark.lineage.SystemProvenance` zurückgeben, z. B. per
+`capture_git_provenance(repo_path, system_id="my-rag")`. Der Stand landet in Report, MLflow-Tags
+(`system.*`) und `reproducibility/lineage/`. Ohne diese Methode zählt `system_provenance:` aus dem
+Manifest; fehlt beides, ist der Status `not_available`. Details: `doc/results-and-mlflow.md`.
+
 ## 7. Lauf starten und Ergebnisse prüfen
 
 Normaler Lauf:

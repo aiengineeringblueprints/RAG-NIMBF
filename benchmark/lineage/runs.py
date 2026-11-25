@@ -32,6 +32,7 @@ class RunRecord:
     lineage: dict[str, Any]
     # One entry per sample: sample_id, category, metrics (name -> value|None).
     samples: list[dict[str, Any]] = field(default_factory=list)
+    mlflow_run_id: str | None = None
 
 
 def _number(value: Any) -> float | None:
@@ -100,6 +101,7 @@ def load_report_record(path: str | Path, config_name: str | None = None) -> RunR
         config_name=result.get("config_name"),
         lineage=lineage,
         samples=lineage_samples(result.get("per_sample") or []),
+        mlflow_run_id=result.get("mlflow_run_id"),
     )
 
 
@@ -116,7 +118,9 @@ def load_mlflow_record(run_id: str) -> RunRecord:
             "compare its JSON report instead"
         ) from exc
     config_name = mlflow.get_run(run_id).data.tags.get("config_name")
-    return RunRecord(ref=run_id, config_name=config_name, lineage=lineage, samples=samples)
+    return RunRecord(
+        ref=run_id, config_name=config_name, lineage=lineage, samples=samples, mlflow_run_id=run_id
+    )
 
 
 def load_run_record(ref: str) -> RunRecord:
@@ -124,6 +128,8 @@ def load_run_record(ref: str) -> RunRecord:
     path_part, _, config_name = ref.partition("#")
     if Path(path_part).is_file():
         return load_report_record(path_part, config_name or None)
+    if config_name or path_part.endswith((".json", ".json.gz")) or "/" in path_part:
+        raise FileNotFoundError(f"report not found: {path_part}")
     return load_mlflow_record(ref)
 
 

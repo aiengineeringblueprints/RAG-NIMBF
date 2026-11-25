@@ -111,11 +111,33 @@ def test_different_scorer_is_not_comparable():
     assert any("scorer" in r for r in result["reasons"])
 
 
-def test_corpus_mismatch_is_a_warning_not_a_blocker():
+def test_corpus_mismatch_is_not_comparable():
     result = compare_runs(_record("base", BASE), _record("cand", CAND, corpus="c2"))
 
-    assert result["status"] == "paired"
-    assert any("corpus" in w for w in result["warnings"])
+    assert result["status"] == "not_comparable"
+    assert any("corpus" in r for r in result["reasons"])
+
+
+def test_candidate_pointing_at_another_baseline_is_flagged():
+    cand = _record("cand", CAND)
+    cand.lineage["experiment"] = {"baseline_run_id": "some-other-run"}
+
+    result = compare_runs(_record("base", BASE), cand)
+
+    assert any("baseline_run_id some-other-run" in w for w in result["warnings"])
+
+
+def test_markdown_shows_signed_deltas(tmp_path):
+    _, md_path = write_comparison(
+        compare_runs(_record("base", BASE), _record("cand", CAND)), tmp_path
+    )
+
+    assert "+0.3000" in md_path.read_text()
+
+
+def test_missing_report_path_is_reported_as_missing(tmp_path):
+    with pytest.raises(FileNotFoundError):
+        load_run_record(str(tmp_path / "nope.json#cfg"))
 
 
 def test_unknown_lineage_is_reported_as_unknown():

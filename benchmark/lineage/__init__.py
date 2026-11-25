@@ -1,6 +1,7 @@
 """Experiment lineage: what was tested, on which system version, on which data.
 
-See ``doc/experiment-lineage.md`` (issue #65).
+See ``doc/results-and-mlflow.md`` ("Experiment lineage and paired
+comparisons", issue #65).
 """
 
 from benchmark.lineage.provenance import (

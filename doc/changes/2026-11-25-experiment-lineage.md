@@ -48,7 +48,13 @@ status (issue #65).
 - `benchmark/lineage/compare.py`, `__main__.py`: status `paired` /
   `partially_paired` / `not_comparable` with reasons, warnings, per-metric
   baseline/candidate/delta/direction/n/missing counts/bootstrap CI,
-  per-question deltas, category summary; optional MLflow logging.
+  per-question deltas, category summary; optional MLflow logging linked to the
+  input run IDs. A corpus fingerprint mismatch blocks the comparison; a
+  candidate whose `baseline_run_id` names another run is flagged.
+- `benchmark/lineage/record.py`: framework commit in the lineage record;
+  `run_dir/reproducibility/lineage/<config>.json` holds lineage + sample IDs.
+- `benchmark/adapters/base.py`, `doc/Benchmark_Your_RAG.md`: optional
+  `system_provenance(config)` adapter hook documented.
 
 ## Behaviour changes and migration
 None breaking. Reports and MLflow runs gain fields; old reports still load
@@ -60,9 +66,13 @@ JSON reports.
 New tests: `tests/test_lineage_provenance.py`, `test_lineage_dataset.py`,
 `test_lineage_report.py`, `test_lineage_mlflow.py`, `test_lineage_compare.py`,
 plus `TestExperimentLineageConfig` in `tests/test_config.py`. Full suite on the
-DGX Spark: 1126 passed.
+DGX Spark: 1130 passed.
 
 ## Follow-ups
 - No dashboard and no automatic baseline promotion (non-goals of #65).
 - HTTP/MCP/managed systems only get provenance when the manifest declares it
   or a plugin implements `system_provenance(config)`.
+- Not yet covered from #65: post-run MLflow scorer duration/failures/coverage
+  and run/sample error counts in the comparison; dataset-native source IDs
+  (sample IDs are content hashes); lineage is rebuilt per config (corpus hash +
+  git calls) and could be cached per run.

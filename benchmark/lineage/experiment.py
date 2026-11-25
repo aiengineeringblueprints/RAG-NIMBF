@@ -26,6 +26,7 @@ SCORER_FIELDS = (
     "custom_metrics_enabled",
     "custom_metrics_bert_model",
     "custom_retrieval_metrics_mode",
+    "mlflow_scorers",
 )
 
 

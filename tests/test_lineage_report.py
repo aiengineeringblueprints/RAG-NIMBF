@@ -99,3 +99,15 @@ def test_reproducibility_manifest_records_experiment_metadata():
     manifest = build_reproducibility_manifest(configs)
 
     assert manifest["experiments"] == [{"study_id": "s1", "candidate_id": "a"}]
+
+
+def test_run_dir_reproducibility_bundle_holds_lineage(tmp_path, stubbed_seam):
+    config = UniformityConfig(rag_system_adapter="stub-external")
+
+    main.run_single_benchmark(config, SAMPLES, run_dir=tmp_path, corpus=CORPUS)
+
+    (record,) = (tmp_path / "reproducibility" / "lineage").glob("*.json")
+    payload = json.loads(record.read_text())
+    assert payload["dataset"]["num_samples"] == len(SAMPLES)
+    assert len(payload["samples"]) == len(SAMPLES)
+    assert "framework" in payload

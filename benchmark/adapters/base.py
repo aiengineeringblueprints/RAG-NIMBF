@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
+    from benchmark.lineage.provenance import SystemProvenance
     from benchmark.adapters.components import ComponentBundle
 
 
@@ -190,6 +191,16 @@ class RagSystemAdapter(Protocol):
         """Receive Framework-built components. Called once before prepare().
 
         Optional; absence = pure black-box adapter.
+        """
+        ...
+
+    def system_provenance(self, config: Any) -> "SystemProvenance":
+        """Report the version of the system under test (issue #65).
+
+        Optional; absence = the manifest ``system_provenance:`` block is used,
+        else the run is recorded as ``not_available``. Return e.g.
+        ``capture_git_provenance(path, system_id=..., system_name=...)`` from
+        ``benchmark.lineage``. Never include secrets or diffs.
         """
         ...
 

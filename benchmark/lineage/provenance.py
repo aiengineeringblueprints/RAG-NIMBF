@@ -60,7 +60,7 @@ class SystemProvenance:
             return cls(system_id="unknown")
         known = {f.name for f in fields(cls)}
         values = {k: v for k, v in data.items() if k in known}
-        values.setdefault("system_id", "unknown")
+        values["system_id"] = values.get("system_id") or "unknown"
         return cls(**values)
 
 
