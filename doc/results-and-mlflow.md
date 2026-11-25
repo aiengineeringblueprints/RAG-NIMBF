@@ -36,6 +36,21 @@ reports per-variant and per-category `judge_correct`/`judge_incorrect`/
 `judge_declined` rates next to the stored `answer_match` score and never
 modifies the stored run data.
 
+## NLG Re-scoring After the Refusal-Check Fix
+
+Runs scored before issue #57 have ROUGE-L, BLEU, METEOR and BERTScore of 0 for
+genuine answers that the old refusal check flagged. Re-score them from the
+stored samples (BERTScore model as in the run, default `roberta-large`):
+
+```bash
+python scripts/rescore_nlg_refusals.py results/Enterprise-RAG/run8 [--bert-model roberta-large]
+```
+
+The script writes old and new per-config means to
+`<run_dir>/nlg_rescore_issue57.json` and leaves the run's own files and the
+MLflow metrics unchanged. run7 and run8 are re-scored on the DGX Spark
+(`changes/2026-11-24-refusal-nlg-false-positives.md`).
+
 ## MLflow Run Comparison
 
 Start the MLflow UI against the local SQLite store:

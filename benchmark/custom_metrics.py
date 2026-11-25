@@ -11,12 +11,15 @@ from __future__ import annotations
 
 import logging
 import math
-import mlflow
+import re
 from collections import Counter
 from dataclasses import dataclass
 from typing import Callable, Sequence
 
+import mlflow
 import numpy as np
+
+from benchmark.answer_match import states_refusal
 
 logger = logging.getLogger(__name__)
 
@@ -57,37 +60,22 @@ def _simple_stem(word: str) -> str:
     return w
 
 
+_FIRST_SENTENCE_END = re.compile(r"(?<=[.!?])\s+")
+
+
 def is_refusal_answer(text: str) -> bool:
-    """Return True if *text* is a refusal / non-answer from the LLM."""
-    t = text.strip().lower()
-    if not t:
-        return True
-    _REFUSAL_PATTERNS = (
-        "i cannot answer",
-        "i can't answer",
-        "i cannot provide",
-        "i can't provide",
-        "i am unable to answer",
-        "i'm unable to answer",
-        "i am not able to answer",
-        "not possible to answer",
-        "cannot be answered",
-        "not sufficient",
-        "insufficient",
-        "no information",
-        "i don't have",
-        "i do not have",
-        "does not contain",
-        "does not provide",
-        "not contained",
-        "not provided",
-        "not available in",
-        "not addressed",
-        "context does not",
-        "provided context",
-        "given context",
-    )
-    return any(p in t for p in _REFUSAL_PATTERNS)
+    """Return True if *text* is a refusal / non-answer from the LLM.
+
+    Delegates to :func:`benchmark.answer_match.states_refusal`, whose patterns
+    require the retrieved material to be the subject ("the provided context
+    does not contain ..."). A broad substring list ("insufficient",
+    "provided context") zeroed NLG metrics of genuine answers (issue #57).
+
+    Only the first sentence counts: a refusal leads with it, while a genuine
+    answer may end with a caveat ("The documents do not contain a specific
+    fix."), which must keep its NLG scores.
+    """
+    return states_refusal(_FIRST_SENTENCE_END.split((text or "").strip(), maxsplit=1)[0])
 
 
 def _jaccard(a: set[str], b: set[str]) -> float:
