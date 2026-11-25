@@ -43,13 +43,15 @@ Rules enforced by the code:
 
   Only configs whose progress record is `completed` **and** whose MLflow run
   verifies (status `FINISHED`, parameters logged, and the canonical
-  `data/per_sample_results.csv` artifact present) are eligible. Failed,
-  interrupted, or incompletely logged runs are always protected, and
-  `progress.json` is never deleted. `--prune-samples` also removes sweep-level
-  `*.samples.json.gz` sidecars — but only when `progress.json` exists and
-  **every** completed config has a verified MLflow record; otherwise the
-  sidecars may be the only remaining copy of the retrieved contexts and are
-  kept. Retain the canonical per-sample record for any run used in
+  `data/per_sample_results.csv` artifact present **with** a `contexts_json`
+  column) are eligible. Failed, interrupted, or incompletely logged runs are
+  always protected, and `progress.json` is never deleted. `--prune-samples`
+  also removes sweep-level `*.samples.json.gz` sidecars — but only when
+  `progress.json` exists and **every** completed RAG config has a verified
+  MLflow record; otherwise the sidecars may be the only remaining copy of the
+  retrieved contexts and are kept. Parsing-stage configs are exempt from this
+  gate: they complete without an MLflow run and produce no per-sample
+  contexts (the worker records them with `stage: "parsing"` in the ledger). Retain the canonical per-sample record for any run used in
   reported comparisons or thesis work; use cleanup freely for smoke tests and
   discarded exploratory runs.
 - The run output root can be moved outside the checkout with

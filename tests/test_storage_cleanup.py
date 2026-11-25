@@ -25,10 +25,13 @@ class _FakeRunInfo:
 
 
 class _FakeRun:
-    def __init__(self, status, params, data_artifacts):
+    def __init__(self, status, params, data_artifacts, csv_header=None):
         self.info = _FakeRunInfo(status)
         self.data = type("D", (), {"params": params})()
         self._data_artifacts = data_artifacts
+        self._csv_header = csv_header or [
+            "question", "answer", "contexts_json",
+        ]
 
     def __enter__(self):
         return self
@@ -59,6 +62,13 @@ class _FakeClient:
                 type("F", (), {"path": p})() for p in run._data_artifacts
             ]
         return ["data"] if run._data_artifacts else []
+
+    def download_artifacts(self, run_id, path, dst_path):
+        run = self.runs[run_id]
+        local = Path(dst_path) / path
+        local.parent.mkdir(parents=True, exist_ok=True)
+        local.write_text(",".join(run._csv_header) + "\n", encoding="utf-8")
+        return str(local)
 
 
 @pytest.fixture(autouse=True)
@@ -461,3 +471,53 @@ def test_per_sample_csv_includes_contexts(monkeypatch):
         rows = list(csv_mod.DictReader(f))
     assert logged["artifact_path"] == "data"
     assert json.loads(rows[0]["contexts_json"]) == ["doc one", "doc two"]
+
+
+# --- Verification requires contexts (review round 2) -------------------------
+
+
+def test_verify_rejects_run_without_contexts_column():
+    """CSV without contexts_json predates the canonical record; do not verify."""
+    _FakeClient.configure({
+        "old": _FakeRun("FINISHED", {"m": "1"}, ["data/per_sample_results.csv"], csv_header=["question", "answer"]),
+    })
+    ok, reason = verify_config_run("old")
+    assert not ok
+    assert "contexts_json" in reason
+
+
+def test_unverified_legacy_run_keeps_sidecars(tmp_path):
+    run_dir = _make_run_dir(tmp_path)
+    _FakeClient.configure({
+        "abc123": _FakeRun("FINISHED", {"m": "1"}, ["data/per_sample_results.csv"], csv_header=["question", "answer"]),
+    })
+    removed, actions = cleanup_run_dir(run_dir, execute=True, prune_samples=True)
+    assert removed == []
+    assert actions == []
+    assert (run_dir / "benchmark_20260101_000000.samples.json.gz").exists()
+
+
+def test_prune_samples_exempts_parsing_stage_configs(tmp_path):
+    """Parsing configs complete without an MLflow run; they must not block pruning."""
+    _FakeClient.configure({
+        "abc123": _FakeRun("FINISHED", {"m": "1"}, ["data/per_sample_results.csv"]),
+    })
+    run_dir = _make_run_dir(tmp_path)
+    progress = ProgressStore(run_dir / "progress.json")
+    progress.data["configs"]["parse_stage"] = {
+        "status": "completed", "stage": "parsing",
+    }
+    progress.path.write_text(json.dumps(progress.data))
+
+    removed, _ = cleanup_run_dir(run_dir, execute=True, prune_samples=True)
+    assert (run_dir / "benchmark_20260101_000000.samples.json.gz") in removed
+
+
+def test_parsing_stage_marker_is_recorded(tmp_path):
+    """mark_completed stores the parsing stage for cleanup gating."""
+    cfg = type(
+        "Cfg", (), {"name": "parse_stage", "benchmark_stage": "parsing"}
+    )()
+    store = ProgressStore(tmp_path / "progress.json")
+    store.mark_completed(cfg, stage="parsing")
+    assert store.data["configs"]["parse_stage"]["stage"] == "parsing"

@@ -84,6 +84,25 @@ def verify_config_run(
         return False, f"artifact listing failed: {exc}"
     if "data/per_sample_results.csv" not in data_artifacts:
         return False, "canonical per-sample artifact data/per_sample_results.csv missing"
+    # Runs logged before the contexts_json column existed carry no retrieved
+    # contexts; deleting their local sidecars would lose the only copy.
+    import csv
+    import tempfile
+
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            local = client.download_artifacts(
+                run_id, "data/per_sample_results.csv", tmp
+            )
+            with open(local, newline="", encoding="utf-8") as fh:
+                header = next(csv.reader(fh), [])
+    except Exception as exc:
+        return False, f"could not read per-sample CSV: {exc}"
+    if "contexts_json" not in header:
+        return False, (
+            "per-sample CSV has no contexts_json column (logged before "
+            "issue #66 review; re-run the config to log contexts to MLflow)"
+        )
     return True, ""
 
 
@@ -138,13 +157,15 @@ def plan_cleanup(
 def _all_completed_configs_verified(
     run_dir: Path, client: mlflow.MlflowClient | None = None
 ) -> bool:
-    """True only when ``progress.json`` exists and *every* completed
+    """True only when ``progress.json`` exists and *every* RAG completed
     config has a verified MLflow run.
 
     Guards ``--prune-samples``: if any completed config lacks a verified
     per-sample record in MLflow, its sidecars may be the only remaining
     copy of the retrieved contexts and must not be deleted (issue #66
-    review).
+    review). Parsing-stage configs are exempt: they complete without an
+    MLflow run and produce no per-sample contexts, so they cannot block
+    pruning.
     """
     ledger = run_dir / "progress.json"
     if not ledger.exists():
@@ -158,6 +179,7 @@ def _all_completed_configs_verified(
         rec
         for rec in (data.get("configs") or {}).values()
         if rec.get("status") == "completed"
+        and rec.get("stage") != "parsing"
     ]
     if not completed:
         return False

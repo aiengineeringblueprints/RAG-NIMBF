@@ -92,6 +92,7 @@ class ProgressStore:
         config: BenchmarkConfig,
         result_path: Path | None = None,
         mlflow_run_id: str | None = None,
+        stage: str | None = None,
     ) -> None:
         patch: dict[str, Any] = {
             "status": "completed",
@@ -101,6 +102,8 @@ class ProgressStore:
             patch["result_path"] = str(result_path)
         if mlflow_run_id is not None:
             patch["mlflow_run_id"] = mlflow_run_id
+        if stage is not None:
+            patch["stage"] = stage
         self._set(config, patch)
 
     def mark_failed(self, config: BenchmarkConfig, error: str) -> None:
@@ -204,7 +207,7 @@ class ExperimentWorker:
                 if config.benchmark_stage == "parsing":
                     try:
                         summary = run_parsing_benchmark(config, run_dir=run_dir)
-                        progress.mark_completed(config)
+                        progress.mark_completed(config, stage="parsing")
                         if self.options.log_mlflow:
                             log_parsing_run(
                                 summary,

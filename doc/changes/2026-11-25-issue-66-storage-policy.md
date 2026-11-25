@@ -93,3 +93,19 @@ ignore rule, and makes the run output root configurable outside the checkout.
 
 Verification: full suite 1170 passed; only the 3 known pre-existing flaky
 failures (mlflow sqlite index race) remain, reproduced on plain dev too.
+
+## Review fixes round 2
+
+- `results/` is now genuinely untracked: the previous index removal had not
+  survived the commit; `git ls-files results/ | xargs git update-index
+  --force-remove` + explicit commit removed all 148 files from HEAD.
+- `tests/test_config.py`: `TestRunResultsDirSetting` moved after
+  `TestMlflowScorersSetting` (the scorer tests are back in their class).
+- `verify_config_run`: downloads the per-sample CSV and requires a
+  `contexts_json` header, so runs logged before the column existed fail
+  verification and keep their local sidecars (their only context copy).
+- Parsing-stage configs: `ProgressStore.mark_completed` now accepts a
+  `stage` marker (worker passes `stage="parsing"`); `_all_completed_configs_verified`
+  exempts parsing records, so sweeps containing a parsing stage can prune.
+
+Verification: full suite 1174 passed; same 3 pre-existing flaky failures.

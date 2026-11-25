@@ -1492,6 +1492,26 @@ class TestMlflowScorersSetting:
         with pytest.raises(ValueError, match="bogus_judge"):
             validate_benchmark_config(cfg)
 
+    def test_answer_correctness_judge_is_selectable(self):
+        # Issue #45: custom RAGAS-style correctness judge next to Correctness.
+        cfg = _make_config(
+            mlflow_tracing_enabled=True, mlflow_scorers=("correctness", "answer_correctness")
+        )
+
+        validate_benchmark_config(cfg)
+
+    def test_duplicate_scorer_rejected(self):
+        cfg = _make_config(
+            mlflow_tracing_enabled=True, mlflow_scorers=("correctness", "correctness")
+        )
+        with pytest.raises(ValueError, match="duplicate"):
+            validate_benchmark_config(cfg)
+
+    def test_scorers_require_tracing(self):
+        cfg = _make_config(mlflow_scorers=("correctness",))
+        with pytest.raises(ValueError, match="mlflow_tracing_enabled"):
+            validate_benchmark_config(cfg)
+
 
 class TestRunResultsDirSetting:
     """Issue #66 review: BENCHMARK_RESULTS_DIR is a config knob."""
@@ -1518,26 +1538,6 @@ class TestRunResultsDirSetting:
             cfg = get_all_combinations()[0]
 
         assert cfg.run_results_dir is None
-
-    def test_answer_correctness_judge_is_selectable(self):
-        # Issue #45: custom RAGAS-style correctness judge next to Correctness.
-        cfg = _make_config(
-            mlflow_tracing_enabled=True, mlflow_scorers=("correctness", "answer_correctness")
-        )
-
-        validate_benchmark_config(cfg)
-
-    def test_duplicate_scorer_rejected(self):
-        cfg = _make_config(
-            mlflow_tracing_enabled=True, mlflow_scorers=("correctness", "correctness")
-        )
-        with pytest.raises(ValueError, match="duplicate"):
-            validate_benchmark_config(cfg)
-
-    def test_scorers_require_tracing(self):
-        cfg = _make_config(mlflow_scorers=("correctness",))
-        with pytest.raises(ValueError, match="mlflow_tracing_enabled"):
-            validate_benchmark_config(cfg)
 
 
 # ---------------------------------------------------------------------------
