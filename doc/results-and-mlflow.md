@@ -21,12 +21,18 @@ both the MLflow tracking database (`mlflow.db`) and the artifact store
 Rules enforced by the code:
 
 - Each config's full per-sample payload has exactly **one** canonical MLflow
-  artifact (on the config run). Aggregate sweep runs log only sweep-level
-  material (summary report, plots, reproducibility bundle, plus
-  `config_run_links.json` mapping config names to their MLflow run IDs) and
-  never re-upload the full per-sample `*.samples.json.gz` sidecars.
+  artifact (on the config run): `data/per_sample_results.csv`, which includes
+  the retrieved contexts per sample (`contexts_json` column). Aggregate sweep
+  runs log only sweep-level material (summary report, plots, reproducibility
+  bundle, plus `config_run_links.json` mapping config names to their MLflow
+  run IDs) and never re-upload the full per-sample `*.samples.json.gz`
+  sidecars. Uploaded summary reports have dangling `samples_file` references
+  stripped so downloaded copies load cleanly.
 - The worker records each config's `mlflow_run_id` in
-  `results/runN/progress.json` after logging.
+  `results/runN/progress.json` after logging. On resume, a completed record
+  with a `mlflow_run_id` counts as completed even if its local working file
+  was already cleaned up — MLflow is the source of truth. `config_run_links.json`
+  is seeded from the ledger, so resumed sweeps link every config.
 - Cleanup is **opt-in** and dry-run by default:
 
   ```bash
@@ -36,16 +42,20 @@ Rules enforced by the code:
   ```
 
   Only configs whose progress record is `completed` **and** whose MLflow run
-  verifies (status `FINISHED`, parameters logged, artifacts present) are
-  eligible. Failed, interrupted, or incompletely logged runs are always
-  protected, and `progress.json` is never deleted. `--prune-samples` also
-  removes sweep-level `*.samples.json.gz` sidecars once every eligible config
-  is verified. Retain the canonical per-sample record for any run used in
+  verifies (status `FINISHED`, parameters logged, and the canonical
+  `data/per_sample_results.csv` artifact present) are eligible. Failed,
+  interrupted, or incompletely logged runs are always protected, and
+  `progress.json` is never deleted. `--prune-samples` also removes sweep-level
+  `*.samples.json.gz` sidecars — but only when `progress.json` exists and
+  **every** completed config has a verified MLflow record; otherwise the
+  sidecars may be the only remaining copy of the retrieved contexts and are
+  kept. Retain the canonical per-sample record for any run used in
   reported comparisons or thesis work; use cleanup freely for smoke tests and
   discarded exploratory runs.
 - The run output root can be moved outside the checkout with
-  `BENCHMARK_RESULTS_DIR=/path/to/scratch` (or `--run-dir`); a `results/`
-  directory created inside the checkout is ignored by Git either way.
+  `BENCHMARK_RESULTS_DIR=/path/to/scratch`, the `run_results_dir` manifest
+  setting, or `--run-dir`; a `results/` directory created inside the checkout
+  is ignored by Git either way.
 - MLflow tracing is opt-in (`MLFLOW_TRACING_ENABLED=true`) because traces
   materially increase storage on large sweeps.
 

@@ -74,6 +74,11 @@ class ProgressStore:
         record = self.data["configs"].get(config.name)
         if not (record and record.get("status") == "completed"):
             return False
+        # A completed config with a recorded MLflow run id is durable:
+        # MLflow holds the canonical per-sample record, so the local
+        # working file may legitimately have been cleaned up (#66).
+        if record.get("mlflow_run_id"):
+            return True
         if result_path is not None:
             return result_path.exists()
         recorded_path = record.get("result_path")
@@ -134,7 +139,11 @@ class ExperimentWorker:
             console.print(json.dumps(summary, indent=2))
             return []
 
-        run_dir = self.options.run_dir or _next_run_dir()
+        run_dir = self.options.run_dir or _next_run_dir(
+            Path(self.configs[0].run_results_dir)
+            if self.configs[0].run_results_dir
+            else None
+        )
         run_dir.mkdir(parents=True, exist_ok=True)
         progress = ProgressStore(run_dir / "progress.json")
 
@@ -163,6 +172,11 @@ class ExperimentWorker:
 
         results: list[Any] = []
         config_run_ids: dict[str, str | None] = {}
+        # Seed from the progress ledger so resumed sweeps still link
+        # configs skipped as already completed (issue #66 review).
+        for name, rec in (progress.data.get("configs") or {}).items():
+            if rec.get("mlflow_run_id"):
+                config_run_ids[name] = rec["mlflow_run_id"]
         wall_start = time.perf_counter()
 
         parent_context = (

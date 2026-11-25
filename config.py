@@ -151,6 +151,9 @@ class BenchmarkConfig:
     custom_metrics_enabled: bool = True
     # MLflow Tracing: one trace per sample with a single RETRIEVER span (#42).
     mlflow_tracing_enabled: bool = False
+    # Output root for new runN directories (issue #66); None = results/
+    # in the checkout. Env fallback: BENCHMARK_RESULTS_DIR.
+    run_results_dir: str | None = None
     # Post-run MLflow scorers judged by the critic LLM over the run's traces
     # (#44); empty = off. Metrics land as mlflow_judge_<name>_mean.
     mlflow_scorers: tuple[str, ...] = ()
@@ -846,6 +849,7 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
     custom_metrics_enabled = _env_bool("CUSTOM_METRICS_ENABLED", True)
     mlflow_tracing_enabled = _env_bool("MLFLOW_TRACING_ENABLED", False)
     mlflow_scorers = parse_mlflow_scorers(os.getenv("MLFLOW_SCORERS", ""))
+    run_results_dir = os.getenv("BENCHMARK_RESULTS_DIR") or None
 
     # Per-role URLs (fall back to shared defaults when not set)
     llm_ollama_base_url = os.getenv("LLM_OLLAMA_BASE_URL") or None
@@ -1356,6 +1360,7 @@ def get_env_combinations(load_env: bool = True) -> list[BenchmarkConfig]:
                     custom_metrics_enabled=custom_metrics_enabled,
                     mlflow_tracing_enabled=mlflow_tracing_enabled,
                     mlflow_scorers=mlflow_scorers,
+                    run_results_dir=run_results_dir,
                     reranker_model=reranker,
                     reranker_top_k=reranker_top_k,
                     prompt_template=tmpl,

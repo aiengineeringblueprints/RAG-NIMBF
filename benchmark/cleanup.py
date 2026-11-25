@@ -21,6 +21,7 @@ CLI::
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -31,7 +32,9 @@ import mlflow
 logger = logging.getLogger(__name__)
 
 #: Per-config local working files that duplicate data already in MLflow.
-CONFIG_FILE_SUFFIXES = (".json", "_qa.json", "_checkpoint.json")
+#: The samples sidecar duplicates the canonical per-sample CSV (which
+#: includes contexts) on the config's MLflow run.
+CONFIG_FILE_SUFFIXES = (".json", "_qa.json", "_checkpoint.json", ".samples.json.gz")
 
 
 @dataclass(frozen=True)
@@ -58,8 +61,10 @@ def verify_config_run(
     """Check that an MLflow run finished and holds its expected data.
 
     A run counts as fully logged when it exists, its status is
-    ``FINISHED``, at least one parameter was logged, and at least one
-    artifact exists. Returns ``(ok, reason)``.
+    ``FINISHED``, at least one parameter was logged, and the canonical
+    per-sample artifact ``data/per_sample_results.csv`` (which includes
+    the retrieved contexts, issue #66) is present. Returns ``(ok,
+    reason)``.
     """
     try:
         client = client or mlflow.MlflowClient()
@@ -71,11 +76,14 @@ def verify_config_run(
     if not run.data.params:
         return False, "no parameters logged"
     try:
-        artifacts = client.list_artifacts(run_id)
+        data_artifacts = {
+            getattr(item, "path", item)
+            for item in client.list_artifacts(run_id, "data")
+        }
     except Exception as exc:
         return False, f"artifact listing failed: {exc}"
-    if not artifacts:
-        return False, "no artifacts logged"
+    if "data/per_sample_results.csv" not in data_artifacts:
+        return False, "canonical per-sample artifact data/per_sample_results.csv missing"
     return True, ""
 
 
@@ -127,6 +135,44 @@ def plan_cleanup(
     return actions
 
 
+def _all_completed_configs_verified(
+    run_dir: Path, client: mlflow.MlflowClient | None = None
+) -> bool:
+    """True only when ``progress.json`` exists and *every* completed
+    config has a verified MLflow run.
+
+    Guards ``--prune-samples``: if any completed config lacks a verified
+    per-sample record in MLflow, its sidecars may be the only remaining
+    copy of the retrieved contexts and must not be deleted (issue #66
+    review).
+    """
+    ledger = run_dir / "progress.json"
+    if not ledger.exists():
+        return False
+    try:
+        data = json.loads(ledger.read_text())
+    except (OSError, json.JSONDecodeError) as exc:
+        logger.warning("Could not read %s: %s", ledger, exc)
+        return False
+    completed = [
+        rec
+        for rec in (data.get("configs") or {}).values()
+        if rec.get("status") == "completed"
+    ]
+    if not completed:
+        return False
+    try:
+        client = client or mlflow.MlflowClient()
+    except Exception as exc:
+        logger.warning("MLflow client unavailable: %s", exc)
+        return False
+    return all(
+        rec.get("mlflow_run_id")
+        and verify_config_run(rec["mlflow_run_id"], client)[0]
+        for rec in completed
+    )
+
+
 def cleanup_run_dir(
     run_dir: Path,
     *,
@@ -139,8 +185,10 @@ def cleanup_run_dir(
     Removes per-config working files for verified configs. With
     ``prune_samples`` the sweep-level ``*.samples.json.gz`` sidecars are
     also removed (the full per-sample data lives on each config's MLflow
-    run). Never touches ``progress.json``, configs with verified MLflow
-    records only, and the sweep summary report.
+    run). Pruning only happens when ``progress.json`` exists and every
+    completed config has a verified MLflow run. Never touches
+    ``progress.json``, configs with verified MLflow records only, and
+    the sweep summary report.
     """
     actions = plan_cleanup(run_dir, client)
     removed: list[Path] = []
@@ -153,12 +201,19 @@ def cleanup_run_dir(
                 except OSError as exc:
                     logger.warning("Could not remove %s: %s", path, exc)
     if prune_samples and execute:
-        for path in run_dir.glob("benchmark_*.samples.json.gz"):
-            try:
-                path.unlink()
-                removed.append(path)
-            except OSError as exc:
-                logger.warning("Could not remove %s: %s", path, exc)
+        if _all_completed_configs_verified(run_dir, client):
+            for path in run_dir.glob("benchmark_*.samples.json.gz"):
+                try:
+                    path.unlink()
+                    removed.append(path)
+                except OSError as exc:
+                    logger.warning("Could not remove %s: %s", path, exc)
+        else:
+            logger.warning(
+                "Skipping sample pruning: not every completed config has a "
+                "verified MLflow record; sidecars may be the only copy of "
+                "the retrieved contexts."
+            )
     return removed, actions
 
 
