@@ -12,6 +12,23 @@
 #   paired delta, worse direction). Skipped and listed when a metric is not
 #   scored in both runs. Lower-is-better metrics (false_refusal, latency,
 #   cost, tokens) are handled automatically.
+# n_boot / seed: paired cluster bootstrap (resamples questions) settings.
+# This file is an analysis policy, not a run knob (doc/adr/006-...); it is
+# loaded into benchmark.regression.criteria.RegressionCriteria, which rejects
+# unknown keys.
+#
+# Why these numbers (guide, "Threshold rationale"). Only min_improvement is
+# derived from data; the guardrails are explicit judgment calls, to be
+# recalibrated once the baseline has been run twice (run-to-run noise):
+# - min_improvement 0.02: on run8 the 95% CI of a bert_score_f1 delta on the
+#   500 dev rows (392 distinct questions) is about +/-0.04, so 0.02 is about
+#   half the detectable effect; smaller gains are not worth a change.
+# - faithfulness / hit@5 0.03: same order as min_improvement; a candidate may
+#   not buy its gain with a loss of similar size elsewhere.
+# - abstained 0.10: only 40 unambiguous unanswerable dev rows; 0.10 = ~4 rows.
+# - false_refusal 0.02: false refusals are the known Blueprint weakness
+#   (~19% on answerable questions); at most ~9 more of 444 answerable rows.
+# - total_seconds / cost 25%: operational budget, not a statistical bound.
 primary: [answer_correctness, bert_score_f1]
 min_improvement: 0.02
 guardrails:
@@ -21,3 +38,5 @@ guardrails:
   false_refusal: {max_worsening: 0.02}    # refuses more answerable questions
   total_seconds: {max_worsening_pct: 25}
   estimated_cost_usd: {max_worsening_pct: 25}
+n_boot: 2000
+seed: 0

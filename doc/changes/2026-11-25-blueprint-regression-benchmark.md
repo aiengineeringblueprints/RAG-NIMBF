@@ -23,7 +23,7 @@ judge a single change.
 - Each row stores `metadata.category` (`answerable` / `unanswerable` from
   `all_relevant_sentence_keys`); gold doc IDs are re-derived on load.
 
-### `benchmark/regression.py`
+### `benchmark/regression/`
 - `freeze_question_set()` → dev/holdout split + manifest; `sample_keys()`
   identifies samples by (question, reference answer, occurrence), because
   TechQA repeats every question with a different reference.
@@ -84,5 +84,5 @@ rebuild the split files (`freeze` command in the guide) and `verify`.
 - Served model weights are tagged, not digest-pinned; record them per run.
 - `current-best.yaml` (run7 winner) was selected on the dev questions; confirm
   it on holdout before using it as the best reference.
-- `compare` does not check that judge/generator settings match between runs;
-  the one-change rule is tested only for `candidate-hybrid.yaml`.
+- PR review follow-up: see
+  [2026-11-25-regression-review-fixes](2026-11-25-regression-review-fixes.md).

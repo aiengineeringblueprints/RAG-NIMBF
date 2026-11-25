@@ -3,13 +3,22 @@
 from __future__ import annotations
 
 import gzip
+import hashlib
 import json
 from pathlib import Path
 
 import pytest
 import yaml
 
-from benchmark.regression import compare_runs, freeze_question_set, main, sample_metrics, summarize_run
+from benchmark.regression import (
+    RegressionCriteria,
+    check_run_configs,
+    compare_runs,
+    freeze_question_set,
+    main,
+    sample_metrics,
+    summarize_run,
+)
 
 
 def _sample(question: str, *, answerable: bool = True, **metadata) -> dict:
@@ -158,23 +167,18 @@ def test_summary_marks_dimensions_unavailable_instead_of_guessing():
     assert dims["correctness"]["status"] == "ok"
 
 
-def test_summary_keeps_duplicate_questions_apart_by_reference_answer():
+def test_compare_keeps_duplicate_questions_apart_by_reference_answer():
     # RAGBench TechQA lists every question twice (same documents, two
-    # reference answers); the labels can differ, so the question text alone
-    # cannot identify a sample.
-    question_set = [
-        {"question": "q", "ground_truth": "gt-a", "metadata": {"category": "answerable"}},
-        {"question": "q", "ground_truth": "gt-u", "metadata": {"category": "unanswerable"}},
-    ]
-    results = [  # run order differs from the frozen order
-        _result("q", answer=REFUSAL, ground_truth="gt-u"),
-        _result("q", answer="Restart the service.", ground_truth="gt-a"),
-    ]
+    # reference answers), so the question text alone cannot identify a sample.
+    def scored(ground_truth, bert):
+        return _result("q", ground_truth=ground_truth, custom_scores={"bert_score_f1": bert})
 
-    abstention = summarize_run(results, question_set)["dimensions"]["abstention"]["metrics"]
+    baseline = [scored("gt-a", 0.9), scored("gt-b", 0.1)]
+    candidate = [scored("gt-b", 0.1), scored("gt-a", 0.9)]  # same scores, other order
 
-    assert abstention["abstention_rate"] == pytest.approx(1.0)
-    assert abstention["false_refusal_rate"] == pytest.approx(0.0)
+    bert = compare_runs(baseline, candidate, criteria=CRITERIA)["metrics"]["bert_score_f1"]
+
+    assert bert["delta"] == pytest.approx(0.0)
 
 
 CRITERIA = {
@@ -330,10 +334,18 @@ def test_cli_freeze_rebuilds_a_committed_manifest_only_when_content_matches(tmp_
     assert main(args) == 1
     assert not (out / "dev.jsonl").exists()
 
+def _write_question_set(root, dev_rows):
+    """A frozen set on disk: dev split plus a manifest holding its hash."""
+    root.mkdir()
+    _write_jsonl(root / "dev.jsonl", dev_rows)
+    digest = hashlib.sha256((root / "dev.jsonl").read_bytes()).hexdigest()
+    manifest = {"splits": {"dev": {"size": len(dev_rows), "sha256": digest}}}
+    (root / "manifest.json").write_text(json.dumps(manifest))
+    return root
+
+
 def test_cli_compare_reports_verdicts_against_baseline_and_best(tmp_path):
-    question_set = tmp_path / "v1"
-    question_set.mkdir()
-    _write_jsonl(question_set / "dev.jsonl", _rows({f"q{i}": "answerable" for i in range(20)}))
+    question_set = _write_question_set(tmp_path / "v1", _rows({f"q{i}": "answerable" for i in range(20)}))
     criteria = tmp_path / "criteria.yaml"
     criteria.write_text(yaml.safe_dump(CRITERIA))
     baseline = _write_samples(tmp_path / "base.samples.json.gz", _run([0.5] * 20))
@@ -442,3 +454,169 @@ def test_cli_verify_explains_missing_split_files(tmp_path, capsys):
 
     assert main(["verify", "--question-set", str(tmp_path)]) == 1
     assert "freeze" in capsys.readouterr().out
+
+
+# --------------------------------------------------------------------------
+# PR #68 review: fairness checks, labels, typed criteria
+# --------------------------------------------------------------------------
+
+
+def _compare_args(tmp_path, question_set, *, best=True):
+    criteria = tmp_path / "criteria.yaml"
+    criteria.write_text(yaml.safe_dump(CRITERIA))
+    runs = {name: _write_samples(tmp_path / f"{name}.samples.json.gz", _run([0.5] * 4))
+            for name in ("baseline", "best", "candidate")}
+    args = ["compare", "--question-set", str(question_set), "--criteria", str(criteria),
+            "--baseline", runs["baseline"], "--candidate", runs["candidate"],
+            "--out", str(tmp_path / "report")]
+    return args + (["--best", runs["best"]] if best else [])
+
+
+def test_cli_compare_requires_the_current_best(tmp_path):
+    question_set = _write_question_set(tmp_path / "v1", _rows({f"q{i}": "answerable" for i in range(4)}))
+
+    with pytest.raises(SystemExit):
+        main(_compare_args(tmp_path, question_set, best=False))
+
+
+def test_cli_compare_refuses_a_question_set_that_no_longer_matches_its_manifest(tmp_path, capsys):
+    question_set = _write_question_set(tmp_path / "v1", _rows({f"q{i}": "answerable" for i in range(4)}))
+    (question_set / "dev.jsonl").write_text((question_set / "dev.jsonl").read_text() + "\n")
+
+    assert main(_compare_args(tmp_path, question_set)) == 1
+    assert "sha256" in capsys.readouterr().err
+    assert not (tmp_path / "report").exists()
+
+
+BASE_CONFIG = {
+    "dataset_name": "jsonl",
+    "dataset_path": "datasets/blueprint_regression/v1/dev.jsonl",
+    "dataset_sample_size": 500,
+    "eval_critic_llm": "openai:deepseek-v4-flash",
+    "eval_critic_embedding": "ollama:nomic-embed-text:latest",
+    "custom_metrics_bert_model": "roberta-large",
+    "llm_model": "openai:qwen3.8-27b",
+    "retrieval_strategy": "similarity",
+}
+
+
+def test_run_configs_must_share_the_evaluation_setup():
+    configs = {
+        "baseline": BASE_CONFIG,
+        "best": BASE_CONFIG,
+        "candidate": {**BASE_CONFIG, "eval_critic_llm": "openai:other-judge"},
+    }
+
+    check = check_run_configs(configs)
+
+    assert check["status"] == "invalid"
+    assert check["mismatches"] == {
+        "eval_critic_llm": {
+            "baseline": "openai:deepseek-v4-flash",
+            "best": "openai:deepseek-v4-flash",
+            "candidate": "openai:other-judge",
+        }
+    }
+
+
+def test_run_configs_list_the_components_a_candidate_changes():
+    configs = {
+        "baseline": BASE_CONFIG,
+        "best": BASE_CONFIG,
+        "candidate": {**BASE_CONFIG, "retrieval_strategy": "hybrid"},
+    }
+
+    check = check_run_configs(configs)
+
+    assert check["status"] == "ok"
+    assert check["changed"]["baseline"] == {"retrieval_strategy": ["similarity", "hybrid"]}
+
+
+def test_run_configs_without_a_recorded_config_are_unverified():
+    check = check_run_configs({"baseline": BASE_CONFIG, "best": None, "candidate": BASE_CONFIG})
+
+    assert check["status"] == "unverified"
+    assert check["missing"] == ["best"]
+
+
+def _write_run(root, results, config):
+    """Run directory layout: configs/<cfg>.samples.json.gz + reproducibility manifest."""
+    (root / "configs").mkdir(parents=True)
+    (root / "reproducibility").mkdir()
+    (root / "reproducibility" / "manifest.json").write_text(json.dumps({"configs": [config]}))
+    return _write_samples(root / "configs" / "cfg.samples.json.gz", results)
+
+
+def test_cli_compare_refuses_runs_scored_by_different_judges(tmp_path, capsys):
+    question_set = _write_question_set(tmp_path / "v1", _rows({f"q{i}": "answerable" for i in range(4)}))
+    criteria = tmp_path / "criteria.yaml"
+    criteria.write_text(yaml.safe_dump(CRITERIA))
+    runs = {
+        name: _write_run(tmp_path / name, _run([0.5] * 4), config)
+        for name, config in {
+            "baseline": BASE_CONFIG,
+            "best": BASE_CONFIG,
+            "candidate": {**BASE_CONFIG, "eval_critic_llm": "openai:other-judge"},
+        }.items()
+    }
+
+    code = main(["compare", "--question-set", str(question_set), "--criteria", str(criteria),
+                 "--baseline", runs["baseline"], "--best", runs["best"],
+                 "--candidate", runs["candidate"], "--out", str(tmp_path / "report")])
+
+    assert code == 1
+    assert "eval_critic_llm" in capsys.readouterr().err
+
+
+def _labelled(question, ground_truth, category):
+    return {"question": question, "ground_truth": ground_truth, "metadata": {"category": category}}
+
+
+def test_questions_with_conflicting_answerable_labels_are_left_out_of_abstention():
+    # TechQA lists some questions twice with opposite answerable labels; a
+    # refusal on them is neither clearly right nor clearly wrong.
+    question_set = [
+        _labelled("q0", "a", "answerable"),
+        _labelled("q0", "b", "unanswerable"),
+        _labelled("q1", "c", "unanswerable"),
+        _labelled("q2", "d", "answerable"),
+    ]
+    results = [
+        _result("q0", answer=REFUSAL, ground_truth="a"),
+        _result("q0", answer=REFUSAL, ground_truth="b"),
+        _result("q1", answer=REFUSAL, ground_truth="c"),
+        _result("q2", ground_truth="d"),
+    ]
+
+    abstention = summarize_run(results, question_set)["dimensions"]["abstention"]["metrics"]
+
+    assert abstention["n_unanswerable"] == 1
+    assert abstention["abstention_rate"] == pytest.approx(1.0)
+    assert abstention["false_refusal_rate"] == pytest.approx(0.0)
+    assert abstention["n_ambiguous"] == 2
+
+
+def test_binary_metric_test_counts_repeated_questions_once():
+    baseline = [_result(f"q{i}", custom_scores={"hit@1": 0.0}) for i in range(6)]
+    candidate = [_result(f"q{i}", custom_scores={"hit@1": 1.0}) for i in range(6)]
+
+    def doubled(results):
+        return results + [{**r, "ground_truth": "second reference"} for r in results]
+
+    single = compare_runs(baseline, candidate, criteria=CRITERIA)["metrics"]["hit@1"]["mcnemar"]
+    double = compare_runs(doubled(baseline), doubled(candidate), criteria=CRITERIA)["metrics"]["hit@1"]["mcnemar"]
+
+    assert double == single
+    assert single["only_candidate"] == 6
+
+
+def test_criteria_reject_unknown_guardrail_limits():
+    with pytest.raises(ValueError, match="max_worse"):
+        RegressionCriteria.from_mapping({**CRITERIA, "guardrails": {"faithfulness": {"max_worse": 0.1}}})
+
+
+def test_criteria_carry_the_bootstrap_settings():
+    criteria = RegressionCriteria.from_mapping({**CRITERIA, "n_boot": 500, "seed": 7})
+
+    assert (criteria.n_boot, criteria.seed) == (500, 7)
+    assert RegressionCriteria.from_mapping(CRITERIA).n_boot == 2000

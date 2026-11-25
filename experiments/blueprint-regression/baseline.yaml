@@ -42,6 +42,11 @@ settings:
   custom_retrieval_metrics_mode: gold_doc
   mlflow_tracing_enabled: true
 
+# Model tags are not digest-pinned (Ollama / the OpenAI-compatible server
+# resolve tags at request time). Digests at freeze time (2026-11-25, Spark):
+# nomic-embed-text:latest = 0a109f422b47. The generator qwen3.8-27b is served
+# remotely without a digest. Record `ollama list` with every baseline run and
+# re-run baseline + current best after any model update.
 matrix:
   llm_models: [openai:qwen3.8-27b]
   embedding_models: [nomic-embed-text:latest]

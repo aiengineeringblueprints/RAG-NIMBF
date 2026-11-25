@@ -14,7 +14,7 @@ trade-off criteria.
 | Example candidate (similarity → hybrid) | `experiments/blueprint-regression/candidate-hybrid.yaml` |
 | Smoke test | `experiments/blueprint-regression/smoke.yaml` |
 | Improvement / trade-off criteria | `experiments/blueprint-regression/criteria.yaml` |
-| Freeze, verify, compare | `python -m benchmark.regression` (`benchmark/regression.py`) |
+| Freeze, verify, compare | `python -m benchmark.regression` (package `benchmark/regression/`) |
 
 ## Question set v1
 
@@ -123,9 +123,18 @@ vLLM model path) when a model server changes.
    ```
 
    Report files (`<config>.json`) and their `<config>.samples.json.gz`
-   sidecars are both accepted. Writes `comparison.json` and `report.md`.
-   `compare` refuses runs that cover different questions or not the whole
-   frozen split.
+   sidecars are both accepted; `--best` is required. Writes
+   `comparison.json` and `report.md`. `compare` refuses to run when:
+   - the split file no longer matches its manifest sha256 (`verify` first);
+   - the runs cover different questions or not the whole frozen split;
+   - the runs were scored differently: it reads each run's
+     `reproducibility/manifest.json` and requires equal dataset settings,
+     judge (`eval_critic_llm`, `eval_critic_embedding`), BERTScore model,
+     retrieval-metric mode and RAGAS settings. Runs without a single recorded
+     config (matrix runs, bare sidecars) are compared with a warning
+     (`config_check: unverified`). The report lists which system settings
+     the candidate changes against each reference — it should be exactly one
+     component.
 6. If two accepted changes may interact (e.g. hybrid retrieval and a larger
    top-k), evaluate the combination as its own candidate instead of assuming
    the gains add up.
@@ -150,6 +159,11 @@ Rescoring without regeneration: the per-sample answers and contexts stay in
 | Latency | `total_seconds`, `ttft_seconds` | per-sample wall-clock answer time | — | — |
 | Cost | `estimated_cost_usd`, `total_tokens` | adapter token usage × pricing | — | — |
 
+- 47 TechQA questions appear twice with **conflicting** answerable labels
+  (8 in dev = 16 rows, 2 in holdout = 4 rows). Their rows are `ambiguous` (derived when the
+  split is read; the frozen files are unchanged) and count for neither
+  `abstained` nor `false_refusal`; the summary reports `n_ambiguous`.
+  Effective dev abstention labels: 444 answerable, 40 unanswerable.
 - Retrieval metrics are computed on answerable questions with gold labels
   only; a dimension without data is reported as **unavailable** with the
   reason (e.g. RAGAS off, no unanswerable questions, adapter reports no
@@ -168,8 +182,11 @@ Rescoring without regeneration: the per-sample answers and contexts stay in
 - **Primary**: the first metric of `primary` scored by both runs
   (`answer_correctness`, else `bert_score_f1`). For each metric `compare`
   reports the paired mean delta (candidate − reference), a paired 95% CI from
-  a cluster bootstrap over questions (2000 resamples; both TechQA copies of a
-  question are drawn together, so duplicates do not narrow the CI) and, for 0/1 metrics, an exact McNemar test.
+  a cluster bootstrap over questions (`n_boot` 2000, `seed` 0 in
+  `criteria.yaml`; both TechQA copies of a question are drawn together, so
+  duplicates do not narrow the CI) and, for 0/1 metrics, an exact sign test
+  over questions (a question counts once, by the sign of its mean change;
+  with one row per question this is McNemar's test).
 - **accept**: CI of the primary delta above 0 **and** gain ≥
   `min_improvement` (0.02), **and** no guardrail breached.
 - **reject**: CI entirely below 0, or a guardrail breached — the
@@ -184,6 +201,32 @@ Rescoring without regeneration: the per-sample answers and contexts stay in
   +0.02, `total_seconds` +25 %, cost +25 %. Guardrails whose metric is not
   scored in both runs are skipped and listed in the report.
 
+### Threshold rationale
+
+`criteria.yaml` is an analysis policy, not a run setting
+([ADR-006](adr/006-regression-criteria-are-an-analysis-policy.md)); it is
+validated into `RegressionCriteria` and recorded in every report.
+
+- `min_improvement` 0.02 is derived from data: on run8 the 95% CI of a
+  `bert_score_f1` delta over the 500 dev rows (392 distinct questions) is
+  about ±0.04, so 0.02 is about half the detectable effect.
+- The guardrails are judgment calls: quality losses (faithfulness, `hit@5`)
+  of the same size as the minimum gain; abstention 0.10 ≈ 4 of 40
+  unanswerable rows; false refusals 0.02 ≈ 9 of 444 answerable rows;
+  latency/cost +25 % as an operational budget.
+- Recalibrate after the baseline has been run twice: the run-to-run
+  difference of identical configs is the noise floor no threshold should
+  sit below.
+
+## Model versions
+
+Model tags are not digest-pinned (Ollama and the OpenAI-compatible server
+resolve tags at request time). Digests on the Spark at freeze time
+(2026-11-25): `nomic-embed-text:latest` = `0a109f422b47`; the generator
+`qwen3.8-27b` is served remotely without a digest. Record `ollama list`
+with each baseline run; after any model update, re-run baseline and current
+best before comparing new candidates.
+
 ## Verification runs
 
 - **Smoke** (`smoke.yaml`, first 5 dev questions, RAGAS off) on the DGX
@@ -196,8 +239,9 @@ Rescoring without regeneration: the per-sample answers and contexts stay in
   `compare` — candidate query refinement **on** (`managed-a6b2f4cd80`) vs
   refinement off (`managed-2c9672c978`), both hybrid alpha 0.5:
   `bert_score_f1` −0.056 (CI −0.098..−0.016, primary flagged as fallback
-  because RAGAS was off), false refusals +0.066 (McNemar p < 0.001) →
-  **reject**, consistent with the run8 analysis.
+  because RAGAS was off), false refusals +0.063 on the 444 unambiguous
+  answerable rows (sign test p < 0.001) → **reject**, consistent with the
+  run8 analysis. run8 is a matrix run, so `config_check` is `unverified`.
 
 ## Proposed follow-up candidates
 
@@ -205,3 +249,7 @@ From runs 5–9 (see [Enterprise RAG Blueprint Results](enterprise-rag-blueprint
 hybrid retrieval vs similarity (`candidate-hybrid.yaml`), query refinement
 off, larger chunks (2048/64), top-k 10 vs 12, a reranker, and a different
 refusal prompt (false refusal rate ~19 % on answerable questions).
+
+Tracked: reference runs and holdout confirmation (#69), the hybrid
+candidate (#70), token usage for the cost dimension (#71). Further
+candidates get their own issue when picked up.
