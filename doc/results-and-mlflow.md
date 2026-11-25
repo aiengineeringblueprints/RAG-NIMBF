@@ -94,7 +94,7 @@ and in MLflow.
 | --- | --- | --- |
 | `experiment` | `study_id`, `hypothesis`, `candidate_id`, `baseline_run_id`, `change_under_test`, `change_summary`, `issue_reference` | manifest `experiment:` block / `EXPERIMENT_METADATA_JSON` |
 | `system` | `system_id`, `system_name`, `version_source`, `version`, `branch`, `remote` (credentials stripped), `dirty`, `diff_hash`, `status` | adapter hook `system_provenance(config)`, else manifest `system_provenance:` / `SYSTEM_PROVENANCE_JSON` |
-| `dataset` | name, dataset `adapter`, `source` (HuggingFace ID or `local`), `version` (content hash of a local file; unknown for HuggingFace), subset, split, sample size, `sampling_method` (`none`, `head`, `seeded_shuffle`), `sampling_seed` (`42`, only for `seeded_shuffle`), `num_samples`, ordered `question_set_hash`, `source_sha256`, order-independent `corpus_fingerprint` | computed from the loaded data |
+| `dataset` | name, dataset `adapter`, `source` (HuggingFace ID or `local`), `version` (content hash of a local file; unknown for HuggingFace), subset, split (as configured, else the split the loader resolved), sample size, `sampling_method` (`none`, `head`, `seeded_shuffle`, or `unknown` when the source row count was not recorded), `sampling_seed` (`42`, only for `seeded_shuffle`; loaders subsample only when the sample size is smaller than the source), `num_samples`, ordered `question_set_hash`, `source_sha256`, order-independent `corpus_fingerprint` | computed from the loaded data |
 | `scorer` | critic LLM/embedding/temperature/max tokens/thinking control, RAGAS on/metrics, custom metrics, BERTScore model, retrieval-metric mode, MLflow scorers, and `implementation`: SHA-256 of the framework's evaluator sources plus `ragas`, `bert-score`, `mlflow`, `langchain-openai` versions | config + installed packages |
 
 Provenance `status` is one of `captured` (clean checkout read by the adapter),
@@ -106,7 +106,7 @@ capture the Blueprint checkout; HTTP/MCP/managed systems need a declared
 `system_provenance:` block. Plugin adapters opt in by implementing
 `system_provenance(self, config) -> SystemProvenance`.
 
-A `candidate_id` requires a `baseline_run_id`; config validation rejects a
+A `candidate_id` requires a non-empty `baseline_run_id`; config validation rejects a
 candidate without one.
 
 `sample_id` is a 16-hex SHA-256 of (question, ground truth, occurrence), so it
@@ -149,7 +149,7 @@ per-sample extraction as `benchmark.regression`.
 | --- | --- |
 | `paired` | Scorer and corpus verified identical on both sides, identical sample sets |
 | `partially_paired` | Scorer and corpus verified identical, overlapping sample sets; statistics on the overlap only, counts in `pairing` |
-| `unverified` | Shared samples, but one side's scorer identity or corpus fingerprint is unknown (e.g. a run from before lineage); deltas are shown, `reasons` says what could not be checked; do not read it as a paired comparison |
+| `unverified` | Shared samples, but the scorer identity or corpus fingerprint is unknown on one or both sides (e.g. a run from before lineage); deltas are shown, `reasons` says what could not be checked; do not read it as a paired comparison |
 | `not_comparable` | Scorer identity or corpus fingerprint differs, or no shared samples; `reasons` lists why and no metrics are computed |
 
 A metric missing on one side is counted in `missing_baseline` /

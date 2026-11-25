@@ -160,6 +160,13 @@ def test_unknown_lineage_is_unverified_not_paired():
     assert result["metrics"]["answer_correctness"]["n"] == 4
 
 
+def test_unknown_corpus_on_both_sides_is_unverified():
+    result = compare_runs(_record("base", BASE, corpus=None), _record("cand", CAND, corpus=None))
+
+    assert result["status"] == "unverified"
+    assert any("corpus" in r for r in result["reasons"])
+
+
 def test_unknown_corpus_on_one_side_is_unverified():
     result = compare_runs(_record("base", BASE, corpus=None), _record("cand", CAND))
 
@@ -245,7 +252,8 @@ def test_cli_compares_two_reports_end_to_end(tmp_path):
         path.write_text(json.dumps({
             "dataset_name": "ds",
             "results": [{"config_name": name, "per_sample": samples,
-                         "lineage": {"scorer": SCORER, "dataset": {"name": "ds"}}}],
+                         "lineage": {"scorer": SCORER,
+                                     "dataset": {"name": "ds", "corpus_fingerprint": "c1"}}}],
         }))
         return str(path)
 

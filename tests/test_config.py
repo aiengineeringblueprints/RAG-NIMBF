@@ -1542,6 +1542,14 @@ class TestExperimentLineageConfig:
         with pytest.raises(ValueError, match="baseline_run_id"):
             validate_benchmark_config(cfg)
 
+    @pytest.mark.parametrize("baseline", ["", "   "])
+    def test_candidate_with_blank_baseline_is_rejected(self, baseline):
+        cfg = _make_config(
+            experiment_metadata_json=json.dumps({"candidate_id": "k8", "baseline_run_id": baseline})
+        )
+        with pytest.raises(ValueError, match="baseline_run_id"):
+            validate_benchmark_config(cfg)
+
     def test_unknown_provenance_key_is_rejected(self):
         cfg = _make_config(system_provenance_json='{"api_key": "secret"}')
         with pytest.raises(ValueError, match="Unknown system_provenance field"):

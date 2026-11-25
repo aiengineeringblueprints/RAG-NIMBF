@@ -35,7 +35,11 @@ status (issue #65).
   seeded shuffles); `SampleIdentity` (`sample_id`, `question_id`, `category`).
 - `benchmark/dataset.py`: sampling seed `42` is now the shared constant
   `SAMPLING_SEED` (unchanged value) plus `sampling_method()`, which names how
-  each loader subsamples (`none`, `head`, `seeded_shuffle`).
+  each loader subsamples (`none`, `head`, `seeded_shuffle`, `unknown`).
+  Loaders stamp `metadata.dataset_rows` (source row count) and, for
+  HuggingFace, `metadata.dataset_split` (resolved split) on every sample, so a
+  sample size equal to the source size is recorded as `none`, not as a seeded
+  shuffle, and default-resolved splits are recorded.
 
 ### Run records
 - `benchmark/reporting/models.py`, `exports.py`: `PerSampleResult.sample_id` /
@@ -54,7 +58,7 @@ status (issue #65).
   bootstrap CI clustered by question, per-question deltas, category summary,
   per-side error counts (invalid answers, evaluation error). A scorer or
   corpus mismatch blocks the comparison; an unknown scorer or corpus identity
-  on either side makes it `unverified`; a candidate without, or with another,
+  on one or both sides makes it `unverified`; a candidate without, or with another,
   `baseline_run_id` is flagged.
 - `benchmark/lineage/report.py` (Markdown/JSON output),
   `benchmark/lineage/publish.py` (MLflow run linked to the input run IDs),
@@ -62,7 +66,7 @@ status (issue #65).
 - `benchmark/lineage/experiment.py`: scorer identity includes critic max
   tokens, thinking control, MLflow scorers and the evaluator implementation
   (hash of the framework's evaluator modules + scorer library versions);
-  `candidate_id` requires `baseline_run_id`.
+  `candidate_id` requires a non-empty `baseline_run_id`.
 - `benchmark/lineage/json_object.py`: shared validator for the two JSON
   lineage knobs. `benchmark.reproducibility.run_git` and
   `benchmark.regression.metrics.RETRIEVAL_PREFIXES` are now public.
@@ -74,8 +78,9 @@ status (issue #65).
 ## Behaviour changes and migration
 Reports and MLflow runs gain fields; old reports still load (sample IDs are
 re-derived, absent lineage shows as unknown/not_available) and compare as
-`unverified` against new runs. Manifests that set `candidate_id` must also set
-`baseline_run_id`.
+`unverified` against new runs. Manifests that set `candidate_id` must also set a
+non-empty `baseline_run_id`. Loaded samples carry two extra metadata keys
+(`dataset_rows`, `dataset_split`).
 MLflow runs logged before this change cannot be compared by run ID — use their
 JSON reports.
 
@@ -83,7 +88,7 @@ JSON reports.
 New tests: `tests/test_lineage_provenance.py`, `test_lineage_dataset.py`,
 `test_lineage_report.py`, `test_lineage_mlflow.py`, `test_lineage_compare.py`,
 plus `TestExperimentLineageConfig` in `tests/test_config.py`. Full suite on the
-DGX Spark: 1140 passed.
+DGX Spark: 1147 passed.
 
 ## Follow-ups
 - No dashboard and no automatic baseline promotion (non-goals of #65).

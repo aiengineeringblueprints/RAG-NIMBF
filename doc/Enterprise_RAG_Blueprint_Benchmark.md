@@ -139,29 +139,29 @@ Wichtige Dateien und Ordner:
 - `reproducibility/`: Manifest, Git-Stand und Paketliste
 - `plots/`, `reports/`, `results_summary.csv`: aggregierte Auswertung, wenn Reports erzeugt wurden
 
-## Iterationen vergleichen (Experiment-Lineage)
+## Comparing iterations (experiment lineage)
 
-Jeder Lauf hält fest, welcher Blueprint-Stand gemessen wurde. Der Adapter liest
-den Checkout unter `enterprise_rag_blueprint_path` (Commit, Branch, Remote ohne
-Zugangsdaten, `dirty` + Hash des Diffs) selbst aus; nichts muss deklariert
-werden. Beschreibe im Manifest nur das Experiment:
+Every run records which Blueprint state was measured. The adapter reads the
+checkout under `enterprise_rag_blueprint_path` itself (commit, branch, remote
+without credentials, `dirty` plus a hash of the diff); nothing has to be
+declared. The manifest only describes the experiment:
 
 ```yaml
 experiment:
   study_id: blueprint-reranker
-  hypothesis: Reranker top-k 8 statt 4 erhöht answer_correctness
+  hypothesis: Reranker top-k 8 instead of 4 raises answer_correctness
   candidate_id: rerank-k8
-  baseline_run_id: <MLflow-Run-ID des Baseline-Laufs>
+  baseline_run_id: <MLflow run ID of the baseline run>
   change_under_test: reranker_top_k 4 -> 8
   issue_reference: "#65"
 ```
 
-Ablauf:
+Workflow:
 
-1. Baseline-Lauf auf dem aktuellen Blueprint-Stand starten (wie oben), z. B. nach `results/run40`.
-2. Änderung im Blueprint committen (ein uncommitteter Stand erscheint als `status: dirty`).
-3. Kandidaten-Lauf mit demselben Datensatz, derselben `DATASET_SAMPLE_SIZE` und demselben Critic starten, z. B. nach `results/run41`.
-4. Vergleichen:
+1. Run the baseline on the current Blueprint state (as above), e.g. into `results/run40`.
+2. Commit the change in the Blueprint (an uncommitted checkout shows up as `status: dirty`).
+3. Run the candidate with the same dataset, the same `DATASET_SAMPLE_SIZE` and the same critic, e.g. into `results/run41`.
+4. Compare:
 
 ```bash
 python -m benchmark.lineage compare \
@@ -169,14 +169,14 @@ python -m benchmark.lineage compare \
   --candidate results/run41/benchmark_<...>.json --log-mlflow
 ```
 
-`comparison.md` zeigt oben beide Blueprint-Commits, darunter pro Metrik
-Baseline, Kandidat, Delta mit 95%-KI und die Zahl gepaarter Fragen, danach die
-Kategorien (`answerable` / `unanswerable`) und die Fehlerzahlen beider Läufe.
-Status `not_comparable` heißt: anderer Critic, andere Bewertungs-Version
-(Evaluator-Code oder RAGAS), anderer Corpus oder keine gemeinsamen Fragen.
-`unverified` heißt: ein Lauf hat keine Lineage (älter als #65), die
-Bedingungen sind also nicht prüfbar. `candidate_id` braucht immer eine
-`baseline_run_id`. Details unter
+`comparison.md` shows both Blueprint commits at the top, then per metric the
+baseline, candidate, delta with 95% CI and the number of paired questions,
+followed by the categories (`answerable` / `unanswerable`) and the error
+counts of both runs. Status `not_comparable` means: a different critic, a
+different scorer version (evaluator code or RAGAS), a different corpus, or no
+shared questions. `unverified` means the scorer or corpus identity is missing
+on at least one side (e.g. a run older than #65), so the conditions cannot be
+checked. `candidate_id` always needs a non-empty `baseline_run_id`. Details in
 [results-and-mlflow.md](results-and-mlflow.md#experiment-lineage-and-paired-comparisons).
 
 ## Häufige Probleme

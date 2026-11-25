@@ -92,7 +92,9 @@ def _unverified_reasons(base: dict, cand: dict) -> list[str]:
             reasons.append(f"{label} scorer identity unknown (run predates lineage)")
     b_fp = base["dataset"].get("corpus_fingerprint")
     c_fp = cand["dataset"].get("corpus_fingerprint")
-    if bool(b_fp) != bool(c_fp):
+    if not b_fp and not c_fp:
+        reasons.append("corpus fingerprint unknown on both sides; same corpus cannot be verified")
+    elif not b_fp or not c_fp:
         unknown = "baseline" if not b_fp else "candidate"
         reasons.append(f"{unknown} corpus fingerprint unknown; same corpus cannot be verified")
     return reasons

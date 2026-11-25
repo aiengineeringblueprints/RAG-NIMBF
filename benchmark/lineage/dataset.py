@@ -13,7 +13,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-from benchmark.dataset import SAMPLING_SEED, sampling_method
+from benchmark.dataset import (
+    DATASET_ROWS_KEY,
+    DATASET_SPLIT_KEY,
+    SAMPLING_SEED,
+    sampling_method,
+)
 from benchmark.dataset_adapters import ENV_HF_ID_SENTINEL, REGISTRY
 from benchmark.regression.question_set import sample_keys
 
@@ -135,7 +140,8 @@ def dataset_identity(
     ids = list(sample_ids) if sample_ids is not None else assign_sample_ids(data)
     name = getattr(config, "dataset_name", None)
     sample_size = getattr(config, "dataset_sample_size", None)
-    method = sampling_method(name or "", sample_size, len(ids))
+    loaded = (data[0].get("metadata") or {}) if data else {}
+    method = sampling_method(name or "", sample_size, len(ids), loaded.get(DATASET_ROWS_KEY))
     source_sha256 = _file_sha256(getattr(config, "dataset_path", None))
     return {
         "name": name,
@@ -145,7 +151,7 @@ def dataset_identity(
         # pinned by the loader yet, so their version stays unknown.
         "version": source_sha256,
         "subset": getattr(config, "dataset_subset", None) or None,
-        "split": getattr(config, "dataset_split", None) or None,
+        "split": getattr(config, "dataset_split", None) or loaded.get(DATASET_SPLIT_KEY),
         "sample_size": sample_size,
         "sampling_method": method,
         "sampling_seed": SAMPLING_SEED if method == "seeded_shuffle" else None,

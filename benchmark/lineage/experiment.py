@@ -51,7 +51,7 @@ def parse_experiment_metadata(value: str | Mapping[str, Any] | None) -> dict[str
     if data is None:
         return {}
     parsed = {key: str(data[key]) for key in EXPERIMENT_FIELDS if data.get(key) is not None}
-    if "candidate_id" in parsed and "baseline_run_id" not in parsed:
+    if "candidate_id" in parsed and not parsed.get("baseline_run_id", "").strip():
         raise ValueError(
             "experiment metadata: candidate_id requires baseline_run_id "
             "(the run the candidate is compared against)"

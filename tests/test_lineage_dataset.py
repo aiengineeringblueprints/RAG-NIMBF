@@ -110,7 +110,7 @@ def test_dataset_identity_records_sampling_and_hashes(tmp_path):
 
 
 def test_local_dataset_truncation_is_head_sampling():
-    identity = dataset_identity(_config(dataset_sample_size=1), [_sample("Q")])
+    identity = dataset_identity(_config(dataset_sample_size=1), [_sample("Q", dataset_rows=3)])
 
     assert identity["sampling_method"] == "head"
     assert identity["sampling_seed"] is None
@@ -118,7 +118,7 @@ def test_local_dataset_truncation_is_head_sampling():
 
 def test_huggingface_subsample_is_seeded_shuffle():
     identity = dataset_identity(
-        _config(dataset_name="squad", dataset_sample_size=1), [_sample("Q")]
+        _config(dataset_name="squad", dataset_sample_size=1), [_sample("Q", dataset_rows=10)]
     )
 
     assert identity["adapter"] == "squad"
@@ -136,3 +136,45 @@ def test_sample_identities_share_question_id_across_references():
     assert first.question_id == second.question_id != other.question_id
     assert second.category == "x"
     assert "Q" not in first.question_id
+
+
+def test_sample_size_equal_to_source_is_not_a_shuffle():
+    identity = dataset_identity(
+        _config(dataset_name="squad", dataset_sample_size=1), [_sample("Q", dataset_rows=1)]
+    )
+
+    assert identity["sampling_method"] == "none"
+    assert identity["sampling_seed"] is None
+
+
+def test_unknown_source_size_does_not_claim_a_seed():
+    identity = dataset_identity(
+        _config(dataset_name="squad", dataset_sample_size=1), [_sample("Q")]
+    )
+
+    assert identity["sampling_method"] == "unknown"
+    assert identity["sampling_seed"] is None
+
+
+def test_default_resolved_split_is_recorded():
+    identity = dataset_identity(
+        _config(dataset_name="squad"), [_sample("Q", dataset_rows=1, dataset_split="validation")]
+    )
+
+    assert identity["split"] == "validation"
+
+
+def test_local_loader_records_source_rows(tmp_path):
+    from benchmark.dataset import load_benchmark_data
+
+    path = tmp_path / "q.jsonl"
+    path.write_text("\n".join(
+        json.dumps({"question": f"Q{i}", "ground_truth": "A", "context": "c"}) for i in range(3)
+    ))
+
+    data = load_benchmark_data("jsonl", sample_size=3, dataset_path=str(path))
+
+    assert [s["metadata"]["dataset_rows"] for s in data] == [3, 3, 3]
+    assert dataset_identity(_config(dataset_name="jsonl", dataset_sample_size=3), data)[
+        "sampling_method"
+    ] == "none"
