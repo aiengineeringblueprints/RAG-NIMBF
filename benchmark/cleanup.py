@@ -118,15 +118,20 @@ def _config_working_paths(run_dir: Path, safe_name: str) -> tuple[Path, ...]:
 def plan_cleanup(
     run_dir: Path,
     client: mlflow.MlflowClient | None = None,
+    verify_cache: dict[str, bool] | None = None,
 ) -> list[CleanupAction]:
     """List configs whose local working files can safely be removed.
 
     A config is selected only when the progress ledger marks it
     ``completed`` with a recorded ``mlflow_run_id`` whose run passes
     :func:`verify_config_run`. Everything else (failed, interrupted,
-    unverified, still-running) is protected.
+    unverified, still-running) is protected. Pass ``verify_cache`` (a
+    dict keyed by run id) to reuse verification results across calls
+    within one cleanup run.
     """
     from benchmark.orchestration.worker import ProgressStore
+
+    cache = verify_cache if verify_cache is not None else {}
 
     progress_path = run_dir / "progress.json"
     if not progress_path.exists():
@@ -140,6 +145,7 @@ def plan_cleanup(
         if not run_id:
             continue
         ok, reason = verify_config_run(run_id, client)
+        cache[run_id] = ok
         if not ok:
             logger.info(
                 "Protecting config '%s': MLflow run %s not verified (%s)",
@@ -155,7 +161,9 @@ def plan_cleanup(
 
 
 def _all_completed_configs_verified(
-    run_dir: Path, client: mlflow.MlflowClient | None = None
+    run_dir: Path,
+    client: mlflow.MlflowClient | None = None,
+    verify_cache: dict[str, bool] | None = None,
 ) -> bool:
     """True only when ``progress.json`` exists and *every* RAG completed
     config has a verified MLflow run.
@@ -188,11 +196,20 @@ def _all_completed_configs_verified(
     except Exception as exc:
         logger.warning("MLflow client unavailable: %s", exc)
         return False
+    cache = verify_cache if verify_cache is not None else {}
     return all(
         rec.get("mlflow_run_id")
-        and verify_config_run(rec["mlflow_run_id"], client)[0]
+        and _verified_cached(rec["mlflow_run_id"], client, cache)
         for rec in completed
     )
+
+
+def _verified_cached(
+    run_id: str, client: mlflow.MlflowClient, cache: dict[str, bool]
+) -> bool:
+    if run_id not in cache:
+        cache[run_id] = verify_config_run(run_id, client)[0]
+    return cache[run_id]
 
 
 def cleanup_run_dir(
@@ -212,7 +229,8 @@ def cleanup_run_dir(
     ``progress.json``, configs with verified MLflow records only, and
     the sweep summary report.
     """
-    actions = plan_cleanup(run_dir, client)
+    verify_cache: dict[str, bool] = {}
+    actions = plan_cleanup(run_dir, client, verify_cache=verify_cache)
     removed: list[Path] = []
     if execute:
         for action in actions:
@@ -223,7 +241,7 @@ def cleanup_run_dir(
                 except OSError as exc:
                     logger.warning("Could not remove %s: %s", path, exc)
     if prune_samples and execute:
-        if _all_completed_configs_verified(run_dir, client):
+        if _all_completed_configs_verified(run_dir, client, verify_cache):
             for path in run_dir.glob("benchmark_*.samples.json.gz"):
                 try:
                     path.unlink()

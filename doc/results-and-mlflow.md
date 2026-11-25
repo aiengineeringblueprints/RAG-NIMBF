@@ -51,7 +51,10 @@ Rules enforced by the code:
   MLflow record; otherwise the sidecars may be the only remaining copy of the
   retrieved contexts and are kept. Parsing-stage configs are exempt from this
   gate: they complete without an MLflow run and produce no per-sample
-  contexts (the worker records them with `stage: "parsing"` in the ledger). Retain the canonical per-sample record for any run used in
+  contexts (the worker records them with `stage: "parsing"` in the ledger).
+  Ledger entries written by older code carry no `stage` marker, so existing
+  run dirs with parsing stages still block pruning until the sweep is
+  re-run — the safe direction, not data loss. Retain the canonical per-sample record for any run used in
   reported comparisons or thesis work; use cleanup freely for smoke tests and
   discarded exploratory runs.
 - The run output root can be moved outside the checkout with

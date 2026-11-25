@@ -53,6 +53,20 @@ ignore rule, and makes the run output root configurable outside the checkout.
   default).
 - `results/` is now ignored — anyone who intentionally versioned result files
   must use `git add -f` (not recommended) or move them.
+- **Pulling this branch deletes tracked `results/` files from the working
+  tree** in every other clone (e.g. the DGX Spark checkout): untracking via
+  commit is a tree change, so the next `git pull` removes them — locally
+  modified copies abort the pull with a conflict instead. The data stays
+  recoverable from history, but back up before pulling:
+
+  ```bash
+  # before pulling: back up results/
+  cp -a results/ ../results-backup/
+  # or after pulling: restore from the last commit that still tracked them
+  git checkout <last-commit-with-results>^ -- results/
+  git rm -r --cached -q results/
+  ```
+
 - Set `BENCHMARK_RESULTS_DIR` to keep run output out of the checkout.
 
 ## Verification
