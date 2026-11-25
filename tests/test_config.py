@@ -1513,6 +1513,33 @@ class TestMlflowScorersSetting:
             validate_benchmark_config(cfg)
 
 
+class TestRunResultsDirSetting:
+    """Issue #66 review: BENCHMARK_RESULTS_DIR is a config knob."""
+
+    def test_defaults_to_none(self):
+        assert _make_config().run_results_dir is None
+
+    def test_env_fallback(self):
+        with patch.dict(
+            os.environ,
+            {**_MINIMAL_MATRIX_ENV, "BENCHMARK_RESULTS_DIR": "/tmp/scratch-runs"},
+            clear=False,
+        ):
+            cfg = get_all_combinations()[0]
+
+        assert cfg.run_results_dir == "/tmp/scratch-runs"
+
+    def test_blank_env_falls_back_to_none(self):
+        with patch.dict(
+            os.environ,
+            {**_MINIMAL_MATRIX_ENV, "BENCHMARK_RESULTS_DIR": ""},
+            clear=False,
+        ):
+            cfg = get_all_combinations()[0]
+
+        assert cfg.run_results_dir is None
+
+
 # ---------------------------------------------------------------------------
 # Experiment lineage (#65)
 # ---------------------------------------------------------------------------

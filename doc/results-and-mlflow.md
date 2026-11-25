@@ -1,5 +1,69 @@
 # Results, MLflow, and Post-Processing
 
+## Storage policy (issue #66)
+
+**MLflow is the durable record** for completed benchmark runs: parameters,
+metrics, tags, provenance, and the canonical per-sample artifacts (per-sample
+CSV under `data/`, lineage under `lineage/`) needed to audit, compare, and
+re-score a run without rerunning generation.
+
+**`results/runN/` is a temporary working area**: checkpoints, QA logs, and
+per-config JSON files exist for resumability and recovery while a run is
+active or resumable. They duplicate data already in MLflow once a config
+finished and was fully logged.
+
+**Git stores code and experiment definitions only.** `results/` is ignored by
+`.gitignore`. Note that ignore rules prevent commits but do not reclaim disk
+space, and they are not a backup: since MLflow is the authoritative record,
+both the MLflow tracking database (`mlflow.db`) and the artifact store
+(`mlruns/` or the tracking server's storage) need a backup plan.
+
+Rules enforced by the code:
+
+- Each config's full per-sample payload has exactly **one** canonical MLflow
+  artifact (on the config run): `data/per_sample_results.csv`, which includes
+  the retrieved contexts per sample (`contexts_json` column). Aggregate sweep
+  runs log only sweep-level material (summary report, plots, reproducibility
+  bundle, plus `config_run_links.json` mapping config names to their MLflow
+  run IDs) and never re-upload the full per-sample `*.samples.json.gz`
+  sidecars. Uploaded summary reports have dangling `samples_file` references
+  stripped so downloaded copies load cleanly.
+- The worker records each config's `mlflow_run_id` in
+  `results/runN/progress.json` after logging. On resume, a completed record
+  with a `mlflow_run_id` counts as completed even if its local working file
+  was already cleaned up — MLflow is the source of truth. `config_run_links.json`
+  is seeded from the ledger, so resumed sweeps link every config.
+- Cleanup is **opt-in** and dry-run by default:
+
+  ```bash
+  python -m benchmark.cleanup results/runN                 # dry-run plan
+  python -m benchmark.cleanup results/runN --execute       # remove verified files
+  python -m benchmark.cleanup results/runN --execute --prune-samples
+  ```
+
+  Only configs whose progress record is `completed` **and** whose MLflow run
+  verifies (status `FINISHED`, parameters logged, and the canonical
+  `data/per_sample_results.csv` artifact present **with** a `contexts_json`
+  column) are eligible. Failed, interrupted, or incompletely logged runs are
+  always protected, and `progress.json` is never deleted. `--prune-samples`
+  also removes sweep-level `*.samples.json.gz` sidecars — but only when
+  `progress.json` exists and **every** completed RAG config has a verified
+  MLflow record; otherwise the sidecars may be the only remaining copy of the
+  retrieved contexts and are kept. Parsing-stage configs are exempt from this
+  gate: they complete without an MLflow run and produce no per-sample
+  contexts (the worker records them with `stage: "parsing"` in the ledger).
+  Ledger entries written by older code carry no `stage` marker, so existing
+  run dirs with parsing stages still block pruning until the sweep is
+  re-run — the safe direction, not data loss. Retain the canonical per-sample record for any run used in
+  reported comparisons or thesis work; use cleanup freely for smoke tests and
+  discarded exploratory runs.
+- The run output root can be moved outside the checkout with
+  `BENCHMARK_RESULTS_DIR=/path/to/scratch`, the `run_results_dir` manifest
+  setting, or `--run-dir`; a `results/` directory created inside the checkout
+  is ignored by Git either way.
+- MLflow tracing is opt-in (`MLFLOW_TRACING_ENABLED=true`) because traces
+  materially increase storage on large sweeps.
+
 ## Output layout
 
 Each run writes artifacts to `results/runN/`, including per-config JSON files,

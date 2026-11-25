@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -73,6 +74,11 @@ class ProgressStore:
         record = self.data["configs"].get(config.name)
         if not (record and record.get("status") == "completed"):
             return False
+        # A completed config with a recorded MLflow run id is durable:
+        # MLflow holds the canonical per-sample record, so the local
+        # working file may legitimately have been cleaned up (#66).
+        if record.get("mlflow_run_id"):
+            return True
         if result_path is not None:
             return result_path.exists()
         recorded_path = record.get("result_path")
@@ -85,6 +91,8 @@ class ProgressStore:
         self,
         config: BenchmarkConfig,
         result_path: Path | None = None,
+        mlflow_run_id: str | None = None,
+        stage: str | None = None,
     ) -> None:
         patch: dict[str, Any] = {
             "status": "completed",
@@ -92,6 +100,10 @@ class ProgressStore:
         }
         if result_path is not None:
             patch["result_path"] = str(result_path)
+        if mlflow_run_id is not None:
+            patch["mlflow_run_id"] = mlflow_run_id
+        if stage is not None:
+            patch["stage"] = stage
         self._set(config, patch)
 
     def mark_failed(self, config: BenchmarkConfig, error: str) -> None:
@@ -130,7 +142,11 @@ class ExperimentWorker:
             console.print(json.dumps(summary, indent=2))
             return []
 
-        run_dir = self.options.run_dir or _next_run_dir()
+        run_dir = self.options.run_dir or _next_run_dir(
+            Path(self.configs[0].run_results_dir)
+            if self.configs[0].run_results_dir
+            else None
+        )
         run_dir.mkdir(parents=True, exist_ok=True)
         progress = ProgressStore(run_dir / "progress.json")
 
@@ -158,6 +174,12 @@ class ExperimentWorker:
         )
 
         results: list[Any] = []
+        config_run_ids: dict[str, str | None] = {}
+        # Seed from the progress ledger so resumed sweeps still link
+        # configs skipped as already completed (issue #66 review).
+        for name, rec in (progress.data.get("configs") or {}).items():
+            if rec.get("mlflow_run_id"):
+                config_run_ids[name] = rec["mlflow_run_id"]
         wall_start = time.perf_counter()
 
         parent_context = (
@@ -185,7 +207,7 @@ class ExperimentWorker:
                 if config.benchmark_stage == "parsing":
                     try:
                         summary = run_parsing_benchmark(config, run_dir=run_dir)
-                        progress.mark_completed(config)
+                        progress.mark_completed(config, stage="parsing")
                         if self.options.log_mlflow:
                             log_parsing_run(
                                 summary,
@@ -227,7 +249,7 @@ class ExperimentWorker:
 
                     result_path = _write_config_report(run_dir, config, result)
                     console.print(f"[green]  Config JSON saved to {result_path}[/green]")
-                    progress.mark_completed(config, result_path)
+                    config_run_ids[config.name] = None
                     if self.options.log_mlflow:
                         run_id = log_benchmark_run(
                             result,
@@ -236,6 +258,10 @@ class ExperimentWorker:
                         )
                         if run_id and config.mlflow_scorers:
                             score_config_run(run_id, config)
+                        config_run_ids[config.name] = run_id
+                    progress.mark_completed(
+                        config, result_path, mlflow_run_id=config_run_ids[config.name]
+                    )
                     results.append(result)
                 except Exception as exc:
                     progress.mark_failed(config, str(exc))
@@ -272,6 +298,7 @@ class ExperimentWorker:
                         run_dir,
                         run_name=f"summary_{run_dir.name}_{timestamp}",
                         reproducibility_dir=reproducibility_dir,
+                        config_run_ids=config_run_ids,
                     )
 
         return results
@@ -356,7 +383,18 @@ def _resource_monitor_for(run_dir: Path, config: BenchmarkConfig) -> ResourceMon
     )
 
 
-def _next_run_dir(base: Path = Path("results")) -> Path:
+def _next_run_dir(
+    base: Path | None = None,
+) -> Path:
+    """Next ``runN`` directory under the configured output root.
+
+    The output root defaults to ``results/`` in the checkout but can be
+    moved outside the repository (e.g. scratch space) via the
+    ``BENCHMARK_RESULTS_DIR`` environment variable or ``--run-dir``.
+    """
+    if base is None:
+        env_base = os.getenv("BENCHMARK_RESULTS_DIR")
+        base = Path(env_base) if env_base else Path("results")
     base.mkdir(parents=True, exist_ok=True)
     max_run = 0
     for child in base.iterdir():

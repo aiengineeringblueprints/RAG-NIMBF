@@ -11,6 +11,7 @@ templates, vector backend, and evaluator settings belong in `experiments/*.yaml`
 | Variable | Description |
 | --- | --- |
 | `BENCHMARK_CONFIG_FILE` | JSON/YAML manifest for `python main.py` and `python -m benchmark.worker`; required for `python main.py` unless a manifest path is passed explicitly. |
+| `BENCHMARK_RESULTS_DIR` | Base directory for new `runN` output (default `results/` inside the checkout). Set it to scratch space outside the repository to keep generated results out of the checkout entirely. |
 | `RAG_SYSTEM_ADAPTER` | `internal`, `http`, `mcp`, `ragflow` (managed, alias `optimaiserag`), or any adapter registered via a plugin module (`RAG_ADAPTER_MODULES`); defaults to `internal`. |
 | `RAG_ADAPTER_MODULES` | Optional comma-separated Python modules to import before RAG adapter validation. There is no manifest-level field for plugin modules. |
 

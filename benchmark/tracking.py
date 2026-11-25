@@ -414,6 +414,7 @@ def _log_per_sample_csv(result: BenchmarkResultExtended, run_id: str) -> None:
             "question",
             "ground_truth",
             "answer",
+            "contexts_json",
             "ttft_seconds",
             "total_seconds",
             "token_count",
@@ -432,6 +433,9 @@ def _log_per_sample_csv(result: BenchmarkResultExtended, run_id: str) -> None:
                 sample.question,
                 sample.ground_truth,
                 sample.answer,
+                json.dumps(
+                    list(sample.contexts), ensure_ascii=False, default=str
+                ),
                 sample.ttft_seconds,
                 sample.total_seconds,
                 sample.token_count,
@@ -562,18 +566,33 @@ def log_plots_to_mlflow(results_dir: Path, run_name_prefix: str = "plots") -> No
     log_aggregate_artifacts_to_mlflow(results_dir, run_name=run_name_prefix)
 
 
+def _strip_samples_file_references(obj: Any) -> Any:
+    """Recursively remove ``samples_file`` keys (sidecars not uploaded)."""
+    if isinstance(obj, dict):
+        return {
+            k: _strip_samples_file_references(v)
+            for k, v in obj.items()
+            if k != "samples_file"
+        }
+    if isinstance(obj, list):
+        return [_strip_samples_file_references(v) for v in obj]
+    return obj
+
+
 def log_aggregate_artifacts_to_mlflow(
     results_dir: Path,
     *,
     run_name: str = "run_summary",
     reproducibility_dir: Path | None = None,
+    config_run_ids: dict[str, str | None] | None = None,
 ) -> None:
-    """Log run-level tables, reports, plots, and reproducibility artifacts.
+    """Log sweep-level material, not full per-config payloads (issue #66).
 
-    This creates one MLflow run that is easy to open when comparing a full
-    benchmark sweep: summary tables live under ``tables/``, plots under
-    ``plots/``, reports under ``reports/``, and rerun metadata under
-    ``reproducibility/``.
+    The aggregate run keeps summary reports, plots, the reproducibility
+    bundle, and a ``config_run_links.json`` map from config name to its
+    MLflow run ID. Full per-sample data stays on each configuration run
+    (canonical per-sample artifacts there); the heavy
+    ``*.samples.json.gz`` sidecars are deliberately NOT re-uploaded here.
     """
     if not results_dir.exists():
         logger.warning("Results directory does not exist: %s", results_dir)
@@ -582,8 +601,6 @@ def log_aggregate_artifacts_to_mlflow(
     artifact_groups: list[tuple[Path, str]] = []
 
     for path in sorted(results_dir.glob("benchmark_*.json")):
-        artifact_groups.append((path, "reports"))
-    for path in sorted(results_dir.glob("benchmark_*.samples.json.gz")):
         artifact_groups.append((path, "reports"))
 
     repro_dir = reproducibility_dir or (results_dir / "reproducibility")
@@ -597,7 +614,33 @@ def log_aggregate_artifacts_to_mlflow(
             nested=bool(mlflow.active_run()),
         ) as run:
             for path, artifact_path in artifact_groups:
-                mlflow.log_artifact(str(path), artifact_path=artifact_path)
+                if artifact_path == "reports" and path.suffix == ".json":
+                    # Strip dangling ``samples_file`` references: the
+                    # heavy samples sidecars are not uploaded (#66), so
+                    # a downloaded copy must still load cleanly.
+                    try:
+                        payload = _strip_samples_file_references(
+                            json.loads(path.read_text())
+                        )
+                    except (OSError, json.JSONDecodeError) as exc:
+                        logger.warning(
+                            "Could not sanitize %s (%s); uploading as-is",
+                            path,
+                            exc,
+                        )
+                        mlflow.log_artifact(str(path), artifact_path=artifact_path)
+                    else:
+                        mlflow.log_dict(payload, f"{artifact_path}/{path.name}")
+                else:
+                    mlflow.log_artifact(str(path), artifact_path=artifact_path)
+            if config_run_ids:
+                links = {
+                    name: run_id
+                    for name, run_id in config_run_ids.items()
+                    if run_id
+                }
+                if links:
+                    mlflow.log_dict(links, "reports/config_run_links.json")
             if repro_dir.exists():
                 mlflow.log_artifacts(str(repro_dir), artifact_path="reproducibility")
             mlflow.log_metric("num_logged_artifacts", float(len(artifact_groups)))
