@@ -1,5 +1,6 @@
 """Shared test configuration and fixtures."""
 
+import re
 import sys
 from pathlib import Path
 
@@ -12,9 +13,48 @@ if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
 
+_ENV_KEY_PATTERN = re.compile(r"^\s*#?\s*(?:export\s+)?([A-Z][A-Z0-9_]*)\s*=", re.M)
+# os.getenv("X"), os.environ.get("X"), os.environ["X"], and env helpers such as
+# config._env_bool("X") / tracking._env_flag("X").
+_ENV_READ_PATTERN = re.compile(
+    r"""(?:\bgetenv\(|\benviron\.get\(|\benviron\[|\b_env_\w+\()\s*["']([A-Z][A-Z0-9_]*)["']"""
+)
+
+
+def _benchmark_env_keys() -> frozenset[str]:
+    """Env var names the framework reads.
+
+    Collected from .env.example, the local .env, and every env read in
+    config.py and the benchmark/ package.
+    """
+    keys: set[str] = set()
+    for name in (".env.example", ".env"):
+        path = project_root / name
+        if path.is_file():
+            keys.update(_ENV_KEY_PATTERN.findall(path.read_text(errors="ignore")))
+    sources = [project_root / "config.py", *(project_root / "benchmark").rglob("*.py")]
+    for path in sources:
+        keys.update(_ENV_READ_PATTERN.findall(path.read_text(errors="ignore")))
+    return frozenset(keys)
+
+
+BENCHMARK_ENV_KEYS = _benchmark_env_keys()
+
+
 @pytest.fixture(autouse=True)
-def stable_prompt_template_env(monkeypatch):
-    """Keep local .env prompt matrix from changing config unit-test counts."""
+def isolated_benchmark_env(monkeypatch):
+    """Make every test independent of the machine-local .env and shell (#60).
+
+    Disables dotenv loading in ``config`` and clears every benchmark-related
+    variable, so code under test only sees its defaults plus what the test
+    sets explicitly via ``monkeypatch.setenv``. ``PROMPT_TEMPLATES`` is pinned
+    to ``concise`` so config unit tests get a single prompt per matrix cell.
+    """
+    import config
+
+    monkeypatch.setattr(config, "load_dotenv", lambda *args, **kwargs: False)
+    for key in BENCHMARK_ENV_KEYS:
+        monkeypatch.delenv(key, raising=False)
     monkeypatch.setenv("PROMPT_TEMPLATES", "concise")
 
 
