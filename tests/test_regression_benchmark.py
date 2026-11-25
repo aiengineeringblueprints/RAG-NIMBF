@@ -381,3 +381,64 @@ def test_criteria_only_name_metrics_the_comparison_produces():
 
     assert set(criteria["primary"]) <= known
     assert set(criteria["guardrails"]) <= known
+
+
+# --------------------------------------------------------------------------
+# Review fixes
+# --------------------------------------------------------------------------
+
+
+def test_guardrail_breach_rejects_even_without_a_primary_metric():
+    baseline = [_result(f"q{i}", custom_scores={}, total_seconds=1.0) for i in range(3)]
+    candidate = [_result(f"q{i}", custom_scores={}, total_seconds=2.0) for i in range(3)]
+
+    verdict = compare_runs(baseline, candidate, criteria=CRITERIA)["verdict"]
+
+    assert verdict["decision"] == "reject"
+
+
+def test_summary_reports_false_refusals_without_unanswerable_questions():
+    question_set = _rows({"q0": "answerable", "q1": "answerable"})
+    results = [_result("q0", answer=REFUSAL), _result("q1")]
+
+    abstention = summarize_run(results, question_set)["dimensions"]["abstention"]
+
+    assert abstention["status"] == "ok"
+    assert abstention["metrics"]["false_refusal_rate"] == pytest.approx(0.5)
+    assert "abstention_rate" not in abstention["metrics"]
+
+
+def test_bootstrap_resamples_repeated_questions_together():
+    # TechQA repeats each question with a second reference answer. Copies of
+    # one question are not independent evidence: two copies of the same
+    # (question, delta) must give the same CI as the question alone.
+    deltas = [0.0, 0.1, 0.4, -0.2, 0.3]
+    baseline = _run([0.5] * 5)
+    candidate = _run([0.5 + d for d in deltas])
+
+    def doubled(results):
+        return results + [{**r, "ground_truth": "second reference"} for r in results]
+
+    single = compare_runs(baseline, candidate, criteria=CRITERIA)["metrics"]["bert_score_f1"]
+    double = compare_runs(doubled(baseline), doubled(candidate), criteria=CRITERIA)["metrics"]["bert_score_f1"]
+
+    assert double["n"] == 10
+    assert double["ci95"] == pytest.approx(single["ci95"])
+
+
+def test_verdict_flags_a_fallback_primary_metric():
+    baseline, candidate = _run([0.5, 0.6, 0.7]), _run([0.6, 0.7, 0.8])
+
+    verdict = compare_runs(baseline, candidate, criteria=CRITERIA)["verdict"]
+
+    assert verdict["primary"] == "bert_score_f1"
+    assert verdict["primary_fallback"] is True
+
+
+def test_cli_verify_explains_missing_split_files(tmp_path, capsys):
+    (tmp_path / "manifest.json").write_text(
+        json.dumps({"splits": {"dev": {"sha256": "x"}, "holdout": {"sha256": "y"}}})
+    )
+
+    assert main(["verify", "--question-set", str(tmp_path)]) == 1
+    assert "freeze" in capsys.readouterr().out

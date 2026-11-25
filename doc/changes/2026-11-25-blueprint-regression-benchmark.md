@@ -32,9 +32,12 @@ judge a single change.
   data is reported as `unavailable` with a reason, never as 0. Retrieval
   metrics only on answerable questions with gold labels; abstention via
   `benchmark.answer_match.declines`.
-- `compare_runs()`: paired deltas, paired-bootstrap 95% CI, exact McNemar for
-  0/1 metrics, verdict from criteria (primary metric CI, `min_improvement`,
-  guardrails as absolute or percentage worsening). Refuses runs that cover
+- `compare_runs()`: paired deltas, 95% CI from a cluster bootstrap over
+  questions (TechQA's duplicate questions are resampled together), exact
+  McNemar for 0/1 metrics, verdict from criteria (primary metric CI, `min_improvement`,
+  guardrails as absolute or percentage worsening; a breached guardrail
+  rejects even without a primary metric; a fallback primary metric is
+  flagged as `primary_fallback`). Refuses runs that cover
   different questions or not the full frozen split.
 - CLI `python -m benchmark.regression freeze | verify | compare`; `compare`
   reads report JSONs or `.samples.json.gz` sidecars and writes
@@ -60,16 +63,17 @@ None. New module, manifests and docs only. Before a run on a new machine,
 rebuild the split files (`freeze` command in the guide) and `verify`.
 
 ## Verification
-- `tests/test_regression_benchmark.py`: 22 tests (freeze, summary, compare,
-  verdict, CLI freeze/verify/compare, manifest one-change rule, criteria
-  metric names); full suite on the DGX Spark — see PR.
+- `tests/test_regression_benchmark.py`: 27 tests (freeze, summary, compare,
+  cluster bootstrap, verdict incl. guardrail-only reject and fallback flag,
+  CLI freeze/verify/compare incl. missing split files, manifest one-change
+  rule, criteria metric names); full suite on the DGX Spark: 1065 passed.
 - `freeze` on the Spark twice: identical hashes; `dev` sample keys equal
   run8's 500 samples exactly.
 - Smoke run (`smoke.yaml`) on the Spark: completed; `bert_score_f1` 0.576,
   `relevant_sentence_recall` 0.914, mean latency 1.52 s; faithfulness,
   abstention and cost correctly `unavailable`.
 - `compare` on run8 cells: query refinement on vs off (hybrid alpha 0.5):
-  `bert_score_f1` −0.056 (CI −0.089..−0.018), false refusals +0.066
+  `bert_score_f1` −0.056 (CI −0.098..−0.016), false refusals +0.066
   (McNemar p < 0.001) → reject.
 
 ## Follow-ups
@@ -78,3 +82,7 @@ rebuild the split files (`freeze` command in the guide) and `verify`.
   evidence (refinement off, chunking, top-k, reranker, refusal prompt).
 - Blueprint adapter reports no token usage → cost dimension unavailable.
 - Served model weights are tagged, not digest-pinned; record them per run.
+- `current-best.yaml` (run7 winner) was selected on the dev questions; confirm
+  it on holdout before using it as the best reference.
+- `compare` does not check that judge/generator settings match between runs;
+  the one-change rule is tested only for `candidate-hybrid.yaml`.

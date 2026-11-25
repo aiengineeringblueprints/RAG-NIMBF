@@ -261,8 +261,8 @@ def summarize_run(
     if abstained := _values(per_sample, "abstained"):
         abstention["abstention_rate"] = statistics.fmean(abstained)
         abstention["n_unanswerable"] = len(abstained)
-        if false_refusals := _values(per_sample, "false_refusal"):
-            abstention["false_refusal_rate"] = statistics.fmean(false_refusals)
+    if false_refusals := _values(per_sample, "false_refusal"):
+        abstention["false_refusal_rate"] = statistics.fmean(false_refusals)
 
     latency: dict[str, float] = {}
     if seconds := _values(per_sample, "total_seconds"):
@@ -307,10 +307,23 @@ def summarize_run(
 # --------------------------------------------------------------------------
 
 
-def _bootstrap_ci(diffs: "np.ndarray", n_boot: int, seed: int) -> tuple[float, float]:
+def _bootstrap_ci(
+    diffs: "np.ndarray", clusters: Sequence[str], n_boot: int, seed: int
+) -> tuple[float, float]:
+    """Paired cluster bootstrap: resample questions, not rows.
+
+    TechQA repeats each question with a second reference answer; both copies
+    share documents and retrieval, so they are not independent evidence.
+    Resampling whole clusters keeps the CI from shrinking with duplicates.
+    """
+    groups: dict[str, list[int]] = {}
+    for i, cluster in enumerate(clusters):
+        groups.setdefault(cluster, []).append(i)
+    sums = np.array([diffs[ix].sum() for ix in groups.values()])
+    counts = np.array([len(ix) for ix in groups.values()])
     rng = np.random.default_rng(seed)
-    idx = rng.integers(0, len(diffs), size=(n_boot, len(diffs)))
-    boot_means = diffs[idx].mean(axis=1)
+    idx = rng.integers(0, len(groups), size=(n_boot, len(groups)))
+    boot_means = sums[idx].sum(axis=1) / counts[idx].sum(axis=1)
     low, high = np.percentile(boot_means, [2.5, 97.5])
     return float(low), float(high)
 
@@ -326,7 +339,11 @@ def _mcnemar(baseline: list[float], candidate: list[float]) -> dict[str, Any]:
 
 
 def _metric_comparison(
-    baseline: list[float], candidate: list[float], n_boot: int, seed: int
+    baseline: list[float],
+    candidate: list[float],
+    clusters: Sequence[str],
+    n_boot: int,
+    seed: int,
 ) -> dict[str, Any]:
     diffs = np.asarray(candidate) - np.asarray(baseline)
     base_mean = statistics.fmean(baseline)
@@ -336,7 +353,7 @@ def _metric_comparison(
         "candidate": statistics.fmean(candidate),
         "delta": float(diffs.mean()),
         "delta_pct": (float(diffs.mean()) / base_mean * 100) if base_mean else None,
-        "ci95": _bootstrap_ci(diffs, n_boot, seed),
+        "ci95": _bootstrap_ci(diffs, clusters, n_boot, seed),
     }
     if set(baseline) | set(candidate) <= {0.0, 1.0}:
         entry["mcnemar"] = _mcnemar(baseline, candidate)
@@ -375,11 +392,18 @@ def _verdict(metrics: Mapping[str, Mapping[str, Any]], criteria: Mapping[str, An
 
     if primary is None:
         return {
-            "decision": "inconclusive",
+            "decision": "reject" if breached else "inconclusive",
             "primary": None,
+            "primary_fallback": False,
             "reasons": reasons + ["no primary metric available in both runs"],
             "skipped_guardrails": skipped,
         }
+    primary_fallback = primary != next(iter(criteria.get("primary", ())), None)
+    if primary_fallback:
+        reasons.append(
+            f"primary metric fell back to {primary} "
+            f"({criteria['primary'][0]} not scored in both runs)"
+        )
 
     entry = metrics[primary]
     # Orient delta and CI so that positive = better; a CI entirely above
@@ -403,7 +427,13 @@ def _verdict(metrics: Mapping[str, Mapping[str, Any]], criteria: Mapping[str, An
             f"{primary} gain {gain:.4f} (95% CI {gain_low:.4f}..{gain_high:.4f}) "
             f"not a significant improvement of at least {min_improvement}"
         )
-    return {"decision": decision, "primary": primary, "reasons": reasons, "skipped_guardrails": skipped}
+    return {
+        "decision": decision,
+        "primary": primary,
+        "primary_fallback": primary_fallback,
+        "reasons": reasons,
+        "skipped_guardrails": skipped,
+    }
 
 
 def compare_runs(
@@ -455,13 +485,17 @@ def compare_runs(
         # Per-sample metrics differ by category (no retrieval scores on
         # unanswerable questions), so compare on the questions both scored.
         pairs = [
-            (base[key].get(name), cand[key].get(name))
+            (base[key].get(name), cand[key].get(name), key[0])
             for key in base_keys
             if base[key].get(name) is not None and cand[key].get(name) is not None
         ]
         if pairs:
             metrics[name] = _metric_comparison(
-                [b for b, _ in pairs], [c for _, c in pairs], n_boot, seed
+                [b for b, _, _ in pairs],
+                [c for _, c, _ in pairs],
+                [q for _, _, q in pairs],
+                n_boot,
+                seed,
             )
 
     return {"n": len(base_keys), "metrics": metrics, "verdict": _verdict(metrics, criteria)}
@@ -564,7 +598,12 @@ def _cmd_verify(args: argparse.Namespace) -> int:
     ok = True
     for split in SPLITS:
         expected = manifest["splits"][split]["sha256"]
-        actual = hashlib.sha256((root / f"{split}.jsonl").read_bytes()).hexdigest()
+        path = root / f"{split}.jsonl"
+        if not path.exists():
+            print(f"{split}: MISSING ({path}); rebuild the splits with the freeze command")
+            ok = False
+            continue
+        actual = hashlib.sha256(path.read_bytes()).hexdigest()
         status = "ok" if actual == expected else "MODIFIED"
         ok &= actual == expected
         print(f"{split}: {status} ({actual})")
@@ -587,7 +626,7 @@ def render_report(report: Mapping[str, Any]) -> str:
         lines += [
             f"## Candidate vs {ref}: **{verdict['decision']}**",
             "",
-            f"Primary metric: `{verdict['primary']}`",
+            f"Primary metric: `{verdict['primary']}`" + (" (fallback)" if verdict.get("primary_fallback") else ""),
             "",
             *[f"- {reason}" for reason in verdict["reasons"]],
             *[f"- guardrail `{g}` skipped: not scored in both runs" for g in verdict["skipped_guardrails"]],

@@ -82,6 +82,10 @@ Never edit it once it has a run; a new reference is a new file with its own
 run. `current-best.yaml` holds the best known configuration (run7 grid
 winner: recursive 2048/64, top-k 10, hybrid alpha 0.5). It is replaced (new
 file) only when a candidate is accepted on dev **and** confirmed on holdout.
+**`current-best.yaml` is provisional**: it was selected on the same 500 dev
+questions (run7 grid) and has not been confirmed on holdout, so its dev scores
+are optimistic. Run it on holdout once before treating it as the best
+reference.
 
 Model versions: the reproducibility record of each run
 (`<run>/reproducibility/manifest.json`) stores the full resolved config, git
@@ -163,13 +167,18 @@ Rescoring without regeneration: the per-sample answers and contexts stay in
 
 - **Primary**: the first metric of `primary` scored by both runs
   (`answer_correctness`, else `bert_score_f1`). For each metric `compare`
-  reports the paired mean delta (candidate − reference), a paired-bootstrap
-  95% CI (2000 resamples) and, for 0/1 metrics, an exact McNemar test.
+  reports the paired mean delta (candidate − reference), a paired 95% CI from
+  a cluster bootstrap over questions (2000 resamples; both TechQA copies of a
+  question are drawn together, so duplicates do not narrow the CI) and, for 0/1 metrics, an exact McNemar test.
 - **accept**: CI of the primary delta above 0 **and** gain ≥
   `min_improvement` (0.02), **and** no guardrail breached.
 - **reject**: CI entirely below 0, or a guardrail breached — the
   improvement does not outweigh the trade-off.
 - **inconclusive**: anything else; keep the reference.
+- If the first `primary` metric is missing (RAGAS off), the verdict uses the
+  fallback and says so (`primary_fallback: true`, "(fallback)" in the
+  report). BERTScore measures similarity, not correctness — treat such a
+  verdict as provisional.
 - **Guardrails** (worsening allowed at most, point estimate): faithfulness
   −0.03, `hit@5` −0.03, abstention on unanswerable −0.10, false refusals
   +0.02, `total_seconds` +25 %, cost +25 %. Guardrails whose metric is not
@@ -186,8 +195,9 @@ Rescoring without regeneration: the per-sample answers and contexts stay in
 - **Compare on existing data**: run8 cells (all on the dev questions) fed to
   `compare` — candidate query refinement **on** (`managed-a6b2f4cd80`) vs
   refinement off (`managed-2c9672c978`), both hybrid alpha 0.5:
-  `bert_score_f1` −0.056 (CI −0.089..−0.018), false refusals +0.066
-  (McNemar p < 0.001) → **reject**, consistent with the run8 analysis.
+  `bert_score_f1` −0.056 (CI −0.098..−0.016, primary flagged as fallback
+  because RAGAS was off), false refusals +0.066 (McNemar p < 0.001) →
+  **reject**, consistent with the run8 analysis.
 
 ## Proposed follow-up candidates
 
