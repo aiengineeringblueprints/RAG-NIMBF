@@ -1,0 +1,23 @@
+# Blueprint regression benchmark (issue #64): when is a candidate better?
+# Used by `python -m benchmark.regression compare --criteria ...`.
+# Guide: doc/blueprint-regression-benchmark.md
+#
+# primary: the first metric in this list that both runs scored decides
+#   (answer_correctness needs RAGAS; bert_score_f1 is the RAGAS-free fallback).
+#   accept   = paired-bootstrap 95% CI of the delta lies above 0 AND the gain
+#              is at least min_improvement (absolute, metric units)
+#   reject   = CI lies entirely below 0, or any guardrail is breached
+#   otherwise inconclusive (keep the reference; more data or drop the idea)
+# guardrails: trade-offs a candidate may cost at most (point estimate of the
+#   paired delta, worse direction). Skipped and listed when a metric is not
+#   scored in both runs. Lower-is-better metrics (false_refusal, latency,
+#   cost, tokens) are handled automatically.
+primary: [answer_correctness, bert_score_f1]
+min_improvement: 0.02
+guardrails:
+  faithfulness: {max_worsening: 0.03}
+  hit@5: {max_worsening: 0.03}
+  abstained: {max_worsening: 0.10}        # refuses fewer unanswerable questions
+  false_refusal: {max_worsening: 0.02}    # refuses more answerable questions
+  total_seconds: {max_worsening_pct: 25}
+  estimated_cost_usd: {max_worsening_pct: 25}

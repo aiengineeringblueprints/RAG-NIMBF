@@ -1,0 +1,55 @@
+# Blueprint regression benchmark (issue #64): CURRENT BEST configuration
+# (run7 grid winner: recursive 2048/64, top-k 10, hybrid alpha 0.5,
+# query refinement on). Candidates are compared against both this and
+# baseline.yaml. Replace it (new file, e.g. current-best-v2.yaml, and update
+# the guide) only when a candidate is accepted on dev AND confirmed on holdout.
+# Guide: doc/blueprint-regression-benchmark.md
+#
+# Question set: datasets/blueprint_regression/v1 (only manifest.json is
+# committed; rebuild + verify the split files first, see the guide).
+# Run (machine-local paths come from the script / .env):
+#   scripts/run_blueprint_rag.sh results/Enterprise-RAG/<runN> \
+#     experiments/blueprint-regression/current-best.yaml
+experiment_name: blueprint-regression-v1-current-best
+
+dataset:
+  name: jsonl
+  subset: null
+  path: datasets/blueprint_regression/v1/dev.jsonl
+  sample_size: 500                 # the whole dev split
+
+settings:
+  rag_system_adapter: enterprise_rag_mcp
+  rag_adapter_accepts: "chunker,embedder"
+  benchmark_stage: all
+  retrieval_mode: retrieval
+  retrieval_strategy: hybrid
+  retrieval_hybrid_alpha: 0.5
+  retrieval_fetch_k: 50
+  retrieval_multihop: false
+  retrieval_use_hyde: false
+  generation_temperature: 0
+  enterprise_rag_mcp_transport: inprocess
+  enterprise_rag_mcp_enabled: false
+  enterprise_rag_mcp_apply_settings: true
+  enterprise_rag_mcp_guardrails: true
+  enterprise_rag_mcp_index_corpus: true
+  enterprise_rag_mcp_query_refinement: true
+  # Judge for correctness (answer_correctness) and faithfulness. Keep it
+  # fixed across all runs that are compared with each other.
+  eval_critic_llm: openai:deepseek-v4-flash
+  eval_critic_embedding: ollama:nomic-embed-text:latest
+  ragas_enabled: true
+  custom_metrics_enabled: true
+  custom_retrieval_metrics_mode: gold_doc
+  mlflow_tracing_enabled: true
+
+matrix:
+  llm_models: [openai:qwen3.8-27b]
+  embedding_models: [nomic-embed-text:latest]
+  retrieval_top_k: [10]
+  chunking_strategies: [recursive]
+  chunk_sizes: [2048]
+  chunk_overlaps: [64]
+  prompt_templates: [concise]
+  reranker_models: [null]

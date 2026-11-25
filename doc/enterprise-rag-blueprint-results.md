@@ -429,6 +429,11 @@ McNemar tests (discordant questions in parentheses):
 Refusal causes, runtime and next steps for run6 are analysed in
 [enterprise-rag-techqa-refusal-analysis.md](enterprise-rag-techqa-refusal-analysis.md).
 
+Further Blueprint changes are evaluated one component at a time with the fixed
+regression benchmark instead of new sweeps:
+[blueprint-regression-benchmark.md](blueprint-regression-benchmark.md) (its
+`dev` split is exactly the 500 questions of run7–run9).
+
 - The run4 gaps (rec 1024/128, semantic at k5) are superseded by run5; retry
   semantic with Qwen3-4B only if the embedder comparison is still needed.
 - Deduplicate the TechQA corpus before indexing: about a quarter of the context

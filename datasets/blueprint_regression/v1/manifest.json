@@ -1,0 +1,28 @@
+{
+  "source": {
+    "dataset": "ragbench",
+    "subset": "techqa",
+    "split": "train",
+    "dataset_path": null,
+    "selection": "loader order (HF: shuffle(seed=42).select(range(1191)))",
+    "frozen_on": "2026-11-25"
+  },
+  "splits": {
+    "dev": {
+      "size": 500,
+      "categories": {
+        "answerable": 452,
+        "unanswerable": 48
+      },
+      "sha256": "b7a4707d1bd38c7293cb346eaef6697c7d709a517a3530d4d33e93147e71f63c"
+    },
+    "holdout": {
+      "size": 200,
+      "categories": {
+        "answerable": 182,
+        "unanswerable": 18
+      },
+      "sha256": "7fd22497f63d4fd0155f29cfc7dfc6dc09719d10cc49bc37baaa454a4fc19cd8"
+    }
+  }
+}
