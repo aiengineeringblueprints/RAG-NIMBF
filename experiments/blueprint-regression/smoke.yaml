@@ -1,0 +1,52 @@
+# Blueprint regression benchmark (issue #64): SMOKE TEST of baseline.yaml
+# on the first 5 dev questions without paid RAGAS calls: checks execution
+# and output structure (custom + gold retrieval metrics, latency) end to end.
+# Guide: doc/blueprint-regression-benchmark.md
+#
+# Question set: datasets/blueprint_regression/v1 (only manifest.json is
+# committed; rebuild + verify the split files first, see the guide).
+# Run (machine-local paths come from the script / .env):
+#   scripts/run_blueprint_rag.sh results/Enterprise-RAG/<runN> \
+#     experiments/blueprint-regression/smoke.yaml
+experiment_name: blueprint-regression-v1-smoke
+
+dataset:
+  name: jsonl
+  subset: null
+  path: datasets/blueprint_regression/v1/dev.jsonl
+  sample_size: 5
+
+settings:
+  rag_system_adapter: enterprise_rag_mcp
+  rag_adapter_accepts: "chunker,embedder"
+  benchmark_stage: all
+  retrieval_mode: retrieval
+  retrieval_strategy: similarity
+  retrieval_fetch_k: 50
+  retrieval_multihop: false
+  retrieval_use_hyde: false
+  generation_temperature: 0
+  enterprise_rag_mcp_transport: inprocess
+  enterprise_rag_mcp_enabled: false
+  enterprise_rag_mcp_apply_settings: true
+  enterprise_rag_mcp_guardrails: true
+  enterprise_rag_mcp_index_corpus: true
+  enterprise_rag_mcp_query_refinement: true
+  # Judge for correctness (answer_correctness) and faithfulness. Keep it
+  # fixed across all runs that are compared with each other.
+  eval_critic_llm: openai:deepseek-v4-flash
+  eval_critic_embedding: ollama:nomic-embed-text:latest
+  ragas_enabled: false            # smoke: no paid judge calls
+  custom_metrics_enabled: true
+  custom_retrieval_metrics_mode: gold_doc
+  mlflow_tracing_enabled: false
+
+matrix:
+  llm_models: [openai:qwen3.8-27b]
+  embedding_models: [nomic-embed-text:latest]
+  retrieval_top_k: [12]
+  chunking_strategies: [recursive]
+  chunk_sizes: [1000]
+  chunk_overlaps: [200]
+  prompt_templates: [concise]
+  reranker_models: [null]
