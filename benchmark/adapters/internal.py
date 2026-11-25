@@ -31,6 +31,11 @@ class InternalRagAdapter:
 
     name = "internal"
 
+    def system_provenance(self, config: Any) -> Any:
+        from benchmark.lineage.provenance import framework_provenance
+
+        return framework_provenance()
+
     def __init__(self, generator: Callable[..., Any] | None = None) -> None:
         # Lazy imports keep construction cheap and avoid import cycles.
         from benchmark.generation import generate_answer

@@ -17,6 +17,7 @@ from benchmark.dataset_adapters import (
     strip_sentence_label_metadata,
 )
 from benchmark.doc_ids import resolve_dataset_doc_id
+from benchmark.lineage.dataset import SAMPLING_SEED
 
 console = Console()
 
@@ -198,7 +199,7 @@ def load_benchmark_data(
     data = ds[split]
 
     if sample_size and sample_size < len(data):
-        data = data.shuffle(seed=42).select(range(sample_size))
+        data = data.shuffle(seed=SAMPLING_SEED).select(range(sample_size))
 
     samples = []
     for row in data:
@@ -754,7 +755,7 @@ def _load_ragperf_wikipedia_nq(sample_size: int) -> tuple[list[dict], list[dict]
         RAGPERF_WIKIPEDIA_HF_ID, RAGPERF_WIKIPEDIA_CONFIG, split="train"
     )
     if corpus_size and corpus_size < len(wiki):
-        wiki = wiki.shuffle(seed=42).select(range(corpus_size))
+        wiki = wiki.shuffle(seed=SAMPLING_SEED).select(range(corpus_size))
 
     corpus = [
         {
@@ -776,7 +777,7 @@ def _load_ragperf_wikipedia_nq(sample_size: int) -> tuple[list[dict], list[dict]
     )
     nq = load_dataset(RAGPERF_NQ_HF_ID, split="train")
     if sample_size and sample_size < len(nq):
-        nq = nq.shuffle(seed=42).select(range(sample_size))
+        nq = nq.shuffle(seed=SAMPLING_SEED).select(range(sample_size))
 
     questions = normalize_samples(
         [

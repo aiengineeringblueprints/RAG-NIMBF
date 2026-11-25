@@ -1,0 +1,105 @@
+"""Dataset identity for experiment lineage (issue #65)."""
+
+from __future__ import annotations
+
+import json
+from types import SimpleNamespace
+
+from benchmark.lineage.dataset import (
+    SAMPLING_SEED,
+    assign_sample_ids,
+    corpus_fingerprint,
+    dataset_identity,
+    question_set_hash,
+    sample_category,
+)
+
+
+def _sample(question, ground_truth="gt", **metadata):
+    return {"question": question, "ground_truth": ground_truth, "context": "", "metadata": metadata}
+
+
+def _config(**overrides):
+    values = dict(
+        dataset_name="jsonl-shared",
+        dataset_subset=None,
+        dataset_split=None,
+        dataset_sample_size=0,
+        dataset_path=None,
+        dataset_corpus_path=None,
+    )
+    values.update(overrides)
+    return SimpleNamespace(**values)
+
+
+def test_sample_ids_are_stable_across_loads():
+    data = [_sample("What is X?"), _sample("What is Y?")]
+
+    assert assign_sample_ids(data) == assign_sample_ids([dict(s) for s in data])
+
+
+def test_sample_ids_do_not_depend_on_position():
+    a, b = _sample("What is X?"), _sample("What is Y?")
+
+    forward = assign_sample_ids([a, b])
+    backward = assign_sample_ids([b, a])
+
+    assert forward == list(reversed(backward))
+
+
+def test_duplicate_questions_get_distinct_ids():
+    """TechQA lists questions twice; each copy must stay addressable."""
+    ids = assign_sample_ids([_sample("Q"), _sample("Q"), _sample("Q", "other")])
+
+    assert len(set(ids)) == 3
+
+
+def test_sample_ids_contain_no_question_text():
+    (sid,) = assign_sample_ids([_sample("Secret customer question")])
+
+    assert "Secret" not in sid and len(sid) == 16
+
+
+def test_question_set_hash_is_order_sensitive_and_deterministic():
+    ids = assign_sample_ids([_sample("A"), _sample("B")])
+
+    assert question_set_hash(ids) == question_set_hash(list(ids))
+    assert question_set_hash(ids) != question_set_hash(list(reversed(ids)))
+
+
+def test_category_from_explicit_label_or_answerable_flag():
+    assert sample_category(_sample("Q", category="billing")) == "billing"
+    assert sample_category(_sample("Q", answerable=True)) == "answerable"
+    assert sample_category(_sample("Q", answerable=False)) == "unanswerable"
+    assert sample_category(_sample("Q")) is None
+
+
+def test_corpus_fingerprint_ignores_document_order_but_not_content():
+    docs = [{"context": "alpha", "metadata": {}}, {"context": "beta", "metadata": {}}]
+
+    assert corpus_fingerprint(docs) == corpus_fingerprint(list(reversed(docs)))
+    assert corpus_fingerprint(docs) != corpus_fingerprint(
+        [{"context": "alpha", "metadata": {}}, {"context": "beta!", "metadata": {}}]
+    )
+    assert corpus_fingerprint(None) is None
+
+
+def test_dataset_identity_records_sampling_and_hashes(tmp_path):
+    questions = tmp_path / "questions.jsonl"
+    questions.write_text(json.dumps({"question": "Q", "ground_truth": "A"}) + "\n")
+    data = [_sample("Q", "A")]
+    corpus = [{"context": "doc", "metadata": {}}]
+
+    identity = dataset_identity(
+        _config(dataset_path=str(questions), dataset_sample_size=5), data, corpus
+    )
+
+    assert identity["name"] == "jsonl-shared"
+    assert identity["sample_size"] == 5
+    assert identity["sampling_seed"] == SAMPLING_SEED
+    assert identity["num_samples"] == 1
+    assert identity["question_set_hash"] == question_set_hash(assign_sample_ids(data))
+    assert identity["corpus_fingerprint"] == corpus_fingerprint(corpus)
+    assert identity["corpus_documents"] == 1
+    assert len(identity["source_sha256"]) == 64
+    assert "Q" not in json.dumps(identity)

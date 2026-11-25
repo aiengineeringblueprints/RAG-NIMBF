@@ -1,5 +1,6 @@
 """Tests for config.py — BenchmarkConfig and get_all_combinations."""
 
+import json
 import os
 import pytest
 from unittest.mock import patch
@@ -1510,3 +1511,75 @@ class TestMlflowScorersSetting:
         cfg = _make_config(mlflow_scorers=("correctness",))
         with pytest.raises(ValueError, match="mlflow_tracing_enabled"):
             validate_benchmark_config(cfg)
+
+
+# ---------------------------------------------------------------------------
+# Experiment lineage (#65)
+# ---------------------------------------------------------------------------
+
+class TestExperimentLineageConfig:
+    def test_lineage_fields_default_to_unset(self):
+        cfg = _make_config()
+        assert cfg.experiment_metadata_json is None
+        assert cfg.system_provenance_json is None
+
+    def test_env_fallback_reads_lineage_json(self, monkeypatch):
+        monkeypatch.setenv("EXPERIMENT_METADATA_JSON", '{"study_id": "s1"}')
+        monkeypatch.setenv("SYSTEM_PROVENANCE_JSON", '{"system_id": "acme", "version": "1.2"}')
+
+        cfg = get_all_combinations()[0]
+
+        assert cfg.experiment_metadata_json == '{"study_id": "s1"}'
+        assert cfg.system_provenance_json == '{"system_id": "acme", "version": "1.2"}'
+
+    def test_unknown_experiment_metadata_key_is_rejected(self):
+        cfg = _make_config(experiment_metadata_json='{"study": "typo"}')
+        with pytest.raises(ValueError, match="Unknown experiment metadata field"):
+            validate_benchmark_config(cfg)
+
+    def test_unknown_provenance_key_is_rejected(self):
+        cfg = _make_config(system_provenance_json='{"api_key": "secret"}')
+        with pytest.raises(ValueError, match="Unknown system_provenance field"):
+            validate_benchmark_config(cfg)
+
+    def test_invalid_provenance_version_source_is_rejected(self):
+        cfg = _make_config(system_provenance_json='{"version_source": "guess"}')
+        with pytest.raises(ValueError, match="version_source"):
+            validate_benchmark_config(cfg)
+
+    def test_manifest_blocks_become_lineage_json(self, tmp_path):
+        from benchmark.orchestration.matrix import build_configs_from_spec, load_experiment_spec
+
+        manifest = tmp_path / "study.yaml"
+        manifest.write_text(
+            "experiment:\n"
+            "  study_id: retrieval-k\n"
+            "  hypothesis: top-k 8 raises recall\n"
+            "system_provenance:\n"
+            "  system_id: acme-rag\n"
+            "  version_source: container\n"
+            "  version: sha256:feed\n",
+            encoding="utf-8",
+        )
+
+        (cfg,) = build_configs_from_spec(
+            load_experiment_spec(manifest), base_configs=[_make_config()]
+        )
+
+        assert json.loads(cfg.experiment_metadata_json) == {
+            "study_id": "retrieval-k",
+            "hypothesis": "top-k 8 raises recall",
+        }
+        assert json.loads(cfg.system_provenance_json)["system_id"] == "acme-rag"
+
+    def test_settings_dict_is_coerced_to_json(self):
+        from benchmark.orchestration.matrix import ExperimentSpec, build_configs_from_spec
+
+        spec = ExperimentSpec(
+            name="s", dataset={}, matrix={},
+            settings={"experiment_metadata_json": {"candidate_id": "k8"}},
+        )
+
+        (cfg,) = build_configs_from_spec(spec, base_configs=[_make_config()])
+
+        assert json.loads(cfg.experiment_metadata_json) == {"candidate_id": "k8"}

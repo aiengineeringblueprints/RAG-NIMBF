@@ -139,6 +139,42 @@ Wichtige Dateien und Ordner:
 - `reproducibility/`: Manifest, Git-Stand und Paketliste
 - `plots/`, `reports/`, `results_summary.csv`: aggregierte Auswertung, wenn Reports erzeugt wurden
 
+## Iterationen vergleichen (Experiment-Lineage)
+
+Jeder Lauf hält fest, welcher Blueprint-Stand gemessen wurde. Der Adapter liest
+den Checkout unter `enterprise_rag_blueprint_path` (Commit, Branch, Remote ohne
+Zugangsdaten, `dirty` + Hash des Diffs) selbst aus; nichts muss deklariert
+werden. Beschreibe im Manifest nur das Experiment:
+
+```yaml
+experiment:
+  study_id: blueprint-reranker
+  hypothesis: Reranker top-k 8 statt 4 erhöht answer_correctness
+  candidate_id: rerank-k8
+  baseline_run_id: <MLflow-Run-ID des Baseline-Laufs>
+  change_under_test: reranker_top_k 4 -> 8
+  issue_reference: "#65"
+```
+
+Ablauf:
+
+1. Baseline-Lauf auf dem aktuellen Blueprint-Stand starten (wie oben), z. B. nach `results/run40`.
+2. Änderung im Blueprint committen (ein uncommitteter Stand erscheint als `status: dirty`).
+3. Kandidaten-Lauf mit demselben Datensatz, derselben `DATASET_SAMPLE_SIZE` und demselben Critic starten, z. B. nach `results/run41`.
+4. Vergleichen:
+
+```bash
+python -m benchmark.lineage compare \
+  --baseline results/run40/benchmark_<...>.json \
+  --candidate results/run41/benchmark_<...>.json --log-mlflow
+```
+
+`comparison.md` zeigt oben beide Blueprint-Commits, darunter pro Metrik
+Baseline, Kandidat, Delta mit 95%-KI und die Zahl gepaarter Fragen, danach die
+Kategorien (`answerable` / `unanswerable`). Status `not_comparable` heißt:
+anderer Critic/andere Bewertung oder keine gemeinsamen Fragen; Details unter
+[results-and-mlflow.md](results-and-mlflow.md#experiment-lineage-and-paired-comparisons).
+
 ## Häufige Probleme
 
 ### 504 Gateway Time-out beim Remote-Ollama-Host

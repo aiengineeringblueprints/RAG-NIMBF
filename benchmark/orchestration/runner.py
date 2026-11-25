@@ -34,6 +34,7 @@ from benchmark.checkpoint import CheckpointStore, generation_result_from_record
 from benchmark.custom_metrics import CustomMetricsResult, compute_custom_metrics
 from benchmark.dataset_adapters import strip_sentence_label_metadata
 from benchmark.evaluation import EvaluationResult, evaluate_results
+from benchmark.lineage.record import build_run_lineage
 from benchmark.generation import GenerationResult
 from benchmark.gold_retrieval_metrics import (
     compute_gold_doc_retrieval_metrics,
@@ -192,6 +193,7 @@ def _run_single_benchmark_impl(
     # seam: the registry hands out an adapter for any configured name.
     rag_adapter = get_rag_adapter(config)
     prepared_target = None
+    run_lineage = build_run_lineage(rag_adapter, config, data, corpus)
 
     # Prepare QA log path if run_dir is provided
     qa_log: list[dict] = []
@@ -277,6 +279,7 @@ def _run_single_benchmark_impl(
             corpus_parser=config.corpus_parser or None,
             parser_version=config.parser_version,
             dataset_license=config.dataset_license,
+            lineage=run_lineage.as_dict(),
         )
         return index_result
 
@@ -574,6 +577,8 @@ def _run_single_benchmark_impl(
             adapter_diagnostics=all_adapter_diagnostics[i]
             if i < len(all_adapter_diagnostics)
             else None,
+            sample_id=run_lineage.sample_ids[i],
+            category=run_lineage.categories[i],
         )
         for i, (q, gt, ctx, gr) in enumerate(
             zip(questions, ground_truths, all_contexts, gen_results)
@@ -724,6 +729,7 @@ def _run_single_benchmark_impl(
         corpus_parser=config.corpus_parser or None,
         parser_version=config.parser_version,
         dataset_license=config.dataset_license,
+        lineage=run_lineage.as_dict(),
     )
     return benchmark_result
 

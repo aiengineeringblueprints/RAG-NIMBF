@@ -83,6 +83,72 @@ Use the aggregate run when you want all tables and plots for one sweep in one
 place. MLflow utilities live in `scripts/` — see the scripts themselves for
 usage; back up `mlflow.db` before running destructive cleanup scripts.
 
+## Experiment lineage and paired comparisons
+
+Every run records *what* was measured, so two runs can be compared without
+guessing (issue #65). The lineage record lives in the JSON report
+(`results[i].lineage`, plus `sample_id` / `category` on every per-sample row)
+and in MLflow.
+
+| Part | Content | Source |
+| --- | --- | --- |
+| `experiment` | `study_id`, `hypothesis`, `candidate_id`, `baseline_run_id`, `change_under_test`, `change_summary`, `issue_reference` | manifest `experiment:` block / `EXPERIMENT_METADATA_JSON` |
+| `system` | `system_id`, `system_name`, `version_source`, `version`, `branch`, `remote` (credentials stripped), `dirty`, `diff_hash`, `status` | adapter hook `system_provenance(config)`, else manifest `system_provenance:` / `SYSTEM_PROVENANCE_JSON` |
+| `dataset` | name, subset, split, sample size, sampling seed (`42`), `num_samples`, ordered `question_set_hash`, `source_sha256` of a local dataset file, order-independent `corpus_fingerprint` | computed from the loaded data |
+| `scorer` | critic LLM/embedding/temperature, RAGAS on/metrics, custom metrics, BERTScore model, retrieval-metric mode | config |
+
+Provenance `status` is one of `captured` (clean checkout read by the adapter),
+`dirty` (uncommitted changes; only a SHA-256 `diff_hash` of the diff is kept,
+never the diff), `user_supplied` (declared in the manifest), or
+`not_available`. The built-in pipeline captures this repository's checkout,
+the Enterprise RAG Blueprint adapters (`enterprise_rag`, `enterprise_rag_mcp`)
+capture the Blueprint checkout; HTTP/MCP/managed systems need a declared
+`system_provenance:` block. Plugin adapters opt in by implementing
+`system_provenance(self, config) -> SystemProvenance`.
+
+`sample_id` is a 16-hex SHA-256 of (question, ground truth, occurrence), so it
+is stable across runs and re-derivable for reports written before lineage
+existed.
+
+**MLflow.** Each config run gets searchable tags `experiment.*`, `system.*`,
+`dataset.*` (hashes and identifiers only, never question text) and
+`scorer.fingerprint`, plus the artifacts `lineage/lineage.json` and
+`lineage/samples.json` (sample ID, category, metrics; no text). Example
+search: `tags."experiment.study_id" = 'retrieval-k'`.
+
+**Comparing two runs.** A reference is a JSON report path
+(`report.json`, or `report.json#<config_name>` for multi-config reports) or an
+MLflow run ID:
+
+```bash
+python -m benchmark.lineage compare \
+  --baseline results/run40/benchmark_x.json#<config> \
+  --candidate <mlflow-run-id> [--out DIR] [--log-mlflow]
+```
+
+It writes `comparison.json` and `comparison.md` (default
+`<baseline report dir>/comparisons/<baseline>__vs__<candidate>/`, or
+`results/comparisons/` for MLflow references); `--log-mlflow` also logs them as
+a `run_type=comparison` MLflow run with `delta.<metric>` metrics. The output
+holds both sides' provenance, dataset and scorer fingerprints, and per metric
+the baseline/candidate mean, delta, direction (`higher_is_better`,
+`lower_is_better`, `neutral`), paired `n`, missing counts on each side, and a
+paired bootstrap 95% CI; per-question deltas; a per-category summary; latency
+(`total_seconds`, `ttft_seconds`), tokens, and cost. Metrics come from the same
+per-sample extraction as `benchmark.regression`.
+
+| Status | Meaning |
+| --- | --- |
+| `paired` | Same scorer, identical sample sets |
+| `partially_paired` | Same scorer, overlapping sample sets; statistics on the overlap only, counts in `pairing` |
+| `not_comparable` | Scorer identity differs, or no shared samples; `reasons` lists why and no metrics are computed |
+
+A metric missing on one side is counted in `missing_baseline` /
+`missing_candidate`, never scored as 0. Corpus or dataset-name mismatches,
+dirty checkouts, and unknown provenance/scorer (runs from before lineage) are
+reported as `warnings`. The CLI exits `2` for `not_comparable`. MLflow runs
+logged before lineage have no artifacts; compare their JSON reports instead.
+
 ## MLflow Tracing
 
 Opt-in per-sample tracing (issue #42). Enable it in the manifest:

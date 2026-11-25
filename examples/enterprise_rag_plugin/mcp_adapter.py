@@ -55,6 +55,7 @@ from benchmark.mcp_host import (
     mcp_host_stage_timings,
 )
 from examples.enterprise_rag_plugin.adapter import (
+    blueprint_provenance,
     ensure_blueprint_importable,
     replace_blueprint_index,
 )
@@ -414,6 +415,9 @@ class EnterpriseRagMcpAdapter:
     """Benchmark the Blueprint's own MCP host behaviour end to end."""
 
     name = "enterprise_rag_mcp"
+
+    def system_provenance(self, config: Any) -> Any:
+        return blueprint_provenance(config)
 
     def __init__(
         self,
