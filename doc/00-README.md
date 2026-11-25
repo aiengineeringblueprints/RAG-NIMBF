@@ -1,6 +1,6 @@
 # Documentation Index
 
-Every guide and document in `doc/`, grouped by purpose. Status legend:
+All documents in `doc/` are listed below, grouped by purpose. Status legend:
 
 - **current** — authoritative for its topic; kept up to date.
 - **experimental** — working notes for a feature under development.
@@ -38,6 +38,7 @@ Every guide and document in `doc/`, grouped by purpose. Status legend:
 | [MCP Benchmarking](mcp-benchmarking.md) | current | Evaluating MCP servers: result/execution modes, YAML + `.env` configuration, full metric reference (reliability, latency, tool use, evidence budget), fairness validation, troubleshooting |
 | [MCP Host Benchmarking](mcp-host-benchmarking.md) | current | Benchmarking a RAG system that calls MCP servers itself (Enterprise RAG Blueprint `enterprise_rag_mcp` adapter): Blueprint LLM / embedding / top-k selected from the manifest matrix, call success rates, latency, budget exhaustion, tool selection vs. `expected_tools`, deterministic answer match per category, 1000-question / 240-document fixture with its own MCP server, RAG only vs. RAG + MCP vs. MCP only, 210 trust questions (freshness, permission, robustness, unanswerable) scored by expected behaviour and forbidden values, reference result MCP off vs. on |
 | [Enterprise RAG Blueprint Setup](enterprise-rag-blueprint-setup.md) | current | Step-by-step guide for evaluating the Enterprise RAG Blueprint with MCP: `.env` block, MCP server config, model endpoints with Bearer keys (OpenAI-compatible, Ollama, proxies), manifest with LLM / embedding / top-k matrix, dense or hybrid (BM25 + RRF) Blueprint retrieval, smoke and full runs, `http` variant, troubleshooting |
+| [Enterprise RAG Blueprint Benchmark](Enterprise_RAG_Blueprint_Benchmark.md) | current | Ready-made Blueprint comparison: manifests and workflow for benchmarking the Enterprise RAG Blueprint against the internal pipeline (see also the Setup and Results guides above) |
 | [OptimiseRAG Benchmark](OptimiseRAG_Benchmark.md) | current | Concrete managed-adapter benchmark setup (manifests, smoke runs) |
 
 ## Results and analyses
@@ -57,6 +58,7 @@ Every guide and document in `doc/`, grouped by purpose. Status legend:
 | [agents/](agents/) | current | Notes for coding agents working on this repo: issue tracker usage, triage labels, domain-doc conventions |
 | [changes/](changes/README.md) | current | Change log: one record per coding session — what changed, why, migration, verification. Format and template inside |
 | [archive/](archive/README.md) | archived | Superseded documents kept for research provenance |
+| [superpowers/](superpowers/) | experimental | Agent-workflow plans and specs (historical working material) |
 
 ## Gap analyses (May 2026 deep-research pass)
 

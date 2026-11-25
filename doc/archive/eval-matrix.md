@@ -1,6 +1,6 @@
 # ARCHIVED: Experiment planning matrix (German, historical)
 
-Archived 2026-11-25 (issue #67). Historical record — no longer maintained; kept for research provenance. Superseded by `benchmark/prompt_templates` and the manifests in `experiments/`.
+Archived 2026-11-25 (issue #67). Historical record — no longer maintained; kept for research provenance. Superseded by the manifests in `experiments/` and the variable reference in `doc/env-vars.md`.
 
 ---
 

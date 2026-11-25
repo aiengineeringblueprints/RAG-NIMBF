@@ -32,10 +32,10 @@ Multi-context repo (presence of `CONTEXT-MAP.md` at the root):
 └── src/
     ├── ordering/
     │   ├── CONTEXT.md
-    │   └── doc/adr/                  ← context-specific decisions
+    │   └── docs/adr/                  ← context-specific decisions
     └── billing/
         ├── CONTEXT.md
-        └── doc/adr/
+        └── docs/adr/
 ```
 
 ## Use the glossary's vocabulary

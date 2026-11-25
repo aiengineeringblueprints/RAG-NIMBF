@@ -15,8 +15,11 @@ changed.
 ## Changes
 
 - **`docs/` → `doc/agents/`**: the three agent guides moved into the single
-  documentation tree; `AGENTS.md` references updated (also fixed the
-  `docs/adr/` → `doc/adr/` path typo in AGENTS.md).
+  documentation tree. Note: the root `AGENTS.md` is gitignored and not
+  tracked — its path references were updated in the local working copy only
+  (including the `docs/adr/` → `doc/adr/` typo fix); other clones keep their
+  local AGENTS.md. The tracked `doc/agents/domain.md` was corrected in this
+  PR.
 - **`doc/archive/` (new)**: superseded documents with ARCHIVED headers and a
   README table mapping each to its replacement:
   `prompts.md` (root prompt draft → `benchmark/prompt_templates`),
@@ -40,7 +43,8 @@ changed.
 - **`Optimizations/README.md` (new)**: marks the research notes as archived
   and indexes each note by topic.
 - **Root `README.md`**: added "Repository Layout" and "Development and
-  Testing" sections.
+  Testing" sections (links to the tracked `doc/agents/` guides; the
+  gitignored local `AGENTS.md` is not linked from the README).
 
 ## Behaviour changes and migration
 

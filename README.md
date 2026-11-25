@@ -141,8 +141,8 @@ python -m benchmark.worker plan experiments/full-grid-example.yaml
 Cheap smoke runs skip the paid evaluator LLM calls:
 `RAGAS_ENABLED=false CUSTOM_METRICS_ENABLED=false` plus a small
 `DATASET_SAMPLE_SIZE`. See [doc/00-README.md](doc/00-README.md) for the
-documentation index and [CONTRIBUTING notes in AGENTS.md](AGENTS.md) for
-repo conventions.
+documentation index and [doc/agents/](doc/agents/) for
+repo conventions (issue tracker, triage labels, domain docs).
 
 ## Publication
 
