@@ -39,13 +39,15 @@ def setup_mlflow() -> str:
     """
     tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
 
-    # Try server connection, fall back to SQLite
-    try:
-        import requests
-        requests.get(f"{tracking_uri}/api/2.0/mlflow/experiments/search", timeout=2)
-    except Exception:
-        tracking_uri = "sqlite:///mlflow.db"
-        mlflow.set_tracking_uri(tracking_uri)
+    # Try server connection, fall back to SQLite. An explicitly configured
+    # SQLite URI is used as-is (tests pin one via conftest).
+    if not tracking_uri.startswith("sqlite"):
+        try:
+            import requests
+            requests.get(f"{tracking_uri}/api/2.0/mlflow/experiments/search", timeout=2)
+        except Exception:
+            tracking_uri = "sqlite:///mlflow.db"
+            mlflow.set_tracking_uri(tracking_uri)
 
     if os.getenv("MLFLOW_ENABLE_SYSTEM_METRICS", "false").strip().lower() in (
         "1",

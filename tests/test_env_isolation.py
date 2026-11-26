@@ -62,3 +62,12 @@ def test_shell_exported_benchmark_vars_are_cleared_per_test():
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_mlflow_tracking_is_pinned_to_a_throwaway_sqlite_db():
+    # Without a reachable MLflow server, tracking/tracing fall back to the
+    # repo-root mlflow.db; tests must use an isolated per-test DB instead.
+    uri = os.environ["MLFLOW_TRACKING_URI"]
+    assert uri.startswith("sqlite:///")
+    assert "/mlflow-test.db" in uri
+    assert str(PROJECT_ROOT / "mlflow.db") not in uri
