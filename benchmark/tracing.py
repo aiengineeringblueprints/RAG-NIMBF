@@ -28,17 +28,19 @@ def setup_tracing() -> str | None:
     """
     tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
 
-    # Try connecting to MLflow server; fall back to SQLite
-    try:
-        import requests
-        requests.get(f"{tracking_uri}/api/2.0/mlflow/experiments/search", timeout=2)
-    except Exception:
-        sqlite_uri = "sqlite:///mlflow.db"
-        logger.warning(
-            "MLflow server at %s unreachable, falling back to %s",
-            tracking_uri, sqlite_uri,
-        )
-        tracking_uri = sqlite_uri
+    # Try connecting to MLflow server; fall back to SQLite. An explicitly
+    # configured SQLite URI is used as-is (tests pin one via conftest).
+    if not tracking_uri.startswith("sqlite"):
+        try:
+            import requests
+            requests.get(f"{tracking_uri}/api/2.0/mlflow/experiments/search", timeout=2)
+        except Exception:
+            sqlite_uri = "sqlite:///mlflow.db"
+            logger.warning(
+                "MLflow server at %s unreachable, falling back to %s",
+                tracking_uri, sqlite_uri,
+            )
+            tracking_uri = sqlite_uri
 
     mlflow.set_tracking_uri(tracking_uri)
     logger.info("MLflow tracking URI: %s", tracking_uri)

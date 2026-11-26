@@ -42,13 +42,19 @@ BENCHMARK_ENV_KEYS = _benchmark_env_keys()
 
 
 @pytest.fixture(autouse=True)
-def isolated_benchmark_env(monkeypatch):
+def isolated_benchmark_env(monkeypatch, tmp_path_factory):
     """Make every test independent of the machine-local .env and shell (#60).
 
     Disables dotenv loading in ``config`` and clears every benchmark-related
     variable, so code under test only sees its defaults plus what the test
     sets explicitly via ``monkeypatch.setenv``. ``PROMPT_TEMPLATES`` is pinned
     to ``concise`` so config unit tests get a single prompt per matrix cell.
+
+    MLflow tracking is pinned to a throwaway SQLite database so a test never
+    touches the machine-local ``mlflow.db`` (#60): without a reachable MLflow
+    server, ``benchmark/tracking.py`` and ``benchmark/tracing.py`` fall back
+    to ``sqlite:///mlflow.db`` in the repo root, whose schema state depends
+    on the host.
     """
     import config
 
@@ -56,6 +62,8 @@ def isolated_benchmark_env(monkeypatch):
     for key in BENCHMARK_ENV_KEYS:
         monkeypatch.delenv(key, raising=False)
     monkeypatch.setenv("PROMPT_TEMPLATES", "concise")
+    mlflow_db = tmp_path_factory.mktemp("mlflow") / "mlflow-test.db"
+    monkeypatch.setenv("MLFLOW_TRACKING_URI", f"sqlite:///{mlflow_db}")
 
 
 class StubEmbedder(Embeddings):
